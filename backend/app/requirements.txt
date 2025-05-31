@@ -1,0 +1,7 @@
+# app/requirements.txt
+ultralytics
+Pillow
+uvicorn
+fastapi
+python-multipart
+gunicorn
