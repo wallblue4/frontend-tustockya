@@ -1,102 +1,137 @@
-# app/main.py
+# backend/app/main.py (versión optimizada para Render)
+import os
+import logging
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware # Para conectar con el frontend
+from fastapi.middleware.cors import CORSMiddleware
 from .yolo_classifier import YOLOClassifier
-import logging
 
-# Configuración básica de logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="Servicio de Clasificación de Tenis con YOLO",
-    description="API para clasificar imágenes de tenis (raquetas, pelotas, etc.) usando un modelo YOLO entrenado.",
-    version="1.0.0"
+    title="🎾 Tennis Classifier API",
+    description="Demo API para clasificación de tenis con YOLO",
+    version="1.0.0",
+    docs_url="/docs",  # Swagger disponible en /docs
+    redoc_url="/redoc"
 )
 
-# --- Configuración CORS para el Frontend ---
-# Ajusta esto a los dominios de tu frontend.
-# En desarrollo, puedes usar "http://localhost:XXXX" o "*" para permitir todo (NO RECOMENDADO EN PRODUCCIÓN).
-origins = [
-    "http://localhost:3000",  # Sigue siendo útil si pruebas desde tu misma PC
-    "http://127.0.0.1:5500",  # Si usas Live Server para el HTML simple
-    "http://192.168.68.152",  # <-- ¡Añade tu IP directa si accedes así!
-    "http://192.168.68.152:5173", # <-- Si tu React App corre en esa IP y puerto
-    "capacitor://localhost",  # <-- Si tu app es Capacitor
-    "ionic://localhost",      # <-- Si tu app es Ionic
-    "app://localhost",        # <-- Otros esquemas de apps
-    "*"                       # <-- ¡Añade este comodín para depuración!
-]
-
+# CORS permisivo para demo (ajustar en producción)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # Cambiar por dominios específicos en producción
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
 # Variable global para el modelo
-yolo_classifier_model: YOLOClassifier = None
+model = None
 
 @app.on_event("startup")
-async def load_model_on_startup():
-    """
-    Carga el modelo YOLO de clasificación una vez al iniciar la aplicación.
-    """
-    global yolo_classifier_model
+async def startup_event():
+    """Cargar modelo al iniciar"""
+    global model
     try:
-        # La ruta del modelo es relativa a la carpeta raíz del proyecto,
-        # no a la carpeta 'app' donde está main.py
-        yolo_classifier_model = YOLOClassifier(model_path='models/best.pt')
-        logger.info("Servicio de clasificación de tenis iniciado y modelo cargado.")
+        model_path = os.getenv("MODEL_PATH", "models/best.pt")
+        logger.info(f"🔄 Cargando modelo desde: {model_path}")
+        
+        model = YOLOClassifier(model_path=model_path)
+        logger.info("✅ Modelo cargado exitosamente")
+        
     except Exception as e:
-        logger.error(f"Fallo crítico al cargar el modelo: {e}")
-        # En producción, podrías querer que la app falle si el modelo no carga
-        # raise HTTPException(status_code=500, detail="No se pudo iniciar el servicio de inferencia.")
+        logger.error(f"❌ Error al cargar modelo: {e}")
+        # No fallar el startup para que el health check funcione
 
 @app.get("/")
-async def read_root():
-    """
-    Endpoint de bienvenida.
-    """
-    return {"message": "Bienvenido al Servicio de Clasificación de Tenis con YOLO. Usa /classify para enviar imágenes."}
+async def root():
+    """Endpoint raíz con información del servicio"""
+    return {
+        "service": "Tennis Classifier API",
+        "status": "running",
+        "version": "1.0.0",
+        "model_loaded": model is not None,
+        "endpoints": {
+            "classify": "POST /classify",
+            "health": "GET /health", 
+            "docs": "GET /docs"
+        }
+    }
 
 @app.post("/classify")
 async def classify_image(file: UploadFile = File(...)):
-    """
-    Recibe una imagen y devuelve la clasificación predicha por el modelo YOLO.
-    """
-    if not yolo_classifier_model:
-        raise HTTPException(status_code=503, detail="El modelo de clasificación aún no está cargado o hubo un error al iniciarlo.")
-
-    # Validar tipo de archivo
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="El archivo enviado no es una imagen válida.")
-
+    """Clasificar imagen de tenis"""
+    
+    # Verificar modelo
+    if not model:
+        raise HTTPException(
+            status_code=503, 
+            detail="Modelo no disponible. El servicio se está inicializando."
+        )
+    
+    # Validar archivo
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=400,
+            detail="El archivo debe ser una imagen (jpg, png, etc.)"
+        )
+    
+    # Limitar tamaño (importante para tier gratuito)
+    max_size = 5 * 1024 * 1024  # 5MB
+    if hasattr(file, 'size') and file.size and file.size > max_size:
+        raise HTTPException(
+            status_code=413,
+            detail="Imagen muy grande. Máximo 5MB permitido."
+        )
+    
     try:
-        # Leer el contenido de la imagen
+        # Procesar imagen
+        logger.info(f"🔄 Procesando: {file.filename}")
         image_bytes = await file.read()
-
-        # Realizar la predicción
-        prediction_result = yolo_classifier_model.predict(image_bytes)
-
-        return JSONResponse(content={"prediction": prediction_result})
-
-    except ValueError as ve:
-        logger.error(f"Error en la predicción: {ve}")
-        raise HTTPException(status_code=400, detail=str(ve))
+        
+        # Predicción
+        prediction = model.predict(image_bytes)
+        
+        logger.info(f"✅ Predicción completada para: {file.filename}")
+        
+        return JSONResponse(content={
+            "success": True,
+            "filename": file.filename,
+            "prediction": prediction,
+            "message": "Clasificación completada exitosamente"
+        })
+        
     except Exception as e:
-        logger.error(f"Error interno del servidor al clasificar imagen: {e}")
-        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {e}")
+        logger.error(f"❌ Error en predicción: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error procesando imagen: {str(e)}"
+        )
 
 @app.get("/health")
 async def health_check():
-    """
-    Endpoint para verificar el estado del servicio y la carga del modelo.
-    """
-    if yolo_classifier_model:
-        return {"status": "ok", "model_loaded": True, "message": "Servicio y modelo funcionando correctamente."}
-    else:
-        return {"status": "degraded", "model_loaded": False, "message": "Servicio funcionando, pero el modelo aún no está cargado o falló al cargar."}
+    """Health check para monitoreo"""
+    return {
+        "status": "healthy" if model else "starting",
+        "model_loaded": model is not None,
+        "service": "tennis-classifier-api",
+        "timestamp": os.getenv("RENDER_SERVICE")  # Variable de Render
+    }
+
+# Endpoint adicional para debug (solo en desarrollo)
+@app.get("/debug")
+async def debug_info():
+    """Información de debug"""
+    import psutil
+    
+    return {
+        "environment": os.getenv("ENVIRONMENT", "unknown"),
+        "model_path": os.getenv("MODEL_PATH", "unknown"),
+        "memory_usage": f"{psutil.virtual_memory().percent:.1f}%",
+        "model_status": "loaded" if model else "not_loaded"
+    }
