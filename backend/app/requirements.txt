@@ -1,7 +1,7 @@
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 gunicorn==21.2.0
-ultralytics==8.2.0  # Versión más reciente
+ultralytics==8.3.0  # Versión más reciente
 pillow==10.0.1
 python-multipart==0.0.6
 psutil==5.9.6
