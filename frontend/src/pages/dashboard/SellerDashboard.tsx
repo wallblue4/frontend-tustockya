@@ -44,7 +44,7 @@ export const SellerDashboard: React.FC = () => {
     // window.location.hostname será la IP de tu PC (ej. 192.168.68.152) o 'localhost'
     // window.location.port será el puerto mapeado (ej. '3000')
     // El frontend llamará a /api/classify, y Nginx lo redirigirá.
-    return `https://estimate-selections-murray-ability.trycloudflare.com`;
+    return `https://275d-191-156-155-196.ngrok-free.app/`;
   };
 
   // --- FUNCIÓN CLAVE: ENVIAR IMAGEN AL SERVIDOR ---
