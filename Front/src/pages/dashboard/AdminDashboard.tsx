@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   DollarSign, 
   ShoppingBag, 
-  Users, 
+  Package2, 
   BarChart2,
   TrendingUp,
   TrendingDown
@@ -13,10 +13,9 @@ import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 
 export const AdminDashboard: React.FC = () => {
   const estadisticas = [
-    { title: 'Ventas Totales', value: '$24,589.00', change: 12.5, icon: <DollarSign className="h-6 w-6" /> },
-    { title: 'Pedidos', value: '345', change: 5.8, icon: <ShoppingBag className="h-6 w-6" /> },
-    { title: 'Clientes', value: '782', change: 9.2, icon: <Users className="h-6 w-6" /> },
-    { title: 'Tasa de Conversión', value: '3.8%', change: -0.5, icon: <BarChart2 className="h-6 w-6" /> },
+    { title: 'Ventas Diarias Todos los Locales', value: '$24,589.00', change: 12.5, icon: <DollarSign className="h-6 w-6" /> },
+    { title: 'Número de Pares Vendidos', value: '127', change: 8.3, icon: <Package2 className="h-6 w-6" /> },
+    { title: 'Utilidad Diaria Total', value: '$8,450.00', change: 15.2, icon: <BarChart2 className="h-6 w-6" /> },
   ];
 
   const ventasRecientes = [
@@ -35,7 +34,7 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <DashboardLayout title="Panel de Administrador">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {estadisticas.map((stat, index) => (
           <StatsCard
             key={index}

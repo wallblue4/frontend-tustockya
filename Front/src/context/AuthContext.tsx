@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
+import { authAPI } from '../services/api'; //CAMBIO
 
 interface AuthContextType {
   user: User | null;
@@ -57,12 +58,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     // Check if user is stored in localStorage
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    //const storedUser = localStorage.getItem('user');
+    //if (storedUser) {
+    //  setUser(JSON.parse(storedUser));
+    //}
+    //setLoading(false);
+
+    checkAuthStatus();  //CAMBIO
   }, []);
+
+  const checkAuthStatus = async () => {
+    setLoading(true);
+    try {
+      // Verificar si hay un usuario guardado en localStorage
+      const storedUser = localStorage.getItem('user');
+      const storedToken = localStorage.getItem('token');
+      
+      if (storedUser && storedToken) {
+        const userData = JSON.parse(storedUser);
+        
+        // Verificar que el token sigue siendo válido llamando al backend
+        try {
+          const currentUser = await authAPI.getCurrentUser();
+          
+          // Si la llamada es exitosa, el token es válido
+          setUser({
+            ...userData,
+            ...currentUser,
+            token: storedToken
+          });
+        } catch (error) {
+          // Si falla, el token expiró o es inválido
+          console.log('Token inválido, limpiando sesión');
+          logout();
+        }
+      }
+    } catch (error) {
+      console.error('Error verificando estado de autenticación:', error);
+      logout();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const login = async (email: string, password: string): Promise<User> => {
     setLoading(true);
@@ -76,9 +113,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         throw new Error('Invalid credentials');
       }
+
+      /*const response = await authAPI.login({ email, password }); //CAMBIO
+      if (response.access_token && response.user) {
+        const userData: User = {
+          ...response.user,
+          token: response.access_token,
+          token_type: response.token_type
+        };
+        
+        // Guardar en estado y localStorage
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('token', response.access_token);
+        
+        console.log('✅ Login exitoso:', userData);
+        return userData ;
+      } else {
+        throw new Error('Respuesta inválida del servidor');
+      }*/
+
+    } catch (error: any) {
+      console.error('❌ Error en login:', error);
+      
+      // Limpiar cualquier dato previo en caso de error
+      logout();
+      
+      // Re-lanzar el error para que el componente pueda manejarlo
+      throw error;
     } finally {
       setLoading(false);
     }
+
+    
   };
 
   const logout = () => {

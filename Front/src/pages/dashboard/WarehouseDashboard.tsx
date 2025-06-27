@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, Check, X } from 'lucide-react';
+import { Package, Send, X } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -87,7 +87,7 @@ export const WarehouseDashboard: React.FC = () => {
                         size="sm" 
                         className="bg-success hover:bg-success/90"
                       >
-                        <Check className="h-4 w-4 mr-1" /> Aprobar
+                        <Send className="h-4 w-4 mr-1" /> Enviar
                       </Button>
                       <Button 
                         size="sm" 

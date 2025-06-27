@@ -1,7 +1,0 @@
-node_modules/
-build/
-.git
-.gitignore
-.env
-.DS_Store
-

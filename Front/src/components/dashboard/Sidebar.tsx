@@ -80,35 +80,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         } fixed top-0 left-0 z-30 w-64 h-screen bg-white shadow-lg transition-transform duration-300 ease-in-out md:translate-x-0`}
       >
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-4 border-b">
-            <div className="flex items-center">
+          <div className="flex items-center justify-between p-3 sm:p-4 border-b">
+            <div className="flex items-center min-w-0">
               <img 
                 src={user?.avatar || 'https://via.placeholder.com/40'} 
                 alt="User" 
-                className="h-10 w-10 rounded-full mr-3" 
+                className="h-8 w-8 sm:h-10 sm:w-10 rounded-full mr-2 sm:mr-3 flex-shrink-0" 
               />
-              <div>
-                <p className="font-medium text-gray-800">{user?.name}</p>
-                <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+              <div className="min-w-0">
+                <p className="font-medium text-gray-800 text-sm sm:text-base truncate">{user?.name}</p>
+                <p className="text-xs text-gray-500 capitalize truncate">{user?.role}</p>
               </div>
             </div>
             <button 
-              className="md:hidden text-gray-500 hover:text-gray-700"
+              className="md:hidden text-gray-500 hover:text-gray-700 flex-shrink-0"
               onClick={toggleSidebar}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          <nav className="flex-1 py-4 px-2 overflow-y-auto">
+          <nav className="flex-1 py-2 sm:py-4 px-2 overflow-y-auto">
             <ul className="space-y-1">
               {links.map((link, index) => (
                 <li key={index}>
                   <NavLink
                     to={link.to}
                     className={({ isActive }) => 
-                      `flex items-center px-4 py-3 text-gray-700 rounded-md transition-colors ${
+                      `flex items-center px-3 sm:px-4 py-2 sm:py-3 text-gray-700 rounded-md transition-colors text-sm sm:text-base ${
                         isActive 
                           ? 'bg-primary text-white' 
                           : 'hover:bg-gray-100'
@@ -120,20 +120,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                       }
                     }}
                   >
-                    <span className="mr-3">{link.icon}</span>
-                    <span>{link.label}</span>
+                    <span className="mr-2 sm:mr-3 flex-shrink-0">{link.icon}</span>
+                    <span className="truncate">{link.label}</span>
                   </NavLink>
                 </li>
               ))}
             </ul>
           </nav>
-          <div className="p-4 border-t">
+          <div className="p-3 sm:p-4 border-t">
             <button 
               onClick={logout}
-              className="flex items-center w-full px-4 py-2 text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+              className="flex items-center w-full px-3 sm:px-4 py-2 text-gray-700 rounded-md hover:bg-gray-100 transition-colors text-sm sm:text-base"
             >
-              <LogOut className="mr-3 h-5 w-5" />
-              <span>Cerrar sesion</span>
+              <LogOut className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+              <span className="truncate">Cerrar sesion</span>
             </button>
           </div>
         </div>

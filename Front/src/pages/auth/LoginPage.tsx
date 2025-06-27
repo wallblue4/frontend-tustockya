@@ -33,7 +33,7 @@ export const LoginPage: React.FC = () => {
           navigate('/warehouse');
           break;
         case 'seller':
-          navigate('/seller');
+          navigate('/sellerDashboard');
           break;
         case 'runner':
           navigate('/runner');
