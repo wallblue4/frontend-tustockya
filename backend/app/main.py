@@ -5,7 +5,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from .yolo_classifier import YOLOClassifier
-
+ 
 # Configurar logging
 logging.basicConfig(
     level=logging.INFO,
