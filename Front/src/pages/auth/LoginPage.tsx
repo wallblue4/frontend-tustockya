@@ -72,7 +72,7 @@ export const LoginPage: React.FC = () => {
             </div>
             <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Iniciar sesión</h2>
             <p className="mt-2 text-sm text-gray-600">
-              Accede a tu panel de TennisHub
+              Accede a tu panel de TuStockYa
             </p>
           </div>
           
