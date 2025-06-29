@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Layout } from '../../components/layout/Layout';
 import { useAuth } from '../../context/AuthContext';
 
+
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
