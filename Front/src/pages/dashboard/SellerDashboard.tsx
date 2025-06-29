@@ -27,15 +27,15 @@ import { vendorAPI } from '../../services/api';
 
 type ViewType = 'dashboard' | 'scan' | 'new-sale' | 'today-sales' | 'expenses' | 'expenses-list' | 'transfers' | 'notifications';
 
-interface ScannedProduct {
-  id: string;
-  name: string;
-  image: string;
-  sizes: Array<{
-    size: string;
-    quantity: number;
-    location: string;
-  }>;
+// Usando las interfaces del Archivo 1
+interface PrefilledProduct {
+  code: string;
+  brand: string;
+  model: string;
+  size: string;
+  price: number;
+  location?: string;
+  storage_type?: string;
 }
 
 // Define la interfaz para la respuesta esperada de tu backend
@@ -50,14 +50,16 @@ interface ScanResponse {
 
 export const SellerDashboard: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [apiData, setApiData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [prefilledProduct, setPrefilledProduct] = useState<PrefilledProduct | null>(null);
   
-  // Estados para la funcionalidad de cámara
+  // Estados para la funcionalidad de cámara integrada
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<PredictionResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [capturedImage, setCapturedImage] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -68,39 +70,54 @@ export const SellerDashboard: React.FC = () => {
     try {
       setApiError(null);
       const response = await vendorAPI.getDashboard();
-      const apiData = response.data;
-      
-      setDashboardData(apiData);
+      setApiData(response); 
+
     } catch (error) {
       console.warn('Backend API not available, using mock data for development');
       
       // Set a user-friendly error message
       setApiError('Conectando con el servidor...');
       
-      // Use mock data for development when backend is not available
-      setDashboardData({
-        vendor: {
-          name: 'Juan Pérez',
+      // Usar mock data con setApiData
+      setApiData({
+        success: true,
+        dashboard_timestamp: new Date().toISOString(),
+        vendor_info: {
+          name: 'Juan Pérez (Mock)',
           email: 'juan@tustockya.com',
-          location: 'Local #1'
+          location_name: 'Local #1',
+          role: 'seller',
+          location_id: 1
         },
-        totalSales: 15,
-        pendingSales: 3,
-        totalAmount: 2450000,
-        pendingAmount: 450000,
-        itemsSold: 18,
-        totalExpenses: 150000,
-        netIncome: 2300000,
-        paymentMethods: {
-          cash: 1200000,
-          card: 800000,
-          transfer: 450000
+        today_summary: {
+          date: new Date().toISOString().split('T')[0],
+          sales: {
+            total_count: 15,
+            pending_confirmations: 3,
+            total_amount: 2450000,
+            confirmed_amount: 2000000,
+            pending_amount: 450000
+          },
+          expenses: {
+            count: 2,
+            total_amount: 150000
+          },
+          net_income: 2300000,
+          payment_methods_breakdown: []
         },
-        pendingActions: {
-          salesToConfirm: 3,
-          transferRequests: 2,
-          discountRequests: 1,
-          unreadReturns: 0
+        pending_actions: {
+          sale_confirmations: 3,
+          transfer_requests: {
+            pending: 2,
+            in_transit: 0,
+            delivered: 0
+          },
+          discount_requests: {
+            pending: 1,
+            approved: 0,
+            rejected: 0
+          },
+          return_notifications: 0
         }
       });
     } finally {
@@ -110,80 +127,100 @@ export const SellerDashboard: React.FC = () => {
 
   // --- FUNCIONES DE CÁMARA INTEGRADAS ---
   
-  // Función para abrir la cámara (o selector de archivos)
-  const handleScanProduct = () => {
+  // Función para abrir la cámara (o selector de archivos) - Mantiene funcionalidad de Archivo 2
+  const handleCameraCapture = () => {
     // Limpiamos los estados de resultado y error antes de una nueva escaneo
     setScanResult(null);
     setErrorMessage(null);
+    setCapturedImage(null);
     fileInputRef.current?.click();
   };
 
-  // Manejar la imagen capturada
+  // Manejar la imagen capturada - Delegando a ProductScanner
   const handleImageCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       console.log('Imagen capturada:', file.name);
+      setCapturedImage(file);
       sendImageToServer(file);
     }
   };
 
   // --- FUNCIÓN CLAVE: Determina la URL del backend ---
   const getBackendApiUrl = () => {
-    // Cuando el frontend se ejecuta dentro del contenedor Docker con Nginx,
-    // y Nginx está configurado para hacer proxy de /api/ al backend.
-    // window.location.protocol será 'http:'
-    // window.location.hostname será la IP de tu PC (ej. 192.168.68.152) o 'localhost'
-    // window.location.port será el puerto mapeado (ej. '3000')
-    // El frontend llamará a /api/classify, y Nginx lo redirigirá.
     return `${window.location.protocol}//${window.location.hostname}:${window.location.port}/api`;
   };
 
   // --- FUNCIÓN CLAVE: ENVIAR IMAGEN AL SERVIDOR ---
   const sendImageToServer = async (imageFile: File) => {
-    setIsScanning(true); // Activar estado de escaneo
-    setErrorMessage(null); // Limpiar errores anteriores
+    setIsScanning(true);
+    setErrorMessage(null);
 
+    // Comentado temporalmente hasta que el endpoint esté funcionando
+    /*
     const formData = new FormData();
-    // ¡IMPORTANTE! El nombre del campo debe ser 'file' para coincidir con tu endpoint de FastAPI
     formData.append('file', imageFile);
 
     try {
-      // Obtener la URL base para el API (ej. http://192.168.68.152:3000/api)
       const backendApiBaseUrl = getBackendApiUrl();
-      const classifyEndpointUrl = `${backendApiBaseUrl}/classify`; // Endpoint completo
+      const classifyEndpointUrl = `${backendApiBaseUrl}/classify`;
 
       console.log('Intentando enviar imagen a:', classifyEndpointUrl);
 
       const response = await fetch(classifyEndpointUrl, {
         method: 'POST',
         body: formData,
-        // No necesitas establecer 'Content-Type' para FormData, fetch lo hace automáticamente
       });
 
       if (!response.ok) {
-        // Si hay un error HTTP, intentamos leer el mensaje de error del backend
         const errorData = await response.json();
-        // Incluye el status code para depuración
         throw new Error(errorData.detail || `Error del servidor: ${response.status} - ${response.statusText}`);
       }
 
       const result: ScanResponse = await response.json();
       console.log('Respuesta del servidor:', result);
       
-      // Actualizamos el estado con el resultado de la clasificación
       if (result && result.prediction) {
         setScanResult(result.prediction);
+        // Después del escaneo exitoso, navegar a la vista de scan con la imagen
+        setCurrentView('scan');
       } else {
         setErrorMessage('La respuesta del servidor no tiene el formato esperado.');
       }
 
     } catch (error: any) {
       console.error('Error escaneando producto:', error);
-      // Muestra el mensaje de error directamente al usuario
       setErrorMessage(`Error al escanear el producto: ${error.message}`);
     } finally {
-      setIsScanning(false); // Desactivar estado de escaneo
-      // Limpiar el input para permitir escanear la misma imagen nuevamente
+      setIsScanning(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+    */
+
+    // Simulación temporal mientras el endpoint no está disponible
+    try {
+      console.log('Simulando procesamiento de imagen:', imageFile.name);
+      
+      // Simular delay de procesamiento
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Resultado simulado
+      const mockResult: PredictionResult = {
+        class_name: 'raqueta',
+        confidence: 0.85
+      };
+      
+      setScanResult(mockResult);
+      // Después del escaneo exitoso, navegar a la vista de scan con la imagen
+      setCurrentView('scan');
+      
+    } catch (error: any) {
+      console.error('Error simulando escaneo:', error);
+      setErrorMessage('Error en la simulación del escaneo');
+    } finally {
+      setIsScanning(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -208,41 +245,48 @@ export const SellerDashboard: React.FC = () => {
         <Card className="border-red-200 bg-red-50">
           <CardContent className="p-4 text-center">
             <p className="text-red-800 font-semibold">{errorMessage}</p>
+            <Button 
+              onClick={() => setErrorMessage(null)}
+              className="mt-2"
+              variant="ghost"
+              size="sm"
+            >
+              Cerrar
+            </Button>
           </CardContent>
         </Card>
       );
     }
 
-    if (scanResult) {
-      return (
-        <Card className="border-green-200 bg-green-50">
-          <CardContent className="p-4 text-center">
-            <h3 className="text-green-800 text-lg font-semibold mb-2">Clasificación Exitosa:</h3>
-            <p className="text-green-800">
-              **Clase:** <span className="font-bold">{scanResult.class_name}</span>
-            </p>
-            <p className="text-green-800">
-              **Confianza:** <span className="font-bold">{(scanResult.confidence * 100).toFixed(2)}%</span>
-            </p>
-            {/* Aquí podrías añadir más lógica basada en la clase_name, como mostrar detalles del producto */}
-            {scanResult.class_name === 'raqueta' && (
-              <p className="mt-2 text-green-700">¡Parece una raqueta de tenis!</p>
-            )}
-            {scanResult.class_name === 'pelota' && (
-              <p className="mt-2 text-green-700">¡Identificada una pelota de tenis!</p>
-            )}
-          </CardContent>
-        </Card>
-      );
-    }
-
-    return null; // No mostrar nada si no hay escaneo, error ni resultado
+    return null;
   };
 
-  // --- FIN FUNCIONES DE CÁMARA ---
-
-  const handleSellProduct = (product: any, size: string) => {
-    // Navigate to sales form with pre-filled product
+  // Funciones del Archivo 1 para manejo de productos
+  const handleSellProduct = (productData: {
+    code: string;
+    brand: string;
+    model: string;
+    size: string;
+    price: number;
+    location: string;
+    storage_type: string;
+  }) => {
+    console.log('Recibiendo datos del producto escaneado:', productData);
+    
+    // Preparar datos del producto para prellenar el formulario de ventas
+    const prefilledData: PrefilledProduct = {
+      code: productData.code,
+      brand: productData.brand,
+      model: productData.model,
+      size: productData.size,
+      price: productData.price,
+      location: productData.location,
+      storage_type: productData.storage_type
+    };
+    
+    console.log('Datos preparados para prellenar:', prefilledData);
+    
+    setPrefilledProduct(prefilledData);
     setCurrentView('new-sale');
   };
 
@@ -252,7 +296,18 @@ export const SellerDashboard: React.FC = () => {
   };
 
   const goBack = () => {
+    // Limpiar producto prellenado al volver al dashboard
+    setPrefilledProduct(null);
+    setCapturedImage(null);
+    setScanResult(null);
+    setErrorMessage(null);
     setCurrentView('dashboard');
+  };
+
+  const handleNewSaleClick = () => {
+    // Limpiar cualquier producto prellenado cuando se hace clic en "Nueva Venta" desde el dashboard
+    setPrefilledProduct(null);
+    setCurrentView('new-sale');
   };
 
   const renderCurrentView = () => {
@@ -266,6 +321,8 @@ export const SellerDashboard: React.FC = () => {
             <ProductScanner 
               onSellProduct={handleSellProduct}
               onRequestTransfer={handleRequestTransfer}
+              capturedImage={capturedImage}
+              scanResult={scanResult}
             />
           </div>
         );
@@ -276,7 +333,7 @@ export const SellerDashboard: React.FC = () => {
             <Button variant="ghost" onClick={goBack} className="mb-4">
               <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Dashboard
             </Button>
-            <SalesForm />
+            <SalesForm prefilledProduct={prefilledProduct} />
           </div>
         );
       
@@ -343,7 +400,7 @@ export const SellerDashboard: React.FC = () => {
         ref={fileInputRef}
         onChange={handleImageCapture}
         accept="image/*"
-        capture="environment" // Fuerza cámara trasera en móviles (opcional)
+        capture="environment"
         style={{ display: 'none' }}
       />
 
@@ -371,18 +428,18 @@ export const SellerDashboard: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Funcionalidad del Archivo 1 - navega a vista scan (SIN escaneo directo) */}
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2"
-              onClick={handleScanProduct}
-              disabled={isScanning}
+              onClick={() => setCurrentView('scan')}
             >
               <Camera className="h-6 w-6" />
-              <span className="text-sm">{isScanning ? 'Escaneando...' : 'Escanear'}</span>
+              <span className="text-sm">Escanear</span>
             </Button>
             
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2"
-              onClick={() => setCurrentView('new-sale')}
+              onClick={handleNewSaleClick}
             >
               <ShoppingBag className="h-6 w-6" />
               <span className="text-sm">Nueva Venta</span>
@@ -407,32 +464,90 @@ export const SellerDashboard: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Resultado del escaneo */}
+      {/* Resultado del escaneo - Solo mostrar en dashboard si hay error */}
       {renderScanResult()}
       
       {/* Vendor Info */}
-      {dashboardData && (
+      {apiData && apiData.vendor_info && (
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold">{dashboardData.vendor.name}</h2>
-                <p className="text-gray-600">{dashboardData.vendor.email}</p>
-                <p className="text-sm text-gray-500">{dashboardData.vendor.location}</p>
+                <h2 className="text-xl font-bold">{apiData.vendor_info.name}</h2>
+                <p className="text-gray-600">{apiData.vendor_info.email}</p>
+                <p className="text-sm text-gray-500">
+                  {apiData.vendor_info.location_name} • {apiData.vendor_info.role}
+                </p>
+                {apiData.today_summary && apiData.today_summary.date && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Fecha: {new Date(apiData.today_summary.date).toLocaleDateString('es-ES')}
+                  </p>
+                )}
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-500">Resumen del Día</p>
-                <p className="text-lg font-bold text-success">
-                  {dashboardData.totalSales} ventas confirmadas
+                <p className="text-lg font-bold text-green-600">
+                  {apiData.today_summary && apiData.today_summary.sales && apiData.today_summary.sales.total_count || 0} ventas totales
+                </p>
+                {apiData.today_summary && apiData.today_summary.sales && apiData.today_summary.sales.pending_confirmations > 0 && (
+                  <p className="text-sm text-amber-600">
+                    {apiData.today_summary.sales.pending_confirmations} pendientes de confirmar
+                  </p>
+                )}
+                <p className="text-sm text-gray-600">
+                  ${apiData.today_summary && apiData.today_summary.sales && apiData.today_summary.sales.total_amount && apiData.today_summary.sales.total_amount.toLocaleString('es-CO') || '0'}
                 </p>
               </div>
             </div>
+            
+            {/* Información adicional de acciones pendientes */}
+            {apiData.pending_actions && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  {apiData.pending_actions.sale_confirmations > 0 && (
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <p className="text-2xl font-bold text-blue-600">
+                        {apiData.pending_actions.sale_confirmations}
+                      </p>
+                      <p className="text-xs text-blue-600">Ventas por confirmar</p>
+                    </div>
+                  )}
+                  
+                  {apiData.pending_actions.transfer_requests && apiData.pending_actions.transfer_requests.pending > 0 && (
+                    <div className="bg-purple-50 p-3 rounded-lg">
+                      <p className="text-2xl font-bold text-purple-600">
+                        {apiData.pending_actions.transfer_requests.pending}
+                      </p>
+                      <p className="text-xs text-purple-600">Transferencias pendientes</p>
+                    </div>
+                  )}
+                  
+                  {apiData.pending_actions.discount_requests && apiData.pending_actions.discount_requests.pending > 0 && (
+                    <div className="bg-orange-50 p-3 rounded-lg">
+                      <p className="text-2xl font-bold text-orange-600">
+                        {apiData.pending_actions.discount_requests.pending}
+                      </p>
+                      <p className="text-xs text-orange-600">Descuentos pendientes</p>
+                    </div>
+                  )}
+                  
+                  {apiData.pending_actions.return_notifications > 0 && (
+                    <div className="bg-red-50 p-3 rounded-lg">
+                      <p className="text-2xl font-bold text-red-600">
+                        {apiData.pending_actions.return_notifications}
+                      </p>
+                      <p className="text-xs text-red-600">Devoluciones</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
 
       {/* Stats */}
-      {dashboardData && <DashboardStats data={dashboardData} />}
+      {apiData && <DashboardStats data={apiData} />}
 
       {/* Navigation Menu */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -528,7 +643,7 @@ export const SellerDashboard: React.FC = () => {
     <DashboardLayout title={
       currentView === 'dashboard' ? 'Panel de Vendedor' :
       currentView === 'scan' ? 'Escanear Producto' :
-      currentView === 'new-sale' ? 'Nueva Venta' :
+      currentView === 'new-sale' ? (prefilledProduct ? 'Nueva Venta - Producto Escaneado' : 'Nueva Venta') :
       currentView === 'today-sales' ? 'Ventas del Día' :
       currentView === 'expenses' ? 'Registrar Gasto' :
       currentView === 'expenses-list' ? 'Gastos del Día' :

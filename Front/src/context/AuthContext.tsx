@@ -105,6 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       // In a real app, this would be an API call
+      /*
       const mockUser = MOCK_USERS.find((u) => u.email === email);
       if (mockUser && password === 'password') {
         setUser(mockUser);
@@ -112,9 +113,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return mockUser;
       } else {
         throw new Error('Invalid credentials');
-      }
+      }*/
 
-      /*const response = await authAPI.login({ email, password }); //CAMBIO
+      const response = await authAPI.login({ email, password }); //CAMBIO
       if (response.access_token && response.user) {
         const userData: User = {
           ...response.user,
@@ -131,7 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return userData ;
       } else {
         throw new Error('Respuesta inválida del servidor');
-      }*/
+      }
 
     } catch (error: any) {
       console.error('❌ Error en login:', error);

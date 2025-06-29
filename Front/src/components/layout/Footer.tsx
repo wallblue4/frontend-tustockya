@@ -10,7 +10,7 @@ export const Footer: React.FC = () => {
           <div>
             <div className="flex items-center mb-4">
               <Shoe className="h-8 w-8 text-primary" />
-              <span className="ml-2 text-xl font-bold text-white">TennisHub</span>
+              <span className="ml-2 text-xl font-bold text-white">TuStockYa</span>
             </div>
             <p className="text-gray-400 mb-4">
               Providing premium sports tennis footwear for athletes and enthusiasts since 2022.

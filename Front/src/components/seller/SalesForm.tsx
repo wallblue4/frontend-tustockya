@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -10,29 +10,43 @@ import {
   DollarSign, 
   Upload,
   CheckCircle,
-  Percent
+  Percent,
+  AlertCircle
 } from 'lucide-react';
 
 interface SaleItem {
   id: string;
-  code: string;
+  sneaker_reference_code: string;
   brand: string;
   model: string;
+  color: string;
   size: string;
   quantity: number;
-  price: number;
+  unit_price: number;
 }
 
 interface PaymentMethod {
-  type: 'cash' | 'card' | 'transfer';
+  type: 'efectivo' | 'tarjeta' | 'transferencia';
   amount: number;
-  reference?: string; // For card (last 4 digits) or transfer reference
+  reference?: string;
 }
 
-export const SalesForm: React.FC = () => {
+interface SalesFormProps {
+  prefilledProduct?: {
+    code: string;
+    brand: string;
+    model: string;
+    size: string;
+    price: number;
+    location?: string;
+    storage_type?: string;
+  };
+}
+
+export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
   const [items, setItems] = useState<SaleItem[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
-    { type: 'cash', amount: 0 }
+    { type: 'efectivo', amount: 0 }
   ]);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [notes, setNotes] = useState('');
@@ -43,17 +57,44 @@ export const SalesForm: React.FC = () => {
   // Discount fields
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [discountReason, setDiscountReason] = useState('');
+  const [isRequestingDiscount, setIsRequestingDiscount] = useState(false);
+
+  // Effect to handle prefilled product
+  useEffect(() => {
+    if (prefilledProduct) {
+      const newItem: SaleItem = {
+        id: Date.now().toString(),
+        sneaker_reference_code: prefilledProduct.code,
+        brand: prefilledProduct.brand,
+        model: prefilledProduct.model,
+        color: '', // Este campo no viene en prefilledProduct, se deja vacío
+        size: prefilledProduct.size,
+        quantity: 1,
+        unit_price: prefilledProduct.price
+      };
+      setItems([newItem]);
+      
+      // Set payment amount to product price
+      setPaymentMethods([{ type: 'efectivo', amount: prefilledProduct.price }]);
+      
+      // Add note about the product source
+      if (prefilledProduct.location && prefilledProduct.storage_type) {
+        setNotes(`Producto escaneado - Ubicación: ${prefilledProduct.location} (${prefilledProduct.storage_type === 'warehouse' ? 'Bodega' : 'Exhibición'})`);
+      }
+    }
+  }, [prefilledProduct]);
 
   // Add new item
   const addItem = () => {
     const newItem: SaleItem = {
       id: Date.now().toString(),
-      code: '',
+      sneaker_reference_code: '',
       brand: '',
       model: '',
+      color: '',
       size: '',
       quantity: 1,
-      price: 0
+      unit_price: 0
     };
     setItems([...items, newItem]);
   };
@@ -72,7 +113,7 @@ export const SalesForm: React.FC = () => {
 
   // Add payment method
   const addPaymentMethod = () => {
-    setPaymentMethods([...paymentMethods, { type: 'cash', amount: 0 }]);
+    setPaymentMethods([...paymentMethods, { type: 'efectivo', amount: 0 }]);
   };
 
   // Update payment method
@@ -90,10 +131,56 @@ export const SalesForm: React.FC = () => {
   };
 
   // Calculate totals
-  const itemsSubtotal = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-  const itemsTotal = itemsSubtotal - discountAmount;
+  const itemsSubtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+  const totalAmount = itemsSubtotal - discountAmount;
   const paymentsTotal = paymentMethods.reduce((sum, payment) => sum + payment.amount, 0);
-  const isValidSale = itemsTotal > 0 && Math.abs(itemsTotal - paymentsTotal) < 0.01;
+  const isValidSale = totalAmount > 0 && Math.abs(totalAmount - paymentsTotal) < 0.01 && items.every(item => 
+    item.sneaker_reference_code && item.brand && item.model && item.color && item.size && item.unit_price > 0
+  );
+
+  // Request discount from API
+  const requestDiscount = async () => {
+    if (!discountAmount || !discountReason) {
+      alert('Por favor ingrese el monto y la razón del descuento');
+      return;
+    }
+
+    setIsRequestingDiscount(true);
+    try {
+      const discountData = {
+        amount: discountAmount,
+        reason: discountReason
+      };
+
+      console.log('Solicitando descuento:', discountData);
+      
+      const response = await vendorAPI.requestDiscount(discountData);
+      console.log('Respuesta del descuento:', response);
+      
+      alert(`Descuento solicitado exitosamente!\nID: ${response.discount_id || 'N/A'}\nMonto: ${formatCurrency(discountAmount)}\nEstado: ${response.status || 'pending'}`);
+      
+    } catch (error) {
+      console.error('Error al solicitar descuento:', error);
+      alert('Error al solicitar descuento: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+    } finally {
+      setIsRequestingDiscount(false);
+    }
+  };
+
+  // Convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove the data:image/...;base64, prefix
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = error => reject(error);
+    });
+  };
 
   // Handle file upload
   const handleReceiptUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,30 +196,43 @@ export const SalesForm: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      // Convert receipt to base64 if exists
+      let receipt_image = null;
+      if (receiptFile) {
+        receipt_image = await fileToBase64(receiptFile);
+      }
+
+      // Prepare sale data according to API structure
       const saleData = {
         items: items.map(item => ({
-          product_code: item.code,
+          sneaker_reference_code: item.sneaker_reference_code,
+          brand: item.brand,
+          model: item.model,
+          color: item.color,
           size: item.size,
           quantity: item.quantity,
-          unit_price: item.price
+          unit_price: item.unit_price
         })),
+        total_amount: totalAmount,
         payment_methods: paymentMethods.map(pm => ({
           type: pm.type,
           amount: pm.amount,
-          reference: pm.reference
+          ...(pm.reference && { reference: pm.reference })
         })),
-        discount_amount: discountAmount,
-        discount_reason: discountReason,
-        notes,
-        requires_confirmation: requiresConfirmation,
-        receipt_file: receiptFile
+        ...(receipt_image && { receipt_image }),
+        ...(notes && { notes }),
+        requires_confirmation: requiresConfirmation
       };
 
-      await vendorAPI.createSale(saleData);
+      console.log('Enviando datos de venta:', saleData);
+
+      const response = await vendorAPI.createSale(saleData);
+      
+      console.log('Respuesta de la API:', response);
       
       // Reset form
       setItems([]);
-      setPaymentMethods([{ type: 'cash', amount: 0 }]);
+      setPaymentMethods([{ type: 'efectivo', amount: 0 }]);
       setReceiptFile(null);
       setNotes('');
       setDiscountAmount(0);
@@ -140,8 +240,10 @@ export const SalesForm: React.FC = () => {
       setRequiresConfirmation(false);
       setShowSummary(false);
       
-      alert('Venta registrada exitosamente');
+      alert(`Venta registrada exitosamente!\nID: ${response.sale_id}\nTotal: ${formatCurrency(response.total_amount)}\nEstado: ${response.status}`);
+      
     } catch (error) {
+      console.error('Error al registrar la venta:', error);
       alert('Error al registrar la venta: ' + (error instanceof Error ? error.message : 'Error desconocido'));
     } finally {
       setIsSubmitting(false);
@@ -163,9 +265,12 @@ export const SalesForm: React.FC = () => {
                 <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <div>
                     <p className="font-medium">{item.brand} {item.model}</p>
-                    <p className="text-sm text-gray-600">Talla {item.size} × {item.quantity}</p>
+                    <p className="text-sm text-gray-600">
+                      {item.color} • Talla {item.size} × {item.quantity}
+                    </p>
+                    <p className="text-xs text-gray-500">Ref: {item.sneaker_reference_code}</p>
                   </div>
-                  <p className="font-semibold">{formatCurrency(item.quantity * item.price)}</p>
+                  <p className="font-semibold">{formatCurrency(item.quantity * item.unit_price)}</p>
                 </div>
               ))}
             </div>
@@ -194,7 +299,7 @@ export const SalesForm: React.FC = () => {
               {paymentMethods.map((payment, index) => (
                 <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <div>
-                    <p className="font-medium capitalize">{payment.type === 'cash' ? 'Efectivo' : payment.type === 'card' ? 'Tarjeta' : 'Transferencia'}</p>
+                    <p className="font-medium capitalize">{payment.type}</p>
                     {payment.reference && (
                       <p className="text-sm text-gray-600">Ref: {payment.reference}</p>
                     )}
@@ -219,9 +324,37 @@ export const SalesForm: React.FC = () => {
             )}
             <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
               <span>Total</span>
-              <span>{formatCurrency(itemsTotal)}</span>
+              <span>{formatCurrency(totalAmount)}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm text-gray-600">
+              <span>Total Pagos</span>
+              <span>{formatCurrency(paymentsTotal)}</span>
             </div>
           </div>
+
+          {/* Additional Info */}
+          {(notes || receiptFile || requiresConfirmation) && (
+            <div className="border-t pt-4 space-y-2">
+              {notes && (
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Notas:</p>
+                  <p className="text-sm text-gray-600">{notes}</p>
+                </div>
+              )}
+              {receiptFile && (
+                <div className="flex items-center text-sm text-gray-600">
+                  <CheckCircle className="h-4 w-4 mr-1 text-success" />
+                  <span>Comprobante adjunto: {receiptFile.name}</span>
+                </div>
+              )}
+              {requiresConfirmation && (
+                <div className="flex items-center text-sm text-amber-600">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  <span>Requiere confirmación posterior</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex space-x-4">
@@ -239,6 +372,31 @@ export const SalesForm: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Prefilled Product Notice */}
+      {prefilledProduct && (
+        <Card className="border-success bg-success/5">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <CheckCircle className="h-5 w-5 text-success" />
+              <div>
+                <p className="text-sm font-medium text-success">Producto Escaneado Agregado</p>
+                <p className="text-sm text-gray-700">
+                  {prefilledProduct.brand} {prefilledProduct.model} - Talla {prefilledProduct.size}
+                </p>
+                <p className="text-xs text-gray-600">
+                  Código: {prefilledProduct.code} | Precio: {formatCurrency(prefilledProduct.price)}
+                </p>
+                {prefilledProduct.location && prefilledProduct.storage_type && (
+                  <p className="text-xs text-gray-600">
+                    Ubicación: {prefilledProduct.location} ({prefilledProduct.storage_type === 'warehouse' ? 'Bodega' : 'Exhibición'})
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Items Section */}
       <Card>
         <CardHeader>
@@ -256,30 +414,41 @@ export const SalesForm: React.FC = () => {
           ) : (
             <div className="space-y-4">
               {items.map((item) => (
-                <div key={item.id} className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border rounded-lg">
+                <div key={item.id} className="grid grid-cols-1 md:grid-cols-7 gap-4 p-4 border rounded-lg">
                   <Input
-                    label="Código"
-                    value={item.code}
-                    onChange={(e) => updateItem(item.id, 'code', e.target.value)}
-                    placeholder="Código del producto"
+                    label="Código de Referencia"
+                    value={item.sneaker_reference_code}
+                    onChange={(e) => updateItem(item.id, 'sneaker_reference_code', e.target.value)}
+                    placeholder="NK-AM90-WHT-001"
+                    required
                   />
                   <Input
                     label="Marca"
                     value={item.brand}
                     onChange={(e) => updateItem(item.id, 'brand', e.target.value)}
-                    placeholder="Marca"
+                    placeholder="Nike"
+                    required
                   />
                   <Input
                     label="Modelo"
                     value={item.model}
                     onChange={(e) => updateItem(item.id, 'model', e.target.value)}
-                    placeholder="Modelo"
+                    placeholder="Air Max 90"
+                    required
+                  />
+                  <Input
+                    label="Color"
+                    value={item.color}
+                    onChange={(e) => updateItem(item.id, 'color', e.target.value)}
+                    placeholder="Blanco/Negro"
+                    required
                   />
                   <Input
                     label="Talla"
                     value={item.size}
                     onChange={(e) => updateItem(item.id, 'size', e.target.value)}
-                    placeholder="Talla"
+                    placeholder="9.0"
+                    required
                   />
                   <Input
                     label="Cantidad"
@@ -287,14 +456,18 @@ export const SalesForm: React.FC = () => {
                     value={item.quantity}
                     onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 1)}
                     min="1"
+                    required
                   />
                   <div className="flex items-end space-x-2">
                     <Input
                       label="Precio"
                       type="number"
-                      value={item.price}
-                      onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)}
+                      value={item.unit_price}
+                      onChange={(e) => updateItem(item.id, 'unit_price', parseFloat(e.target.value) || 0)}
                       placeholder="0"
+                      step="0.01"
+                      min="0"
+                      required
                     />
                     <Button
                       variant="outline"
@@ -321,7 +494,7 @@ export const SalesForm: React.FC = () => {
           </h2>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input
               label="Monto del Descuento"
               type="number"
@@ -329,7 +502,7 @@ export const SalesForm: React.FC = () => {
               onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
               placeholder="0"
               min="0"
-              max="5000"
+              step="0.01"
               icon={<DollarSign className="h-4 w-4 text-gray-400" />}
             />
             <Input
@@ -339,9 +512,23 @@ export const SalesForm: React.FC = () => {
               placeholder="Ej: Cliente frecuente, promoción..."
               disabled={discountAmount === 0}
             />
+            <div className="flex items-end">
+              <Button
+                onClick={requestDiscount}
+                disabled={!discountAmount || !discountReason || isRequestingDiscount}
+                variant="outline"
+                className="w-full"
+              >
+                {isRequestingDiscount ? 'Solicitando...' : 'Solicitar Descuento'}
+              </Button>
+            </div>
           </div>
-          {discountAmount > 5000 && (
-            <p className="text-error text-sm mt-2">El descuento máximo permitido es $5,000</p>
+          {discountAmount > 0 && (
+            <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+              <p className="text-blue-800 text-sm">
+                💡 <strong>Tip:</strong> Haz clic en "Solicitar Descuento" para registrar la solicitud en el sistema antes de proceder con la venta.
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -368,9 +555,9 @@ export const SalesForm: React.FC = () => {
                     onChange={(e) => updatePaymentMethod(index, 'type', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   >
-                    <option value="cash">Efectivo</option>
-                    <option value="card">Tarjeta</option>
-                    <option value="transfer">Transferencia</option>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="tarjeta">Tarjeta</option>
+                    <option value="transferencia">Transferencia</option>
                   </select>
                 </div>
                 <Input
@@ -379,14 +566,17 @@ export const SalesForm: React.FC = () => {
                   value={payment.amount}
                   onChange={(e) => updatePaymentMethod(index, 'amount', parseFloat(e.target.value) || 0)}
                   placeholder="0"
+                  step="0.01"
+                  min="0"
                   icon={<DollarSign className="h-4 w-4 text-gray-400" />}
+                  required
                 />
-                {(payment.type === 'card' || payment.type === 'transfer') && (
+                {(payment.type === 'tarjeta' || payment.type === 'transferencia') && (
                   <Input
-                    label={payment.type === 'card' ? 'Últimos 4 dígitos' : 'Referencia'}
+                    label={payment.type === 'tarjeta' ? 'Referencia (****1234)' : 'Referencia'}
                     value={payment.reference || ''}
                     onChange={(e) => updatePaymentMethod(index, 'reference', e.target.value)}
-                    placeholder={payment.type === 'card' ? '1234' : 'REF123456'}
+                    placeholder={payment.type === 'tarjeta' ? '****1234' : 'REF123456'}
                   />
                 )}
                 <div className="flex items-end">
@@ -419,7 +609,7 @@ export const SalesForm: React.FC = () => {
             )}
             <div className="flex justify-between items-center border-t pt-2">
               <span>Total a Pagar:</span>
-              <span className="font-semibold">{formatCurrency(itemsTotal)}</span>
+              <span className="font-semibold">{formatCurrency(totalAmount)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span>Total Pagos:</span>
@@ -429,8 +619,15 @@ export const SalesForm: React.FC = () => {
               isValidSale ? 'text-success' : 'text-error'
             }`}>
               <span>Diferencia:</span>
-              <span>{formatCurrency(Math.abs(itemsTotal - paymentsTotal))}</span>
+              <span>{formatCurrency(Math.abs(totalAmount - paymentsTotal))}</span>
             </div>
+            {!isValidSale && totalAmount > 0 && (
+              <p className="text-error text-sm mt-2">
+                {Math.abs(totalAmount - paymentsTotal) > 0.01 
+                  ? 'Los montos no coinciden' 
+                  : 'Complete todos los campos requeridos'}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -456,7 +653,7 @@ export const SalesForm: React.FC = () => {
               {receiptFile && (
                 <div className="flex items-center text-success">
                   <CheckCircle className="h-4 w-4 mr-1" />
-                  <span className="text-sm">Archivo cargado</span>
+                  <span className="text-sm">{receiptFile.name}</span>
                 </div>
               )}
             </div>

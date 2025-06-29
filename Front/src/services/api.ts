@@ -123,7 +123,9 @@ export const authAPI = {
 
 export const vendorAPI = {
   // Dashboard
-  getDashboard: () => apiRequest('/api/v1/vendor/dashboard'),
+  getDashboard: () => {
+    return apiRequest('/api/v1/vendor/dashboard')
+  },
   
   // Scanning
   scanProduct: (imageFile: File) => {

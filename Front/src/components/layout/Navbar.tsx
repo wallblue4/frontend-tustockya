@@ -44,7 +44,7 @@ export const Navbar: React.FC = () => {
           <div className="flex items-center">
             <Link to="/" className="flex items-center">
               <Shoe className="h-8 w-8 text-primary" />
-              <span className="ml-2 text-xl font-bold text-primary">TennisHub</span>
+              <span className="ml-2 text-xl font-bold text-primary">TuStockYa</span>
             </Link>
             <div className="hidden md:ml-6 md:flex md:space-x-4">
               <Link to="/" className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary">Home</Link>
