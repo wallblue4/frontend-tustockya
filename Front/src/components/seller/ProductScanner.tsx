@@ -1,8 +1,7 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { CameraCapture } from '../ui/CameraCapture'; // Nuevo import
 import { formatCurrency } from '../../services/api';
 import { 
   Camera, 
@@ -118,7 +117,6 @@ interface ProductScannerProps {
   }) => void;
   onRequestTransfer?: (product: any) => void;
   authToken?: string; // Token de autorización
-  onOpenCamera?: () => void; // Nueva prop para abrir cámara desde el dashboard
 }
 
 // Interfaz para la respuesta completa de la API con stock
@@ -149,8 +147,7 @@ interface StockAPIResponse {
 export const ProductScanner: React.FC<ProductScannerProps> = ({
   onSellProduct,
   onRequestTransfer,
-  authToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3NTIwMjM1NDN9.isFUvKkUk3YDcazhGTI1PkW_dn15o7luU0lQT1vC1qg", // Token por defecto
-  onOpenCamera
+  authToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3NTIwMjM1NDN9.isFUvKkUk3YDcazhGTI1PkW_dn15o7luU0lQT1vC1qg" // Token por defecto
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -161,10 +158,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<'upload' | 'options' | 'details'>('upload');
   const [scanInfo, setScanInfo] = useState<any>(null);
-
-  // Nuevos estados para la cámara personalizada
-  const [showCameraCapture, setShowCameraCapture] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -197,34 +190,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     event.preventDefault();
   }, []);
 
-  // Nueva función para abrir la cámara personalizada
-  const handleOpenCustomCamera = () => {
-    setSelectedFile(null);
-    setPreviewUrl(null);
-    setError(null);
-    setScanOptions([]);
-    setSelectedProduct(null);
-    setCurrentStep('upload');
-    setShowCameraCapture(true);
-  };
-
-  // Nueva función para manejar la foto capturada de la cámara personalizada
-  const handleCameraPhoto = (file: File) => {
-    setSelectedFile(file);
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-    setError(null);
-    setScanOptions([]);
-    setSelectedProduct(null);
-    setCurrentStep('upload');
-    setShowCameraCapture(false);
-    
-    // Auto-escanear después de capturar
-    setTimeout(() => {
-      handleScanWithFile(file);
-    }, 500);
-  };
-
   const convertMatchToProductOption = (match: ProductMatch): ProductOption => {
     return {
       id: match.original_db_id.toString(),
@@ -244,10 +209,8 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     };
   };
 
-  // Función separada para escanear con archivo específico
-  const handleScanWithFile = async (file?: File) => {
-    const fileToScan = file || selectedFile;
-    if (!fileToScan) return;
+  const handleScan = async () => {
+    if (!selectedFile) return;
 
     setIsScanning(true);
     setError(null);
@@ -255,7 +218,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     try {
       // Preparar FormData para la API con stock
       const formData = new FormData();
-      formData.append('image', fileToScan);
+      formData.append('image', selectedFile);
 
       // Hacer la llamada a la API con stock
       const response = await fetch('https://tustockya-backend.onrender.com/api/v1/classify/scan', {
@@ -310,9 +273,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       setIsScanning(false);
     }
   };
-
-  // Función wrapper para mantener compatibilidad
-  const handleScan = () => handleScanWithFile();
 
   const handleProductSelect = async (product: ProductOption) => {
     try {
@@ -482,7 +442,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         </Card>
       )}
 
-      {/* File Upload Section - ACTUALIZADA */}
+      {/* File Upload Section */}
       {currentStep === 'upload' && (
         <Card>
           <CardHeader>
@@ -492,38 +452,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
             </h2>
           </CardHeader>
           <CardContent>
-            {/* Botones de captura mejorados */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <Button 
-                onClick={handleOpenCustomCamera}
-                className="h-20 flex flex-col items-center justify-center space-y-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
-              >
-                <Camera className="h-8 w-8" />
-                <span className="font-medium">Abrir Cámara</span>
-                <span className="text-xs opacity-90">Tomar foto nueva</span>
-              </Button>
-              
-              <Button 
-                onClick={() => fileInputRef.current?.click()}
-                variant="outline"
-                className="h-20 flex flex-col items-center justify-center space-y-2 border-2 border-dashed hover:border-primary hover:bg-primary/5"
-              >
-                <Upload className="h-8 w-8" />
-                <span className="font-medium">Galería</span>
-                <span className="text-xs text-gray-500">Seleccionar imagen</span>
-              </Button>
-            </div>
-
-            {/* Input file oculto */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-
-            {/* Área de drag & drop tradicional */}
             <div
               className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary transition-colors"
               onDrop={handleDrop}
@@ -531,33 +459,17 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
             >
               {previewUrl ? (
                 <div className="space-y-4">
-                  <div className="relative">
-                    <img
-                      src={previewUrl}
-                      alt="Preview"
-                      className="max-h-64 mx-auto rounded-lg shadow-md"
-                    />
-                    {/* Overlay de loading durante el escaneo */}
-                    {isScanning && (
-                      <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
-                        <div className="text-white text-center">
-                          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                          <p className="text-sm">Analizando con IA...</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    className="max-h-64 mx-auto rounded-lg shadow-md"
+                  />
                   <div className="flex justify-center space-x-4">
-                    <Button 
-                      onClick={handleScan} 
-                      disabled={isScanning}
-                      className="min-w-[120px]"
-                    >
+                    <Button onClick={handleScan} disabled={isScanning}>
                       {isScanning ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Analizando...
+                          Analizando con IA...
                         </>
                       ) : (
                         <>
@@ -575,9 +487,15 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                 <div className="space-y-4">
                   <Upload className="h-12 w-12 mx-auto text-gray-400" />
                   <div>
-                    <p className="text-lg font-medium">O arrastra una imagen aquí</p>
-                    <p className="text-gray-500">También puedes usar las opciones de arriba</p>
+                    <p className="text-lg font-medium">Sube una imagen del tenis</p>
+                    <p className="text-gray-500">Arrastra y suelta o haz clic para seleccionar</p>
                   </div>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="max-w-xs mx-auto"
+                  />
                 </div>
               )}
             </div>
@@ -789,129 +707,121 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                 <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                 <p>No hay tallas disponibles en stock para este producto</p>
-               </div>
-             )}
+                  <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No hay tallas disponibles en stock para este producto</p>
+                </div>
+              )}
 
-             {/* Selected Size Details */}
-             {selectedSize && (
-               <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                 {(() => {
-                   const sizeInfo = selectedProduct.sizes.find(s => s.size === selectedSize);
-                   if (!sizeInfo) return null;
-                   
-                   return (
-                     <div>
-                       <h6 className="font-medium text-primary mb-3">Talla {selectedSize} Seleccionada</h6>
-                       <div className="grid grid-cols-2 gap-4 text-sm">
-                         <div>
-                           <span className="text-gray-600">Ubicación:</span>
-                           <p className="font-medium">{sizeInfo.location}</p>
-                         </div>
-                         <div>
-                           <span className="text-gray-600">Almacenamiento:</span>
-                           <p className="font-medium">{getStorageTypeLabel(sizeInfo.storage_type)}</p>
-                         </div>
-                         <div>
-                           <span className="text-gray-600">Cantidad:</span>
-                           <p className="font-medium text-success">{sizeInfo.quantity} disponibles</p>
-                         </div>
-                         <div>
-                           <span className="text-gray-600">Precio unitario:</span>
-                           <p className="font-bold text-lg text-primary">{formatCurrency(sizeInfo.unit_price)}</p>
-                         </div>
-                         {sizeInfo.box_price > 0 && sizeInfo.box_price !== sizeInfo.unit_price && (
-                           <div className="col-span-2">
-                             <span className="text-gray-600">Precio por caja:</span>
-                             <p className="font-medium text-primary">{formatCurrency(sizeInfo.box_price)}</p>
-                           </div>
-                         )}
-                       </div>
-                     </div>
-                   );
-                 })()}
-               </div>
-             )}
+              {/* Selected Size Details */}
+              {selectedSize && (
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                  {(() => {
+                    const sizeInfo = selectedProduct.sizes.find(s => s.size === selectedSize);
+                    if (!sizeInfo) return null;
+                    
+                    return (
+                      <div>
+                        <h6 className="font-medium text-primary mb-3">Talla {selectedSize} Seleccionada</h6>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-600">Ubicación:</span>
+                            <p className="font-medium">{sizeInfo.location}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Almacenamiento:</span>
+                            <p className="font-medium">{getStorageTypeLabel(sizeInfo.storage_type)}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Cantidad:</span>
+                            <p className="font-medium text-success">{sizeInfo.quantity} disponibles</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Precio unitario:</span>
+                            <p className="font-bold text-lg text-primary">{formatCurrency(sizeInfo.unit_price)}</p>
+                          </div>
+                          {sizeInfo.box_price > 0 && sizeInfo.box_price !== sizeInfo.unit_price && (
+                            <div className="col-span-2">
+                              <span className="text-gray-600">Precio por caja:</span>
+                              <p className="font-medium text-primary">{formatCurrency(sizeInfo.box_price)}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
 
-             {/* Action Buttons */}
-             <div className="flex space-x-4">
-               {selectedSize && selectedProduct.sizes.find(s => s.size === selectedSize)?.quantity > 0 ? (
-                 <>
-                   <Button
-                     onClick={handleSell}
-                     className="flex-1"
-                   >
-                     <ShoppingBag className="h-4 w-4 mr-2" />
-                     Vender Talla {selectedSize}
-                   </Button>
-                   <Button
-                     onClick={handleSolicitar}
-                     variant="outline"
-                     className="px-6"
-                   >
-                     <Package className="h-4 w-4 mr-2" />
-                     Solicitar
-                   </Button>
-                 </>
-               ) : selectedProduct.product.availability.can_request_from_other_locations ? (
-                 <>
-                   <Button
-                     onClick={handleSolicitar}
-                     variant="secondary"
-                     className="flex-1"
-                     disabled={!selectedSize && selectedProduct.sizes.length > 0}
-                   >
-                     <Package className="h-4 w-4 mr-2" />
-                     Solicitar Transferencia
-                   </Button>
-                   <Button
-                     variant="outline"
-                     onClick={resetScanner}
-                     className="px-6"
-                   >
-                     Escanear Otro
-                   </Button>
-                 </>
-               ) : (
-                 <div className="text-center py-4">
-                   <p className="text-gray-500 mb-4">
-                     Producto no disponible para venta o transferencia
-                   </p>
-                   <Button
-                     variant="outline"
-                     onClick={resetScanner}
-                     className="px-6"
-                   >
-                     Escanear Otro Producto
-                   </Button>
-                 </div>
-               )}
-             </div>
-           </div>
-         </CardContent>
-       </Card>
-     )}
+              {/* Action Buttons */}
+              <div className="flex space-x-4">
+                {selectedSize && selectedProduct.sizes.find(s => s.size === selectedSize)?.quantity > 0 ? (
+                  <>
+                    <Button
+                      onClick={handleSell}
+                      className="flex-1"
+                    >
+                      <ShoppingBag className="h-4 w-4 mr-2" />
+                      Vender Talla {selectedSize}
+                    </Button>
+                    <Button
+                      onClick={handleSolicitar}
+                      variant="outline"
+                      className="px-6"
+                    >
+                      <Package className="h-4 w-4 mr-2" />
+                      Solicitar
+                    </Button>
+                  </>
+                ) : selectedProduct.product.availability.can_request_from_other_locations ? (
+                  <>
+                    <Button
+                      onClick={handleSolicitar}
+                      variant="secondary"
+                      className="flex-1"
+                      disabled={!selectedSize && selectedProduct.sizes.length > 0}
+                    >
+                      <Package className="h-4 w-4 mr-2" />
+                      Solicitar Transferencia
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={resetScanner}
+                      className="px-6"
+                    >
+                      Escanear Otro
+                    </Button>
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-gray-500 mb-4">
+                      Producto no disponible para venta o transferencia
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={resetScanner}
+                      className="px-6"
+                    >
+                      Escanear Otro Producto
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-     {/* Componente de Cámara Personalizada */}
-     <CameraCapture
-       isOpen={showCameraCapture}
-       onClose={() => setShowCameraCapture(false)}
-       onCapture={handleCameraPhoto}
-       isProcessing={isScanning}
-     />
-
-     {/* Error Display */}
-     {error && (
-       <Card className="border-error">
-         <CardContent className="p-4">
-           <div className="flex items-center space-x-2">
-             <XCircle className="h-5 w-5 text-error" />
-             <p className="text-error">{error}</p>
-           </div>
-         </CardContent>
-       </Card>
-     )}
-   </div>
- );
+      {/* Error Display */}
+      {error && (
+        <Card className="border-error">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <XCircle className="h-5 w-5 text-error" />
+              <p className="text-error">{error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Camera, 
   ShoppingBag, 
@@ -27,7 +27,7 @@ import { vendorAPI } from '../../services/api';
 
 type ViewType = 'dashboard' | 'scan' | 'new-sale' | 'today-sales' | 'expenses' | 'expenses-list' | 'transfers' | 'notifications';
 
-// Interface para producto prellenado
+// Usando las interfaces del Archivo 1
 interface PrefilledProduct {
   code: string;
   brand: string;
@@ -38,12 +38,29 @@ interface PrefilledProduct {
   storage_type?: string;
 }
 
+// Define la interfaz para la respuesta esperada de tu backend
+interface PredictionResult {
+  class_name: string;
+  confidence: number;
+}
+
+interface ScanResponse {
+  prediction: PredictionResult;
+}
+
 export const SellerDashboard: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [apiData, setApiData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
   const [prefilledProduct, setPrefilledProduct] = useState<PrefilledProduct | null>(null);
+  
+  // Estados para la funcionalidad de cámara integrada
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<PredictionResult | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [capturedImage, setCapturedImage] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -108,7 +125,143 @@ export const SellerDashboard: React.FC = () => {
     }
   };
 
-  // Funciones para manejo de productos
+  // --- FUNCIONES DE CÁMARA INTEGRADAS ---
+  
+  // Función para abrir la cámara (o selector de archivos) - Mantiene funcionalidad de Archivo 2
+  const handleCameraCapture = () => {
+    // Limpiamos los estados de resultado y error antes de una nueva escaneo
+    setScanResult(null);
+    setErrorMessage(null);
+    setCapturedImage(null);
+    fileInputRef.current?.click();
+  };
+
+  // Manejar la imagen capturada - Delegando a ProductScanner
+  const handleImageCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      console.log('Imagen capturada:', file.name);
+      setCapturedImage(file);
+      sendImageToServer(file);
+    }
+  };
+
+  // --- FUNCIÓN CLAVE: Determina la URL del backend ---
+  const getBackendApiUrl = () => {
+    return `${window.location.protocol}//${window.location.hostname}:${window.location.port}/api`;
+  };
+
+  // --- FUNCIÓN CLAVE: ENVIAR IMAGEN AL SERVIDOR ---
+  const sendImageToServer = async (imageFile: File) => {
+    setIsScanning(true);
+    setErrorMessage(null);
+
+    // Comentado temporalmente hasta que el endpoint esté funcionando
+    /*
+    const formData = new FormData();
+    formData.append('file', imageFile);
+
+    try {
+      const backendApiBaseUrl = getBackendApiUrl();
+      const classifyEndpointUrl = `${backendApiBaseUrl}/classify`;
+
+      console.log('Intentando enviar imagen a:', classifyEndpointUrl);
+
+      const response = await fetch(classifyEndpointUrl, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `Error del servidor: ${response.status} - ${response.statusText}`);
+      }
+
+      const result: ScanResponse = await response.json();
+      console.log('Respuesta del servidor:', result);
+      
+      if (result && result.prediction) {
+        setScanResult(result.prediction);
+        // Después del escaneo exitoso, navegar a la vista de scan con la imagen
+        setCurrentView('scan');
+      } else {
+        setErrorMessage('La respuesta del servidor no tiene el formato esperado.');
+      }
+
+    } catch (error: any) {
+      console.error('Error escaneando producto:', error);
+      setErrorMessage(`Error al escanear el producto: ${error.message}`);
+    } finally {
+      setIsScanning(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+    */
+
+    // Simulación temporal mientras el endpoint no está disponible
+    try {
+      console.log('Simulando procesamiento de imagen:', imageFile.name);
+      
+      // Simular delay de procesamiento
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Resultado simulado
+      const mockResult: PredictionResult = {
+        class_name: 'raqueta',
+        confidence: 0.85
+      };
+      
+      setScanResult(mockResult);
+      // Después del escaneo exitoso, navegar a la vista de scan con la imagen
+      setCurrentView('scan');
+      
+    } catch (error: any) {
+      console.error('Error simulando escaneo:', error);
+      setErrorMessage('Error en la simulación del escaneo');
+    } finally {
+      setIsScanning(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Manejar y mostrar el resultado del escaneo
+  const renderScanResult = () => {
+    if (isScanning) {
+      return (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4 text-center">
+            <Camera className="h-8 w-8 mx-auto mb-2 text-blue-600 animate-pulse" />
+            <p className="text-blue-800">Analizando producto...</p>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (errorMessage) {
+      return (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4 text-center">
+            <p className="text-red-800 font-semibold">{errorMessage}</p>
+            <Button 
+              onClick={() => setErrorMessage(null)}
+              className="mt-2"
+              variant="ghost"
+              size="sm"
+            >
+              Cerrar
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return null;
+  };
+
+  // Funciones del Archivo 1 para manejo de productos
   const handleSellProduct = (productData: {
     code: string;
     brand: string;
@@ -145,6 +298,9 @@ export const SellerDashboard: React.FC = () => {
   const goBack = () => {
     // Limpiar producto prellenado al volver al dashboard
     setPrefilledProduct(null);
+    setCapturedImage(null);
+    setScanResult(null);
+    setErrorMessage(null);
     setCurrentView('dashboard');
   };
 
@@ -165,11 +321,8 @@ export const SellerDashboard: React.FC = () => {
             <ProductScanner 
               onSellProduct={handleSellProduct}
               onRequestTransfer={handleRequestTransfer}
-              authToken={
-                localStorage.getItem('authToken') || 
-                sessionStorage.getItem('authToken') || 
-                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3NTIwMjM1NDN9.isFUvKkUk3YDcazhGTI1PkW_dn15o7luU0lQT1vC1qg"
-              }
+              capturedImage={capturedImage}
+              scanResult={scanResult}
             />
           </div>
         );
@@ -241,6 +394,16 @@ export const SellerDashboard: React.FC = () => {
 
   const DashboardView = () => (
     <div className="space-y-6">
+      {/* Input oculto para la cámara */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleImageCapture}
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+      />
+
       {/* API Status Warning */}
       {apiError && (
         <Card className="border-amber-200 bg-amber-50">
@@ -265,6 +428,7 @@ export const SellerDashboard: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Funcionalidad del Archivo 1 - navega a vista scan (SIN escaneo directo) */}
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2"
               onClick={() => setCurrentView('scan')}
@@ -299,6 +463,9 @@ export const SellerDashboard: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Resultado del escaneo - Solo mostrar en dashboard si hay error */}
+      {renderScanResult()}
       
       {/* Vendor Info */}
       {apiData && apiData.vendor_info && (
