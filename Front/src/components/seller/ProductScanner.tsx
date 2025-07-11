@@ -147,7 +147,7 @@ interface StockAPIResponse {
 export const ProductScanner: React.FC<ProductScannerProps> = ({
   onSellProduct,
   onRequestTransfer,
-  authToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3NTIwMjM1NDN9.isFUvKkUk3YDcazhGTI1PkW_dn15o7luU0lQT1vC1qg" // Token por defecto
+  authToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo5LCJleHAiOjE3NTI4NjM1ODF9.dvYyrnzjkdT1B2BcAp8Y1_96kYb_BUfv6jhI9Rr30L4" // Token por defecto
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
