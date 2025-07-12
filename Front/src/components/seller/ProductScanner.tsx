@@ -141,6 +141,7 @@ interface StockAPIResponse {
   inventory_service: any;
 }
 
+
 export const ProductScanner: React.FC<ProductScannerProps> = ({
   onSellProduct,
   onRequestTransfer,
