@@ -24,10 +24,11 @@ import { ExpensesList } from '../../components/seller/ExpensesList';
 import { SalesList } from '../../components/seller/SalesList';
 import { TransfersView } from '../../components/seller/TransfersView';
 import { vendorAPI } from '../../services/api';
+import { CameraCapture } from '../../components/seller/CameraCapture';
 
 type ViewType = 'dashboard' | 'scan' | 'new-sale' | 'today-sales' | 'expenses' | 'expenses-list' | 'transfers' | 'notifications';
 
-// Usando las interfaces del Archivo 1
+// Interfaces
 interface PrefilledProduct {
   code: string;
   brand: string;
@@ -38,7 +39,6 @@ interface PrefilledProduct {
   storage_type?: string;
 }
 
-// Define la interfaz para la respuesta esperada de tu backend
 interface PredictionResult {
   class_name: string;
   confidence: number;
@@ -55,11 +55,15 @@ export const SellerDashboard: React.FC = () => {
   const [apiError, setApiError] = useState<string | null>(null);
   const [prefilledProduct, setPrefilledProduct] = useState<PrefilledProduct | null>(null);
   
-  // Estados para la funcionalidad de cámara integrada
+  // Estados para la cámara
+  const [showCamera, setShowCamera] = useState(false);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [scanOptions, setScanOptions] = useState<any[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<PredictionResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [capturedImage, setCapturedImage] = useState<File | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -71,14 +75,12 @@ export const SellerDashboard: React.FC = () => {
       setApiError(null);
       const response = await vendorAPI.getDashboard();
       setApiData(response); 
-
     } catch (error) {
       console.warn('Backend API not available, using mock data for development');
       
-      // Set a user-friendly error message
       setApiError('Conectando con el servidor...');
       
-      // Usar mock data con setApiData
+      // Mock data
       setApiData({
         success: true,
         dashboard_timestamp: new Date().toISOString(),
@@ -125,81 +127,67 @@ export const SellerDashboard: React.FC = () => {
     }
   };
 
-  // --- FUNCIONES DE CÁMARA INTEGRADAS ---
-  
-  // Función para abrir la cámara (o selector de archivos) - Mantiene funcionalidad de Archivo 2
-  const handleCameraCapture = () => {
-    // Limpiamos los estados de resultado y error antes de una nueva escaneo
+  // FUNCIÓN FALTANTE: Cerrar cámara
+  const handleCloseCameraCapture = () => {
+    setShowCamera(false);
+    setIsProcessingImage(false);
+    setCapturedImage(null);
+    setScanResult(null);
+    setErrorMessage(null);
+  };
+
+  // FUNCIÓN CORREGIDA: Abrir cámara desde botón "Escanear"
+  const handleOpenCamera = () => {
+    // Limpiar estados previos
+    setScanResult(null);
+    setErrorMessage(null);
+    setCapturedImage(null);
+    setIsProcessingImage(false);
+    
+    // Mostrar modal de cámara
+    setShowCamera(true);
+  };
+
+  // FUNCIÓN CORREGIDA: Manejar captura desde CameraCapture
+  const handleCameraCapture = async (imageFile: File) => {
+    console.log('Imagen capturada desde cámara:', imageFile.name);
+    
+    setCapturedImage(imageFile);
+    setIsProcessingImage(true);
+    
+    // Procesar la imagen
+    await sendImageToServer(imageFile);
+    
+    // Cerrar modal de cámara después del procesamiento
+    setShowCamera(false);
+    setIsProcessingImage(false);
+  };
+
+  // Función para backup - input file
+  const handleFileInputCapture = () => {
     setScanResult(null);
     setErrorMessage(null);
     setCapturedImage(null);
     fileInputRef.current?.click();
   };
 
-  // Manejar la imagen capturada - Delegando a ProductScanner
   const handleImageCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      console.log('Imagen capturada:', file.name);
+      console.log('Imagen capturada desde input:', file.name);
       setCapturedImage(file);
       sendImageToServer(file);
     }
   };
 
-  // --- FUNCIÓN CLAVE: Determina la URL del backend ---
   const getBackendApiUrl = () => {
     return `${window.location.protocol}//${window.location.hostname}:${window.location.port}/api`;
   };
 
-  // --- FUNCIÓN CLAVE: ENVIAR IMAGEN AL SERVIDOR ---
   const sendImageToServer = async (imageFile: File) => {
     setIsScanning(true);
     setErrorMessage(null);
 
-    // Comentado temporalmente hasta que el endpoint esté funcionando
-    /*
-    const formData = new FormData();
-    formData.append('file', imageFile);
-
-    try {
-      const backendApiBaseUrl = getBackendApiUrl();
-      const classifyEndpointUrl = `${backendApiBaseUrl}/classify`;
-
-      console.log('Intentando enviar imagen a:', classifyEndpointUrl);
-
-      const response = await fetch(classifyEndpointUrl, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Error del servidor: ${response.status} - ${response.statusText}`);
-      }
-
-      const result: ScanResponse = await response.json();
-      console.log('Respuesta del servidor:', result);
-      
-      if (result && result.prediction) {
-        setScanResult(result.prediction);
-        // Después del escaneo exitoso, navegar a la vista de scan con la imagen
-        setCurrentView('scan');
-      } else {
-        setErrorMessage('La respuesta del servidor no tiene el formato esperado.');
-      }
-
-    } catch (error: any) {
-      console.error('Error escaneando producto:', error);
-      setErrorMessage(`Error al escanear el producto: ${error.message}`);
-    } finally {
-      setIsScanning(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-    */
-
-    // Simulación temporal mientras el endpoint no está disponible
     try {
       console.log('Simulando procesamiento de imagen:', imageFile.name);
       
@@ -208,12 +196,13 @@ export const SellerDashboard: React.FC = () => {
       
       // Resultado simulado
       const mockResult: PredictionResult = {
-        class_name: 'raqueta',
+        class_name: 'tenis_nike',
         confidence: 0.85
       };
       
       setScanResult(mockResult);
-      // Después del escaneo exitoso, navegar a la vista de scan con la imagen
+      
+      // CAMBIO CLAVE: Navegar a la vista de scan después del procesamiento exitoso
       setCurrentView('scan');
       
     } catch (error: any) {
@@ -227,7 +216,6 @@ export const SellerDashboard: React.FC = () => {
     }
   };
 
-  // Manejar y mostrar el resultado del escaneo
   const renderScanResult = () => {
     if (isScanning) {
       return (
@@ -261,7 +249,6 @@ export const SellerDashboard: React.FC = () => {
     return null;
   };
 
-  // Funciones del Archivo 1 para manejo de productos
   const handleSellProduct = (productData: {
     code: string;
     brand: string;
@@ -273,7 +260,6 @@ export const SellerDashboard: React.FC = () => {
   }) => {
     console.log('Recibiendo datos del producto escaneado:', productData);
     
-    // Preparar datos del producto para prellenar el formulario de ventas
     const prefilledData: PrefilledProduct = {
       code: productData.code,
       brand: productData.brand,
@@ -291,12 +277,10 @@ export const SellerDashboard: React.FC = () => {
   };
 
   const handleRequestTransfer = (product: any) => {
-    // Navigate to transfer request form
     setCurrentView('transfers');
   };
 
   const goBack = () => {
-    // Limpiar producto prellenado al volver al dashboard
     setPrefilledProduct(null);
     setCapturedImage(null);
     setScanResult(null);
@@ -305,7 +289,6 @@ export const SellerDashboard: React.FC = () => {
   };
 
   const handleNewSaleClick = () => {
-    // Limpiar cualquier producto prellenado cuando se hace clic en "Nueva Venta" desde el dashboard
     setPrefilledProduct(null);
     setCurrentView('new-sale');
   };
@@ -321,6 +304,7 @@ export const SellerDashboard: React.FC = () => {
             <ProductScanner 
               onSellProduct={handleSellProduct}
               onRequestTransfer={handleRequestTransfer}
+              // Props adicionales para pasar la imagen capturada
               capturedImage={capturedImage}
               scanResult={scanResult}
             />
@@ -394,7 +378,7 @@ export const SellerDashboard: React.FC = () => {
 
   const DashboardView = () => (
     <div className="space-y-6">
-      {/* Input oculto para la cámara */}
+      {/* Input oculto para la cámara como backup */}
       <input
         type="file"
         ref={fileInputRef}
@@ -428,10 +412,10 @@ export const SellerDashboard: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Funcionalidad del Archivo 1 - navega a vista scan (SIN escaneo directo) */}
+            {/* BOTÓN CORREGIDO: Ahora abre la cámara directamente */}
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2"
-              onClick={() => setCurrentView('scan')}
+              onClick={handleOpenCamera}     
             >
               <Camera className="h-6 w-6" />
               <span className="text-sm">Escanear</span>
@@ -614,7 +598,6 @@ export const SellerDashboard: React.FC = () => {
     </div>
   );
 
-  // Placeholder component for notifications view
   const NotificationsView = () => (
     <Card>
       <CardHeader>
@@ -650,6 +633,14 @@ export const SellerDashboard: React.FC = () => {
       currentView === 'transfers' ? 'Transferencias' :
       'Notificaciones'
     }>
+      {/* MODAL DE CÁMARA - CORREGIDO */}
+      {showCamera && (
+        <CameraCapture
+          onCapture={handleCameraCapture}
+          onClose={handleCloseCameraCapture}
+          isProcessing={isProcessingImage}
+        />
+      )}
       {renderCurrentView()}
     </DashboardLayout>
   );
