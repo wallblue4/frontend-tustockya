@@ -141,8 +141,6 @@ interface StockAPIResponse {
   inventory_service: any;
 }
 
-<<<<<<< Updated upstream
-=======
 // Componente para manejar imágenes con fallback
 interface ProductImageProps {
   image?: string;
@@ -181,7 +179,6 @@ const ProductImageComponent: React.FC<ProductImageProps> = ({
     />
   );
 };
->>>>>>> Stashed changes
 
 export const ProductScanner: React.FC<ProductScannerProps> = ({
   onSellProduct,
