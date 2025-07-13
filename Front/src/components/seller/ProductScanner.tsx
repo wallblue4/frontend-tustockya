@@ -141,6 +141,47 @@ interface StockAPIResponse {
   inventory_service: any;
 }
 
+<<<<<<< Updated upstream
+=======
+// Componente para manejar imágenes con fallback
+interface ProductImageProps {
+  image?: string;
+  alt: string;
+  className?: string;
+}
+
+const ProductImageComponent: React.FC<ProductImageProps> = ({ 
+  image, 
+  alt, 
+  className = "w-20 h-20 object-cover rounded-md flex-shrink-0" 
+}) => {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+
+  if (!image || imageError) {
+    return (
+      <div className={`${className} bg-gray-200 flex items-center justify-center`}>
+        <Camera className="h-8 w-8 text-gray-400" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={image}
+      alt={alt}
+      className={className}
+      onError={() => {
+        console.log(`Error cargando imagen: ${image}`);
+        setImageError(true);
+        setImageLoading(false);
+      }}
+      onLoad={() => setImageLoading(false)}
+      style={{ display: imageLoading ? 'none' : 'block' }}
+    />
+  );
+};
+>>>>>>> Stashed changes
 
 export const ProductScanner: React.FC<ProductScannerProps> = ({
   onSellProduct,
@@ -167,6 +208,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     }
   }, [capturedImage]);
 
+  // Función corregida para convertir match a ProductOption
   const convertMatchToProductOption = (match: ProductMatch): ProductOption => {
     return {
       id: match.original_db_id.toString(),
@@ -175,7 +217,8 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       code: match.reference.code,
       description: match.reference.description,
       confidence: Math.round(match.confidence_percentage),
-      image: match.reference.photo,
+      // Corregir el mapeo de imagen - usar image_path si photo está vacío
+      image: match.reference.photo || match.image_path || null,
       rank: match.rank,
       similarity_score: match.similarity_score,
       confidence_level: match.confidence_level,
@@ -186,6 +229,164 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     };
   };
 
+  // Datos mock actualizados con URLs de imágenes reales
+  const createMockOptionsWithImages = (): ProductOption[] => [
+    {
+      id: '1',
+      brand: 'Nike',
+      model: 'Air Max 90',
+      code: 'NK-AM90-001',
+      description: 'Zapatillas deportivas clásicas con amortiguación Air',
+      confidence: 95,
+      // URL de imagen real de zapatillas Nike
+      image: 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/99486859-0ff3-46b4-949b-2d16af2ad421/air-max-90-shoes-6n8dKZ.png',
+      rank: 1,
+      similarity_score: 0.95,
+      confidence_level: 'very_high',
+      original_db_id: 1,
+      color: 'Negro/Blanco',
+      inventory: {
+        local_info: {
+          location_number: 1,
+          location_name: 'Local Centro'
+        },
+        pricing: {
+          unit_price: 180000,
+          box_price: 190000
+        },
+        stock_by_size: [
+          {
+            size: '8',
+            quantity_stock: 3,
+            quantity_exhibition: 1,
+            location: 'Local Centro'
+          },
+          {
+            size: '8.5',
+            quantity_stock: 2,
+            quantity_exhibition: 0,
+            location: 'Local Centro'
+          },
+          {
+            size: '9',
+            quantity_stock: 4,
+            quantity_exhibition: 1,
+            location: 'Local Centro'
+          }
+        ],
+        total_stock: 9,
+        total_exhibition: 2,
+        available_sizes: ['8', '8.5', '9'],
+        other_locations: []
+      },
+      availability: {
+        in_stock: true,
+        can_sell: true,
+        can_request_from_other_locations: false,
+        recommended_action: 'Disponible para venta inmediata'
+      }
+    },
+    {
+      id: '2',
+      brand: 'Adidas',
+      model: 'Stan Smith',
+      code: 'AD-SS-003',
+      description: 'Zapatillas minimalistas de tenis clásicas',
+      confidence: 82,
+      // URL de imagen real de Adidas Stan Smith
+      image: 'https://assets.adidas.com/images/h_840,f_auto,q_auto,fl_lossy,c_fill,g_auto/99ca762cb9054cb3af37af7b00e8f45e_9366/Stan_Smith_Shoes_White_FX5500_01_standard.jpg',
+      rank: 2,
+      similarity_score: 0.82,
+      confidence_level: 'high',
+      original_db_id: 3,
+      color: 'Blanco/Verde',
+      inventory: {
+        local_info: {
+          location_number: 1,
+          location_name: 'Local Centro'
+        },
+        pricing: {
+          unit_price: 150000,
+          box_price: 160000
+        },
+        stock_by_size: [
+          {
+            size: '7.5',
+            quantity_stock: 1,
+            quantity_exhibition: 0,
+            location: 'Local Centro'
+          },
+          {
+            size: '8',
+            quantity_stock: 0,
+            quantity_exhibition: 1,
+            location: 'Local Centro'
+          }
+        ],
+        total_stock: 1,
+        total_exhibition: 1,
+        available_sizes: ['7.5'],
+        other_locations: []
+      },
+      availability: {
+        in_stock: true,
+        can_sell: true,
+        can_request_from_other_locations: true,
+        recommended_action: 'Stock limitado - considerar solicitar transferencia'
+      }
+    },
+    {
+      id: '3',
+      brand: 'Jordan',
+      model: 'Air Jordan 1',
+      code: 'JD-AJ1-004',
+      description: 'Zapatillas de baloncesto icónicas retro',
+      confidence: 78,
+      // URL de imagen real de Jordan 1
+      image: 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/b7d9211c-26e7-431a-ac24-b0540fb3c00f/air-jordan-1-retro-high-og-shoes-Pph9MS.png',
+      rank: 3,
+      similarity_score: 0.78,
+      confidence_level: 'high',
+      original_db_id: 4,
+      color: 'Rojo/Negro/Blanco',
+      inventory: {
+        local_info: {
+          location_number: 1,
+          location_name: 'Local Centro'
+        },
+        pricing: {
+          unit_price: 220000,
+          box_price: 230000
+        },
+        stock_by_size: [
+          {
+            size: '9',
+            quantity_stock: 2,
+            quantity_exhibition: 0,
+            location: 'Local Centro'
+          },
+          {
+            size: '9.5',
+            quantity_stock: 1,
+            quantity_exhibition: 1,
+            location: 'Local Centro'
+          }
+        ],
+        total_stock: 3,
+        total_exhibition: 1,
+        available_sizes: ['9', '9.5'],
+        other_locations: []
+      },
+      availability: {
+        in_stock: true,
+        can_sell: true,
+        can_request_from_other_locations: false,
+        recommended_action: 'Disponible para venta inmediata'
+      }
+    }
+  ];
+
+  // Función handleScanFromCamera actualizada con mejor manejo de errores
   const handleScanFromCamera = async (imageFile: File) => {
     if (!authToken) {
       setError('No hay token de autenticación. Por favor, inicia sesión nuevamente.');
@@ -202,6 +403,12 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       const formData = new FormData();
       formData.append('image', imageFile);
 
+      console.log('Enviando imagen al servidor...', {
+        fileName: imageFile.name,
+        fileSize: imageFile.size,
+        fileType: imageFile.type
+      });
+
       // Hacer la llamada a la API con stock
       const response = await fetch('https://tustockya-backend.onrender.com/api/v1/classify/scan', {
         method: 'POST',
@@ -212,10 +419,13 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error de API:', response.status, errorText);
         throw new Error(`Error en la API: ${response.status} ${response.statusText}`);
       }
 
       const apiData: StockAPIResponse = await response.json();
+      console.log('Respuesta de la API:', apiData);
 
       if (!apiData.success) {
         throw new Error('La API no pudo procesar la imagen');
@@ -234,6 +444,10 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       
       // Agregar el mejor match primero
       if (apiData.best_match) {
+        console.log('Best match image data:', {
+          photo: apiData.best_match.reference.photo,
+          image_path: apiData.best_match.image_path
+        });
         options.push(convertMatchToProductOption(apiData.best_match));
       }
       
@@ -242,120 +456,22 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         options.push(...apiData.alternative_matches.map(convertMatchToProductOption));
       }
 
+      console.log('Opciones procesadas:', options.map(opt => ({
+        id: opt.id,
+        brand: opt.brand,
+        model: opt.model,
+        image: opt.image
+      })));
+
       setScanOptions(options);
       setCurrentStep('options');
     } catch (err) {
       console.error('Error al procesar la imagen:', err);
       
-      // FALLBACK: Usar datos mock si falla la API
+      // FALLBACK: Usar datos mock con imágenes reales
       console.log('Usando datos mock como fallback...');
       
-      // Simular datos mock
-      const mockOptions: ProductOption[] = [
-        {
-          id: '1',
-          brand: 'Nike',
-          model: 'Air Max 90',
-          code: 'NK-AM90-001',
-          description: 'Zapatillas deportivas clásicas con amortiguación Air',
-          confidence: 95,
-          image: 'https://images.pexels.com/photos/2385477/pexels-photo-2385477.jpeg?auto=compress&cs=tinysrgb&w=300',
-          rank: 1,
-          similarity_score: 0.95,
-          confidence_level: 'very_high',
-          original_db_id: 1,
-          color: 'Negro/Blanco',
-          inventory: {
-            local_info: {
-              location_number: 1,
-              location_name: 'Local Centro'
-            },
-            pricing: {
-              unit_price: 180000,
-              box_price: 190000
-            },
-            stock_by_size: [
-              {
-                size: '8',
-                quantity_stock: 3,
-                quantity_exhibition: 1,
-                location: 'Local Centro'
-              },
-              {
-                size: '8.5',
-                quantity_stock: 2,
-                quantity_exhibition: 0,
-                location: 'Local Centro'
-              },
-              {
-                size: '9',
-                quantity_stock: 4,
-                quantity_exhibition: 1,
-                location: 'Local Centro'
-              }
-            ],
-            total_stock: 9,
-            total_exhibition: 2,
-            available_sizes: ['8', '8.5', '9'],
-            other_locations: []
-          },
-          availability: {
-            in_stock: true,
-            can_sell: true,
-            can_request_from_other_locations: false,
-            recommended_action: 'Disponible para venta inmediata'
-          }
-        },
-        {
-          id: '2',
-          brand: 'Adidas',
-          model: 'Stan Smith',
-          code: 'AD-SS-003',
-          description: 'Zapatillas minimalistas de tenis clásicas',
-          confidence: 82,
-          image: 'https://images.pexels.com/photos/1456706/pexels-photo-1456706.jpeg?auto=compress&cs=tinysrgb&w=300',
-          rank: 2,
-          similarity_score: 0.82,
-          confidence_level: 'high',
-          original_db_id: 3,
-          color: 'Blanco/Verde',
-          inventory: {
-            local_info: {
-              location_number: 1,
-              location_name: 'Local Centro'
-            },
-            pricing: {
-              unit_price: 150000,
-              box_price: 160000
-            },
-            stock_by_size: [
-              {
-                size: '7.5',
-                quantity_stock: 1,
-                quantity_exhibition: 0,
-                location: 'Local Centro'
-              },
-              {
-                size: '8',
-                quantity_stock: 0,
-                quantity_exhibition: 1,
-                location: 'Local Centro'
-              }
-            ],
-            total_stock: 1,
-            total_exhibition: 1,
-            available_sizes: ['7.5'],
-            other_locations: []
-          },
-          availability: {
-            in_stock: true,
-            can_sell: true,
-            can_request_from_other_locations: true,
-            recommended_action: 'Stock limitado - considerar solicitar transferencia'
-          }
-        }
-      ];
-
+      const mockOptions = createMockOptionsWithImages();
       setScanOptions(mockOptions);
       setScanInfo({
         scan_timestamp: new Date().toISOString(),
@@ -561,16 +677,10 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                   onClick={() => handleProductSelect(option)}
                 >
                   <div className="flex items-start space-x-4">
-                    {option.image && (
-                      <img
-                        src={option.image}
-                        alt={`${option.brand} ${option.model}`}
-                        className="w-20 h-20 object-cover rounded-md flex-shrink-0"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    )}
+                    <ProductImageComponent
+                      image={option.image}
+                      alt={`${option.brand} ${option.model}`}
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-semibold text-lg truncate">

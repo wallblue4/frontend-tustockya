@@ -19,6 +19,7 @@ interface SaleItem {
   sneaker_reference_code: string;
   brand: string;
   model: string;
+  color?: string; // Added color field to match backend
   size: string;
   quantity: number;
   unit_price: number;
@@ -27,7 +28,7 @@ interface SaleItem {
 interface PaymentMethod {
   type: 'efectivo' | 'tarjeta' | 'transferencia';
   amount: number;
-  reference?: string;
+  reference?: string | null; // Changed to match backend expectation
 }
 
 interface SalesFormProps {
@@ -89,6 +90,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
       sneaker_reference_code: '',
       brand: '',
       model: '',
+      color: '',
       size: '',
       quantity: 1,
       unit_price: 0
@@ -164,25 +166,22 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
     }
   };
 
-  // Convert file to base64
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const result = reader.result as string;
-        // Remove the data:image/...;base64, prefix
-        const base64 = result.split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = error => reject(error);
-    });
-  };
-
   // Handle file upload
   const handleReceiptUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Por favor seleccione una imagen válida');
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('El archivo es demasiado grande. Máximo 5MB');
+        return;
+      }
+      
       setReceiptFile(file);
     }
   };
@@ -193,18 +192,13 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
 
     setIsSubmitting(true);
     try {
-      // Convert receipt to base64 if exists
-      let receipt_image = null;
-      if (receiptFile) {
-        receipt_image = await fileToBase64(receiptFile);
-      }
-
-      // Prepare sale data according to API structure
+      // Prepare sale data according to API structure (now using File directly)
       const saleData = {
         items: items.map(item => ({
           sneaker_reference_code: item.sneaker_reference_code,
           brand: item.brand,
           model: item.model,
+          color: item.color || '', // Include color field
           size: item.size,
           quantity: item.quantity,
           unit_price: item.unit_price
@@ -213,18 +207,38 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
         payment_methods: paymentMethods.map(pm => ({
           type: pm.type,
           amount: pm.amount,
-          ...(pm.reference && { reference: pm.reference })
+          reference: pm.reference || null // Ensure null if empty
         })),
-        ...(receipt_image && { receipt_image }),
-        ...(notes && { notes }),
+        receipt_image: receiptFile, // Now pass File directly, not base64
+        notes: notes || undefined,
         requires_confirmation: requiresConfirmation
       };
 
-      console.log('Enviando datos de venta:', saleData);
+      console.log('Enviando datos de venta:', {
+        ...saleData,
+        receipt_image: receiptFile ? `File: ${receiptFile.name} (${receiptFile.size} bytes)` : null
+      });
 
       const response = await vendorAPI.createSale(saleData);
       
       console.log('Respuesta de la API:', response);
+      
+      // Show success message with all the details from the response
+      let successMessage = `¡Venta registrada exitosamente!\n\n`;
+      successMessage += `ID de Venta: ${response.sale_id}\n`;
+      successMessage += `Total: ${formatCurrency(response.sale_details.total_amount)}\n`;
+      successMessage += `Estado: ${response.status_info.status}\n`;
+      successMessage += `Fecha: ${new Date(response.sale_timestamp).toLocaleString('es-CO')}\n`;
+      
+      if (response.receipt_info.has_receipt) {
+        successMessage += `\nComprobante guardado: ${response.receipt_info.stored_in}`;
+      }
+      
+      if (response.seller_info) {
+        successMessage += `\nVendedor: ${response.seller_info.seller_name}`;
+      }
+      
+      alert(successMessage);
       
       // Reset form
       setItems([]);
@@ -235,8 +249,6 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
       setDiscountReason('');
       setRequiresConfirmation(false);
       setShowSummary(false);
-      
-      alert(`Venta registrada exitosamente!\nID: ${response.sale_id}\nTotal: ${formatCurrency(response.total_amount)}\nEstado: ${response.status}`);
       
     } catch (error) {
       console.error('Error al registrar la venta:', error);
@@ -261,6 +273,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
                 <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <div>
                     <p className="font-medium">{item.brand} {item.model}</p>
+                    {item.color && <p className="text-sm text-gray-500">Color: {item.color}</p>}
                     <p className="text-sm text-gray-600">
                       Talla {item.size} × {item.quantity}
                     </p>
@@ -340,7 +353,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
               {receiptFile && (
                 <div className="flex items-center text-sm text-gray-600">
                   <CheckCircle className="h-4 w-4 mr-1 text-success" />
-                  <span>Comprobante adjunto: {receiptFile.name}</span>
+                  <span>Comprobante adjunto: {receiptFile.name} ({(receiptFile.size / 1024 / 1024).toFixed(2)} MB)</span>
                 </div>
               )}
               {requiresConfirmation && (
@@ -410,7 +423,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
           ) : (
             <div className="space-y-4">
               {items.map((item) => (
-                <div key={item.id} className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border rounded-lg">
+                <div key={item.id} className="grid grid-cols-1 md:grid-cols-7 gap-4 p-4 border rounded-lg">
                   <Input
                     label="Código de Referencia"
                     value={item.sneaker_reference_code}
@@ -431,6 +444,12 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
                     onChange={(e) => updateItem(item.id, 'model', e.target.value)}
                     placeholder="Air Max 90"
                     required
+                  />
+                  <Input
+                    label="Color (Opcional)"
+                    value={item.color || ''}
+                    onChange={(e) => updateItem(item.id, 'color', e.target.value)}
+                    placeholder="Blanco"
                   />
                   <Input
                     label="Talla"
@@ -642,10 +661,18 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
               {receiptFile && (
                 <div className="flex items-center text-success">
                   <CheckCircle className="h-4 w-4 mr-1" />
-                  <span className="text-sm">{receiptFile.name}</span>
+                  <div className="text-sm">
+                    <p>{receiptFile.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {(receiptFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Formatos soportados: JPG, PNG, GIF. Tamaño máximo: 5MB
+            </p>
           </div>
 
           {/* Notes */}

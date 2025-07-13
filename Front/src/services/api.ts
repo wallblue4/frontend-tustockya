@@ -1,3 +1,5 @@
+//api.ts
+
 //https://tustockya-backend.onrender.com
 //http://localhost:8001
 const API_BASE_URL = 'https://tustockya-backend.onrender.com';
@@ -17,6 +19,14 @@ const getHeaders = () => {
   const token = getAuthToken();
   return {
     'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+};
+
+// Headers for FormData requests (no Content-Type needed, browser sets it automatically)
+const getFormDataHeaders = () => {
+  const token = getAuthToken();
+  return {
     ...(token && { 'Authorization': `Bearer ${token}` })
   };
 };
@@ -47,11 +57,35 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
   }
 };
 
+// FormData API request function for sales endpoint
+const apiFormDataRequest = async (endpoint: string, formData: FormData) => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const config = {
+    method: 'POST',
+    headers: getFormDataHeaders(),
+    body: formData,
+  };
+
+  try {
+    const response = await fetch(url, config);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'API request failed');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+};
+
 // Type definitions to match backend expectations
 interface PaymentMethod {
   type: 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto';
   amount: number;
-  reference?: string;
+  reference?: string | null;
 }
 
 interface SaleItem {
@@ -68,7 +102,7 @@ interface SaleData {
   items: SaleItem[];
   total_amount: number;
   payment_methods: PaymentMethod[];
-  receipt_image?: string;
+  receipt_image?: File | null; // Now expects File object, not base64 string
   notes?: string;
   requires_confirmation?: boolean;
 }
@@ -109,8 +143,6 @@ interface ReturnData {
   notes?: string;
 }
 
-
-
 // Vendor API endpoints
 
 // Auth API - CORREGIDO para coincidir con backend
@@ -140,11 +172,35 @@ export const vendorAPI = {
     });
   },
   
-  // Sales - CORREGIDO para coincidir con backend
-  createSale: (saleData: SaleData) => apiRequest('/api/v1/sales/create', {
-    method: 'POST',
-    body: JSON.stringify(saleData),
-  }),
+  // Sales - ACTUALIZADO para usar FormData según el endpoint
+  createSale: (saleData: SaleData) => {
+    const formData = new FormData();
+    
+    // Convert items array to JSON string
+    formData.append('items', JSON.stringify(saleData.items));
+    
+    // Add total amount
+    formData.append('total_amount', saleData.total_amount.toString());
+    
+    // Convert payment methods array to JSON string
+    formData.append('payment_methods', JSON.stringify(saleData.payment_methods));
+    
+    // Add optional fields
+    if (saleData.notes) {
+      formData.append('notes', saleData.notes);
+    }
+    
+    // Add requires_confirmation (default to false if not provided)
+    formData.append('requires_confirmation', (saleData.requires_confirmation || false).toString());
+    
+    // Add receipt image if provided
+    if (saleData.receipt_image) {
+      formData.append('receipt_image', saleData.receipt_image);
+    }
+    
+    return apiFormDataRequest('/api/v1/sales/create', formData);
+  },
+  
   getTodaySales: () => apiRequest('/api/v1/sales/today'),
   getPendingConfirmation: () => apiRequest('/api/v1/sales/pending-confirmation'),
   
@@ -201,8 +257,6 @@ export const vendorAPI = {
   }),
 };
 
-
-
 // Health Check API - CORREGIDO para coincidir con backend
 export const healthAPI = {
   healthCheck: () => apiRequest('/health'),
@@ -215,7 +269,7 @@ export const createSaleData = (
   items: SaleItem[],
   paymentMethods: PaymentMethod[],
   options: {
-    receiptImage?: string;
+    receiptImage?: File | null; // Changed from string to File
     notes?: string;
     requiresConfirmation?: boolean;
   } = {}
