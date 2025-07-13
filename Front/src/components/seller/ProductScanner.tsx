@@ -569,7 +569,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       default:
         return 'text-gray-600 bg-gray-100';
     }
-  };
+  }; 
 
   const getConfidenceLevelText = (level: string) => {
     switch (level) {
