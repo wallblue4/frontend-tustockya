@@ -35,22 +35,68 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
   const startCamera = useCallback(async () => {
     try {
       setError(null);
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment', // Usar cámara trasera por defecto
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      });
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        setIsStreaming(true);
+      // Verificar si el navegador soporta getUserMedia
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Tu navegador no soporta acceso a la cámara');
       }
-    } catch (err) {
+
+      // Primero intentar con configuración básica
+      let constraints = {
+        video: {
+          facingMode: 'environment'
+        }
+      };
+
+      try {
+        // Intentar con configuración avanzada primero
+        constraints = {
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 1280, max: 1920 },
+            height: { ideal: 720, max: 1080 }
+          }
+        };
+        
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          streamRef.current = stream;
+          setIsStreaming(true);
+        }
+      } catch (advancedError) {
+        console.log('Configuración avanzada falló, intentando básica:', advancedError);
+        
+        // Si falla, intentar con configuración básica
+        const basicConstraints = {
+          video: true
+        };
+        
+        const stream = await navigator.mediaDevices.getUserMedia(basicConstraints);
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          streamRef.current = stream;
+          setIsStreaming(true);
+        }
+      }
+    } catch (err: any) {
       console.error('Error accessing camera:', err);
-      setError('No se pudo acceder a la cámara. Verifica los permisos.');
+      
+      let errorMessage = 'No se pudo acceder a la cámara.';
+      
+      if (err.name === 'NotAllowedError') {
+        errorMessage = 'Acceso a la cámara denegado. Por favor, permite el acceso y reintenta.';
+      } else if (err.name === 'NotFoundError') {
+        errorMessage = 'No se encontró ninguna cámara en tu dispositivo.';
+      } else if (err.name === 'NotSupportedError') {
+        errorMessage = 'Tu navegador no soporta acceso a la cámara.';
+      } else if (err.name === 'NotReadableError') {
+        errorMessage = 'La cámara está siendo usada por otra aplicación.';
+      }
+      
+      setError(errorMessage);
     }
   }, []);
 
@@ -122,9 +168,9 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
-      <div className="w-full max-w-md mx-4">
+      <div className="w-full max-w-2xl mx-4 h-full flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4 px-4">
+        <div className="flex items-center justify-between mb-4 px-4 pt-4">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-primary rounded-full">
               <Camera className="h-6 w-6 text-white" />
@@ -144,131 +190,143 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
           </Button>
         </div>
 
-        {/* Camera View */}
-        <div className="relative bg-black rounded-2xl overflow-hidden shadow-2xl">
-          {error ? (
-            <div className="aspect-[4/3] flex items-center justify-center bg-gray-900 text-center p-8">
-              <div className="text-center">
-                <div className="p-4 bg-red-500/20 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                  <Camera className="h-10 w-10 text-red-400" />
-                </div>
-                <h4 className="text-white font-semibold mb-2">Error de Cámara</h4>
-                <p className="text-gray-300 text-sm mb-6">{error}</p>
-                <div className="space-y-3">
-                  <Button 
-                    onClick={startCamera} 
-                    className="w-full bg-primary hover:bg-primary/90"
-                  >
-                    <Camera className="h-4 w-4 mr-2" />
-                    Intentar de Nuevo
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={handleClose} 
-                    className="w-full border-gray-600 text-gray-300 hover:bg-white/10"
-                  >
-                    Cancelar
-                  </Button>
+        {/* Camera View - Expandida */}
+        <div className="flex-1 flex items-center justify-center px-4">
+          <div className="relative bg-black rounded-2xl overflow-hidden shadow-2xl w-full max-w-xl">
+            {error ? (
+              <div className="aspect-[3/4] flex items-center justify-center bg-gray-900 text-center p-8">
+                <div className="text-center max-w-sm">
+                  <div className="p-4 bg-red-500/20 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                    <Camera className="h-10 w-10 text-red-400" />
+                  </div>
+                  <h4 className="text-white font-semibold mb-2">Error de Cámara</h4>
+                  <p className="text-gray-300 text-sm mb-6 leading-relaxed">{error}</p>
+                  <div className="space-y-3">
+                    <Button 
+                      onClick={startCamera} 
+                      className="w-full bg-primary hover:bg-primary/90"
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      Intentar de Nuevo
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleClose} 
+                      className="w-full border-gray-600 text-gray-300 hover:bg-white/10"
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                  
+                  {/* Instrucciones adicionales */}
+                  <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <h5 className="text-blue-300 font-medium text-sm mb-2">💡 Consejos:</h5>
+                    <ul className="text-gray-400 text-xs space-y-1 text-left">
+                      <li>• Asegúrate de permitir el acceso a la cámara</li>
+                      <li>• Cierra otras apps que usen la cámara</li>
+                      <li>• Recarga la página si el problema persiste</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : capturedImage ? (
-            <div className="relative aspect-[4/3]">
-              <img 
-                src={capturedImage} 
-                alt="Captured" 
-                className="w-full h-full object-cover"
-              />
-              {isProcessing && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                  <div className="text-white text-center">
-                    <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
-                    <h4 className="text-lg font-semibold mb-2">Analizando con IA...</h4>
-                    <p className="text-gray-300">Identificando producto en inventario</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="relative aspect-[4/3]">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
-              
-              {/* Scanning Animation Overlay */}
-              {isScanning && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="relative">
-                      <Focus className="h-16 w-16 text-primary animate-pulse mx-auto mb-4" />
-                      <div className="absolute inset-0">
-                        <ScanLine className="h-16 w-16 text-white animate-bounce mx-auto" />
-                      </div>
+            ) : capturedImage ? (
+              <div className="relative aspect-[3/4]">
+                <img 
+                  src={capturedImage} 
+                  alt="Captured" 
+                  className="w-full h-full object-cover"
+                />
+                {isProcessing && (
+                  <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                    <div className="text-white text-center">
+                      <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
+                      <h4 className="text-lg font-semibold mb-2">Analizando con IA...</h4>
+                      <p className="text-gray-300">Identificando producto en inventario</p>
                     </div>
-                    <h4 className="text-white text-lg font-semibold mb-2">Escaneando...</h4>
-                    <p className="text-gray-300">Capturando imagen</p>
                   </div>
-                </div>
-              )}
-              
-              {/* Scanner Frame Overlay */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                {/* Dark overlay with cut-out */}
-                <div className="absolute inset-0 bg-black/40"></div>
+                )}
+              </div>
+            ) : (
+              <div className="relative aspect-[3/4]">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                />
                 
-                {/* Scanner frame */}
-                <div className="relative z-10">
-                  {/* Main scanning area */}
-                  <div className="relative w-64 h-48 border-2 border-primary rounded-2xl bg-transparent">
-                    {/* Corner indicators */}
-                    <div className="absolute -top-1 -left-1 w-6 h-6 border-l-4 border-t-4 border-primary rounded-tl-lg"></div>
-                    <div className="absolute -top-1 -right-1 w-6 h-6 border-r-4 border-t-4 border-primary rounded-tr-lg"></div>
-                    <div className="absolute -bottom-1 -left-1 w-6 h-6 border-l-4 border-b-4 border-primary rounded-bl-lg"></div>
-                    <div className="absolute -bottom-1 -right-1 w-6 h-6 border-r-4 border-b-4 border-primary rounded-br-lg"></div>
-                    
-                    {/* Scanning line animation */}
-                    <div className="absolute inset-0 overflow-hidden rounded-2xl">
-                      <div className="absolute w-full h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-pulse">
-                        <div className="absolute inset-0 bg-primary/50 animate-ping"></div>
+                {/* Scanning Animation Overlay */}
+                {isScanning && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="relative">
+                        <Focus className="h-16 w-16 text-primary animate-pulse mx-auto mb-4" />
+                        <div className="absolute inset-0">
+                          <ScanLine className="h-16 w-16 text-white animate-bounce mx-auto" />
+                        </div>
                       </div>
+                      <h4 className="text-white text-lg font-semibold mb-2">Escaneando...</h4>
+                      <p className="text-gray-300">Capturando imagen</p>
                     </div>
-                    
-                    {/* Center content */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-center text-white bg-black/50 px-4 py-2 rounded-lg backdrop-blur-sm">
-                        <Camera className="h-8 w-8 mx-auto mb-2 text-primary" />
-                        <p className="text-sm font-medium">Centra el tenis aquí</p>
-                        <p className="text-xs text-gray-300 mt-1">Para mejor reconocimiento</p>
+                  </div>
+                )}
+                
+                {/* Scanner Frame Overlay */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  {/* Dark overlay with cut-out */}
+                  <div className="absolute inset-0 bg-black/40"></div>
+                  
+                  {/* Scanner frame - Más grande */}
+                  <div className="relative z-10">
+                    {/* Main scanning area - Expandido */}
+                    <div className="relative w-80 h-64 border-2 border-primary rounded-2xl bg-transparent">
+                      {/* Corner indicators */}
+                      <div className="absolute -top-1 -left-1 w-8 h-8 border-l-4 border-t-4 border-primary rounded-tl-lg"></div>
+                      <div className="absolute -top-1 -right-1 w-8 h-8 border-r-4 border-t-4 border-primary rounded-tr-lg"></div>
+                      <div className="absolute -bottom-1 -left-1 w-8 h-8 border-l-4 border-b-4 border-primary rounded-bl-lg"></div>
+                      <div className="absolute -bottom-1 -right-1 w-8 h-8 border-r-4 border-b-4 border-primary rounded-br-lg"></div>
+                      
+                      {/* Scanning line animation */}
+                      <div className="absolute inset-0 overflow-hidden rounded-2xl">
+                        <div className="absolute w-full h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-pulse">
+                          <div className="absolute inset-0 bg-primary/50 animate-ping"></div>
+                        </div>
+                      </div>
+                      
+                      {/* Center content */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-center text-white bg-black/50 px-6 py-3 rounded-lg backdrop-blur-sm">
+                          <Camera className="h-10 w-10 mx-auto mb-3 text-primary" />
+                          <p className="text-base font-medium">Centra el tenis aquí</p>
+                          <p className="text-sm text-gray-300 mt-1">Para mejor reconocimiento</p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              {/* Instructional text */}
-              <div className="absolute top-4 left-4 right-4 z-20">
-                <div className="bg-black/60 backdrop-blur-sm rounded-lg p-3">
-                  <div className="flex items-center space-x-2 text-white">
-                    <Zap className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">
-                      {isStreaming ? 'Cámara lista para escanear' : 'Iniciando cámara...'}
-                    </span>
+                
+                {/* Instructional text */}
+                <div className="absolute top-4 left-4 right-4 z-20">
+                  <div className="bg-black/60 backdrop-blur-sm rounded-lg p-3">
+                    <div className="flex items-center space-x-2 text-white">
+                      <Zap className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">
+                        {isStreaming ? 'Cámara lista para escanear' : 'Iniciando cámara...'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-          
-          {/* Canvas oculto para captura */}
-          <canvas ref={canvasRef} className="hidden" />
+            )}
+            
+            {/* Canvas oculto para captura */}
+            <canvas ref={canvasRef} className="hidden" />
+          </div>
         </div>
 
         {/* Controls */}
-        <div className="mt-8 px-4">
+        <div className="mt-6 px-4 pb-4">
           {capturedImage ? (
             <div className="flex space-x-3">
               <Button 
@@ -350,7 +408,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
         </div>
 
         {/* Texto instructivo simple */}
-        <div className="mt-4 px-4">
+        <div className="px-4 pb-4">
           <div className="text-center">
             <p className="text-gray-300 text-sm">
               Mantén el producto dentro del recuadro para mejor reconocimiento
