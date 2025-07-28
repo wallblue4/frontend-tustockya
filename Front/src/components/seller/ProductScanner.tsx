@@ -19,6 +19,8 @@ import {
   XCircle
 } from 'lucide-react';
 
+
+
 interface StockBySizeInfo {
   size: string;
   quantity_stock: number;
@@ -112,7 +114,14 @@ interface ProductScannerProps {
     location: string;
     storage_type: string;
   }) => void;
-  onRequestTransfer?: (product: any) => void;
+  onRequestTransfer?: (productData: {
+    sneaker_reference_code: string;
+    brand: string;
+    model: string;
+    color: string;
+    size: string;
+    product: ProductOption;
+  }) => void;
   capturedImage?: File | null; // Imagen desde la cámara
   scanResult?: any; // Resultado del escaneo inicial
 }
@@ -530,13 +539,19 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
   };
 
   const handleSolicitar = () => {
-    if (selectedProduct && onRequestTransfer) {
-      onRequestTransfer({
-        product: selectedProduct.product,
-        size: selectedSize
-      });
+    if (selectedProduct && selectedSize && onRequestTransfer) {
+      const transferData = {
+        sneaker_reference_code: selectedProduct.product.code,
+        brand: selectedProduct.product.brand,
+        model: selectedProduct.product.model,
+        color: selectedProduct.product.color,
+        size: selectedSize,
+        product: selectedProduct.product
+      };
+      
+      console.log('Enviando datos para transferencia:', transferData);
+      onRequestTransfer(transferData);
     }
-    console.log('Botón Solicitar presionado');
   };
 
   const goBackToOptions = () => {

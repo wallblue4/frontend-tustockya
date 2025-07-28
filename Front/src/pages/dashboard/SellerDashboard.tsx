@@ -45,6 +45,8 @@ interface PrefilledProduct {
   storage_type?: string;
 }
 
+;
+
 interface PredictionResult {
   class_name: string;
   confidence: number;
@@ -60,7 +62,8 @@ export const SellerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
   const [prefilledProduct, setPrefilledProduct] = useState<PrefilledProduct | null>(null);
-  
+  const [productDataForTransfer, setProductDataForTransfer] = useState<any>(null); 
+
   // Estados para la cámara
   const [showCamera, setShowCamera] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
@@ -270,6 +273,27 @@ export const SellerDashboard: React.FC = () => {
     return null;
   };
 
+  const handleRequestTransfer = (productData: {
+    sneaker_reference_code: string;
+    brand: string;
+    model: string;
+    color: string;
+    size: string;
+    product: any;
+  }) => {
+    console.log('🔍 SellerDashboard - Datos recibidos del ProductScanner:', productData);
+    
+    // Guardar los datos exactamente como llegan
+    setProductDataForTransfer(productData);
+    
+    console.log('🔍 SellerDashboard - Estado actualizado, cambiando a transfers');
+    
+    // Cambiar a la vista de transferencias
+    setCurrentView('transfers');
+    
+    console.log('🔍 SellerDashboard - Vista cambiada a transfers');
+  };
+
   const handleSellProduct = (productData: {
     code: string;
     brand: string;
@@ -297,16 +321,16 @@ export const SellerDashboard: React.FC = () => {
     setCurrentView('new-sale');
   };
 
-  const handleRequestTransfer = (product: any) => {
-    setCurrentView('transfers');
-  };
 
   const goBack = () => {
+    console.log('🔍 SellerDashboard - Limpiando estados y volviendo al dashboard');
     setPrefilledProduct(null);
+    setProductDataForTransfer(null);
     setCapturedImage(null);
     setScanResult(null);
     setErrorMessage(null);
     setCurrentView('dashboard');
+    console.log('🔍 SellerDashboard - Estados limpiados');
   };
 
   const handleNewSaleClick = () => {
@@ -324,8 +348,7 @@ export const SellerDashboard: React.FC = () => {
             </Button>
             <ProductScanner 
               onSellProduct={handleSellProduct}
-              onRequestTransfer={handleRequestTransfer}
-              // Props adicionales para pasar la imagen capturada
+              onRequestTransfer={handleRequestTransfer} // ← Debe ser esta función
               capturedImage={capturedImage}
               scanResult={scanResult}
             />
@@ -373,12 +396,19 @@ export const SellerDashboard: React.FC = () => {
         );
       
       case 'transfers':
+        console.log('🔍 SellerDashboard - Renderizando TransfersView con datos:', productDataForTransfer);
         return (
           <div className="space-y-4">
             <Button variant="ghost" onClick={goBack} className="mb-4">
               <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Dashboard
             </Button>
-            <TransfersView />
+            <TransfersView 
+              prefilledProductData={productDataForTransfer}
+              onTransferRequested={(transferId, isUrgent) => {
+                console.log('✅ Transferencia solicitada:', { transferId, isUrgent });
+                goBack(); // Volver al dashboard después de la solicitud
+              }}
+            />
           </div>
         );
       
@@ -554,68 +584,6 @@ export const SellerDashboard: React.FC = () => {
       {/* Stats */}
       {apiData && <DashboardStats data={apiData} />}
 
-      {/* Navigation Menu */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('today-sales')}>
-          <CardContent className="p-4 flex items-center space-x-4">
-            <div className="p-3 bg-primary/10 rounded-lg">
-              <ShoppingBag className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h4 className="font-semibold">Ventas del Día</h4>
-              <p className="text-sm text-gray-600">Ver y confirmar ventas</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('expenses-list')}>
-          <CardContent className="p-4 flex items-center space-x-4">
-            <div className="p-3 bg-error/10 rounded-lg">
-              <List className="h-6 w-6 text-error" />
-            </div>
-            <div>
-              <h4 className="font-semibold">Ver Gastos</h4>
-              <p className="text-sm text-gray-600">Gastos del día</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('transfers')}>
-          <CardContent className="p-4 flex items-center space-x-4">
-            <div className="p-3 bg-secondary/10 rounded-lg">
-              <Package className="h-6 w-6 text-secondary" />
-            </div>
-            <div>
-              <h4 className="font-semibold">Transferencias</h4>
-              <p className="text-sm text-gray-600">Solicitar y gestionar</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('expenses')}>
-          <CardContent className="p-4 flex items-center space-x-4">
-            <div className="p-3 bg-warning/10 rounded-lg">
-              <Receipt className="h-6 w-6 text-warning" />
-            </div>
-            <div>
-              <h4 className="font-semibold">Gastos</h4>
-              <p className="text-sm text-gray-600">Registrar gastos del día</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('notifications')}>
-          <CardContent className="p-4 flex items-center space-x-4">
-            <div className="p-3 bg-error/10 rounded-lg">
-              <Bell className="h-6 w-6 text-error" />
-            </div>
-            <div>
-              <h4 className="font-semibold">Notificaciones</h4>
-              <p className="text-sm text-gray-600">Devoluciones y alertas</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 

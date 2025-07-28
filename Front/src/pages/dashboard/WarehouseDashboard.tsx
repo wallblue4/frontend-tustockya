@@ -11,7 +11,11 @@ import {
   Truck,
   Search,
   Filter,
-  RefreshCw
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  DollarSign
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
@@ -25,10 +29,12 @@ import { useTransferPolling } from '../../hooks/useTransferPolling';
 import { useAuth } from '../../context/AuthContext';
 import { warehouseAPI } from '../../services/transfersAPI';
 
-// Tipos
+// Tipos actualizados
 interface PendingRequest {
   id: number;
-  requester_name: string;
+  requester_name?: string;
+  requester_first_name?: string;
+  requester_last_name?: string;
   sneaker_reference_code: string;
   brand: string;
   model: string;
@@ -37,22 +43,40 @@ interface PendingRequest {
   purpose: 'cliente' | 'restock';
   priority: 'high' | 'normal';
   requested_at: string;
-  time_waiting: string;
-  can_fulfill: boolean;
-  available_stock: number;
+  time_waiting?: string;
+  can_fulfill?: boolean;
+  available_stock?: number;
   notes?: string;
+  product_image?: string;
+  product_price?: string;
+  product_color?: string;
+  stock_info?: {
+    can_fulfill: boolean;
+    available_stock: number;
+  };
 }
 
 interface AcceptedRequest {
   id: number;
   status: string;
-  product: string;
-  requester_name: string;
-  courier_name?: string;
-  courier_eta?: string;
-  preparation_time: number;
-  ready_for_pickup: boolean;
+  status_description?: string;
+  brand: string;
+  model: string;
+  size: string;
+  quantity: number;
+  purpose: 'cliente' | 'restock';
+  sneaker_reference_code: string;
+  requester_first_name?: string;
+  requester_last_name?: string;
+  courier_first_name?: string;
+  courier_last_name?: string;
+  estimated_pickup_time?: string;
+  preparation_time?: number;
+  ready_for_pickup?: boolean;
   notes?: string;
+  product_image?: string;
+  product_price?: string;
+  product_color?: string;
 }
 
 export const WarehouseDashboard: React.FC = () => {
@@ -63,6 +87,10 @@ export const WarehouseDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+
+  // Estados de UI responsivo
+  const [expandedCard, setExpandedCard] = useState<number | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   // Estados de filtros
   const [searchTerm, setSearchTerm] = useState('');
@@ -88,8 +116,6 @@ export const WarehouseDashboard: React.FC = () => {
     addNotification
   } = useTransferNotifications();
 
-
-
   // Callback para manejar actualizaciones de polling
   const handlePollingUpdate = useCallback((data: any) => {
     const newPending = data.pending || [];
@@ -104,27 +130,27 @@ export const WarehouseDashboard: React.FC = () => {
       newRequests.forEach((request: PendingRequest) => {
         notifyNewTransferAvailable({
           product: `${request.brand} ${request.model}`,
-          requester: request.requester_name,
+          requester: request.requester_first_name ? 
+            `${request.requester_first_name} ${request.requester_last_name}` : 
+            request.requester_name || 'Usuario',
           purpose: request.purpose
         });
       });
     }
 
-    // Actualizar estados
     setPendingRequests(newPending);
     setAcceptedRequests(newAccepted);
 
-    // Actualizar estadísticas
     setStats({
       totalRequests: newPending.length + newAccepted.length,
       urgentRequests: newPending.filter((r: PendingRequest) => r.priority === 'high').length,
-      averageResponseTime: '12 min', // Mock - en real vendría del API
-      completionRate: 94.5, // Mock
-      totalStockValue: 1580.50 // Mock
+      averageResponseTime: '12 min',
+      completionRate: 94.5,
+      totalStockValue: 1580.50
     });
   }, [pendingRequests, notifyNewTransferAvailable]);
 
-  // POLLING para bodeguero (15 segundos como recomienda la documentación)
+  // POLLING para bodeguero
   const { data: warehouseData, error: pollingError, refetch } = useTransferPolling('bodeguero', {
     enabled: true,
     interval: 15000,
@@ -157,11 +183,12 @@ export const WarehouseDashboard: React.FC = () => {
       console.error('Error loading warehouse data:', err);
       setError('Error conectando con el servidor');
       
-      // Mock data para desarrollo
+      // Mock data mejorado para desarrollo
       setPendingRequests([
         {
           id: 15,
-          requester_name: 'Juan Pérez',
+          requester_first_name: 'Juan',
+          requester_last_name: 'Pérez',
           sneaker_reference_code: 'AD-UB22-BLK-001',
           brand: 'Adidas',
           model: 'Ultraboost 22',
@@ -171,13 +198,18 @@ export const WarehouseDashboard: React.FC = () => {
           priority: 'high',
           requested_at: new Date().toISOString(),
           time_waiting: '5 minutos',
-          can_fulfill: true,
-          available_stock: 3,
-          notes: 'Cliente presente esperando'
+          product_color: 'Negro/Blanco',
+          product_price: '289000',
+          notes: 'Cliente presente esperando',
+          stock_info: {
+            can_fulfill: true,
+            available_stock: 3
+          }
         },
         {
           id: 16,
-          requester_name: 'María González',
+          requester_first_name: 'María',
+          requester_last_name: 'González',
           sneaker_reference_code: 'NK-AF1-WHT-002',
           brand: 'Nike',
           model: 'Air Force 1',
@@ -187,9 +219,13 @@ export const WarehouseDashboard: React.FC = () => {
           priority: 'normal',
           requested_at: new Date(Date.now() - 600000).toISOString(),
           time_waiting: '10 minutos',
-          can_fulfill: true,
-          available_stock: 8,
-          notes: 'Restock semanal programado'
+          product_color: 'Blanco',
+          product_price: '349000',
+          notes: 'Restock semanal programado',
+          stock_info: {
+            can_fulfill: true,
+            available_stock: 8
+          }
         }
       ]);
       
@@ -197,12 +233,20 @@ export const WarehouseDashboard: React.FC = () => {
         {
           id: 17,
           status: 'courier_assigned',
-          product: 'Puma RS-X - Talla 9',
-          requester_name: 'Carlos López',
-          courier_name: 'Ana Martínez',
-          courier_eta: '15 minutos',
-          preparation_time: 10,
-          ready_for_pickup: true,
+          status_description: 'Corredor asignado',
+          brand: 'Puma',
+          model: 'RS-X',
+          size: '9',
+          quantity: 1,
+          purpose: 'cliente',
+          sneaker_reference_code: 'PM-RSX-001',
+          requester_first_name: 'Carlos',
+          requester_last_name: 'López',
+          courier_first_name: 'Ana',
+          courier_last_name: 'Martínez',
+          estimated_pickup_time: '15',
+          product_color: 'Blanco/Azul',
+          product_price: '299000',
           notes: 'Producto empacado y listo'
         }
       ]);
@@ -212,18 +256,29 @@ export const WarehouseDashboard: React.FC = () => {
     }
   };
 
-  // Funciones para manejar acciones
+  // CORREGIR: Función para aceptar solicitud
   const handleAcceptRequest = async (requestId: number) => {
+    console.log('🔄 Aceptando solicitud:', requestId);
     setActionLoading(requestId);
+    
     try {
       const request = pendingRequests.find(r => r.id === requestId);
       
-      await warehouseAPI.acceptRequest({
+      if (!request) {
+        throw new Error('Solicitud no encontrada');
+      }
+
+      console.log('📦 Datos de la solicitud:', request);
+      
+      // Llamada corregida a la API
+      const response = await warehouseAPI.acceptRequest({
         transfer_request_id: requestId,
         accepted: true,
-        estimated_preparation_time: request?.priority === 'high' ? 10 : 15,
-        notes: `Producto disponible. ${request?.priority === 'high' ? 'Preparando para entrega inmediata.' : 'Preparando según cronograma.'}`
+        estimated_preparation_time: request.priority === 'high' ? 10 : 15,
+        notes: `Producto disponible. ${request.priority === 'high' ? 'Preparando para entrega inmediata.' : 'Preparando según cronograma.'}`
       });
+      
+      console.log('✅ Respuesta del servidor:', response);
       
       addNotification(
         'success',
@@ -235,9 +290,11 @@ export const WarehouseDashboard: React.FC = () => {
         }
       );
       
-      await refetch(); // Recargar datos
+      // Recargar datos
+      await refetch();
       
     } catch (err) {
+      console.error('❌ Error al aceptar solicitud:', err);
       addNotification(
         'error',
         '❌ Error al Aceptar',
@@ -249,7 +306,9 @@ export const WarehouseDashboard: React.FC = () => {
   };
 
   const handleRejectRequest = async (requestId: number) => {
+    console.log('🔄 Rechazando solicitud:', requestId);
     setActionLoading(requestId);
+    
     try {
       await warehouseAPI.acceptRequest({
         transfer_request_id: requestId,
@@ -267,6 +326,7 @@ export const WarehouseDashboard: React.FC = () => {
       await refetch();
       
     } catch (err) {
+      console.error('❌ Error al rechazar solicitud:', err);
       addNotification(
         'error',
         '❌ Error al Rechazar',
@@ -277,9 +337,10 @@ export const WarehouseDashboard: React.FC = () => {
     }
   };
 
-
   const handleDeliverToCourier = async (requestId: number) => {
+    console.log('🔄 Entregando a corredor:', requestId);
     setActionLoading(requestId);
+    
     try {
       await warehouseAPI.deliverToCourier({
         transfer_request_id: requestId,
@@ -296,6 +357,7 @@ export const WarehouseDashboard: React.FC = () => {
       await refetch();
       
     } catch (err) {
+      console.error('❌ Error en entrega:', err);
       addNotification(
         'error',
         '❌ Error en Entrega',
@@ -312,7 +374,9 @@ export const WarehouseDashboard: React.FC = () => {
       request.sneaker_reference_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.requester_name.toLowerCase().includes(searchTerm.toLowerCase());
+      (request.requester_first_name && request.requester_first_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (request.requester_last_name && request.requester_last_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (request.requester_name && request.requester_name.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesPriority = priorityFilter === 'all' || request.priority === priorityFilter;
     const matchesPurpose = purposeFilter === 'all' || request.purpose === purposeFilter;
@@ -344,6 +408,19 @@ export const WarehouseDashboard: React.FC = () => {
     }
   };
 
+  const formatPrice = (price: string | number) => {
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0
+    }).format(numPrice);
+  };
+
+  const toggleCardExpansion = (cardId: number) => {
+    setExpandedCard(expandedCard === cardId ? null : cardId);
+  };
+
   if (loading) {
     return (
       <DashboardLayout title="Panel de Bodega">
@@ -366,91 +443,103 @@ export const WarehouseDashboard: React.FC = () => {
         onDismissAll={dismissAllNotifications}
       />
 
-      <div className="space-y-6">
-        {/* Header con estadísticas rápidas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="space-y-4 md:space-y-6">
+        {/* Header con estadísticas rápidas - RESPONSIVE */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Total Solicitudes</p>
-                  <p className="text-2xl font-bold">{stats.totalRequests}</p>
+                  <p className="text-xs md:text-sm text-gray-600">Total</p>
+                  <p className="text-lg md:text-2xl font-bold">{stats.totalRequests}</p>
                 </div>
-                <Package className="h-8 w-8 text-blue-500" />
+                <Package className="h-6 w-6 md:h-8 md:w-8 text-blue-500" />
               </div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Urgentes</p>
-                  <p className="text-2xl font-bold text-red-600">{stats.urgentRequests}</p>
+                  <p className="text-xs md:text-sm text-gray-600">Urgentes</p>
+                  <p className="text-lg md:text-2xl font-bold text-red-600">{stats.urgentRequests}</p>
                 </div>
-                <AlertCircle className="h-8 w-8 text-red-500" />
+                <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-red-500" />
               </div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Tiempo Promedio</p>
-                  <p className="text-2xl font-bold">{stats.averageResponseTime}</p>
+                  <p className="text-xs md:text-sm text-gray-600">Tiempo Prom.</p>
+                  <p className="text-lg md:text-2xl font-bold">{stats.averageResponseTime}</p>
                 </div>
-                <Clock className="h-8 w-8 text-green-500" />
+                <Clock className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
               </div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Tasa Completación</p>
-                  <p className="text-2xl font-bold">{stats.completionRate}%</p>
+                  <p className="text-xs md:text-sm text-gray-600">Completación</p>
+                  <p className="text-lg md:text-2xl font-bold">{stats.completionRate}%</p>
                 </div>
-                <CheckCircle className="h-8 w-8 text-green-500" />
+                <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Navigation Tabs */}
+        {/* Navigation Tabs - RESPONSIVE */}
         <Card>
-          <CardContent className="p-4">
-            <div className="flex space-x-4">
+          <CardContent className="p-2 md:p-4">
+            <div className="flex flex-wrap gap-2 md:gap-4">
               <Button
                 variant={activeTab === 'pending' ? 'primary' : 'outline'}
                 onClick={() => setActiveTab('pending')}
+                size="sm"
+                className="flex-1 md:flex-none text-xs md:text-sm"
               >
-                <Clock className="h-4 w-4 mr-2" />
-                Solicitudes Pendientes ({filteredPendingRequests.length})
+                <Clock className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">Pendientes</span>
+                <span className="sm:hidden">Pend.</span>
+                ({filteredPendingRequests.length})
               </Button>
               <Button
                 variant={activeTab === 'accepted' ? 'primary' : 'outline'}
                 onClick={() => setActiveTab('accepted')}
+                size="sm"
+                className="flex-1 md:flex-none text-xs md:text-sm"
               >
-                <Package className="h-4 w-4 mr-2" />
-                En Preparación ({acceptedRequests.length})
+                <Package className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">Preparación</span>
+                <span className="sm:hidden">Prep.</span>
+                ({acceptedRequests.length})
               </Button>
               <Button
                 variant={activeTab === 'stats' ? 'primary' : 'outline'}
                 onClick={() => setActiveTab('stats')}
+                size="sm"
+                className="flex-1 md:flex-none text-xs md:text-sm"
               >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Estadísticas
+                <CheckCircle className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">Estadísticas</span>
+                <span className="sm:hidden">Stats</span>
               </Button>
-              <div className="flex-grow"></div>
+              <div className="flex-grow hidden md:block"></div>
               <Button
                 variant="ghost"
                 onClick={refetch}
                 size="sm"
+                className="text-xs md:text-sm"
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Actualizar
+                <RefreshCw className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                <span className="hidden md:inline">Actualizar</span>
               </Button>
             </div>
           </CardContent>
@@ -459,10 +548,10 @@ export const WarehouseDashboard: React.FC = () => {
         {/* Indicadores de estado */}
         {pollingError && (
           <Card className="border-red-200 bg-red-50">
-            <CardContent className="p-4">
+            <CardContent className="p-3 md:p-4">
               <div className="flex items-center space-x-3">
-                <AlertCircle className="h-5 w-5 text-red-600" />
-                <p className="text-red-800">Error de conexión - Usando datos locales</p>
+                <AlertCircle className="h-4 w-4 md:h-5 md:w-5 text-red-600" />
+                <p className="text-red-800 text-sm">Error de conexión - Usando datos locales</p>
               </div>
             </CardContent>
           </Card>
@@ -470,10 +559,10 @@ export const WarehouseDashboard: React.FC = () => {
 
         {error && (
           <Card className="border-amber-200 bg-amber-50">
-            <CardContent className="p-4">
+            <CardContent className="p-3 md:p-4">
               <div className="flex items-center space-x-3">
-                <AlertCircle className="h-5 w-5 text-amber-600" />
-                <p className="text-amber-800">⚠️ {error} - Usando datos de prueba</p>
+                <AlertCircle className="h-4 w-4 md:h-5 md:w-5 text-amber-600" />
+                <p className="text-amber-800 text-sm">⚠️ {error} - Usando datos de prueba</p>
               </div>
             </CardContent>
           </Card>
@@ -483,355 +572,576 @@ export const WarehouseDashboard: React.FC = () => {
         {activeTab === 'pending' && (
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold flex items-center">
-                  <Package className="h-6 w-6 text-primary mr-2" />
-                  Solicitudes Pendientes de Aprobación
+              <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-3 md:space-y-0">
+                <h2 className="text-lg md:text-xl font-semibold flex items-center">
+                  <Package className="h-5 w-5 md:h-6 md:w-6 text-primary mr-2" />
+                  Solicitudes Pendientes
                 </h2>
                 
-                {/* Controles de filtros */}
-                <div className="flex space-x-3">
+                {/* Controles de filtros - RESPONSIVE */}
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                   <div className="relative">
                     <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <Input
-                      placeholder="Buscar por código, marca o vendedor..."
+                      placeholder="Buscar..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 w-64"
+                      className="pl-10 w-full sm:w-48 md:w-64 text-sm"
                     />
                   </div>
                   
-                  <select
-                    value={priorityFilter}
-                    onChange={(e) => setPriorityFilter(e.target.value as any)}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowFilters(!showFilters)}
+                    size="sm"
+                    className="sm:hidden"
                   >
-                    <option value="all">Todas las prioridades</option>
-                    <option value="high">Solo urgentes</option>
-                    <option value="normal">Solo normales</option>
-                  </select>
+                    <Filter className="h-4 w-4 mr-2" />
+                    Filtros
+                    {showFilters ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
+                  </Button>
                   
-                  <select
-                    value={purposeFilter}
-                    onChange={(e) => setPurposeFilter(e.target.value as any)}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-                  >
-                    <option value="all">Todos los propósitos</option>
-                    <option value="cliente">Solo clientes</option>
-                    <option value="restock">Solo restock</option>
-                  </select>
+                  <div className={`flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 ${showFilters ? 'block' : 'hidden sm:flex'}`}>
+                    <select
+                      value={priorityFilter}
+                      onChange={(e) => setPriorityFilter(e.target.value as any)}
+                      className="px-2 py-1 md:px-3 md:py-2 border border-gray-300 rounded-md text-xs md:text-sm"
+                    >
+                      <option value="all">Todas</option>
+                      <option value="high">Urgentes</option>
+                      <option value="normal">Normales</option>
+                    </select>
+                    
+                    <select
+                      value={purposeFilter}
+                      onChange={(e) => setPurposeFilter(e.target.value as any)}
+                      className="px-2 py-1 md:px-3 md:py-2 border border-gray-300 rounded-md text-xs md:text-sm"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="cliente">Clientes</option>
+                      <option value="restock">Restock</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-  {filteredPendingRequests.length === 0 ? (
-    <div className="text-center py-12">
-      <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-      <h3 className="text-lg font-medium">
-        {searchTerm || priorityFilter !== 'all' || purposeFilter !== 'all' 
-          ? 'No hay solicitudes que coincidan con los filtros'
-          : 'No hay solicitudes pendientes'
-        }
-      </h3>
-      <p className="text-gray-500">
-        {searchTerm || priorityFilter !== 'all' || purposeFilter !== 'all'
-          ? 'Prueba ajustando los filtros de búsqueda'
-          : 'Las nuevas solicitudes aparecerán aquí automáticamente.'
-        }
-      </p>
-    </div>
-  ) : (
-    <div className="space-y-6">
-      {filteredPendingRequests.map((request) => (
-        <div key={request.id} className="border rounded-lg p-6 bg-white hover:shadow-md transition-shadow">
-          <div className="flex items-start mb-4">
-            
-            {/* ✅ CORREGIDO: Imagen sin bucle infinito */}
-            <div className="flex-shrink-0 mr-4">
-              <img
-                src={request.product_image || `https://via.placeholder.com/150x100/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
-                alt={`${request.brand} ${request.model}`}
-                className="w-32 h-24 object-cover rounded-lg border border-gray-200 shadow-sm"
-                onError={(e) => {
-                  if (!e.currentTarget.dataset.fallback) {
-                    e.currentTarget.dataset.fallback = 'true';
-                    e.currentTarget.src = `https://via.placeholder.com/150x100/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
-                  }
-                }}
-              />
-              {request.product_price && (
-                <p className="text-xs text-gray-600 mt-1 text-center font-medium">
-                  💰 ${parseFloat(request.product_price).toFixed(2)}
-                </p>
-              )}
-            </div>
-
-            {/* Contenido principal */}
-            <div className="flex-grow">
-              <div className="flex items-center space-x-3 mb-3">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(request.priority)}`}>
-                  {request.priority === 'high' ? '🔥 URGENTE' : '📦 Normal'}
-                </span>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
-                  {request.purpose === 'cliente' ? '🏃‍♂️ Cliente Presente' : '📦 Restock'}
-                </span>
-                <span className="text-sm text-gray-500">
-                  ⏱️ Esperando: {formatTimeWaiting(request.requested_at)}
-                </span>
-              </div>
-              
-              <h3 className="font-semibold text-xl mb-2">
-                {request.brand} {request.model}
-              </h3>
-              
-              {request.product_color && (
-                <p className="text-sm text-gray-600 mb-2">
-                  🎨 <strong>Color:</strong> {request.product_color}
-                </p>
-              )}
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
-                <div>
-                  <p className="text-gray-500">Código</p>
-                  <p className="font-medium">{request.sneaker_reference_code}</p>
+              {filteredPendingRequests.length === 0 ? (
+                <div className="text-center py-8 md:py-12">
+                  <Package className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
+                  <h3 className="text-base md:text-lg font-medium">
+                    {searchTerm || priorityFilter !== 'all' || purposeFilter !== 'all' 
+                      ? 'No hay solicitudes que coincidan'
+                      : 'No hay solicitudes pendientes'
+                    }
+                  </h3>
+                  <p className="text-gray-500 text-sm">
+                    {searchTerm || priorityFilter !== 'all' || purposeFilter !== 'all'
+                      ? 'Prueba ajustando los filtros'
+                      : 'Las nuevas solicitudes aparecerán aquí automáticamente.'
+                    }
+                  </p>
                 </div>
-                <div>
-                  <p className="text-gray-500">Talla</p>
-                  <p className="font-medium">{request.size}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Cantidad</p>
-                  <p className="font-medium">{request.quantity}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Stock Disponible</p>
-                  <p className="font-medium">{request.stock_info?.available_stock || 0}</p>
-                </div>
-              </div>
-              <p className="text-sm text-gray-600">
-                <User className="h-4 w-4 inline mr-1" />
-                Solicitado por: <strong>{request.requester_first_name} {request.requester_last_name}</strong>
-              </p>
-            </div>
-            
-            {/* Indicador de disponibilidad */}
-            <div className="text-right ml-6">
-              <div className={`px-4 py-3 rounded-lg border-2 ${
-                request.stock_info?.can_fulfill 
-                  ? 'bg-green-50 border-green-200' 
-                  : 'bg-red-50 border-red-200'
-              }`}>
-                <p className="text-sm font-medium">
-                  {request.stock_info?.can_fulfill ? '✅ Disponible' : '❌ No disponible'}
-                </p>
-                <p className="text-xs text-gray-600 mt-1">
-                  Stock: {request.stock_info?.available_stock || 0} unidades
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {request.notes && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm">
-                <strong>📝 Notas:</strong> {request.notes}
-              </p>
-            </div>
-          )}
-
-          <div className="flex space-x-3">
-            <Button 
-              onClick={() => handleAcceptRequest(request.id)}
-              disabled={!request.stock_info?.can_fulfill || actionLoading === request.id}
-              className="flex-1 bg-success hover:bg-success/90 disabled:opacity-50"
-            >
-              {actionLoading === request.id ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
               ) : (
-                <Send className="h-4 w-4 mr-2" />
+                <div className="space-y-4 md:space-y-6">
+                  {filteredPendingRequests.map((request) => (
+                    <div key={request.id} className="border rounded-lg bg-white hover:shadow-md transition-shadow">
+                      {/* MOBILE COMPACT VIEW */}
+                      <div className="md:hidden">
+                        <div className="p-4">
+                          <div className="flex items-start space-x-3 mb-3">
+                            <div className="flex-shrink-0">
+                              <img
+                                src={request.product_image || `https://via.placeholder.com/80x60/e5e7eb/6b7280?text=${encodeURIComponent(request.brand)}`}
+                                alt={`${request.brand} ${request.model}`}
+                                className="w-20 h-15 object-cover rounded-lg border border-gray-200"
+                                onError={(e) => {
+                                  if (!e.currentTarget.dataset.fallback) {
+                                    e.currentTarget.dataset.fallback = 'true';
+                                    e.currentTarget.src = `https://via.placeholder.com/80x60/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
+                                  }
+                                }}
+                              />
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(request.priority)}`}>
+                                  {request.priority === 'high' ? '🔥' : '📦'}
+                                </span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
+                                  {request.purpose === 'cliente' ? '🏃‍♂️' : '📦'}
+                                </span>
+                              </div>
+                              
+                              <h3 className="font-semibold text-base mb-1 truncate">
+                                {request.brand} {request.model}
+                              </h3>
+                              
+                              <p className="text-sm text-gray-600 mb-1">
+                                Talla {request.size} • {request.quantity} unidad{request.quantity > 1 ? 'es' : ''}
+                              </p>
+                              
+                              <p className="text-xs text-gray-500">
+                                ⏱️ {formatTimeWaiting(request.requested_at)} •{' '}
+                                {request.requester_first_name ? 
+                                  `${request.requester_first_name} ${request.requester_last_name}` : 
+                                  request.requester_name || 'Usuario'
+                                }
+                              </p>
+                            </div>
+                            
+                            <div className="flex flex-col items-end">
+                              <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                                request.stock_info?.can_fulfill 
+                                  ? 'bg-green-50 text-green-700 border border-green-200' 
+                                  : 'bg-red-50 text-red-700 border border-red-200'
+                              }`}>
+                                {request.stock_info?.can_fulfill ? '✅' : '❌'}
+                              </span>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Stock: {request.stock_info?.available_stock || 0}
+                              </p>
+                              {request.product_price && (
+                                <p className="text-xs font-medium text-green-600">
+                                  {formatPrice(request.product_price)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <Button
+                            onClick={() => toggleCardExpansion(request.id)}
+                            variant="ghost"
+                            size="sm"
+                            className="w-full text-sm"
+                          >
+                            {expandedCard === request.id ? (
+                              <>Menos detalles <ChevronUp className="h-4 w-4 ml-2" /></>
+                            ) : (
+                              <>Más detalles <ChevronDown className="h-4 w-4 ml-2" /></>
+                            )}
+                          </Button>
+                          
+                          {expandedCard === request.id && (
+                            <div className="mt-4 pt-4 border-t space-y-3">
+                              <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                  <p className="text-gray-500">Código</p>
+                                  <p className="font-medium text-xs">{request.sneaker_reference_code}</p>
+                                </div>
+                                {request.product_color && (
+                                  <div>
+                                    <p className="text-gray-500">Color</p>
+                                    <p className="font-medium text-xs">{request.product_color}</p>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {request.notes && (
+                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                  <p className="text-sm">
+                                    <strong>📝 Notas:</strong> {request.notes}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          <div className="flex space-x-2 mt-4">
+                            <Button 
+                              onClick={() => handleAcceptRequest(request.id)}
+                              disabled={!request.stock_info?.can_fulfill || actionLoading === request.id}
+                              className="flex-1 bg-success hover:bg-success/90 disabled:opacity-50 text-sm"
+                              size="sm"
+                            >
+                              {actionLoading === request.id ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              ) : (
+                                <Send className="h-4 w-4 mr-2" />
+                              )}
+                              Aceptar
+                            </Button>
+                            <Button 
+                              onClick={() => handleRejectRequest(request.id)}
+                              disabled={actionLoading === request.id}
+                              variant="outline" 
+                              className="flex-1 text-error hover:bg-error/10 border-error text-sm"
+                              size="sm"
+                            >
+                              <X className="h-4 w-4 mr-2" />
+                              Rechazar
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* DESKTOP FULL VIEW */}
+                      <div className="hidden md:block p-6">
+                        <div className="flex items-start mb-4">
+                          <div className="flex-shrink-0 mr-4">
+                            <img
+                              src={request.product_image || `https://via.placeholder.com/150x100/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
+                              alt={`${request.brand} ${request.model}`}
+                              className="w-32 h-24 object-cover rounded-lg border border-gray-200 shadow-sm"
+                              onError={(e) => {
+                                if (!e.currentTarget.dataset.fallback) {
+                                  e.currentTarget.dataset.fallback = 'true';
+                                  e.currentTarget.src = `https://via.placeholder.com/150x100/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
+                                }
+                              }}
+                            />
+                            {request.product_price && (
+                              <p className="text-xs text-gray-600 mt-1 text-center font-medium">
+                                💰 {formatPrice(request.product_price)}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex-grow">
+                            <div className="flex items-center space-x-3 mb-3">
+                              <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(request.priority)}`}>
+                                {request.priority === 'high' ? '🔥 URGENTE' : '📦 Normal'}
+                              </span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
+                                {request.purpose === 'cliente' ? '🏃‍♂️ Cliente Presente' : '📦 Restock'}
+                              </span>
+                              <span className="text-sm text-gray-500">
+                                ⏱️ Esperando: {formatTimeWaiting(request.requested_at)}
+                              </span>
+                            </div>
+                            
+                            <h3 className="font-semibold text-xl mb-2">
+                              {request.brand} {request.model}
+                            </h3>
+                            
+                            {request.product_color && (
+                              <p className="text-sm text-gray-600 mb-2">
+                                🎨 <strong>Color:</strong> {request.product_color}
+                              </p>
+                            )}
+                            
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
+                              <div>
+                                <p className="text-gray-500">Código</p>
+                                <p className="font-medium">{request.sneaker_reference_code}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Talla</p>
+                                <p className="font-medium">{request.size}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Cantidad</p>
+                                <p className="font-medium">{request.quantity}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Stock Disponible</p>
+                                <p className="font-medium">{request.stock_info?.available_stock || 0}</p>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              <User className="h-4 w-4 inline mr-1" />
+                              Solicitado por: <strong>
+                                {request.requester_first_name ? 
+                                  `${request.requester_first_name} ${request.requester_last_name}` : 
+                                  request.requester_name || 'Usuario'
+                                }
+                              </strong>
+                            </p>
+                          </div>
+                          
+                          <div className="text-right ml-6">
+                            <div className={`px-4 py-3 rounded-lg border-2 ${
+                              request.stock_info?.can_fulfill 
+                                ? 'bg-green-50 border-green-200' 
+                                : 'bg-red-50 border-red-200'
+                            }`}>
+                              <p className="text-sm font-medium">
+                                {request.stock_info?.can_fulfill ? '✅ Disponible' : '❌ No disponible'}
+                              </p>
+                              <p className="text-xs text-gray-600 mt-1">
+                                Stock: {request.stock_info?.available_stock || 0} unidades
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {request.notes && (
+                          <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <p className="text-sm">
+                              <strong>📝 Notas:</strong> {request.notes}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="flex space-x-3">
+                          <Button 
+                            onClick={() => handleAcceptRequest(request.id)}
+                            disabled={!request.stock_info?.can_fulfill || actionLoading === request.id}
+                            className="flex-1 bg-success hover:bg-success/90 disabled:opacity-50"
+                          >
+                            {actionLoading === request.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            ) : (
+                              <Send className="h-4 w-4 mr-2" />
+                            )}
+                            Aceptar y Preparar
+                          </Button>
+                          <Button 
+                            onClick={() => handleRejectRequest(request.id)}
+                            disabled={actionLoading === request.id}
+                            variant="outline" 
+                            className="flex-1 text-error hover:bg-error/10 border-error"
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Rechazar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
-              Aceptar y Preparar
-            </Button>
-            <Button 
-              onClick={() => handleRejectRequest(request.id)}
-              disabled={actionLoading === request.id}
-              variant="outline" 
-              className="flex-1 text-error hover:bg-error/10 border-error"
-            >
-              <X className="h-4 w-4 mr-2" />
-              Rechazar
-            </Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
-</CardContent>
+            </CardContent>
           </Card>
         )}
 
         {activeTab === 'accepted' && (
           <Card>
             <CardHeader>
-              <h2 className="text-xl font-semibold flex items-center">
-                <Package className="h-6 w-6 text-primary mr-2" />
+              <h2 className="text-lg md:text-xl font-semibold flex items-center">
+                <Package className="h-5 w-5 md:h-6 md:w-6 text-primary mr-2" />
                 Transferencias en Preparación
               </h2>
             </CardHeader>
             <CardContent>
-  {acceptedRequests.length === 0 ? (
-    <div className="text-center py-12">
-      <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-      <h3 className="text-lg font-medium">No hay solicitudes en preparación</h3>
-      <p className="text-gray-500">Las solicitudes aceptadas aparecerán aquí.</p>
-    </div>
-  ) : (
-    <div className="space-y-4">
-      {acceptedRequests.map((request) => (
-        <div key={request.id} className="border rounded-lg p-6 bg-white">
-          <div className="flex items-start mb-4">
-            
-            {/* ✅ CORREGIDO: Imagen sin bucle infinito */}
-            <div className="flex-shrink-0 mr-4">
-              <img
-                src={request.product_image || `https://via.placeholder.com/150x100/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
-                alt={`${request.brand} ${request.model}`}
-                className="w-32 h-24 object-cover rounded-lg border border-gray-200 shadow-sm"
-                onError={(e) => {
-                  if (!e.currentTarget.dataset.fallback) {
-                    e.currentTarget.dataset.fallback = 'true';
-                    e.currentTarget.src = `https://via.placeholder.com/150x100/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
-                  }
-                }}
-              />
-              {request.product_price && (
-                <p className="text-xs text-gray-600 mt-1 text-center font-medium">
-                  💰 ${parseFloat(request.product_price).toFixed(2)}
-                </p>
-              )}
-            </div>
+              {acceptedRequests.length === 0 ? (
+                <div className="text-center py-8 md:py-12">
+                  <CheckCircle className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
+                  <h3 className="text-base md:text-lg font-medium">No hay solicitudes en preparación</h3>
+                  <p className="text-gray-500 text-sm">Las solicitudes aceptadas aparecerán aquí.</p>
+                </div>
+              ) : (
+                <div className="space-y-4 md:space-y-6">
+                  {acceptedRequests.map((request) => (
+                    <div key={request.id} className="border rounded-lg bg-white">
+                      {/* MOBILE VIEW */}
+                      <div className="md:hidden p-4">
+                        <div className="flex items-start space-x-3 mb-3">
+                          <div className="flex-shrink-0">
+                            <img
+                              src={request.product_image || `https://via.placeholder.com/80x60/e5e7eb/6b7280?text=${encodeURIComponent(request.brand)}`}
+                              alt={`${request.brand} ${request.model}`}
+                              className="w-20 h-15 object-cover rounded-lg border border-gray-200"
+                              onError={(e) => {
+                                if (!e.currentTarget.dataset.fallback) {
+                                  e.currentTarget.dataset.fallback = 'true';
+                                  e.currentTarget.src = `https://via.placeholder.com/80x60/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
+                                }
+                              }}
+                            />
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-base mb-1">
+                              {request.brand} {request.model}
+                            </h4>
+                            <p className="text-sm text-gray-600 mb-1">
+                              Talla {request.size} • {request.quantity} unidad{request.quantity > 1 ? 'es' : ''}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {request.requester_first_name ? 
+                                `${request.requester_first_name} ${request.requester_last_name}` : 
+                                'Usuario'
+                              }
+                            </p>
+                          </div>
+                          
+                          <div className="text-right">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              request.status === 'courier_assigned'
+                                ? 'bg-green-100 text-green-800' 
+                                : request.status === 'accepted'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {request.status === 'courier_assigned' ? '✅ Listo' : 
+                               request.status === 'accepted' ? '🔄 Esperando' : 
+                               request.status}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {request.courier_first_name && (
+                          <div className="mb-3 p-2 bg-blue-50 rounded-lg">
+                            <p className="text-xs text-blue-600">
+                              <Truck className="h-3 w-3 inline mr-1" />
+                              Corredor: <strong>{request.courier_first_name} {request.courier_last_name}</strong>
+                            </p>
+                          </div>
+                        )}
+                        
+                        {(request.status === 'courier_assigned' || (request.status === 'accepted' && request.courier_first_name)) && (
+                          <Button
+                            onClick={() => handleDeliverToCourier(request.id)}
+                            disabled={actionLoading === request.id}
+                            className="w-full bg-primary hover:bg-primary/90 text-white text-sm"
+                            size="sm"
+                          >
+                            {actionLoading === request.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            ) : (
+                              <Send className="h-4 w-4 mr-2" />
+                            )}
+                            Entregar a Corredor
+                          </Button>
+                        )}
+                      </div>
 
-            {/* Contenido principal */}
-            <div className="flex-1">
-              <h4 className="font-semibold text-lg mb-2">
-                {request.brand} {request.model} - Talla {request.size}
-              </h4>
-              
-              {request.product_color && (
-                <p className="text-sm text-gray-600 mb-2">
-                  🎨 <strong>Color:</strong> {request.product_color}
-                </p>
-              )}
-              
-              <p className="text-sm text-gray-600 mb-2">
-                <User className="h-4 w-4 inline mr-1" />
-                Solicitado por: <strong>{request.requester_first_name} {request.requester_last_name}</strong>
-              </p>
-              
-              {/* ✅ CORREGIDO: Verificar courier con los campos reales */}
-              {request.courier_first_name && (
-                <div className="mb-2">
-                  <p className="text-sm text-blue-600">
-                    <Truck className="h-4 w-4 inline mr-1" />
-                    Corredor asignado: <strong>{request.courier_first_name} {request.courier_last_name}</strong>
-                    {request.estimated_pickup_time && ` (ETA: ${request.estimated_pickup_time} min)`}
-                  </p>
+                      {/* DESKTOP VIEW */}
+                      <div className="hidden md:block p-6">
+                        <div className="flex items-start mb-4">
+                          <div className="flex-shrink-0 mr-4">
+                            <img
+                              src={request.product_image || `https://via.placeholder.com/150x100/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
+                              alt={`${request.brand} ${request.model}`}
+                              className="w-32 h-24 object-cover rounded-lg border border-gray-200 shadow-sm"
+                              onError={(e) => {
+                                if (!e.currentTarget.dataset.fallback) {
+                                  e.currentTarget.dataset.fallback = 'true';
+                                  e.currentTarget.src = `https://via.placeholder.com/150x100/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
+                                }
+                              }}
+                            />
+                            {request.product_price && (
+                              <p className="text-xs text-gray-600 mt-1 text-center font-medium">
+                                💰 {formatPrice(request.product_price)}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-lg mb-2">
+                              {request.brand} {request.model} - Talla {request.size}
+                            </h4>
+                            
+                            {request.product_color && (
+                              <p className="text-sm text-gray-600 mb-2">
+                                🎨 <strong>Color:</strong> {request.product_color}
+                              </p>
+                            )}
+                            
+                            <p className="text-sm text-gray-600 mb-2">
+                              <User className="h-4 w-4 inline mr-1" />
+                              Solicitado por: <strong>
+                                {request.requester_first_name ? 
+                                  `${request.requester_first_name} ${request.requester_last_name}` : 
+                                  'Usuario'
+                                }
+                              </strong>
+                            </p>
+                            
+                            {request.courier_first_name && (
+                              <div className="mb-2">
+                                <p className="text-sm text-blue-600">
+                                  <Truck className="h-4 w-4 inline mr-1" />
+                                  Corredor asignado: <strong>{request.courier_first_name} {request.courier_last_name}</strong>
+                                  {request.estimated_pickup_time && ` (ETA: ${request.estimated_pickup_time} min)`}
+                                </p>
+                              </div>
+                            )}
+                            
+                            <div className="flex items-center space-x-4 text-sm text-gray-500">
+                              <span>
+                                <Clock className="h-4 w-4 inline mr-1" />
+                                Estado: {request.status_description || request.status}
+                              </span>
+                              <span>
+                                📍 Propósito: {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' : '📦 Restock'}
+                              </span>
+                              <span>
+                                📦 Cantidad: {request.quantity}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="text-right ml-6">
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                              request.status === 'courier_assigned'
+                                ? 'bg-green-100 text-green-800' 
+                                : request.status === 'accepted'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {request.status === 'courier_assigned' ? '✅ Listo para recoger' : 
+                               request.status === 'accepted' ? '🔄 Esperando corredor' : 
+                               request.status === 'in_transit' ? '🚚 En tránsito' : request.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {request.notes && (
+                          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-gray-700">
+                              <strong>📝 Notas:</strong> {request.notes}
+                            </p>
+                          </div>
+                        )}
+
+                        {(request.status === 'courier_assigned' || (request.status === 'accepted' && request.courier_first_name)) && (
+                          <div className="mt-4">
+                            <Button
+                              onClick={() => handleDeliverToCourier(request.id)}
+                              disabled={actionLoading === request.id}
+                              className="w-full bg-primary hover:bg-primary/90 text-white"
+                            >
+                              {actionLoading === request.id ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              ) : (
+                                <Send className="h-4 w-4 mr-2" />
+                              )}
+                              Entregar a Corredor
+                            </Button>
+                          </div>
+                        )}
+                        
+                        <div className="mt-3 pt-3 border-t text-xs text-gray-500">
+                          <div className="flex justify-between items-center">
+                            <span>ID: {request.id} | Código: {request.sneaker_reference_code}</span>
+                            <span>Status: {request.status} | Corredor: {request.courier_first_name ? `${request.courier_first_name} ${request.courier_last_name}` : 'Sin asignar'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
-              
-              <div className="flex items-center space-x-4 text-sm text-gray-500">
-                <span>
-                  <Clock className="h-4 w-4 inline mr-1" />
-                  Estado: {request.status_description || request.status}
-                </span>
-                <span>
-                  📍 Propósito: {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' : '📦 Restock'}
-                </span>
-                <span>
-                  📦 Cantidad: {request.quantity}
-                </span>
-              </div>
-            </div>
-            
-            {/* Estado visual */}
-            <div className="text-right ml-6">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                request.status === 'courier_assigned'
-                  ? 'bg-green-100 text-green-800' 
-                  : request.status === 'accepted'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-blue-100 text-blue-800'
-              }`}>
-                {request.status === 'courier_assigned' ? '✅ Listo para recoger' : 
-                 request.status === 'accepted' ? '🔄 Esperando corredor' : 
-                 request.status === 'in_transit' ? '🚚 En tránsito' : request.status}
-              </span>
-            </div>
-          </div>
-
-          {request.notes && (
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-700">
-                <strong>📝 Notas:</strong> {request.notes}
-              </p>
-            </div>
-          )}
-
-          {/* ✅ CORREGIDO: Condición realista para mostrar botón */}
-          {(request.status === 'courier_assigned' || (request.status === 'accepted' && request.courier_first_name)) && (
-            <div className="mt-4">
-              <Button
-                onClick={() => handleDeliverToCourier(request.id)}
-                disabled={actionLoading === request.id}
-                className="w-full bg-primary hover:bg-primary/90 text-white"
-              >
-                {actionLoading === request.id ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                ) : (
-                  <Send className="h-4 w-4 mr-2" />
-                )}
-                Entregar a Corredor
-              </Button>
-            </div>
-          )}
-          
-          {/* ✅ Info adicional para debugging */}
-          <div className="mt-3 pt-3 border-t text-xs text-gray-500">
-            <div className="flex justify-between items-center">
-              <span>ID: {request.id} | Código: {request.sneaker_reference_code}</span>
-              <span>Status: {request.status} | Corredor: {request.courier_first_name ? `${request.courier_first_name} ${request.courier_last_name}` : 'Sin asignar'}</span>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
-</CardContent>
+            </CardContent>
           </Card>
         )}
 
         {activeTab === 'stats' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
             <Card>
               <CardHeader>
-                <h3 className="text-lg font-semibold">📊 Estadísticas del Día</h3>
+                <h3 className="text-base md:text-lg font-semibold">📊 Estadísticas del Día</h3>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-3 md:space-y-4">
                   <div className="flex justify-between items-center">
-                    <span>Solicitudes procesadas:</span>
+                    <span className="text-sm md:text-base">Solicitudes procesadas:</span>
                     <span className="font-bold">24</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span>Tiempo promedio de respuesta:</span>
+                    <span className="text-sm md:text-base">Tiempo promedio de respuesta:</span>
                     <span className="font-bold text-green-600">8.5 min</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span>Solicitudes urgentes:</span>
+                    <span className="text-sm md:text-base">Solicitudes urgentes:</span>
                     <span className="font-bold text-red-600">6</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span>Productos entregados:</span>
+                    <span className="text-sm md:text-base">Productos entregados:</span>
                     <span className="font-bold">18</span>
                   </div>
                 </div>
@@ -839,47 +1149,47 @@ export const WarehouseDashboard: React.FC = () => {
             </Card>
 
             <Card>
-             <CardHeader>
-               <h3 className="text-lg font-semibold">🎯 Rendimiento</h3>
-             </CardHeader>
-             <CardContent>
-               <div className="space-y-4">
-                 <div>
-                   <div className="flex justify-between items-center mb-1">
-                     <span>Tasa de completación</span>
-                     <span className="font-bold">{stats.completionRate}%</span>
-                   </div>
-                   <div className="w-full bg-gray-200 rounded-full h-2">
-                     <div 
-                       className="bg-green-600 h-2 rounded-full" 
-                       style={{ width: `${stats.completionRate}%` }}
-                     ></div>
-                   </div>
-                 </div>
-                 <div>
-                   <div className="flex justify-between items-center mb-1">
-                     <span>Productos sin stock</span>
-                     <span className="font-bold text-red-600">2</span>
-                   </div>
-                   <div className="w-full bg-gray-200 rounded-full h-2">
-                     <div className="bg-red-600 h-2 rounded-full" style={{ width: '8%' }}></div>
-                   </div>
-                 </div>
-                 <div>
-                   <div className="flex justify-between items-center mb-1">
-                     <span>Satisfacción promedio</span>
-                     <span className="font-bold text-green-600">4.8/5</span>
-                   </div>
-                   <div className="w-full bg-gray-200 rounded-full h-2">
-                     <div className="bg-green-600 h-2 rounded-full" style={{ width: '96%' }}></div>
-                   </div>
-                 </div>
-               </div>
-             </CardContent>
-           </Card>
-         </div>
-       )}
-     </div>
-   </DashboardLayout>
- );
+              <CardHeader>
+                <h3 className="text-base md:text-lg font-semibold">🎯 Rendimiento</h3>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 md:space-y-4">
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm md:text-base">Tasa de completación</span>
+                      <span className="font-bold">{stats.completionRate}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-green-600 h-2 rounded-full" 
+                        style={{ width: `${stats.completionRate}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm md:text-base">Productos sin stock</span>
+                      <span className="font-bold text-red-600">2</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-red-600 h-2 rounded-full" style={{ width: '8%' }}></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm md:text-base">Satisfacción promedio</span>
+                      <span className="font-bold text-green-600">4.8/5</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-green-600 h-2 rounded-full" style={{ width: '96%' }}></div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
+  );
 };

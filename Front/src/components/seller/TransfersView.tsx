@@ -15,12 +15,19 @@ import {
 
 interface TransfersViewProps {
   onTransferRequested?: (transferId: number, isUrgent: boolean) => void;
+  prefilledProductData?: {
+    sneaker_reference_code: string;
+    brand: string;
+    model: string;
+    color: string;
+    size: string;
+    product?: any;
+  } | null;
 }
 
-
-
 export const TransfersView: React.FC<TransfersViewProps> = ({ 
-  onTransferRequested 
+  onTransferRequested,
+  prefilledProductData 
 }) => {
   const [activeTab, setActiveTab] = useState('pending');
   const [pendingTransfers, setPendingTransfers] = useState([]);
@@ -28,8 +35,6 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Form state para nueva solicitud
-  const [showNewRequest, setShowNewRequest] = useState(false);
   const [requestForm, setRequestForm] = useState({
     source_location_id: 2,
     sneaker_reference_code: '',
@@ -37,16 +42,34 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     model: '',
     size: '',
     quantity: 1,
-    purpose: 'cliente', // 'cliente' o 'restock'
+    purpose: 'cliente',
     pickup_type: 'corredor',
     destination_type: 'exhibicion',
     notes: ''
   });
 
+  // Effect para manejar datos prefilled
+  useEffect(() => {
+    if (prefilledProductData) {
+      setRequestForm({
+        source_location_id: 2,
+        sneaker_reference_code: prefilledProductData.sneaker_reference_code || '',
+        brand: prefilledProductData.brand || '',
+        model: prefilledProductData.model || '',
+        size: prefilledProductData.size || '',
+        quantity: 1,
+        purpose: 'cliente',
+        pickup_type: 'corredor',
+        destination_type: 'exhibicion',
+        notes: `Solicitud desde escáner - Color: ${prefilledProductData.color || 'N/A'}`
+      });
+      
+      setActiveTab('new');
+    }
+  }, [prefilledProductData]);
+
   useEffect(() => {
     loadTransfersData();
-    
-    // Polling cada 30 segundos como recomienda la documentación
     const interval = setInterval(loadTransfersData, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -56,27 +79,19 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       setError(null);
       setLoading(true);
       
-      console.log('🔄 Cargando datos de transferencias...');
-      
-      // USAR vendorAPI en lugar de transfersAPI
       const [pendingResponse, receptionsResponse] = await Promise.all([
         vendorAPI.getPendingTransfers(),
         vendorAPI.getPendingReceptions()
       ]);
       
-      console.log('✅ Datos cargados:', { pendingResponse, receptionsResponse });
-      
       setPendingTransfers(pendingResponse.pending_transfers || []);
       setPendingReceptions(receptionsResponse.pending_receptions || []);
       
     } catch (err) {
-      console.error('❌ Error loading transfers:', err);
+      console.error('Error loading transfers:', err);
       setError('Error conectando con el servidor');
-      
-      // Datos mock como fallback (esto no debería ejecutarse ahora que tenemos fallback automático)
       setPendingTransfers([]);
       setPendingReceptions([]);
-      
     } finally {
       setLoading(false);
     }
@@ -86,14 +101,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     e.preventDefault();
     
     try {
-      console.log('🔄 Enviando nueva solicitud:', requestForm);
-      
-      // USAR vendorAPI en lugar de transfersAPI
       const response = await vendorAPI.requestTransfer(requestForm);
       
-      console.log('✅ Respuesta de solicitud:', response);
-      
-      // Notificar al dashboard padre
       onTransferRequested?.(
         response.transfer_request_id, 
         requestForm.purpose === 'cliente'
@@ -101,7 +110,6 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       
       alert(`Solicitud creada exitosamente. ID: ${response.transfer_request_id}`);
       
-      // Reset form
       setRequestForm({
         source_location_id: 2,
         sneaker_reference_code: '',
@@ -119,24 +127,18 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       loadTransfersData();
       
     } catch (err) {
-      console.error('❌ Error enviando solicitud:', err);
+      console.error('Error enviando solicitud:', err);
       alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));
     }
   };
 
-
   const handleConfirmReception = async (requestId: number) => {
     try {
-      console.log('🔄 Confirmando recepción:', requestId);
-      
-      // USAR vendorAPI en lugar de transfersAPI
       await vendorAPI.confirmReception(requestId, 1, true, 'Producto recibido correctamente');
-      
-      console.log('✅ Recepción confirmada');
       alert('Recepción confirmada exitosamente');
       loadTransfersData();
     } catch (err) {
-      console.error('❌ Error confirmando recepción:', err);
+      console.error('Error confirmando recepción:', err);
       alert('Error confirmando recepción: ' + (err instanceof Error ? err.message : 'Error desconocido'));
     }
   };
@@ -174,6 +176,25 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Indicador de datos prefilled */}
+      {prefilledProductData && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <Package className="h-5 w-5 text-blue-600" />
+              <div>
+                <p className="text-sm font-medium text-blue-800">
+                  Producto desde Escáner IA
+                </p>
+                <p className="text-sm text-blue-700">
+                  {prefilledProductData.brand} {prefilledProductData.model} - Talla {prefilledProductData.size}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Navigation Tabs */}
       <Card>
         <CardContent className="p-4">
@@ -195,9 +216,15 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             <Button
               variant={activeTab === 'new' ? 'primary' : 'outline'}
               onClick={() => setActiveTab('new')}
+              className={prefilledProductData ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}
             >
               <Plus className="h-4 w-4 mr-2" />
               Nueva Solicitud
+              {prefilledProductData && (
+                <span className="ml-2 px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
+                  ●
+                </span>
+              )}
             </Button>
           </div>
         </CardContent>
@@ -337,7 +364,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       {activeTab === 'new' && (
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold">Nueva Solicitud de Transferencia</h3>
+            <h3 className="text-lg font-semibold">
+              Nueva Solicitud de Transferencia
+              {prefilledProductData && (
+                <span className="ml-2 text-sm font-normal text-blue-600">
+                  (Datos del escáner)
+                </span>
+              )}
+            </h3>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleNewRequest} className="space-y-4">
@@ -348,6 +382,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   onChange={(e) => setRequestForm({...requestForm, sneaker_reference_code: e.target.value})}
                   placeholder="AD-UB22-BLK-001"
                   required
+                  className={prefilledProductData?.sneaker_reference_code ? 'border-blue-300 bg-blue-50' : ''}
                 />
                 <Input
                   label="Marca"
@@ -355,6 +390,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   onChange={(e) => setRequestForm({...requestForm, brand: e.target.value})}
                   placeholder="Adidas"
                   required
+                  className={prefilledProductData?.brand ? 'border-blue-300 bg-blue-50' : ''}
                 />
               </div>
 
@@ -365,6 +401,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   onChange={(e) => setRequestForm({...requestForm, model: e.target.value})}
                   placeholder="Ultraboost 22"
                   required
+                  className={prefilledProductData?.model ? 'border-blue-300 bg-blue-50' : ''}
                 />
                 <Input
                   label="Talla"
@@ -372,6 +409,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   onChange={(e) => setRequestForm({...requestForm, size: e.target.value})}
                   placeholder="9.5"
                   required
+                  className={prefilledProductData?.size ? 'border-blue-300 bg-blue-50' : ''}
                 />
               </div>
 
@@ -407,7 +445,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   value={requestForm.notes}
                   onChange={(e) => setRequestForm({...requestForm, notes: e.target.value})}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                    prefilledProductData ? 'border-blue-300 bg-blue-50' : ''
+                  }`}
                   placeholder="Información adicional sobre la transferencia..."
                 />
               </div>
@@ -415,6 +455,11 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               <Button type="submit" className="w-full">
                 <Plus className="h-4 w-4 mr-2" />
                 Solicitar Transferencia
+                {prefilledProductData && (
+                  <span className="ml-2 text-xs opacity-80">
+                    (Desde Escáner)
+                  </span>
+                )}
               </Button>
             </form>
           </CardContent>
