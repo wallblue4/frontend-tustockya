@@ -701,7 +701,7 @@ export const RunnerDashboard: React.FC = () => {
                                   ⏱️ {request.hours_since_accepted.toFixed(1)}h • 📍 {distance} km
                                 </p>
                               </div>
-                                  
+                              
                             </div>
                             
                             <Button

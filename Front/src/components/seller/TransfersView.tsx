@@ -15,7 +15,8 @@ import {
   XCircle,
   User,
   MapPin,
-  Calendar
+  Calendar,
+  History
 } from 'lucide-react';
 
 interface TransfersViewProps {
@@ -30,26 +31,114 @@ interface TransfersViewProps {
   } | null;
 }
 
-// Interfaz para la estructura del endpoint VE003 (pending-receptions)
-interface PendingReception {
+// *** INTERFACES ACTUALIZADAS SEGÚN DOCUMENTACIÓN ***
+
+// Interfaz para transferencia pendiente (recepciones por confirmar)
+interface PendingTransfer {
   id: number;
-  sneaker_reference_code: string;
-  brand: string;
-  model: string;
-  size: string;
-  quantity: number;
-  courier_name: string;
-  delivered_at: string;
-  hours_since_delivery: number;
-  requires_urgent_confirmation: boolean;
-  delivery_notes?: string;
+  status: 'pending' | 'accepted' | 'courier_assigned' | 'in_transit' | 'delivered';
+  status_info: {
+    status: string;
+    title: string;
+    description: string;
+    detail?: string;
+    action_required?: string;
+    next_step?: string;
+    estimated_time?: string;
+    urgency: 'high' | 'medium' | 'normal';
+    can_cancel: boolean;
+    progress_percentage: number;
+    courier_info?: {
+      name: string;
+      email: string;
+      picked_up_at?: string;
+    };
+  };
+  product_info: {
+    reference_code: string;
+    brand: string;
+    model: string;
+    size: string;
+    quantity: number;
+    color: string;
+    price: number;
+    image?: string;
+    full_description: string;
+  };
+  location_info: {
+    from: {
+      name: string;
+      address: string;
+      phone: string;
+    };
+    to: {
+      name: string;
+      address: string;
+    };
+  };
+  purpose_info: {
+    purpose: string;
+    description: string;
+    priority: string;
+    destination_type: string;
+    storage_location: string;
+  };
+  timeline: Array<{
+    step: string;
+    title: string;
+    timestamp: string | null;
+    completed: boolean;
+    description: string;
+  }>;
+  hours_since_request: number;
+  days_since_request: number;
+  hours_in_current_state: number;
 }
 
-// Interfaz para el response del endpoint VE003
-interface PendingReceptionsResponse {
-  success: boolean;
-  pending_receptions: PendingReception[];
-  total_pending: number;
+// Interfaz para transferencia completada (historial)
+interface CompletedTransfer {
+  id: number;
+  status: 'completed' | 'cancelled';
+  result_info: {
+    result: 'success' | 'cancelled';
+    title: string;
+    description: string;
+    color: 'green' | 'red';
+    icon: string;
+  };
+  product_info: {
+    reference_code: string;
+    brand: string;
+    model: string;
+    size: string;
+    quantity: number;
+    color: string;
+    price: number;
+    total_value: number;
+    image?: string;
+    full_description: string;
+  };
+  time_info: {
+    requested_at: string;
+    completed_at: string;
+    duration: string;
+    duration_hours: number;
+  };
+  locations: {
+    from: string;
+    to: string;
+  };
+  participants: {
+    warehouse_keeper: string;
+    courier: string;
+  };
+  purpose: {
+    type: string;
+    description: string;
+    urgent: boolean;
+  };
+  notes?: string;
+  reception_notes?: string;
 }
 
 export const TransfersView: React.FC<TransfersViewProps> = ({ 
@@ -57,10 +146,17 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   prefilledProductData 
 }) => {
   const [activeTab, setActiveTab] = useState('pending');
-  const [pendingReceptions, setPendingReceptions] = useState<PendingReception[]>([]);
+  
+  // *** ESTADOS ACTUALIZADOS PARA ENDPOINTS CORRECTOS ***
+  const [pendingTransfers, setPendingTransfers] = useState<PendingTransfer[]>([]);
+  const [completedTransfers, setCompletedTransfers] = useState<CompletedTransfer[]>([]);
+  
+  // Estados de resumen
   const [urgentCount, setUrgentCount] = useState(0);
   const [normalCount, setNormalCount] = useState(0);
   const [totalPending, setTotalPending] = useState(0);
+  const [todayStats, setTodayStats] = useState<any>(null);
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,24 +202,39 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     return () => clearInterval(interval);
   }, []);
 
+  // *** FUNCIÓN ACTUALIZADA PARA USAR ENDPOINTS CORRECTOS ***
   const loadTransfersData = async () => {
     try {
       setError(null);
       setLoading(true);
       
-      // Cargar recepciones pendientes (que ahora son las "transferencias")
-      const receptionsResponse = await vendorAPI.getPendingTransfers(); // Usa VE003 internamente
+      // Cargar transferencias pendientes (recepciones por confirmar)
+      console.log('🔄 Cargando transferencias pendientes...');
+      const pendingResponse = await vendorAPI.getPendingTransfers(); // Usa /vendor/pending-transfers
       
-      // El endpoint VE003 adaptado devuelve: { success, pending_transfers (recepciones), urgent_count, normal_count, total_pending }
-      setPendingReceptions(receptionsResponse.pending_transfers || []);
-      setUrgentCount(receptionsResponse.urgent_count || 0);
-      setNormalCount(receptionsResponse.normal_count || 0);
-      setTotalPending(receptionsResponse.total_pending || 0);
+      if (pendingResponse.success) {
+        setPendingTransfers(pendingResponse.pending_transfers || []);
+        setUrgentCount(pendingResponse.urgent_count || 0);
+        setNormalCount(pendingResponse.normal_count || 0);
+        setTotalPending(pendingResponse.total_pending || 0);
+        console.log('✅ Transferencias pendientes cargadas:', pendingResponse.pending_transfers?.length || 0);
+      }
+      
+      // Cargar transferencias completadas (historial)
+      console.log('🔄 Cargando transferencias completadas...');
+      const completedResponse = await vendorAPI.getCompletedTransfers(); // Usa /vendor/completed-transfers
+      
+      if (completedResponse.success) {
+        setCompletedTransfers(completedResponse.completed_transfers || []);
+        setTodayStats(completedResponse.today_stats);
+        console.log('✅ Transferencias completadas cargadas:', completedResponse.completed_transfers?.length || 0);
+      }
       
     } catch (err: any) {
       console.error('Error loading transfers:', err);
       setError('Error conectando con el servidor');
-      setPendingReceptions([]);
+      setPendingTransfers([]);
+      setCompletedTransfers([]);
       setUrgentCount(0);
       setNormalCount(0);
       setTotalPending(0);
@@ -167,10 +278,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     }
   };
 
-  // Función para confirmar recepción
-  const handleConfirmReception = async (receptionId: number) => {
+  // *** FUNCIÓN ACTUALIZADA - Confirmar recepción para transferencias pendientes ***
+  const handleConfirmReception = async (transferId: number) => {
     try {
-      await vendorAPI.confirmReception(receptionId, 1, true, 'Producto recibido correctamente');
+      await vendorAPI.confirmReception(transferId, 1, true, 'Producto recibido correctamente');
       alert('Recepción confirmada exitosamente');
       loadTransfersData(); // Recargar datos
     } catch (err: any) {
@@ -179,62 +290,86 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     }
   };
 
-  // Función para calcular tiempo transcurrido desde la entrega
-  const parseTimeElapsed = (deliveredAt: string): string => {
-    const now = new Date();
-    const delivered = new Date(deliveredAt);
-    const diffMs = now.getTime() - delivered.getTime();
+  // *** NUEVA FUNCIÓN - Cancelar transferencia ***
+  const handleCancelTransfer = async (transferId: number, reason?: string) => {
+    if (!confirm('¿Estás seguro de que quieres cancelar esta transferencia?')) {
+      return;
+    }
     
-    const hours = Math.floor(diffMs / (1000 * 60 * 60));
-    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
+    try {
+      await vendorAPI.cancelTransfer(transferId, reason || 'Cancelada por el vendedor');
+      alert('Transferencia cancelada exitosamente');
+      loadTransfersData(); // Recargar datos
+    } catch (err: any) {
+      console.error('Error cancelando transferencia:', err);
+      alert('Error cancelando transferencia: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+    }
+  };
+
+  // *** FUNCIONES HELPER ACTUALIZADAS ***
+  
+  // Función para calcular tiempo transcurrido
+  const parseTimeElapsed = (hoursInState: number): string => {
+    if (hoursInState < 1) {
+      const minutes = Math.floor(hoursInState * 60);
+      return `${minutes}m`;
+    }
+    const hours = Math.floor(hoursInState);
+    const minutes = Math.floor((hoursInState % 1) * 60);
+    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
 
   // Función para obtener el nombre del corredor
-  const getCourierName = (reception: PendingReception): string => {
-    return reception.courier_name || 'Sin asignar';
+  const getCourierName = (transfer: PendingTransfer): string => {
+    return transfer.status_info.courier_info?.name || 'Sin asignar';
   };
 
-  // La próxima acción para recepciones pendientes
-  const getNextAction = (reception: PendingReception): string => {
-    if (reception.requires_urgent_confirmation) {
-      return '🔥 REQUIERE CONFIRMACIÓN URGENTE';
+  // La próxima acción para transferencias pendientes
+  const getNextAction = (transfer: PendingTransfer): string => {
+    if (transfer.status_info.action_required === 'confirm_reception') {
+      return '🔥 REQUIERE CONFIRMACIÓN DE RECEPCIÓN';
     }
-    return 'Confirmar recepción del producto';
+    return transfer.status_info.next_step || 'En proceso...';
   };
 
-  const getStatusColor = (reception: PendingReception) => {
-    if (reception.requires_urgent_confirmation) {
-      return 'bg-red-100 text-red-800';
+  const getStatusColor = (transfer: PendingTransfer) => {
+    switch (transfer.status_info.urgency) {
+      case 'high':
+        return 'bg-red-100 text-red-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-green-100 text-green-800';
     }
-    return 'bg-green-100 text-green-800';
   };
 
-  const getStatusIcon = (reception: PendingReception) => {
-    if (reception.requires_urgent_confirmation) {
-      return <AlertCircle className="h-4 w-4" />;
+  const getStatusIcon = (transfer: PendingTransfer) => {
+    switch (transfer.status) {
+      case 'pending':
+        return <Clock className="h-4 w-4" />;
+      case 'accepted':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'courier_assigned':
+        return <User className="h-4 w-4" />;
+      case 'in_transit':
+        return <Truck className="h-4 w-4" />;
+      case 'delivered':
+        return <AlertCircle className="h-4 w-4" />;
+      default:
+        return <Package className="h-4 w-4" />;
     }
-    return <CheckCircle className="h-4 w-4" />;
   };
 
-  const getStatusText = (reception: PendingReception): string => {
-    if (reception.requires_urgent_confirmation) {
-      return 'Urgente';
-    }
-    return 'Entregado';
+  const getStatusText = (transfer: PendingTransfer): string => {
+    return transfer.status_info.title;
   };
-
-  // Filtrar recepciones - Ya vienen filtradas del endpoint
-  const activeReceptions = pendingReceptions;
 
   if (loading) {
     return (
       <Card>
         <CardContent className="p-6 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Cargando recepciones...</p>
+          <p>Cargando transferencias...</p>
         </CardContent>
       </Card>
     );
@@ -261,14 +396,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         </Card>
       )}
 
-      {/* Resumen de recepciones pendientes según endpoint VE003 */}
+      {/* Resumen de transferencias */}
       {totalPending > 0 && (
         <Card>
           <CardContent className="p-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <div className="bg-gray-50 p-3 rounded-lg">
                 <p className="text-2xl font-bold text-gray-600">{totalPending}</p>
-                <p className="text-xs text-gray-600">Total Por Confirmar</p>
+                <p className="text-xs text-gray-600">Total Pendientes</p>
               </div>
               {urgentCount > 0 && (
                 <div className="bg-red-50 p-3 rounded-lg">
@@ -280,6 +415,12 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 <div className="bg-green-50 p-3 rounded-lg">
                   <p className="text-2xl font-bold text-green-600">{normalCount}</p>
                   <p className="text-xs text-green-600">✅ Normales</p>
+                </div>
+              )}
+              {todayStats && (
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-2xl font-bold text-blue-600">{todayStats.completed || 0}</p>
+                  <p className="text-xs text-blue-600">Completadas Hoy</p>
                 </div>
               )}
             </div>
@@ -298,11 +439,11 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             >
               <div className="flex items-center space-x-2">
                 {activeTab === 'pending' && <Package className="h-4 w-4 text-primary" />}
-                {activeTab === 'receptions' && <CheckCircle className="h-4 w-4 text-primary" />}
+                {activeTab === 'completed' && <History className="h-4 w-4 text-primary" />}
                 {activeTab === 'new' && <Plus className="h-4 w-4 text-primary" />}
                 <span className="font-medium">
-                  {activeTab === 'pending' && `Recepciones por Confirmar (${activeReceptions.length})`}
-                  {activeTab === 'receptions' && 'Historial'}
+                  {activeTab === 'pending' && `Recepciones por Confirmar (${totalPending})`}
+                  {activeTab === 'completed' && 'Historial del Día'}
                   {activeTab === 'new' && 'Nueva Solicitud'}
                   {prefilledProductData && activeTab === 'new' && (
                     <span className="ml-2 px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
@@ -326,19 +467,19 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   }`}
                 >
                   <Package className="h-4 w-4" />
-                  <span>Recepciones por Confirmar ({activeReceptions.length})</span>
+                  <span>Recepciones por Confirmar ({totalPending})</span>
                 </button>
                 <button
                   onClick={() => {
-                    setActiveTab('receptions');
+                    setActiveTab('completed');
                     setShowMobileMenu(false);
                   }}
                   className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 border-t ${
-                    activeTab === 'receptions' ? 'bg-blue-50 text-blue-700' : ''
+                    activeTab === 'completed' ? 'bg-blue-50 text-blue-700' : ''
                   }`}
                 >
-                  <CheckCircle className="h-4 w-4" />
-                  <span>Historial</span>
+                  <History className="h-4 w-4" />
+                  <span>Historial del Día</span>
                 </button>
                 <button
                   onClick={() => {
@@ -370,14 +511,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               onClick={() => setActiveTab('pending')}
             >
               <Package className="h-4 w-4 mr-2" />
-              Recepciones por Confirmar ({activeReceptions.length})
+              Recepciones por Confirmar ({totalPending})
             </Button>
             <Button
-              variant={activeTab === 'receptions' ? 'primary' : 'outline'}
-              onClick={() => setActiveTab('receptions')}
+              variant={activeTab === 'completed' ? 'primary' : 'outline'}
+              onClick={() => setActiveTab('completed')}
             >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Historial
+              <History className="h-4 w-4 mr-2" />
+              Historial del Día
             </Button>
             <Button
               variant={activeTab === 'new' ? 'primary' : 'outline'}
@@ -411,26 +552,26 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       {activeTab === 'pending' && (
         <Card>
           <CardHeader>
-            <h3 className="text-base md:text-lg font-semibold">Productos Entregados - Pendientes de Confirmación</h3>
+            <h3 className="text-base md:text-lg font-semibold">Transferencias Pendientes de Confirmación</h3>
           </CardHeader>
           <CardContent>
-            {activeReceptions.length === 0 ? (
+            {pendingTransfers.length === 0 ? (
               <div className="text-center py-8 md:py-12">
                 <Package className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500 text-sm md:text-base">No tienes productos por confirmar</p>
+                <p className="text-gray-500 text-sm md:text-base">No tienes transferencias pendientes</p>
               </div>
             ) : (
               <div className="space-y-3 md:space-y-4">
-                {activeReceptions.map((reception) => (
-                  <div key={reception.id} className="border rounded-lg p-3 md:p-4">
+                {pendingTransfers.map((transfer) => (
+                  <div key={transfer.id} className="border rounded-lg p-3 md:p-4">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(reception)}`}>
-                            {getStatusIcon(reception)}
-                            <span>{getStatusText(reception)}</span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(transfer)}`}>
+                            {getStatusIcon(transfer)}
+                            <span>{getStatusText(transfer)}</span>
                           </span>
-                          {reception.requires_urgent_confirmation && (
+                          {transfer.status_info.urgency === 'high' && (
                             <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
                               🔥 URGENTE
                             </span>
@@ -438,48 +579,88 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         </div>
                         
                         <h4 className="font-semibold text-sm md:text-lg truncate">
-                          {reception.brand} {reception.model}
+                          {transfer.product_info.brand} {transfer.product_info.model}
                         </h4>
                         <p className="text-xs md:text-sm text-gray-600 truncate">
-                          Código: {reception.sneaker_reference_code} | Talla: {reception.size} | Cantidad: {reception.quantity}
+                          Código: {transfer.product_info.reference_code} | Talla: {transfer.product_info.size} | Cantidad: {transfer.product_info.quantity}
                         </p>
                         <p className="text-xs md:text-sm text-gray-500">
-                          {getNextAction(reception)}
+                          {getNextAction(transfer)}
                         </p>
                         <p className="text-xs text-gray-400 mt-1">
-                          Entregado: {new Date(reception.delivered_at).toLocaleString('es-ES')}
+                          Tiempo en estado actual: {parseTimeElapsed(transfer.hours_in_current_state)}
                         </p>
                       </div>
                       
                       <div className="text-right flex-shrink-0">
-                        <p className="text-xs md:text-sm text-gray-500">Tiempo desde entrega</p>
-                        <p className="font-medium text-sm md:text-base">{parseTimeElapsed(reception.delivered_at)}</p>
+                        <p className="text-xs md:text-sm text-gray-500">Progreso</p>
+                        <div className="w-20 bg-gray-200 rounded-full h-2 mb-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full" 
+                            style={{ width: `${transfer.status_info.progress_percentage}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-gray-500">{transfer.status_info.progress_percentage}%</p>
                         
-                        {/* Botón de confirmar recepción */}
-                        <Button
-                          onClick={() => handleConfirmReception(reception.id)}
-                          className="bg-green-600 hover:bg-green-700 text-sm mt-2 w-full"
-                          size="sm"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Confirmar Recepción
-                        </Button>
+                        {/* Botones de acción */}
+                        <div className="flex flex-col space-y-2 mt-3">
+                          {transfer.status === 'delivered' && (
+                            <Button
+                              onClick={() => handleConfirmReception(transfer.id)}
+                              className="bg-green-600 hover:bg-green-700 text-sm w-full"
+                              size="sm"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Confirmar Recepción
+                            </Button>
+                          )}
+                          
+                          {transfer.status_info.can_cancel && (
+                            <Button
+                              onClick={() => handleCancelTransfer(transfer.id)}
+                              className="bg-red-600 hover:bg-red-700 text-sm w-full"
+                              size="sm"
+                              variant="outline"
+                            >
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Cancelar
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Información del corredor */}
+                    {/* Información de ubicaciones */}
                     <div className="mt-3 p-2 md:p-3 bg-blue-50 rounded-md">
                       <p className="text-xs md:text-sm">
-                        <strong>Entregado por:</strong> {getCourierName(reception)}
+                        <strong>Desde:</strong> {transfer.location_info.from.name} → <strong>Hacia:</strong> {transfer.location_info.to.name}
                       </p>
+                      {transfer.status_info.courier_info && (
+                        <p className="text-xs md:text-sm mt-1">
+                          <strong>Corredor:</strong> {transfer.status_info.courier_info.name}
+                        </p>
+                      )}
                     </div>
 
-                    {/* Notas de entrega si existen */}
-                    {reception.delivery_notes && (
+                    {/* Timeline visual */}
+                    {transfer.timeline && (
                       <div className="mt-3 p-2 md:p-3 bg-gray-50 rounded-md">
-                        <p className="text-xs md:text-sm text-gray-700">
-                          <strong>Notas de entrega:</strong> {reception.delivery_notes}
-                        </p>
+                        <p className="text-xs font-medium text-gray-700 mb-2">Progreso de la transferencia:</p>
+                        <div className="space-y-1">
+                          {transfer.timeline.slice(-3).map((step, index) => (
+                            <div key={index} className="flex items-center space-x-2 text-xs">
+                              <div className={`w-2 h-2 rounded-full ${step.completed ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                              <span className={step.completed ? 'text-green-700' : 'text-gray-500'}>
+                                {step.title}
+                              </span>
+                              {step.timestamp && (
+                                <span className="text-gray-400">
+                                  {new Date(step.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -490,16 +671,79 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         </Card>
       )}
 
-      {activeTab === 'receptions' && (
+      {activeTab === 'completed' && (
         <Card>
           <CardHeader>
-            <h3 className="text-base md:text-lg font-semibold">Historial de Recepciones Confirmadas</h3>
+            <h3 className="text-base md:text-lg font-semibold">Historial de Transferencias del Día</h3>
+            {todayStats && (
+              <div className="text-sm text-gray-600">
+                {todayStats.completed} completadas • {todayStats.cancelled} canceladas • {todayStats.success_rate}% éxito
+              </div>
+            )}
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 md:py-12">
-              <CheckCircle className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500 text-sm md:text-base">Historial de recepciones confirmadas - En desarrollo</p>
-            </div>
+            {completedTransfers.length === 0 ? (
+              <div className="text-center py-8 md:py-12">
+                <History className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm md:text-base">No hay transferencias completadas hoy</p>
+              </div>
+            ) : (
+              <div className="space-y-3 md:space-y-4">
+                {completedTransfers.map((transfer) => (
+                  <div key={transfer.id} className="border rounded-lg p-3 md:p-4">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${
+                            transfer.result_info.result === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            <span>{transfer.result_info.icon}</span>
+                            <span>{transfer.result_info.title}</span>
+                          </span>
+                        </div>
+                        
+                        <h4 className="font-semibold text-sm md:text-lg truncate">
+                          {transfer.product_info.brand} {transfer.product_info.model}
+                        </h4>
+                        <p className="text-xs md:text-sm text-gray-600 truncate">
+                          Código: {transfer.product_info.reference_code} | Talla: {transfer.product_info.size}
+                        </p>
+                        <p className="text-xs md:text-sm text-gray-500">
+                          {transfer.result_info.description}
+                        </p>
+                      </div>
+                      
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-xs md:text-sm text-gray-500">Duración</p>
+                        <p className="font-medium text-sm md:text-base">{transfer.time_info.duration}</p>
+                        <p className="text-xs text-gray-400">
+                          {transfer.time_info.requested_at} - {transfer.time_info.completed_at}
+                        </p>
+                        {transfer.result_info.result === 'success' && (
+                          <p className="text-xs font-medium text-green-600 mt-1">
+                            ${transfer.product_info.total_value.toFixed(2)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-3 p-2 md:p-3 bg-gray-50 rounded-md">
+                      <p className="text-xs md:text-sm">
+                        <strong>Ruta:</strong> {transfer.locations.from} → {transfer.locations.to}
+                      </p>
+                      <p className="text-xs md:text-sm mt-1">
+                        <strong>Participantes:</strong> {transfer.participants.warehouse_keeper} (Bodeguero) • {transfer.participants.courier} (Corredor)
+                      </p>
+                      {transfer.notes && (
+                        <p className="text-xs md:text-sm mt-1">
+                          <strong>Notas:</strong> {transfer.notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

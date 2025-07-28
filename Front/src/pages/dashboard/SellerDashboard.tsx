@@ -48,14 +48,13 @@ interface PredictionResult {
   confidence: number;
 }
 
-// Nueva interfaz para los datos de transferencias
+// *** INTERFAZ ACTUALIZADA PARA RESUMEN DE TRANSFERENCIAS ***
 interface TransfersSummary {
-  total_requests: number;
-  pending: number;
-  accepted: number;
-  in_transit: number;
-  delivered: number;
-  cancelled: number;
+  total_pending: number;
+  urgent_count: number;     // Transferencias que requieren atención urgente
+  normal_count: number;     // Transferencias en proceso normal
+  completed_today: number;  // Transferencias completadas hoy
+  success_rate: number;     // Porcentaje de éxito del día
 }
 
 export const SellerDashboard: React.FC = () => {
@@ -74,7 +73,7 @@ export const SellerDashboard: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [capturedImage, setCapturedImage] = useState<File | null>(null);
   
-  // Nuevo estado para transferencias
+  // *** ESTADO ACTUALIZADO PARA TRANSFERENCIAS ***
   const [transfersSummary, setTransfersSummary] = useState<TransfersSummary | null>(null);
   const [transfersLoading, setTransfersLoading] = useState(false);
   
@@ -142,45 +141,61 @@ export const SellerDashboard: React.FC = () => {
     }
   };
 
-  // Nueva función para cargar resumen de transferencias usando endpoint VE003 (pending-receptions)
+  // *** FUNCIÓN ACTUALIZADA PARA CARGAR RESUMEN DE TRANSFERENCIAS ***
   const loadTransfersSummary = async () => {
     try {
       setTransfersLoading(true);
       console.log('🔄 Cargando resumen de transferencias...');
       
-      const response = await transfersAPI.vendor.getPendingTransfers(); // Usa VE003 internamente
+      // Cargar datos de ambos endpoints
+      const [pendingResponse, completedResponse] = await Promise.allSettled([
+        transfersAPI.vendor.getPendingTransfers(),   // /vendor/pending-transfers
+        transfersAPI.vendor.getCompletedTransfers()  // /vendor/completed-transfers
+      ]);
       
-      console.log('📊 Respuesta del servidor:', response);
+      let summary: TransfersSummary = {
+        total_pending: 0,
+        urgent_count: 0,
+        normal_count: 0,
+        completed_today: 0,
+        success_rate: 0
+      };
       
-      if (response.success) {
-        // VE003 adaptado devuelve { success, pending_transfers (recepciones), urgent_count, normal_count, total_pending }
-        const totalPending = response.total_pending || response.pending_transfers?.length || 0;
+      // Procesar transferencias pendientes
+      if (pendingResponse.status === 'fulfilled' && pendingResponse.value.success) {
+        const pendingData = pendingResponse.value;
+        summary.total_pending = pendingData.total_pending || 0;
+        summary.urgent_count = pendingData.urgent_count || 0;
+        summary.normal_count = pendingData.normal_count || 0;
         
-        const summary = {
-          total_requests: totalPending,
-          pending: totalPending,
-          accepted: 0,
-          in_transit: 0,
-          delivered: 0,
-          cancelled: 0
-        };
-        
-        console.log('📈 Resumen calculado:', summary);
-        setTransfersSummary(summary);
+        console.log('✅ Transferencias pendientes cargadas:', summary.total_pending);
       } else {
-        console.log('❌ Respuesta no exitosa del servidor');
-        setTransfersSummary(null);
+        console.warn('⚠️ Error cargando transferencias pendientes');
       }
+      
+      // Procesar transferencias completadas
+      if (completedResponse.status === 'fulfilled' && completedResponse.value.success) {
+        const completedData = completedResponse.value;
+        summary.completed_today = completedData.today_stats?.completed || 0;
+        summary.success_rate = completedData.today_stats?.success_rate || 0;
+        
+        console.log('✅ Transferencias completadas cargadas:', summary.completed_today);
+      } else {
+        console.warn('⚠️ Error cargando transferencias completadas');
+      }
+      
+      console.log('📈 Resumen final calculado:', summary);
+      setTransfersSummary(summary);
+      
     } catch (error) {
       console.warn('⚠️ Error loading transfers summary:', error);
       // Fallback a datos mock para mostrar algo mientras debuggeamos
-      const mockSummary = {
-        total_requests: 1,
-        pending: 1,
-        accepted: 0,
-        in_transit: 0,
-        delivered: 0,
-        cancelled: 0
+      const mockSummary: TransfersSummary = {
+        total_pending: 1,
+        urgent_count: 1,
+        normal_count: 0,
+        completed_today: 2,
+        success_rate: 75.0
       };
       console.log('📦 Usando datos mock:', mockSummary);
       setTransfersSummary(mockSummary);
@@ -574,7 +589,7 @@ export const SellerDashboard: React.FC = () => {
               </div>
             </div>
             
-            {/* Información adicional de acciones pendientes */}
+            {/* *** INFORMACIÓN ACTUALIZADA DE TRANSFERENCIAS *** */}
             {(apiData.pending_actions || transfersSummary) && (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
@@ -587,8 +602,7 @@ export const SellerDashboard: React.FC = () => {
                     </div>
                   )}
                   
-                  {/* BOTÓN CLICKEABLE PARA RECEPCIONES PENDIENTES - Actualizado para VE003 */}
-                  {/* Mostrar siempre para debug, cambiar condición después */}
+                  {/* *** BOTÓN CLICKEABLE PARA TRANSFERENCIAS - ACTUALIZADO *** */}
                   {transfersSummary && (
                     <button
                       onClick={handleTransfersClick}
@@ -597,10 +611,10 @@ export const SellerDashboard: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-2xl font-bold text-purple-600">
-                            {transfersSummary.pending || 0}
+                            {transfersSummary.total_pending || 0}
                           </p>
                           <p className="text-xs text-purple-600">
-                            {transfersSummary.pending > 0 ? 'Productos por confirmar' : 'No hay productos por confirmar'}
+                            {transfersSummary.total_pending > 0 ? 'Transferencias pendientes' : 'No hay pendientes'}
                           </p>
                           {transfersLoading && (
                             <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mt-1"></div>
@@ -609,15 +623,39 @@ export const SellerDashboard: React.FC = () => {
                         <ChevronRight className="h-4 w-4 text-purple-400 group-hover:text-purple-600 transition-colors" />
                       </div>
                       <div className="mt-1 flex items-center justify-center space-x-1">
-                        <CheckCircle className="h-3 w-3 text-purple-500" />
-                        <span className="text-xs text-purple-500">
-                          {transfersSummary.pending > 0 ? 'Confirmar recepciones' : 'Ver recepciones'}
-                        </span>
+                        {transfersSummary.urgent_count > 0 ? (
+                          <>
+                            <AlertCircle className="h-3 w-3 text-red-500" />
+                            <span className="text-xs text-red-500">
+                              {transfersSummary.urgent_count} urgente{transfersSummary.urgent_count > 1 ? 's' : ''}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-3 w-3 text-purple-500" />
+                            <span className="text-xs text-purple-500">
+                              Ver transferencias
+                            </span>
+                          </>
+                        )}
                       </div>
                     </button>
                   )}
+
+                  {/* Estadísticas adicionales de transferencias */}
+                  {transfersSummary && transfersSummary.completed_today > 0 && (
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <p className="text-2xl font-bold text-green-600">
+                        {transfersSummary.completed_today}
+                      </p>
+                      <p className="text-xs text-green-600">Completadas hoy</p>
+                      <p className="text-xs text-green-500 mt-1">
+                        {transfersSummary.success_rate.toFixed(1)}% éxito
+                      </p>
+                    </div>
+                  )}
                   
-                  {/* Debug info */}
+                  {/* Debug info - Solo mostrar si no hay transfersSummary */}
                   {!transfersSummary && (
                     <div className="bg-red-50 p-3 rounded-lg">
                       <p className="text-xs text-red-600">Debug: transfersSummary es null</p>
@@ -687,7 +725,7 @@ export const SellerDashboard: React.FC = () => {
       currentView === 'today-sales' ? 'Ventas del Día' :
       currentView === 'expenses' ? 'Registrar Gasto' :
       currentView === 'expenses-list' ? 'Gastos del Día' :
-      currentView === 'transfers' ? 'Productos por Confirmar' :
+      currentView === 'transfers' ? 'Gestión de Transferencias' :
       'Notificaciones'
     }>
       {/* MODAL DE CÁMARA */}

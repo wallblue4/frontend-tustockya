@@ -1,5 +1,5 @@
-// src/services/transfersAPI.js - ACTUALIZAR ESTA PARTE
-const BACKEND_URL = 'https://tustockya-backend.onrender.com';
+// src/services/transfersAPI.js - CORREGIDO PARA USAR ENDPOINTS CORRECTOS
+const BACKEND_URL = import.meta.env.VITE_BACKEND_SERVICE;
 
 const getHeaders = () => {
   const token = localStorage.getItem('token');
@@ -30,22 +30,154 @@ const tryBackendFirst = async (apiCall) => {
   }
 };
 
-// Mock data actualizado para recepciones pendientes
+// Mock data actualizado para transferencias pendientes (que son las recepciones)
 const mockData = {
   seller: {
-    receptions: [
+    // Mock para transferencias pendientes (recepciones por confirmar)
+    pendingTransfers: [
       {
         id: 15,
-        sneaker_reference_code: 'AD-UB22-BLK-001',
-        brand: 'Adidas',
-        model: 'Ultraboost 22',
-        size: '9.5',
-        quantity: 1,
-        courier_name: 'Luis García',
-        delivered_at: new Date(Date.now() - 300000).toISOString(), // 5 minutos atrás
-        hours_since_delivery: 0.08,
-        requires_urgent_confirmation: false,
-        delivery_notes: 'Entregado en perfecto estado'
+        status: 'delivered',
+        status_info: {
+          status: 'delivered',
+          title: '📦 Entregado',
+          description: 'Producto entregado en tu local',
+          detail: 'Luis García entregó el producto',
+          action_required: 'confirm_reception',
+          next_step: 'Confirmar recepción del producto',
+          estimated_time: null,
+          urgency: 'high',
+          can_cancel: false,
+          progress_percentage: 90,
+          courier_info: {
+            name: 'Luis García',
+            email: 'luis@correo.com',
+            picked_up_at: new Date(Date.now() - 300000).toISOString()
+          }
+        },
+        product_info: {
+          reference_code: 'AD-UB22-BLK-001',
+          brand: 'Adidas',
+          model: 'Ultraboost 22',
+          size: '9.5',
+          quantity: 1,
+          color: 'Negro',
+          price: 180.00,
+          image: 'https://cloudinary.com/adidas-ub22.jpg',
+          full_description: 'Adidas Ultraboost 22 - Talla 9.5'
+        },
+        location_info: {
+          from: {
+            name: 'Bodega Central',
+            address: 'Calle 123 #45-67',
+            phone: '+57 300 1234567'
+          },
+          to: {
+            name: 'Local Norte',
+            address: 'Av. Norte 456'
+          }
+        },
+        purpose_info: {
+          purpose: 'cliente',
+          description: 'Cliente presente esperando',
+          priority: 'Alta',
+          destination_type: 'exhibicion',
+          storage_location: 'Exhibición'
+        },
+        timeline: [
+          {
+            step: 'requested',
+            title: 'Solicitud Creada',
+            timestamp: new Date(Date.now() - 3600000).toISOString(),
+            completed: true,
+            description: 'Solicitaste producto de Bodega Central'
+          },
+          {
+            step: 'accepted',
+            title: 'Aceptada por Bodeguero',
+            timestamp: new Date(Date.now() - 3000000).toISOString(),
+            completed: true,
+            description: 'Aceptada por Carlos'
+          },
+          {
+            step: 'courier_assigned',
+            title: 'Corredor Asignado',
+            timestamp: new Date(Date.now() - 1800000).toISOString(),
+            completed: true,
+            description: 'Corredor Luis García asignado'
+          },
+          {
+            step: 'picked_up',
+            title: 'Producto Recogido',
+            timestamp: new Date(Date.now() - 900000).toISOString(),
+            completed: true,
+            description: 'Producto recogido, en tránsito'
+          },
+          {
+            step: 'delivered',
+            title: 'Producto Entregado',
+            timestamp: new Date(Date.now() - 300000).toISOString(),
+            completed: true,
+            description: 'Entregado en tu local, pendiente confirmación'
+          },
+          {
+            step: 'completed',
+            title: 'Recepción Confirmada',
+            timestamp: null,
+            completed: false,
+            description: 'Confirmar recepción y actualizar inventario'
+          }
+        ],
+        hours_since_request: 1.5,
+        days_since_request: 0.06,
+        hours_in_current_state: 0.08
+      }
+    ],
+    // Mock para transferencias completadas del día (historial)
+    completedTransfers: [
+      {
+        id: 120,
+        status: 'completed',
+        result_info: {
+          result: 'success',
+          title: '✅ Completada',
+          description: 'Transferencia exitosa, producto agregado al inventario',
+          color: 'green',
+          icon: '✅'
+        },
+        product_info: {
+          reference_code: 'AD-UB22-001',
+          brand: 'Adidas',
+          model: 'Ultraboost 22',
+          size: '8.5',
+          quantity: 1,
+          color: 'Negro',
+          price: 180.00,
+          total_value: 180.00,
+          image: 'https://cloudinary.com/adidas-ub22.jpg',
+          full_description: 'Adidas Ultraboost 22 - Talla 8.5'
+        },
+        time_info: {
+          requested_at: '09:30',
+          completed_at: '11:45',
+          duration: '2.3h',
+          duration_hours: 2.3
+        },
+        locations: {
+          from: 'Bodega Central',
+          to: 'Local Norte'
+        },
+        participants: {
+          warehouse_keeper: 'Carlos Bodeguero',
+          courier: 'Luis Corredor'
+        },
+        purpose: {
+          type: 'cliente',
+          description: 'Cliente presente',
+          urgent: true
+        },
+        notes: 'Entrega sin problemas',
+        reception_notes: 'Producto en perfecto estado'
       }
     ]
   }
@@ -86,12 +218,12 @@ export const vendorAPI = {
     }
   },
 
-  // *** ACTUALIZACIÓN - USAR PENDING-RECEPTIONS EN LUGAR DE PENDING-TRANSFERS ***
+  // *** ACTUALIZACIÓN - USAR ENDPOINT CORRECTO: /vendor/pending-transfers ***
   async getPendingTransfers() {
-    console.log('🔄 Obteniendo recepciones pendientes del vendedor (VE003)...');
+    console.log('🔄 Obteniendo transferencias pendientes (recepciones por confirmar)...');
     
     const backendCall = async () => {
-      const response = await fetch(`${BACKEND_URL}/api/v1/vendor/pending-receptions`, {
+      const response = await fetch(`${BACKEND_URL}/api/v1/vendor/pending-transfers`, {
         headers: getHeaders()
       });
       return handleResponse(response);
@@ -100,39 +232,44 @@ export const vendorAPI = {
     const result = await tryBackendFirst(backendCall);
     
     if (result.success) {
-      // VE003 devuelve: { success: true, pending_receptions: [...], total_pending: x }
-      // Adaptar la respuesta para mantener compatibilidad con el componente
-      console.log('✅ Recepciones pendientes cargadas del backend:', result.data.pending_receptions?.length || 0);
+      // El endpoint devuelve: { success: true, pending_transfers: [...], summary: {...}, attention_needed: [...] }
+      console.log('✅ Transferencias pendientes cargadas del backend:', result.data.pending_transfers?.length || 0);
       
-      const urgentCount = result.data.pending_receptions?.filter((r: any) => r.requires_urgent_confirmation).length || 0;
-      const normalCount = result.data.pending_receptions?.filter((r: any) => !r.requires_urgent_confirmation).length || 0;
+      const transfers = result.data.pending_transfers || [];
+      
+      // Contar transferencias que requieren atención (status = 'delivered')
+      const deliveredCount = transfers.filter(t => t.status === 'delivered').length;
+      const otherCount = transfers.filter(t => t.status !== 'delivered').length;
       
       return {
         success: true,
-        pending_transfers: result.data.pending_receptions || [], // Renombrar para compatibilidad
-        urgent_count: urgentCount,
-        normal_count: normalCount,
-        total_pending: result.data.total_pending || (result.data.pending_receptions?.length || 0)
+        pending_transfers: transfers,
+        urgent_count: deliveredCount, // Las entregadas son urgentes (requieren confirmación)
+        normal_count: otherCount,
+        total_pending: transfers.length,
+        summary: result.data.summary,
+        attention_needed: result.data.attention_needed
       };
     } else {
-      // Fallback a mock - SIEMPRE devolver al menos 1 para debug
-      console.log('📦 Usando datos mock para pending receptions');
+      // Fallback a mock
+      console.log('📦 Usando datos mock para pending transfers');
       await new Promise(resolve => setTimeout(resolve, 500));
       return {
         success: true,
-        pending_transfers: mockData.seller.receptions, // Usar recepciones mock
-        urgent_count: 0,
-        normal_count: 1,
+        pending_transfers: mockData.seller.pendingTransfers,
+        urgent_count: 1,
+        normal_count: 0,
         total_pending: 1
       };
     }
   },
 
-  async getPendingReceptions() {
-    console.log('🔄 Obteniendo recepciones pendientes...');
+  // *** NUEVA FUNCIÓN - USAR ENDPOINT CORRECTO: /vendor/completed-transfers ***
+  async getCompletedTransfers() {
+    console.log('🔄 Obteniendo transferencias completadas del día (historial)...');
     
     const backendCall = async () => {
-      const response = await fetch(`${BACKEND_URL}/api/v1/vendor/pending-receptions`, {
+      const response = await fetch(`${BACKEND_URL}/api/v1/vendor/completed-transfers`, {
         headers: getHeaders()
       });
       return handleResponse(response);
@@ -141,18 +278,37 @@ export const vendorAPI = {
     const result = await tryBackendFirst(backendCall);
     
     if (result.success) {
-      return result.data;
+      // El endpoint devuelve: { success: true, date: "2025-01-28", completed_transfers: [...], today_stats: {...} }
+      console.log('✅ Transferencias completadas cargadas del backend:', result.data.completed_transfers?.length || 0);
+      
+      return {
+        success: true,
+        completed_transfers: result.data.completed_transfers || [],
+        date: result.data.date,
+        today_stats: result.data.today_stats
+      };
     } else {
       // Fallback a mock
-      console.log('📦 Usando datos mock para pending receptions');
+      console.log('📦 Usando datos mock para completed transfers');
       await new Promise(resolve => setTimeout(resolve, 500));
       return {
         success: true,
-        pending_receptions: mockData.seller.receptions
+        completed_transfers: mockData.seller.completedTransfers,
+        date: new Date().toISOString().split('T')[0],
+        today_stats: {
+          total_transfers: 2,
+          completed: 1,
+          cancelled: 1,
+          success_rate: 50.0,
+          total_value_completed: 180.00,
+          average_duration: '2.3h',
+          performance: 'Buena'
+        }
       };
     }
   },
 
+  // *** MANTENER - Confirmar recepción usando endpoint existente ***
   async confirmReception(requestId, quantity, conditionOk, notes) {
     console.log('🔄 Confirmando recepción...', { requestId, quantity, conditionOk });
     
@@ -185,6 +341,78 @@ export const vendorAPI = {
         received_quantity: quantity,
         inventory_updated: true,
         confirmed_at: new Date().toISOString()
+      };
+    }
+  },
+
+  // *** NUEVA FUNCIÓN - Cancelar transferencia ***
+  async cancelTransfer(transferId, reason) {
+    console.log('🔄 Cancelando transferencia...', { transferId, reason });
+    
+    const backendCall = async () => {
+      const response = await fetch(`${BACKEND_URL}/api/v1/vendor/cancel-transfer/${transferId}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          cancellation_reason: reason || 'Cliente ya no necesita el producto'
+        })
+      });
+      return handleResponse(response);
+    };
+
+    const result = await tryBackendFirst(backendCall);
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      // Fallback a mock
+      console.log('📦 Usando respuesta mock para cancel transfer');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return {
+        success: true,
+        message: 'Transferencia cancelada exitosamente',
+        transfer_id: transferId,
+        cancelled_at: new Date().toISOString(),
+        reason: reason || 'Cliente ya no necesita el producto'
+      };
+    }
+  },
+
+  // *** NUEVA FUNCIÓN - Obtener detalles de transferencia ***
+  async getTransferDetails(transferId) {
+    console.log('🔄 Obteniendo detalles de transferencia...', { transferId });
+    
+    const backendCall = async () => {
+      const response = await fetch(`${BACKEND_URL}/api/v1/vendor/transfer-details/${transferId}`, {
+        headers: getHeaders()
+      });
+      return handleResponse(response);
+    };
+
+    const result = await tryBackendFirst(backendCall);
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      // Fallback a mock
+      console.log('📦 Usando respuesta mock para transfer details');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return {
+        success: true,
+        transfer: mockData.seller.pendingTransfers[0], // Usar el primer mock como ejemplo
+        contact_info: {
+          warehouse_keeper: {
+            name: 'Carlos Bodeguero',
+            email: 'carlos@bodega.com',
+            location: 'Bodega Central',
+            location_phone: '+57 300 1234567'
+          },
+          courier: {
+            name: 'Luis Corredor',
+            email: 'luis@corredor.com',
+            phone: '+57 301 9876543'
+          }
+        }
       };
     }
   },
@@ -237,7 +465,7 @@ export const vendorAPI = {
   }
 };
 
-// ========== BODEGUERO APIs ==========  
+// ========== BODEGUERO APIs (SIN CAMBIOS) ==========  
 export const warehouseAPI = {
   async getPendingRequests() {
     console.log('🔄 Obteniendo solicitudes pendientes de bodega...');
@@ -351,7 +579,7 @@ export const warehouseAPI = {
   }
 };
 
-// ========== CORREDOR APIs ==========
+// ========== CORREDOR APIs (SIN CAMBIOS) ==========
 export const courierAPI = {
   async getAvailableRequests() {
     console.log('🔄 Obteniendo entregas disponibles...');
