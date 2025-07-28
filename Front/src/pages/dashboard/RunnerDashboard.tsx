@@ -701,15 +701,7 @@ export const RunnerDashboard: React.FC = () => {
                                   ⏱️ {request.hours_since_accepted.toFixed(1)}h • 📍 {distance} km
                                 </p>
                               </div>
-                              
-                              <div className="text-right ml-3">
-                                <div className="bg-green-50 border border-green-200 rounded-lg p-2">
-                                  <p className="text-sm font-bold text-green-700">
-                                    {formatPrice(earnings)}
-                                  </p>
-                                  <p className="text-xs text-green-600">Ganancia</p>
-                                </div>
-                              </div>
+                                  
                             </div>
                             
                             <Button

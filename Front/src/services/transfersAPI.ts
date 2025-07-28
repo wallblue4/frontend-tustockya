@@ -63,51 +63,6 @@ const mockData = {
         delivery_notes: 'Entregado en perfecto estado'
       }
     ]
-  },
-  bodeguero: {
-    pending: [
-      {
-        id: 16,
-        requester_name: 'María González',
-        sneaker_reference_code: 'NK-AF1-WHT-002',
-        brand: 'Nike',
-        model: 'Air Force 1',
-        size: '10',
-        quantity: 1,
-        purpose: 'restock',
-        priority: 'normal',
-        requested_at: new Date().toISOString(),
-        time_waiting: '10 minutos',
-        can_fulfill: true,
-        available_stock: 5,
-        notes: 'Restock semanal'
-      }
-    ],
-    accepted: []
-  },
-  corredor: {
-    available: [
-      {
-        id: 17,
-        status: 'accepted',
-        action_required: 'accept_transport',
-        status_description: 'Disponible para aceptar transporte',
-        next_step: 'Aceptar esta solicitud de transporte',
-        purpose: 'cliente',
-        hours_since_accepted: 0.3,
-        request_info: {
-          pickup_location: 'Bodega Sur',
-          pickup_address: 'Zona Industrial 304',
-          delivery_location: 'Local Mall',
-          delivery_address: 'Centro Comercial Norte',
-          product_description: 'Nike Air Force 1 - Talla 10',
-          urgency: '🔥 Cliente presente',
-          warehouse_keeper: 'Ana Rodríguez',
-          requester: 'María González'
-        }
-      }
-    ],
-    assigned: []
   }
 };
 
@@ -146,8 +101,9 @@ export const vendorAPI = {
     }
   },
 
+  // *** ACTUALIZACIÓN PRINCIPAL ***
   async getPendingTransfers() {
-    console.log('🔄 Obteniendo transferencias pendientes...');
+    console.log('🔄 Obteniendo todas las transferencias del usuario...');
     
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/transfers/my-requests`, {
@@ -159,14 +115,35 @@ export const vendorAPI = {
     const result = await tryBackendFirst(backendCall);
     
     if (result.success) {
-      return result.data;
+      // El endpoint devuelve { success: true, transfer_requests: [...], summary: {...} }
+      // Pero el componente espera { pending_transfers: [...] }
+      // Necesitamos adaptar la respuesta
+      const adaptedResponse = {
+        success: true,
+        pending_transfers: result.data.transfer_requests || [],
+        summary: result.data.summary || null
+      };
+      
+      // Filtrar solo las pendientes para el array principal si es necesario
+      // (aunque el componente puede manejar todos los estados)
+      
+      console.log('✅ Transferencias cargadas del backend:', adaptedResponse.pending_transfers.length);
+      return adaptedResponse;
     } else {
       // Fallback a mock
       console.log('📦 Usando datos mock para pending transfers');
       await new Promise(resolve => setTimeout(resolve, 500));
       return {
         success: true,
-        pending_transfers: mockData.seller.pending
+        pending_transfers: mockData.seller.pending,
+        summary: {
+          total_requests: 1,
+          pending: 0,
+          accepted: 0,
+          in_transit: 1,
+          delivered: 0,
+          cancelled: 0
+        }
       };
     }
   },
@@ -302,8 +279,8 @@ export const warehouseAPI = {
       await new Promise(resolve => setTimeout(resolve, 500));
       return {
         success: true,
-        pending_requests: mockData.bodeguero.pending,
-        urgent_count: mockData.bodeguero.pending.filter(r => r.priority === 'high').length,
+        pending_requests: [],
+        urgent_count: 0,
         total_stock_value: 1580.50
       };
     }
@@ -358,7 +335,7 @@ export const warehouseAPI = {
       await new Promise(resolve => setTimeout(resolve, 500));
       return {
         success: true,
-        accepted_requests: mockData.bodeguero.accepted
+        accepted_requests: []
       };
     }
   },
@@ -416,7 +393,7 @@ export const courierAPI = {
       await new Promise(resolve => setTimeout(resolve, 500));
       return {
         success: true,
-        available_requests: mockData.corredor.available
+        available_requests: []
       };
     }
   },
@@ -475,7 +452,7 @@ export const courierAPI = {
       await new Promise(resolve => setTimeout(resolve, 500));
       return {
         success: true,
-        my_transports: mockData.corredor.assigned
+        my_transports: []
       };
     }
   },

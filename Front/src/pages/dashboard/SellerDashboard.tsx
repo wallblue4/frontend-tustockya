@@ -11,7 +11,9 @@ import {
   TrendingUp,
   Bell,
   AlertCircle,
-  List
+  List,
+  ChevronRight,
+  Truck
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Button } from '../../components/ui/Button';
@@ -45,8 +47,6 @@ interface PrefilledProduct {
   storage_type?: string;
 }
 
-;
-
 interface PredictionResult {
   class_name: string;
   confidence: number;
@@ -56,13 +56,23 @@ interface ScanResponse {
   prediction: PredictionResult;
 }
 
+// Nueva interfaz para los datos de transferencias
+interface TransfersSummary {
+  total_requests: number;
+  pending: number;
+  accepted: number;
+  in_transit: number;
+  delivered: number;
+  cancelled: number;
+}
+
 export const SellerDashboard: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [apiData, setApiData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
   const [prefilledProduct, setPrefilledProduct] = useState<PrefilledProduct | null>(null);
-  const [productDataForTransfer, setProductDataForTransfer] = useState<any>(null); 
+  const [productDataForTransfer, setProductDataForTransfer] = useState<any>(null);
 
   // Estados para la cámara
   const [showCamera, setShowCamera] = useState(false);
@@ -73,10 +83,15 @@ export const SellerDashboard: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [capturedImage, setCapturedImage] = useState<File | null>(null);
   
+  // Nuevo estado para transferencias
+  const [transfersSummary, setTransfersSummary] = useState<TransfersSummary | null>(null);
+  const [transfersLoading, setTransfersLoading] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadDashboardData();
+    loadTransfersSummary();
   }, []);
 
   const loadDashboardData = async () => {
@@ -94,37 +109,37 @@ export const SellerDashboard: React.FC = () => {
         success: true,
         dashboard_timestamp: new Date().toISOString(),
         vendor_info: {
-          name: 'Juan Pérez (Mock)',
-          email: 'juan@tustockya.com',
-          location_name: 'Local #1',
+          name: 'Carlos Rodriguez (Mock)',
+          email: 'vendedor6@tustockya.com',
+          location_name: 'Local #5',
           role: 'seller',
-          location_id: 1
+          location_id: 5
         },
         today_summary: {
           date: new Date().toISOString().split('T')[0],
           sales: {
-            total_count: 15,
-            pending_confirmations: 3,
-            total_amount: 2450000,
-            confirmed_amount: 2000000,
-            pending_amount: 450000
+            total_count: 2,
+            pending_confirmations: 0,
+            total_amount: 788000,
+            confirmed_amount: 788000,
+            pending_amount: 0
           },
           expenses: {
-            count: 2,
-            total_amount: 150000
+            count: 0,
+            total_amount: 0
           },
-          net_income: 2300000,
+          net_income: 788000,
           payment_methods_breakdown: []
         },
         pending_actions: {
-          sale_confirmations: 3,
+          sale_confirmations: 0,
           transfer_requests: {
-            pending: 2,
-            in_transit: 0,
+            pending: 6,
+            in_transit: 2,
             delivered: 0
           },
           discount_requests: {
-            pending: 1,
+            pending: 0,
             approved: 0,
             rejected: 0
           },
@@ -136,18 +151,40 @@ export const SellerDashboard: React.FC = () => {
     }
   };
 
+  // Nueva función para cargar resumen de transferencias
   const loadTransfersSummary = async () => {
     try {
-      const [pendingResponse, receptionsResponse] = await Promise.all([
-        transfersAPI.getPendingTransfers(),
-        transfersAPI.getPendingReceptions()
-      ]);
+      setTransfersLoading(true);
+      const response = await transfersAPI.vendor.getPendingTransfers();
       
-      // Actualizar los contadores en el dashboard
-      // Esto puede integrarse con el estado del dashboard existente
-      
+      if (response.success && response.summary) {
+        setTransfersSummary(response.summary);
+      } else if (response.success && response.pending_transfers) {
+        // Si no hay summary, calcularlo desde los datos
+        const transfers = response.pending_transfers;
+        const summary = {
+          total_requests: transfers.length,
+          pending: transfers.filter((t: any) => t.status === 'pending').length,
+          accepted: transfers.filter((t: any) => t.status === 'accepted').length,
+          in_transit: transfers.filter((t: any) => t.status === 'in_transit').length,
+          delivered: transfers.filter((t: any) => t.status === 'delivered').length,
+          cancelled: transfers.filter((t: any) => t.status === 'cancelled').length,
+        };
+        setTransfersSummary(summary);
+      }
     } catch (error) {
-      console.log('Error loading transfers summary:', error);
+      console.warn('Error loading transfers summary:', error);
+      // Fallback a datos mock
+      setTransfersSummary({
+        total_requests: 8,
+        pending: 6,
+        accepted: 0,
+        in_transit: 2,
+        delivered: 0,
+        cancelled: 0
+      });
+    } finally {
+      setTransfersLoading(false);
     }
   };
 
@@ -321,7 +358,6 @@ export const SellerDashboard: React.FC = () => {
     setCurrentView('new-sale');
   };
 
-
   const goBack = () => {
     console.log('🔍 SellerDashboard - Limpiando estados y volviendo al dashboard');
     setPrefilledProduct(null);
@@ -338,6 +374,12 @@ export const SellerDashboard: React.FC = () => {
     setCurrentView('new-sale');
   };
 
+  // Nueva función para manejar click en transferencias
+  const handleTransfersClick = () => {
+    setProductDataForTransfer(null); // Limpiar datos prefilled
+    setCurrentView('transfers');
+  };
+
   const renderCurrentView = () => {
     switch (currentView) {
       case 'scan':
@@ -348,7 +390,7 @@ export const SellerDashboard: React.FC = () => {
             </Button>
             <ProductScanner 
               onSellProduct={handleSellProduct}
-              onRequestTransfer={handleRequestTransfer} // ← Debe ser esta función
+              onRequestTransfer={handleRequestTransfer}
               capturedImage={capturedImage}
               scanResult={scanResult}
             />
@@ -406,6 +448,7 @@ export const SellerDashboard: React.FC = () => {
               prefilledProductData={productDataForTransfer}
               onTransferRequested={(transferId, isUrgent) => {
                 console.log('✅ Transferencia solicitada:', { transferId, isUrgent });
+                loadTransfersSummary(); // Recargar resumen después de nueva transferencia
                 goBack(); // Volver al dashboard después de la solicitud
               }}
             />
@@ -536,10 +579,10 @@ export const SellerDashboard: React.FC = () => {
             </div>
             
             {/* Información adicional de acciones pendientes */}
-            {apiData.pending_actions && (
+            {(apiData.pending_actions || transfersSummary) && (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                  {apiData.pending_actions.sale_confirmations > 0 && (
+                  {apiData.pending_actions && apiData.pending_actions.sale_confirmations > 0 && (
                     <div className="bg-blue-50 p-3 rounded-lg">
                       <p className="text-2xl font-bold text-blue-600">
                         {apiData.pending_actions.sale_confirmations}
@@ -548,16 +591,40 @@ export const SellerDashboard: React.FC = () => {
                     </div>
                   )}
                   
-                  {apiData.pending_actions.transfer_requests && apiData.pending_actions.transfer_requests.pending > 0 && (
-                    <div className="bg-purple-50 p-3 rounded-lg">
-                      <p className="text-2xl font-bold text-purple-600">
-                        {apiData.pending_actions.transfer_requests.pending}
-                      </p>
-                      <p className="text-xs text-purple-600">Transferencias pendientes</p>
-                    </div>
+                  {/* NUEVO BOTÓN CLICKEABLE PARA TRANSFERENCIAS */}
+                  {transfersSummary && (transfersSummary.pending + transfersSummary.in_transit) > 0 && (
+                    <button
+                      onClick={handleTransfersClick}
+                      className="bg-purple-50 p-3 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-2xl font-bold text-purple-600">
+                            {transfersSummary.pending + transfersSummary.in_transit}
+                          </p>
+                          <p className="text-xs text-purple-600">Transferencias activas</p>
+                          {transfersLoading && (
+                            <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mt-1"></div>
+                          )}
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-purple-400 group-hover:text-purple-600 transition-colors" />
+                      </div>
+                      {transfersSummary.pending > 0 && (
+                        <div className="mt-1 flex items-center justify-center space-x-1">
+                          <Clock className="h-3 w-3 text-purple-500" />
+                          <span className="text-xs text-purple-500">{transfersSummary.pending} pendientes</span>
+                        </div>
+                      )}
+                      {transfersSummary.in_transit > 0 && (
+                        <div className="mt-1 flex items-center justify-center space-x-1">
+                          <Truck className="h-3 w-3 text-purple-500" />
+                          <span className="text-xs text-purple-500">{transfersSummary.in_transit} en tránsito</span>
+                        </div>
+                      )}
+                    </button>
                   )}
                   
-                  {apiData.pending_actions.discount_requests && apiData.pending_actions.discount_requests.pending > 0 && (
+                  {apiData.pending_actions && apiData.pending_actions.discount_requests && apiData.pending_actions.discount_requests.pending > 0 && (
                     <div className="bg-orange-50 p-3 rounded-lg">
                       <p className="text-2xl font-bold text-orange-600">
                         {apiData.pending_actions.discount_requests.pending}
@@ -566,7 +633,7 @@ export const SellerDashboard: React.FC = () => {
                     </div>
                   )}
                   
-                  {apiData.pending_actions.return_notifications > 0 && (
+                  {apiData.pending_actions && apiData.pending_actions.return_notifications > 0 && (
                     <div className="bg-red-50 p-3 rounded-lg">
                       <p className="text-2xl font-bold text-red-600">
                         {apiData.pending_actions.return_notifications}
