@@ -28,11 +28,6 @@ import { TransfersView } from '../../components/seller/TransfersView';
 import { vendorAPI } from '../../services/api';
 import { CameraCapture } from '../../components/seller/CameraCapture';
 import { transfersAPI } from '../../services/transfersAPI';
-import { TransferFlowTester } from '../../components/testing/TransferFlowTester';
-import { useTransferNotifications } from '../../hooks/useTransferNotifications';
-import { useTransferPolling } from '../../hooks/useTransferPolling';
-import { TransferNotifications } from '../../components/notifications/TransferNotifications';
-
 
 type ViewType = 'dashboard' | 'scan' | 'new-sale' | 'today-sales' | 'expenses' | 'expenses-list' | 'transfers' | 'notifications';
 
@@ -50,10 +45,6 @@ interface PrefilledProduct {
 interface PredictionResult {
   class_name: string;
   confidence: number;
-}
-
-interface ScanResponse {
-  prediction: PredictionResult;
 }
 
 // Nueva interfaz para los datos de transferencias
@@ -77,7 +68,6 @@ export const SellerDashboard: React.FC = () => {
   // Estados para la cámara
   const [showCamera, setShowCamera] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
-  const [scanOptions, setScanOptions] = useState<any[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<PredictionResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -151,30 +141,28 @@ export const SellerDashboard: React.FC = () => {
     }
   };
 
-  // Nueva función para cargar resumen de transferencias
+  // Nueva función para cargar resumen de transferencias usando endpoint VE002
   const loadTransfersSummary = async () => {
     try {
       setTransfersLoading(true);
       const response = await transfersAPI.vendor.getPendingTransfers();
       
-      if (response.success && response.summary) {
-        setTransfersSummary(response.summary);
-      } else if (response.success && response.pending_transfers) {
-        // Si no hay summary, calcularlo desde los datos
-        const transfers = response.pending_transfers;
+      if (response.success) {
+        // VE002 devuelve { success, pending_transfers, urgent_count, normal_count }
+        const totalPending = (response.urgent_count || 0) + (response.normal_count || 0);
         const summary = {
-          total_requests: transfers.length,
-          pending: transfers.filter((t: any) => t.status === 'pending').length,
-          accepted: transfers.filter((t: any) => t.status === 'accepted').length,
-          in_transit: transfers.filter((t: any) => t.status === 'in_transit').length,
-          delivered: transfers.filter((t: any) => t.status === 'delivered').length,
-          cancelled: transfers.filter((t: any) => t.status === 'cancelled').length,
+          total_requests: totalPending,
+          pending: totalPending,
+          accepted: 0, // VE002 no incluye estos datos, solo pendientes
+          in_transit: 0,
+          delivered: 0,
+          cancelled: 0
         };
         setTransfersSummary(summary);
       }
     } catch (error) {
       console.warn('Error loading transfers summary:', error);
-      // Fallback a datos mock
+      // Fallback a datos mock basados en la documentación
       setTransfersSummary({
         total_requests: 8,
         pending: 6,
@@ -188,7 +176,7 @@ export const SellerDashboard: React.FC = () => {
     }
   };
 
-  // FUNCIÓN FALTANTE: Cerrar cámara
+  // Cerrar cámara
   const handleCloseCameraCapture = () => {
     setShowCamera(false);
     setIsProcessingImage(false);
@@ -197,7 +185,7 @@ export const SellerDashboard: React.FC = () => {
     setErrorMessage(null);
   };
 
-  // FUNCIÓN CORREGIDA: Abrir cámara desde botón "Escanear"
+  // Abrir cámara desde botón "Escanear"
   const handleOpenCamera = () => {
     // Limpiar estados previos
     setScanResult(null);
@@ -209,7 +197,7 @@ export const SellerDashboard: React.FC = () => {
     setShowCamera(true);
   };
 
-  // FUNCIÓN CORREGIDA: Manejar captura desde CameraCapture
+  // Manejar captura desde CameraCapture
   const handleCameraCapture = async (imageFile: File) => {
     console.log('Imagen capturada desde cámara:', imageFile.name);
     
@@ -241,10 +229,6 @@ export const SellerDashboard: React.FC = () => {
     }
   };
 
-  const getBackendApiUrl = () => {
-    return `${window.location.protocol}//${window.location.hostname}:${window.location.port}/api`;
-  };
-
   const sendImageToServer = async (imageFile: File) => {
     setIsScanning(true);
     setErrorMessage(null);
@@ -263,7 +247,7 @@ export const SellerDashboard: React.FC = () => {
       
       setScanResult(mockResult);
       
-      // CAMBIO CLAVE: Navegar a la vista de scan después del procesamiento exitoso
+      // Navegar a la vista de scan después del procesamiento exitoso
       setCurrentView('scan');
       
     } catch (error: any) {
@@ -506,7 +490,6 @@ export const SellerDashboard: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* BOTÓN CORREGIDO: Ahora abre la cámara directamente */}
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2"
               onClick={handleOpenCamera}     
@@ -591,8 +574,8 @@ export const SellerDashboard: React.FC = () => {
                     </div>
                   )}
                   
-                  {/* NUEVO BOTÓN CLICKEABLE PARA TRANSFERENCIAS */}
-                  {transfersSummary && (transfersSummary.pending + transfersSummary.in_transit) > 0 && (
+                  {/* NUEVO BOTÓN CLICKEABLE PARA TRANSFERENCIAS - Actualizado para VE002 */}
+                  {transfersSummary && transfersSummary.pending > 0 && (
                     <button
                       onClick={handleTransfersClick}
                       className="bg-purple-50 p-3 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer group"
@@ -600,27 +583,19 @@ export const SellerDashboard: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-2xl font-bold text-purple-600">
-                            {transfersSummary.pending + transfersSummary.in_transit}
+                            {transfersSummary.pending}
                           </p>
-                          <p className="text-xs text-purple-600">Transferencias activas</p>
+                          <p className="text-xs text-purple-600">Transferencias pendientes</p>
                           {transfersLoading && (
                             <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mt-1"></div>
                           )}
                         </div>
                         <ChevronRight className="h-4 w-4 text-purple-400 group-hover:text-purple-600 transition-colors" />
                       </div>
-                      {transfersSummary.pending > 0 && (
-                        <div className="mt-1 flex items-center justify-center space-x-1">
-                          <Clock className="h-3 w-3 text-purple-500" />
-                          <span className="text-xs text-purple-500">{transfersSummary.pending} pendientes</span>
-                        </div>
-                      )}
-                      {transfersSummary.in_transit > 0 && (
-                        <div className="mt-1 flex items-center justify-center space-x-1">
-                          <Truck className="h-3 w-3 text-purple-500" />
-                          <span className="text-xs text-purple-500">{transfersSummary.in_transit} en tránsito</span>
-                        </div>
-                      )}
+                      <div className="mt-1 flex items-center justify-center space-x-1">
+                        <Clock className="h-3 w-3 text-purple-500" />
+                        <span className="text-xs text-purple-500">Ver todas las transferencias</span>
+                      </div>
                     </button>
                   )}
                   
@@ -689,7 +664,7 @@ export const SellerDashboard: React.FC = () => {
       currentView === 'transfers' ? 'Transferencias' :
       'Notificaciones'
     }>
-      {/* MODAL DE CÁMARA - CORREGIDO */}
+      {/* MODAL DE CÁMARA */}
       {showCamera && (
         <CameraCapture
           onCapture={handleCameraCapture}

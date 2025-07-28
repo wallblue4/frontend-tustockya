@@ -101,12 +101,12 @@ export const vendorAPI = {
     }
   },
 
-  // *** ACTUALIZACIÓN PRINCIPAL ***
+  // *** ACTUALIZACIÓN PRINCIPAL - ENDPOINT CORRECTO SEGÚN DOCUMENTACIÓN ***
   async getPendingTransfers() {
-    console.log('🔄 Obteniendo todas las transferencias del usuario...');
+    console.log('🔄 Obteniendo transferencias pendientes del vendedor...');
     
     const backendCall = async () => {
-      const response = await fetch(`${BACKEND_URL}/api/v1/transfers/my-requests`, {
+      const response = await fetch(`${BACKEND_URL}/api/v1/vendor/pending-transfers`, {
         headers: getHeaders()
       });
       return handleResponse(response);
@@ -115,20 +115,10 @@ export const vendorAPI = {
     const result = await tryBackendFirst(backendCall);
     
     if (result.success) {
-      // El endpoint devuelve { success: true, transfer_requests: [...], summary: {...} }
-      // Pero el componente espera { pending_transfers: [...] }
-      // Necesitamos adaptar la respuesta
-      const adaptedResponse = {
-        success: true,
-        pending_transfers: result.data.transfer_requests || [],
-        summary: result.data.summary || null
-      };
-      
-      // Filtrar solo las pendientes para el array principal si es necesario
-      // (aunque el componente puede manejar todos los estados)
-      
-      console.log('✅ Transferencias cargadas del backend:', adaptedResponse.pending_transfers.length);
-      return adaptedResponse;
+      // Según la documentación VE002, el endpoint devuelve:
+      // { success: true, pending_transfers: [...], urgent_count: x, normal_count: y }
+      console.log('✅ Transferencias pendientes cargadas del backend:', result.data.pending_transfers?.length || 0);
+      return result.data;
     } else {
       // Fallback a mock
       console.log('📦 Usando datos mock para pending transfers');
@@ -136,14 +126,8 @@ export const vendorAPI = {
       return {
         success: true,
         pending_transfers: mockData.seller.pending,
-        summary: {
-          total_requests: 1,
-          pending: 0,
-          accepted: 0,
-          in_transit: 1,
-          delivered: 0,
-          cancelled: 0
-        }
+        urgent_count: 1,
+        normal_count: 0
       };
     }
   },

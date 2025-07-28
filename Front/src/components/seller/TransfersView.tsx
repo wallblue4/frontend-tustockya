@@ -31,56 +31,27 @@ interface TransfersViewProps {
   } | null;
 }
 
-// Interfaz para la estructura del endpoint real
-interface TransferRequest {
+// Interfaz para la estructura del endpoint VE002 según documentación
+interface PendingTransfer {
   id: number;
-  requester_id: number;
-  source_location_id: number;
-  destination_location_id: number;
+  status: string;
   sneaker_reference_code: string;
   brand: string;
   model: string;
   size: string;
-  quantity: number;
   purpose: string;
-  pickup_type: string;
-  destination_type: string;
-  courier_id: number | null;
-  warehouse_keeper_id: number | null;
-  status: string;
-  requested_at: string;
-  accepted_at: string | null;
-  picked_up_at: string | null;
-  delivered_at: string | null;
-  notes: string | null;
-  confirmed_reception_at: string | null;
-  received_quantity: number | null;
-  reception_notes: string | null;
-  courier_accepted_at: string | null;
-  courier_notes: string | null;
-  estimated_pickup_time: string | null;
-  pickup_notes: string | null;
-  source_location_name: string;
-  destination_location_name: string;
-  courier_first_name: string | null;
-  courier_last_name: string | null;
-  warehouse_keeper_first_name: string | null;
-  warehouse_keeper_last_name: string | null;
-  status_info: {
-    status: string;
-    status_description: string;
-    pickup_person: string;
-    destination: string;
-  };
+  courier_name?: string;
+  estimated_arrival?: string;
+  time_elapsed: string;
+  next_action: string;
 }
 
-interface TransfersSummary {
-  total_requests: number;
-  pending: number;
-  accepted: number;
-  in_transit: number;
-  delivered: number;
-  cancelled: number;
+// Interfaz para el response del endpoint VE002
+interface PendingTransfersResponse {
+  success: boolean;
+  pending_transfers: PendingTransfer[];
+  urgent_count: number;
+  normal_count: number;
 }
 
 export const TransfersView: React.FC<TransfersViewProps> = ({ 
@@ -88,8 +59,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   prefilledProductData 
 }) => {
   const [activeTab, setActiveTab] = useState('pending');
-  const [allTransfers, setAllTransfers] = useState<TransferRequest[]>([]);
-  const [summary, setSummary] = useState<TransfersSummary | null>(null);
+  const [pendingTransfers, setPendingTransfers] = useState<PendingTransfer[]>([]);
+  const [urgentCount, setUrgentCount] = useState(0);
+  const [normalCount, setNormalCount] = useState(0);
   const [pendingReceptions, setPendingReceptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -142,21 +114,25 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       setLoading(true);
       
       const [transfersResponse, receptionsResponse] = await Promise.all([
-        vendorAPI.getPendingTransfers(),
-        vendorAPI.getPendingReceptions()
+        vendorAPI.getPendingTransfers(), // Usa VE002: /api/v1/vendor/pending-transfers
+        vendorAPI.getPendingReceptions() // Usa VE003: /api/v1/vendor/pending-receptions
       ]);
       
-      // El endpoint devuelve todas las transferencias, no solo pendientes
-      setAllTransfers(transfersResponse.pending_transfers || []);
-      setSummary(transfersResponse.summary || null);
+      // El endpoint VE002 devuelve: { success, pending_transfers, urgent_count, normal_count }
+      setPendingTransfers(transfersResponse.pending_transfers || []);
+      setUrgentCount(transfersResponse.urgent_count || 0);
+      setNormalCount(transfersResponse.normal_count || 0);
+      
+      // El endpoint VE003 devuelve: { success, pending_receptions, total_pending }
       setPendingReceptions(receptionsResponse.pending_receptions || []);
       
     } catch (err: any) {
       console.error('Error loading transfers:', err);
       setError('Error conectando con el servidor');
-      setAllTransfers([]);
+      setPendingTransfers([]);
       setPendingReceptions([]);
-      setSummary(null);
+      setUrgentCount(0);
+      setNormalCount(0);
     } finally {
       setLoading(false);
     }
@@ -208,49 +184,20 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     }
   };
 
-  // Función para calcular tiempo transcurrido
-  const getTimeElapsed = (dateString: string): string => {
-    const now = new Date();
-    const past = new Date(dateString);
-    const diffMs = now.getTime() - past.getTime();
-    
-    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (days > 0) return `${days}d ${hours}h`;
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
+  // Función para calcular tiempo transcurrido desde la descripción que ya viene
+  const parseTimeElapsed = (timeElapsedStr: string): string => {
+    // El endpoint ya devuelve el tiempo formateado (ej: "35 minutos")
+    return timeElapsedStr || 'Recién solicitado';
   };
 
-  // Función para obtener el nombre del corredor
-  const getCourierName = (transfer: TransferRequest): string => {
-    if (transfer.courier_first_name && transfer.courier_last_name) {
-      return `${transfer.courier_first_name} ${transfer.courier_last_name}`;
-    }
-    return 'Sin asignar';
+  // Función para obtener el nombre del corredor desde el campo courier_name
+  const getCourierName = (transfer: PendingTransfer): string => {
+    return transfer.courier_name || 'Sin asignar';
   };
 
-  // Función para obtener la próxima acción
-  const getNextAction = (transfer: TransferRequest): string => {
-    switch (transfer.status) {
-      case 'pending':
-        return 'Esperando aceptación del bodeguero';
-      case 'accepted':
-        return 'Esperando asignación de corredor';
-      case 'courier_assigned':
-        return 'Corredor asignado, esperando recolección';
-      case 'in_transit':
-        return 'En tránsito hacia destino';
-      case 'delivered':
-        return 'Entregado, esperando confirmación';
-      case 'completed':
-        return 'Transferencia completada';
-      case 'cancelled':
-        return 'Transferencia cancelada';
-      default:
-        return transfer.status_info?.status_description || 'Estado desconocido';
-    }
+  // El next_action ya viene del endpoint
+  const getNextAction = (transfer: PendingTransfer): string => {
+    return transfer.next_action || 'Estado desconocido';
   };
 
   const getStatusColor = (status: string) => {
@@ -292,10 +239,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     }
   };
 
-  // Filtrar transferencias por estado
-  const pendingTransfers = allTransfers.filter(t => 
-    ['pending', 'accepted', 'courier_assigned', 'in_transit'].includes(t.status)
-  );
+  // Filtrar transferencias por estado - Para el endpoint VE002 ya vienen filtradas
+  const activeTransfers = pendingTransfers; // Ya vienen solo las pendientes/activas
 
   if (loading) {
     return (
@@ -329,35 +274,27 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         </Card>
       )}
 
-      {/* Resumen de transferencias */}
-      {summary && (
+      {/* Resumen de transferencias según endpoint VE002 */}
+      {(urgentCount > 0 || normalCount > 0) && (
         <Card>
           <CardContent className="p-4">
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-center">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <div className="bg-gray-50 p-3 rounded-lg">
-                <p className="text-2xl font-bold text-gray-600">{summary.total_requests}</p>
-                <p className="text-xs text-gray-600">Total</p>
+                <p className="text-2xl font-bold text-gray-600">{urgentCount + normalCount}</p>
+                <p className="text-xs text-gray-600">Total Pendientes</p>
               </div>
-              <div className="bg-yellow-50 p-3 rounded-lg">
-                <p className="text-2xl font-bold text-yellow-600">{summary.pending}</p>
-                <p className="text-xs text-yellow-600">Pendientes</p>
-              </div>
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <p className="text-2xl font-bold text-blue-600">{summary.accepted}</p>
-                <p className="text-xs text-blue-600">Aceptadas</p>
-              </div>
-              <div className="bg-orange-50 p-3 rounded-lg">
-                <p className="text-2xl font-bold text-orange-600">{summary.in_transit}</p>
-                <p className="text-xs text-orange-600">En Tránsito</p>
-              </div>
-              <div className="bg-green-50 p-3 rounded-lg">
-                <p className="text-2xl font-bold text-green-600">{summary.delivered}</p>
-                <p className="text-xs text-green-600">Entregadas</p>
-              </div>
-              <div className="bg-red-50 p-3 rounded-lg">
-                <p className="text-2xl font-bold text-red-600">{summary.cancelled}</p>
-                <p className="text-xs text-red-600">Canceladas</p>
-              </div>
+              {urgentCount > 0 && (
+                <div className="bg-red-50 p-3 rounded-lg">
+                  <p className="text-2xl font-bold text-red-600">{urgentCount}</p>
+                  <p className="text-xs text-red-600">🔥 Urgentes</p>
+                </div>
+              )}
+              {normalCount > 0 && (
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-2xl font-bold text-blue-600">{normalCount}</p>
+                  <p className="text-xs text-blue-600">📦 Normales</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -402,7 +339,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   }`}
                 >
                   <Package className="h-4 w-4" />
-                  <span>Transferencias ({pendingTransfers.length})</span>
+                  <span>Transferencias ({activeTransfers.length})</span>
                 </button>
                 <button
                   onClick={() => {
@@ -446,7 +383,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               onClick={() => setActiveTab('pending')}
             >
               <Package className="h-4 w-4 mr-2" />
-              Transferencias ({pendingTransfers.length})
+              Transferencias ({activeTransfers.length})
             </Button>
             <Button
               variant={activeTab === 'receptions' ? 'primary' : 'outline'}
@@ -490,14 +427,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             <h3 className="text-base md:text-lg font-semibold">Transferencias Activas</h3>
           </CardHeader>
           <CardContent>
-            {pendingTransfers.length === 0 ? (
+            {activeTransfers.length === 0 ? (
               <div className="text-center py-8 md:py-12">
                 <Package className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-500 text-sm md:text-base">No tienes transferencias activas</p>
               </div>
             ) : (
               <div className="space-y-3 md:space-y-4">
-                {pendingTransfers.map((transfer) => (
+                {activeTransfers.map((transfer) => (
                   <div key={transfer.id} className="border rounded-lg p-3 md:p-4">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
                       <div className="flex-1 min-w-0">
@@ -522,55 +459,24 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         <p className="text-xs md:text-sm text-gray-500">
                           {getNextAction(transfer)}
                         </p>
-                        
-                        {/* Información de ubicaciones */}
-                        <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
-                          <div className="flex items-center space-x-1">
-                            <MapPin className="h-3 w-3" />
-                            <span>De: {transfer.source_location_name}</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <MapPin className="h-3 w-3" />
-                            <span>A: {transfer.destination_location_name}</span>
-                          </div>
-                        </div>
                       </div>
                       
                       <div className="text-right flex-shrink-0">
                         <p className="text-xs md:text-sm text-gray-500">Tiempo transcurrido</p>
-                        <p className="font-medium text-sm md:text-base">{getTimeElapsed(transfer.requested_at)}</p>
-                        <div className="text-xs text-gray-400 mt-1">
-                          <div className="flex items-center space-x-1">
-                            <Calendar className="h-3 w-3" />
-                            <span>{new Date(transfer.requested_at).toLocaleDateString('es-ES')}</span>
+                        <p className="font-medium text-sm md:text-base">{parseTimeElapsed(transfer.time_elapsed)}</p>
+                        {transfer.estimated_arrival && (
+                          <div className="text-xs text-gray-400 mt-1">
+                            <span>ETA: {new Date(transfer.estimated_arrival).toLocaleTimeString()}</span>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
 
                     {/* Información del corredor si está asignado */}
-                    {transfer.courier_first_name && (
+                    {transfer.courier_name && (
                       <div className="mt-3 p-2 md:p-3 bg-blue-50 rounded-md">
                         <p className="text-xs md:text-sm">
                           <strong>Corredor asignado:</strong> {getCourierName(transfer)}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Información del bodeguero si está asignado */}
-                    {transfer.warehouse_keeper_first_name && (
-                      <div className="mt-3 p-2 md:p-3 bg-green-50 rounded-md">
-                        <p className="text-xs md:text-sm">
-                          <strong>Bodeguero:</strong> {transfer.warehouse_keeper_first_name} {transfer.warehouse_keeper_last_name}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Notas si existen */}
-                    {transfer.notes && (
-                      <div className="mt-3 p-2 md:p-3 bg-gray-50 rounded-md">
-                        <p className="text-xs md:text-sm text-gray-700">
-                          <strong>Notas:</strong> {transfer.notes}
                         </p>
                       </div>
                     )}
