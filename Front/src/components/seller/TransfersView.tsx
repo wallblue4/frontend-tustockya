@@ -2,178 +2,171 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { vendorAPI, formatDate } from '../../services/api';
+import { vendorAPI } from '../../services/transfersAPI';
+
 import { 
   Package, 
-  MapPin, 
-  Plus,
   Clock,
   CheckCircle,
-  XCircle,
   Truck,
-  User
+  AlertCircle,
+  Plus
 } from 'lucide-react';
 
-interface Location {
-  id: string;
-  name: string;
-  address: string;
+interface TransfersViewProps {
+  onTransferRequested?: (transferId: number, isUrgent: boolean) => void;
 }
 
-interface TransferRequest {
-  id: string;
-  product_code: string;
-  product_name: string;
-  size: string;
-  quantity: number;
-  from_location: string;
-  to_location: string;
-  purpose: 'exhibition' | 'sale';
-  pickup_by: 'vendor' | 'runner';
-  storage_location: 'warehouse' | 'display';
-  status: 'pending' | 'approved' | 'in_transit' | 'delivered' | 'cancelled';
-  notes?: string;
-  created_at: string;
-  assigned_runner?: string;
-}
 
-export const TransfersView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'list' | 'new'>('list');
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [transfers, setTransfers] = useState<TransferRequest[]>([]);
+
+export const TransfersView: React.FC<TransfersViewProps> = ({ 
+  onTransferRequested 
+}) => {
+  const [activeTab, setActiveTab] = useState('pending');
+  const [pendingTransfers, setPendingTransfers] = useState([]);
+  const [pendingReceptions, setPendingReceptions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
 
-  // Form state
-  const [formData, setFormData] = useState({
-    product_code: '',
-    product_name: '',
+  // Form state para nueva solicitud
+  const [showNewRequest, setShowNewRequest] = useState(false);
+  const [requestForm, setRequestForm] = useState({
+    source_location_id: 2,
+    sneaker_reference_code: '',
+    brand: '',
+    model: '',
     size: '',
     quantity: 1,
-    from_location: '',
-    purpose: 'sale' as 'exhibition' | 'sale',
-    pickup_by: 'runner' as 'vendor' | 'runner',
-    storage_location: 'warehouse' as 'warehouse' | 'display',
+    purpose: 'cliente', // 'cliente' o 'restock'
+    pickup_type: 'corredor',
+    destination_type: 'exhibicion',
     notes: ''
   });
 
   useEffect(() => {
-    loadData();
+    loadTransfersData();
+    
+    // Polling cada 30 segundos como recomienda la documentación
+    const interval = setInterval(loadTransfersData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  const loadData = async () => {
+  const loadTransfersData = async () => {
     try {
       setError(null);
-      const [locationsResponse, transfersResponse] = await Promise.all([
-        vendorAPI.getLocations(),
-        vendorAPI.getMyTransferRequests()
+      setLoading(true);
+      
+      console.log('🔄 Cargando datos de transferencias...');
+      
+      // USAR vendorAPI en lugar de transfersAPI
+      const [pendingResponse, receptionsResponse] = await Promise.all([
+        vendorAPI.getPendingTransfers(),
+        vendorAPI.getPendingReceptions()
       ]);
       
-      setLocations(locationsResponse.data || []);
-      setTransfers(transfersResponse.data || []);
-    } catch (error) {
-      console.warn('Backend API not available, using mock data');
-      setError('Conectando con el servidor...');
+      console.log('✅ Datos cargados:', { pendingResponse, receptionsResponse });
       
-      // Mock data
-      setLocations([
-        { id: '1', name: 'Almacén Principal', address: 'Calle 123 #45-67' },
-        { id: '2', name: 'Tienda Centro', address: 'Centro Comercial Plaza' },
-        { id: '3', name: 'Tienda Norte', address: 'Av. Norte #89-12' }
-      ]);
-
-      setTransfers([
-        {
-          id: '1',
-          product_code: 'NK001',
-          product_name: 'Nike Air Max 90',
-          size: '9.5',
-          quantity: 2,
-          from_location: 'Almacén Principal',
-          to_location: 'Tienda Centro',
-          purpose: 'exhibition',
-          pickup_by: 'runner',
-          storage_location: 'display',
-          status: 'pending',
-          notes: 'Para exhibición en vitrina',
-          created_at: new Date().toISOString()
-        }
-      ]);
+      setPendingTransfers(pendingResponse.pending_transfers || []);
+      setPendingReceptions(receptionsResponse.pending_receptions || []);
+      
+    } catch (err) {
+      console.error('❌ Error loading transfers:', err);
+      setError('Error conectando con el servidor');
+      
+      // Datos mock como fallback (esto no debería ejecutarse ahora que tenemos fallback automático)
+      setPendingTransfers([]);
+      setPendingReceptions([]);
+      
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleNewRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
-      await vendorAPI.requestTransfer(formData);
+      console.log('🔄 Enviando nueva solicitud:', requestForm);
+      
+      // USAR vendorAPI en lugar de transfersAPI
+      const response = await vendorAPI.requestTransfer(requestForm);
+      
+      console.log('✅ Respuesta de solicitud:', response);
+      
+      // Notificar al dashboard padre
+      onTransferRequested?.(
+        response.transfer_request_id, 
+        requestForm.purpose === 'cliente'
+      );
+      
+      alert(`Solicitud creada exitosamente. ID: ${response.transfer_request_id}`);
       
       // Reset form
-      setFormData({
-        product_code: '',
-        product_name: '',
+      setRequestForm({
+        source_location_id: 2,
+        sneaker_reference_code: '',
+        brand: '',
+        model: '',
         size: '',
         quantity: 1,
-        from_location: '',
-        purpose: 'sale',
-        pickup_by: 'runner',
-        storage_location: 'warehouse',
+        purpose: 'cliente',
+        pickup_type: 'corredor',
+        destination_type: 'exhibicion',
         notes: ''
       });
       
-      // Reload transfers
-      loadData();
-      setActiveTab('list');
-      alert('Solicitud de transferencia enviada exitosamente');
-    } catch (error) {
-      alert('Error al enviar solicitud: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+      setActiveTab('pending');
+      loadTransfersData();
+      
+    } catch (err) {
+      console.error('❌ Error enviando solicitud:', err);
+      alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-warning/10 text-warning';
-      case 'approved':
-        return 'bg-primary/10 text-primary';
-      case 'in_transit':
-        return 'bg-secondary/10 text-secondary';
-      case 'delivered':
-        return 'bg-success/10 text-success';
-      case 'cancelled':
-        return 'bg-error/10 text-error';
-      default:
-        return 'bg-gray-100 text-gray-600';
+
+  const handleConfirmReception = async (requestId: number) => {
+    try {
+      console.log('🔄 Confirmando recepción:', requestId);
+      
+      // USAR vendorAPI en lugar de transfersAPI
+      await vendorAPI.confirmReception(requestId, 1, true, 'Producto recibido correctamente');
+      
+      console.log('✅ Recepción confirmada');
+      alert('Recepción confirmada exitosamente');
+      loadTransfersData();
+    } catch (err) {
+      console.error('❌ Error confirmando recepción:', err);
+      alert('Error confirmando recepción: ' + (err instanceof Error ? err.message : 'Error desconocido'));
     }
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusColor = (status) => {
     switch (status) {
-      case 'pending':
-        return 'Pendiente';
-      case 'approved':
-        return 'Aprobada';
-      case 'in_transit':
-        return 'En Tránsito';
-      case 'delivered':
-        return 'Entregada';
-      case 'cancelled':
-        return 'Cancelada';
-      default:
-        return status;
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'accepted': return 'bg-blue-100 text-blue-800';
+      case 'courier_assigned': return 'bg-purple-100 text-purple-800';
+      case 'in_transit': return 'bg-orange-100 text-orange-800';
+      case 'delivered': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'pending': return <Clock className="h-4 w-4" />;
+      case 'in_transit': return <Truck className="h-4 w-4" />;
+      case 'delivered': return <CheckCircle className="h-4 w-4" />;
+      default: return <Package className="h-4 w-4" />;
     }
   };
 
   if (loading) {
     return (
       <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <span className="ml-2">Cargando transferencias...</span>
-          </div>
+        <CardContent className="p-6 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Cargando transferencias...</p>
         </CardContent>
       </Card>
     );
@@ -181,16 +174,23 @@ export const TransfersView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Tab Navigation */}
+      {/* Navigation Tabs */}
       <Card>
         <CardContent className="p-4">
           <div className="flex space-x-4">
             <Button
-              variant={activeTab === 'list' ? 'primary' : 'outline'}
-              onClick={() => setActiveTab('list')}
+              variant={activeTab === 'pending' ? 'primary' : 'outline'}
+              onClick={() => setActiveTab('pending')}
             >
               <Package className="h-4 w-4 mr-2" />
-              Mis Solicitudes
+              Transferencias ({pendingTransfers.length})
+            </Button>
+            <Button
+              variant={activeTab === 'receptions' ? 'primary' : 'outline'}
+              onClick={() => setActiveTab('receptions')}
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Por Confirmar ({pendingReceptions.length})
             </Button>
             <Button
               variant={activeTab === 'new' ? 'primary' : 'outline'}
@@ -206,90 +206,71 @@ export const TransfersView: React.FC = () => {
       {error && (
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-4">
-            <p className="text-sm text-amber-800">Modo de desarrollo - Usando datos de prueba</p>
+            <div className="flex items-center space-x-3">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+              <p className="text-amber-800">{error}</p>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {activeTab === 'list' ? (
+      {/* Content based on active tab */}
+      {activeTab === 'pending' && (
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold flex items-center">
-              <Package className="h-5 w-5 mr-2" />
-              Mis Solicitudes de Transferencia
-            </h3>
+            <h3 className="text-lg font-semibold">Transferencias Pendientes</h3>
           </CardHeader>
           <CardContent>
-            {transfers.length === 0 ? (
+            {pendingTransfers.length === 0 ? (
               <div className="text-center py-8">
                 <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500">No tienes solicitudes de transferencia</p>
+                <p className="text-gray-500">No tienes transferencias pendientes</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {transfers.map((transfer) => (
+                {pendingTransfers.map((transfer) => (
                   <div key={transfer.id} className="border rounded-lg p-4">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(transfer.status)}`}>
-                            {getStatusLabel(transfer.status)}
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(transfer.status)}`}>
+                            {getStatusIcon(transfer.status)}
+                            <span>{transfer.status}</span>
                           </span>
-                          <span className="text-sm text-gray-500">{formatDate(transfer.created_at)}</span>
+                          {transfer.purpose === 'cliente' && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              🔥 URGENTE
+                            </span>
+                          )}
                         </div>
                         
-                        <h4 className="font-semibold text-lg">{transfer.product_name}</h4>
+                        <h4 className="font-semibold text-lg">
+                          {transfer.brand} {transfer.model}
+                        </h4>
                         <p className="text-sm text-gray-600">
-                          Código: {transfer.product_code} | Talla: {transfer.size} | Cantidad: {transfer.quantity}
+                          Código: {transfer.sneaker_reference_code} | Talla: {transfer.size}
                         </p>
+                        <p className="text-sm text-gray-500">
+                          {transfer.next_action}
+                        </p>
+                      </div>
+                      
+                      <div className="text-right">
+                        <p className="text-sm text-gray-500">Tiempo transcurrido</p>
+                        <p className="font-medium">{transfer.time_elapsed}</p>
+                        {transfer.estimated_arrival && (
+                          <p className="text-xs text-gray-400">
+                            ETA: {new Date(transfer.estimated_arrival).toLocaleTimeString()}
+                          </p>
+                        )}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mb-3">
-                      <div>
-                        <p className="text-xs text-gray-500">Desde</p>
-                        <p className="font-medium flex items-center">
-                          <MapPin className="h-4 w-4 mr-1" />
-                          {transfer.from_location}
+                    {transfer.courier_name && (
+                      <div className="mt-3 p-3 bg-blue-50 rounded-md">
+                        <p className="text-sm">
+                          <strong>Corredor asignado:</strong> {transfer.courier_name}
                         </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Hacia</p>
-                        <p className="font-medium flex items-center">
-                          <MapPin className="h-4 w-4 mr-1" />
-                          {transfer.to_location}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4 mb-3 text-sm">
-                      <div>
-                        <p className="text-xs text-gray-500">Propósito</p>
-                        <p className="font-medium">{transfer.purpose === 'exhibition' ? 'Exhibición' : 'Venta'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Recoge</p>
-                        <p className="font-medium flex items-center">
-                          {transfer.pickup_by === 'runner' ? <Truck className="h-4 w-4 mr-1" /> : <User className="h-4 w-4 mr-1" />}
-                          {transfer.pickup_by === 'runner' ? 'Corredor' : 'Vendedor'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Almacenar en</p>
-                        <p className="font-medium">{transfer.storage_location === 'warehouse' ? 'Bodega' : 'Exhibición'}</p>
-                      </div>
-                    </div>
-
-                    {transfer.assigned_runner && (
-                      <div className="mb-3">
-                        <p className="text-xs text-gray-500">Corredor Asignado</p>
-                        <p className="font-medium">{transfer.assigned_runner}</p>
-                      </div>
-                    )}
-
-                    {transfer.notes && (
-                      <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                        <p className="text-sm text-gray-700">{transfer.notes}</p>
                       </div>
                     )}
                   </div>
@@ -298,112 +279,124 @@ export const TransfersView: React.FC = () => {
             )}
           </CardContent>
         </Card>
-      ) : (
+      )}
+
+      {activeTab === 'receptions' && (
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold flex items-center">
-              <Plus className="h-5 w-5 mr-2" />
-              Nueva Solicitud de Transferencia
-            </h3>
+            <h3 className="text-lg font-semibold">Productos por Confirmar Recepción</h3>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            {pendingReceptions.length === 0 ? (
+              <div className="text-center py-8">
+                <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-500">No tienes productos por confirmar</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {pendingReceptions.map((reception) => (
+                  <div key={reception.id} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-lg">
+                          {reception.brand} {reception.model}
+                        </h4>
+                        <p className="text-sm text-gray-600">
+                          Código: {reception.sneaker_reference_code} | Talla: {reception.size} | Cantidad: {reception.quantity}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Entregado por: {reception.courier_name}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          Entregado: {new Date(reception.delivered_at).toLocaleString()}
+                        </p>
+                      </div>
+                      
+                      <Button
+                        onClick={() => handleConfirmReception(reception.id)}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Confirmar Recepción
+                      </Button>
+                    </div>
+
+                    {reception.delivery_notes && (
+                      <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                        <p className="text-sm text-gray-700">{reception.delivery_notes}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'new' && (
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold">Nueva Solicitud de Transferencia</h3>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleNewRequest} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  label="Código del Producto"
-                  value={formData.product_code}
-                  onChange={(e) => setFormData({...formData, product_code: e.target.value})}
-                  placeholder="Ej: NK001"
+                  label="Código de Referencia"
+                  value={requestForm.sneaker_reference_code}
+                  onChange={(e) => setRequestForm({...requestForm, sneaker_reference_code: e.target.value})}
+                  placeholder="AD-UB22-BLK-001"
                   required
                 />
                 <Input
-                  label="Nombre del Producto"
-                  value={formData.product_name}
-                  onChange={(e) => setFormData({...formData, product_name: e.target.value})}
-                  placeholder="Ej: Nike Air Max 90"
+                  label="Marca"
+                  value={requestForm.brand}
+                  onChange={(e) => setRequestForm({...requestForm, brand: e.target.value})}
+                  placeholder="Adidas"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Modelo"
+                  value={requestForm.model}
+                  onChange={(e) => setRequestForm({...requestForm, model: e.target.value})}
+                  placeholder="Ultraboost 22"
+                  required
+                />
                 <Input
                   label="Talla"
-                  value={formData.size}
-                  onChange={(e) => setFormData({...formData, size: e.target.value})}
-                  placeholder="Ej: 9.5"
-                  required
-                />
-                <Input
-                  label="Cantidad"
-                  type="number"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({...formData, quantity: parseInt(e.target.value) || 1})}
-                  min="1"
+                  value={requestForm.size}
+                  onChange={(e) => setRequestForm({...requestForm, size: e.target.value})}
+                  placeholder="9.5"
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Local de Origen
-                </label>
-                <select
-                  value={formData.from_location}
-                  onChange={(e) => setFormData({...formData, from_location: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  required
-                >
-                  <option value="">Seleccionar ubicación</option>
-                  {locations.map((location) => (
-                    <option key={location.id} value={location.name}>
-                      {location.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Propósito
                   </label>
                   <select
-                    value={formData.purpose}
-                    onChange={(e) => setFormData({...formData, purpose: e.target.value as 'exhibition' | 'sale'})}
+                    value={requestForm.purpose}
+                    onChange={(e) => setRequestForm({...requestForm, purpose: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   >
-                    <option value="sale">Venta</option>
-                    <option value="exhibition">Exhibición</option>
+                    <option value="cliente">🔥 Cliente Presente (Urgente)</option>
+                    <option value="restock">📦 Restock (Normal)</option>
                   </select>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Quién Recoge
-                  </label>
-                  <select
-                    value={formData.pickup_by}
-                    onChange={(e) => setFormData({...formData, pickup_by: e.target.value as 'vendor' | 'runner'})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="runner">Corredor</option>
-                    <option value="vendor">Vendedor</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Almacenar en
-                  </label>
-                  <select
-                    value={formData.storage_location}
-                    onChange={(e) => setFormData({...formData, storage_location: e.target.value as 'warehouse' | 'display'})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="warehouse">Bodega</option>
-                    <option value="display">Exhibición</option>
-                  </select>
-                </div>
+                <Input
+                  label="Cantidad"
+                  type="number"
+                  value={requestForm.quantity}
+                  onChange={(e) => setRequestForm({...requestForm, quantity: parseInt(e.target.value) || 1})}
+                  min="1"
+                  required
+                />
               </div>
 
               <div>
@@ -411,8 +404,8 @@ export const TransfersView: React.FC = () => {
                   Notas Adicionales
                 </label>
                 <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  value={requestForm.notes}
+                  onChange={(e) => setRequestForm({...requestForm, notes: e.target.value})}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Información adicional sobre la transferencia..."
@@ -420,7 +413,8 @@ export const TransfersView: React.FC = () => {
               </div>
 
               <Button type="submit" className="w-full">
-                Enviar Solicitud de Transferencia
+                <Plus className="h-4 w-4 mr-2" />
+                Solicitar Transferencia
               </Button>
             </form>
           </CardContent>

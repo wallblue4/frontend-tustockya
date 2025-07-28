@@ -10,6 +10,10 @@ import {
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { StatsCard } from '../../components/dashboard/StatsCard';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
+import { useTransferNotifications } from '../../hooks/useTransferNotifications';
+import { useTransferPolling } from '../../hooks/useTransferPolling';
+import { TransferNotifications } from '../../components/notifications/TransferNotifications';
+
 
 export const AdminDashboard: React.FC = () => {
   const estadisticas = [

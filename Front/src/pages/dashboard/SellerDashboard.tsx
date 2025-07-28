@@ -25,6 +25,12 @@ import { SalesList } from '../../components/seller/SalesList';
 import { TransfersView } from '../../components/seller/TransfersView';
 import { vendorAPI } from '../../services/api';
 import { CameraCapture } from '../../components/seller/CameraCapture';
+import { transfersAPI } from '../../services/transfersAPI';
+import { TransferFlowTester } from '../../components/testing/TransferFlowTester';
+import { useTransferNotifications } from '../../hooks/useTransferNotifications';
+import { useTransferPolling } from '../../hooks/useTransferPolling';
+import { TransferNotifications } from '../../components/notifications/TransferNotifications';
+
 
 type ViewType = 'dashboard' | 'scan' | 'new-sale' | 'today-sales' | 'expenses' | 'expenses-list' | 'transfers' | 'notifications';
 
@@ -124,6 +130,21 @@ export const SellerDashboard: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTransfersSummary = async () => {
+    try {
+      const [pendingResponse, receptionsResponse] = await Promise.all([
+        transfersAPI.getPendingTransfers(),
+        transfersAPI.getPendingReceptions()
+      ]);
+      
+      // Actualizar los contadores en el dashboard
+      // Esto puede integrarse con el estado del dashboard existente
+      
+    } catch (error) {
+      console.log('Error loading transfers summary:', error);
     }
   };
 
