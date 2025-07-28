@@ -422,7 +422,7 @@ export const SalesList: React.FC = () => {
                             )}
                           </div>
                         ))}
-                      </div>
+                      </div> 
 
                       {sale.notes && (
                         <div className="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-700">
