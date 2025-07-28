@@ -13,7 +13,8 @@ import {
   AlertCircle,
   List,
   ChevronRight,
-  Truck
+  Truck,
+  CheckCircle
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Button } from '../../components/ui/Button';
@@ -141,36 +142,48 @@ export const SellerDashboard: React.FC = () => {
     }
   };
 
-  // Nueva función para cargar resumen de transferencias usando endpoint VE002
+  // Nueva función para cargar resumen de transferencias usando endpoint VE003 (pending-receptions)
   const loadTransfersSummary = async () => {
     try {
       setTransfersLoading(true);
-      const response = await transfersAPI.vendor.getPendingTransfers();
+      console.log('🔄 Cargando resumen de transferencias...');
+      
+      const response = await transfersAPI.vendor.getPendingTransfers(); // Usa VE003 internamente
+      
+      console.log('📊 Respuesta del servidor:', response);
       
       if (response.success) {
-        // VE002 devuelve { success, pending_transfers, urgent_count, normal_count }
-        const totalPending = (response.urgent_count || 0) + (response.normal_count || 0);
+        // VE003 adaptado devuelve { success, pending_transfers (recepciones), urgent_count, normal_count, total_pending }
+        const totalPending = response.total_pending || response.pending_transfers?.length || 0;
+        
         const summary = {
           total_requests: totalPending,
           pending: totalPending,
-          accepted: 0, // VE002 no incluye estos datos, solo pendientes
+          accepted: 0,
           in_transit: 0,
           delivered: 0,
           cancelled: 0
         };
+        
+        console.log('📈 Resumen calculado:', summary);
         setTransfersSummary(summary);
+      } else {
+        console.log('❌ Respuesta no exitosa del servidor');
+        setTransfersSummary(null);
       }
     } catch (error) {
-      console.warn('Error loading transfers summary:', error);
-      // Fallback a datos mock basados en la documentación
-      setTransfersSummary({
-        total_requests: 8,
-        pending: 6,
+      console.warn('⚠️ Error loading transfers summary:', error);
+      // Fallback a datos mock para mostrar algo mientras debuggeamos
+      const mockSummary = {
+        total_requests: 1,
+        pending: 1,
         accepted: 0,
-        in_transit: 2,
+        in_transit: 0,
         delivered: 0,
         cancelled: 0
-      });
+      };
+      console.log('📦 Usando datos mock:', mockSummary);
+      setTransfersSummary(mockSummary);
     } finally {
       setTransfersLoading(false);
     }
@@ -574,8 +587,9 @@ export const SellerDashboard: React.FC = () => {
                     </div>
                   )}
                   
-                  {/* NUEVO BOTÓN CLICKEABLE PARA TRANSFERENCIAS - Actualizado para VE002 */}
-                  {transfersSummary && transfersSummary.pending > 0 && (
+                  {/* BOTÓN CLICKEABLE PARA RECEPCIONES PENDIENTES - Actualizado para VE003 */}
+                  {/* Mostrar siempre para debug, cambiar condición después */}
+                  {transfersSummary && (
                     <button
                       onClick={handleTransfersClick}
                       className="bg-purple-50 p-3 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer group"
@@ -583,9 +597,11 @@ export const SellerDashboard: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-2xl font-bold text-purple-600">
-                            {transfersSummary.pending}
+                            {transfersSummary.pending || 0}
                           </p>
-                          <p className="text-xs text-purple-600">Transferencias pendientes</p>
+                          <p className="text-xs text-purple-600">
+                            {transfersSummary.pending > 0 ? 'Productos por confirmar' : 'No hay productos por confirmar'}
+                          </p>
                           {transfersLoading && (
                             <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mt-1"></div>
                           )}
@@ -593,10 +609,20 @@ export const SellerDashboard: React.FC = () => {
                         <ChevronRight className="h-4 w-4 text-purple-400 group-hover:text-purple-600 transition-colors" />
                       </div>
                       <div className="mt-1 flex items-center justify-center space-x-1">
-                        <Clock className="h-3 w-3 text-purple-500" />
-                        <span className="text-xs text-purple-500">Ver todas las transferencias</span>
+                        <CheckCircle className="h-3 w-3 text-purple-500" />
+                        <span className="text-xs text-purple-500">
+                          {transfersSummary.pending > 0 ? 'Confirmar recepciones' : 'Ver recepciones'}
+                        </span>
                       </div>
                     </button>
+                  )}
+                  
+                  {/* Debug info */}
+                  {!transfersSummary && (
+                    <div className="bg-red-50 p-3 rounded-lg">
+                      <p className="text-xs text-red-600">Debug: transfersSummary es null</p>
+                      <p className="text-xs text-red-600">Loading: {transfersLoading ? 'true' : 'false'}</p>
+                    </div>
                   )}
                   
                   {apiData.pending_actions && apiData.pending_actions.discount_requests && apiData.pending_actions.discount_requests.pending > 0 && (
@@ -661,7 +687,7 @@ export const SellerDashboard: React.FC = () => {
       currentView === 'today-sales' ? 'Ventas del Día' :
       currentView === 'expenses' ? 'Registrar Gasto' :
       currentView === 'expenses-list' ? 'Gastos del Día' :
-      currentView === 'transfers' ? 'Transferencias' :
+      currentView === 'transfers' ? 'Productos por Confirmar' :
       'Notificaciones'
     }>
       {/* MODAL DE CÁMARA */}

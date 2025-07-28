@@ -30,34 +30,19 @@ const tryBackendFirst = async (apiCall) => {
   }
 };
 
-// Mock data (mantener igual)
+// Mock data actualizado para recepciones pendientes
 const mockData = {
   seller: {
-    pending: [
+    receptions: [
       {
         id: 15,
-        status: 'in_transit',
         sneaker_reference_code: 'AD-UB22-BLK-001',
         brand: 'Adidas',
         model: 'Ultraboost 22',
         size: '9.5',
-        purpose: 'cliente',
-        courier_name: 'Luis García',
-        estimated_arrival: new Date(Date.now() + 600000).toISOString(),
-        time_elapsed: '35 minutos',
-        next_action: 'Esperar entrega del corredor'
-      }
-    ],
-    receptions: [
-      {
-        id: 14,
-        sneaker_reference_code: 'NK-AF1-WHT-002',
-        brand: 'Nike',
-        model: 'Air Force 1',
-        size: '10',
         quantity: 1,
-        courier_name: 'Ana Martínez',
-        delivered_at: new Date(Date.now() - 300000).toISOString(),
+        courier_name: 'Luis García',
+        delivered_at: new Date(Date.now() - 300000).toISOString(), // 5 minutos atrás
         hours_since_delivery: 0.08,
         requires_urgent_confirmation: false,
         delivery_notes: 'Entregado en perfecto estado'
@@ -101,12 +86,12 @@ export const vendorAPI = {
     }
   },
 
-  // *** ACTUALIZACIÓN PRINCIPAL - ENDPOINT CORRECTO SEGÚN DOCUMENTACIÓN ***
+  // *** ACTUALIZACIÓN - USAR PENDING-RECEPTIONS EN LUGAR DE PENDING-TRANSFERS ***
   async getPendingTransfers() {
-    console.log('🔄 Obteniendo transferencias pendientes del vendedor...');
+    console.log('🔄 Obteniendo recepciones pendientes del vendedor (VE003)...');
     
     const backendCall = async () => {
-      const response = await fetch(`${BACKEND_URL}/api/v1/vendor/pending-transfers`, {
+      const response = await fetch(`${BACKEND_URL}/api/v1/vendor/pending-receptions`, {
         headers: getHeaders()
       });
       return handleResponse(response);
@@ -115,19 +100,30 @@ export const vendorAPI = {
     const result = await tryBackendFirst(backendCall);
     
     if (result.success) {
-      // Según la documentación VE002, el endpoint devuelve:
-      // { success: true, pending_transfers: [...], urgent_count: x, normal_count: y }
-      console.log('✅ Transferencias pendientes cargadas del backend:', result.data.pending_transfers?.length || 0);
-      return result.data;
+      // VE003 devuelve: { success: true, pending_receptions: [...], total_pending: x }
+      // Adaptar la respuesta para mantener compatibilidad con el componente
+      console.log('✅ Recepciones pendientes cargadas del backend:', result.data.pending_receptions?.length || 0);
+      
+      const urgentCount = result.data.pending_receptions?.filter((r: any) => r.requires_urgent_confirmation).length || 0;
+      const normalCount = result.data.pending_receptions?.filter((r: any) => !r.requires_urgent_confirmation).length || 0;
+      
+      return {
+        success: true,
+        pending_transfers: result.data.pending_receptions || [], // Renombrar para compatibilidad
+        urgent_count: urgentCount,
+        normal_count: normalCount,
+        total_pending: result.data.total_pending || (result.data.pending_receptions?.length || 0)
+      };
     } else {
-      // Fallback a mock
-      console.log('📦 Usando datos mock para pending transfers');
+      // Fallback a mock - SIEMPRE devolver al menos 1 para debug
+      console.log('📦 Usando datos mock para pending receptions');
       await new Promise(resolve => setTimeout(resolve, 500));
       return {
         success: true,
-        pending_transfers: mockData.seller.pending,
-        urgent_count: 1,
-        normal_count: 0
+        pending_transfers: mockData.seller.receptions, // Usar recepciones mock
+        urgent_count: 0,
+        normal_count: 1,
+        total_pending: 1
       };
     }
   },

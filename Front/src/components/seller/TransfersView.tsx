@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
 import { vendorAPI } from '../../services/transfersAPI';
 
 import { 
@@ -31,27 +30,26 @@ interface TransfersViewProps {
   } | null;
 }
 
-// Interfaz para la estructura del endpoint VE002 según documentación
-interface PendingTransfer {
+// Interfaz para la estructura del endpoint VE003 (pending-receptions)
+interface PendingReception {
   id: number;
-  status: string;
   sneaker_reference_code: string;
   brand: string;
   model: string;
   size: string;
-  purpose: string;
-  courier_name?: string;
-  estimated_arrival?: string;
-  time_elapsed: string;
-  next_action: string;
+  quantity: number;
+  courier_name: string;
+  delivered_at: string;
+  hours_since_delivery: number;
+  requires_urgent_confirmation: boolean;
+  delivery_notes?: string;
 }
 
-// Interfaz para el response del endpoint VE002
-interface PendingTransfersResponse {
+// Interfaz para el response del endpoint VE003
+interface PendingReceptionsResponse {
   success: boolean;
-  pending_transfers: PendingTransfer[];
-  urgent_count: number;
-  normal_count: number;
+  pending_receptions: PendingReception[];
+  total_pending: number;
 }
 
 export const TransfersView: React.FC<TransfersViewProps> = ({ 
@@ -59,10 +57,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   prefilledProductData 
 }) => {
   const [activeTab, setActiveTab] = useState('pending');
-  const [pendingTransfers, setPendingTransfers] = useState<PendingTransfer[]>([]);
+  const [pendingReceptions, setPendingReceptions] = useState<PendingReception[]>([]);
   const [urgentCount, setUrgentCount] = useState(0);
   const [normalCount, setNormalCount] = useState(0);
-  const [pendingReceptions, setPendingReceptions] = useState([]);
+  const [totalPending, setTotalPending] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,26 +111,22 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       setError(null);
       setLoading(true);
       
-      const [transfersResponse, receptionsResponse] = await Promise.all([
-        vendorAPI.getPendingTransfers(), // Usa VE002: /api/v1/vendor/pending-transfers
-        vendorAPI.getPendingReceptions() // Usa VE003: /api/v1/vendor/pending-receptions
-      ]);
+      // Cargar recepciones pendientes (que ahora son las "transferencias")
+      const receptionsResponse = await vendorAPI.getPendingTransfers(); // Usa VE003 internamente
       
-      // El endpoint VE002 devuelve: { success, pending_transfers, urgent_count, normal_count }
-      setPendingTransfers(transfersResponse.pending_transfers || []);
-      setUrgentCount(transfersResponse.urgent_count || 0);
-      setNormalCount(transfersResponse.normal_count || 0);
-      
-      // El endpoint VE003 devuelve: { success, pending_receptions, total_pending }
-      setPendingReceptions(receptionsResponse.pending_receptions || []);
+      // El endpoint VE003 adaptado devuelve: { success, pending_transfers (recepciones), urgent_count, normal_count, total_pending }
+      setPendingReceptions(receptionsResponse.pending_transfers || []);
+      setUrgentCount(receptionsResponse.urgent_count || 0);
+      setNormalCount(receptionsResponse.normal_count || 0);
+      setTotalPending(receptionsResponse.total_pending || 0);
       
     } catch (err: any) {
       console.error('Error loading transfers:', err);
       setError('Error conectando con el servidor');
-      setPendingTransfers([]);
       setPendingReceptions([]);
       setUrgentCount(0);
       setNormalCount(0);
+      setTotalPending(0);
     } finally {
       setLoading(false);
     }
@@ -173,81 +167,74 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     }
   };
 
-  const handleConfirmReception = async (requestId: number) => {
+  // Función para confirmar recepción
+  const handleConfirmReception = async (receptionId: number) => {
     try {
-      await vendorAPI.confirmReception(requestId, 1, true, 'Producto recibido correctamente');
+      await vendorAPI.confirmReception(receptionId, 1, true, 'Producto recibido correctamente');
       alert('Recepción confirmada exitosamente');
-      loadTransfersData();
+      loadTransfersData(); // Recargar datos
     } catch (err: any) {
       console.error('Error confirmando recepción:', err);
       alert('Error confirmando recepción: ' + (err instanceof Error ? err.message : 'Error desconocido'));
     }
   };
 
-  // Función para calcular tiempo transcurrido desde la descripción que ya viene
-  const parseTimeElapsed = (timeElapsedStr: string): string => {
-    // El endpoint ya devuelve el tiempo formateado (ej: "35 minutos")
-    return timeElapsedStr || 'Recién solicitado';
+  // Función para calcular tiempo transcurrido desde la entrega
+  const parseTimeElapsed = (deliveredAt: string): string => {
+    const now = new Date();
+    const delivered = new Date(deliveredAt);
+    const diffMs = now.getTime() - delivered.getTime();
+    
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
   };
 
-  // Función para obtener el nombre del corredor desde el campo courier_name
-  const getCourierName = (transfer: PendingTransfer): string => {
-    return transfer.courier_name || 'Sin asignar';
+  // Función para obtener el nombre del corredor
+  const getCourierName = (reception: PendingReception): string => {
+    return reception.courier_name || 'Sin asignar';
   };
 
-  // El next_action ya viene del endpoint
-  const getNextAction = (transfer: PendingTransfer): string => {
-    return transfer.next_action || 'Estado desconocido';
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'accepted': return 'bg-blue-100 text-blue-800';
-      case 'courier_assigned': return 'bg-purple-100 text-purple-800';
-      case 'in_transit': return 'bg-orange-100 text-orange-800';
-      case 'delivered': return 'bg-green-100 text-green-800';
-      case 'completed': return 'bg-green-200 text-green-900';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+  // La próxima acción para recepciones pendientes
+  const getNextAction = (reception: PendingReception): string => {
+    if (reception.requires_urgent_confirmation) {
+      return '🔥 REQUIERE CONFIRMACIÓN URGENTE';
     }
+    return 'Confirmar recepción del producto';
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending': return <Clock className="h-4 w-4" />;
-      case 'accepted': return <CheckCircle className="h-4 w-4" />;
-      case 'courier_assigned': return <User className="h-4 w-4" />;
-      case 'in_transit': return <Truck className="h-4 w-4" />;
-      case 'delivered': return <CheckCircle className="h-4 w-4" />;
-      case 'completed': return <CheckCircle className="h-4 w-4" />;
-      case 'cancelled': return <XCircle className="h-4 w-4" />;
-      default: return <Package className="h-4 w-4" />;
+  const getStatusColor = (reception: PendingReception) => {
+    if (reception.requires_urgent_confirmation) {
+      return 'bg-red-100 text-red-800';
     }
+    return 'bg-green-100 text-green-800';
   };
 
-  const getStatusText = (status: string): string => {
-    switch (status) {
-      case 'pending': return 'Pendiente';
-      case 'accepted': return 'Aceptada';
-      case 'courier_assigned': return 'Corredor Asignado';
-      case 'in_transit': return 'En Tránsito';
-      case 'delivered': return 'Entregada';
-      case 'completed': return 'Completada';
-      case 'cancelled': return 'Cancelada';
-      default: return status;
+  const getStatusIcon = (reception: PendingReception) => {
+    if (reception.requires_urgent_confirmation) {
+      return <AlertCircle className="h-4 w-4" />;
     }
+    return <CheckCircle className="h-4 w-4" />;
   };
 
-  // Filtrar transferencias por estado - Para el endpoint VE002 ya vienen filtradas
-  const activeTransfers = pendingTransfers; // Ya vienen solo las pendientes/activas
+  const getStatusText = (reception: PendingReception): string => {
+    if (reception.requires_urgent_confirmation) {
+      return 'Urgente';
+    }
+    return 'Entregado';
+  };
+
+  // Filtrar recepciones - Ya vienen filtradas del endpoint
+  const activeReceptions = pendingReceptions;
 
   if (loading) {
     return (
       <Card>
         <CardContent className="p-6 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Cargando transferencias...</p>
+          <p>Cargando recepciones...</p>
         </CardContent>
       </Card>
     );
@@ -274,14 +261,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         </Card>
       )}
 
-      {/* Resumen de transferencias según endpoint VE002 */}
-      {(urgentCount > 0 || normalCount > 0) && (
+      {/* Resumen de recepciones pendientes según endpoint VE003 */}
+      {totalPending > 0 && (
         <Card>
           <CardContent className="p-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <div className="bg-gray-50 p-3 rounded-lg">
-                <p className="text-2xl font-bold text-gray-600">{urgentCount + normalCount}</p>
-                <p className="text-xs text-gray-600">Total Pendientes</p>
+                <p className="text-2xl font-bold text-gray-600">{totalPending}</p>
+                <p className="text-xs text-gray-600">Total Por Confirmar</p>
               </div>
               {urgentCount > 0 && (
                 <div className="bg-red-50 p-3 rounded-lg">
@@ -290,9 +277,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 </div>
               )}
               {normalCount > 0 && (
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <p className="text-2xl font-bold text-blue-600">{normalCount}</p>
-                  <p className="text-xs text-blue-600">📦 Normales</p>
+                <div className="bg-green-50 p-3 rounded-lg">
+                  <p className="text-2xl font-bold text-green-600">{normalCount}</p>
+                  <p className="text-xs text-green-600">✅ Normales</p>
                 </div>
               )}
             </div>
@@ -314,8 +301,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 {activeTab === 'receptions' && <CheckCircle className="h-4 w-4 text-primary" />}
                 {activeTab === 'new' && <Plus className="h-4 w-4 text-primary" />}
                 <span className="font-medium">
-                  {activeTab === 'pending' && `Transferencias (${pendingTransfers.length})`}
-                  {activeTab === 'receptions' && `Por Confirmar (${pendingReceptions.length})`}
+                  {activeTab === 'pending' && `Recepciones por Confirmar (${activeReceptions.length})`}
+                  {activeTab === 'receptions' && 'Historial'}
                   {activeTab === 'new' && 'Nueva Solicitud'}
                   {prefilledProductData && activeTab === 'new' && (
                     <span className="ml-2 px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
@@ -339,7 +326,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   }`}
                 >
                   <Package className="h-4 w-4" />
-                  <span>Transferencias ({activeTransfers.length})</span>
+                  <span>Recepciones por Confirmar ({activeReceptions.length})</span>
                 </button>
                 <button
                   onClick={() => {
@@ -351,7 +338,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   }`}
                 >
                   <CheckCircle className="h-4 w-4" />
-                  <span>Por Confirmar ({pendingReceptions.length})</span>
+                  <span>Historial</span>
                 </button>
                 <button
                   onClick={() => {
@@ -383,14 +370,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               onClick={() => setActiveTab('pending')}
             >
               <Package className="h-4 w-4 mr-2" />
-              Transferencias ({activeTransfers.length})
+              Recepciones por Confirmar ({activeReceptions.length})
             </Button>
             <Button
               variant={activeTab === 'receptions' ? 'primary' : 'outline'}
               onClick={() => setActiveTab('receptions')}
             >
               <CheckCircle className="h-4 w-4 mr-2" />
-              Por Confirmar ({pendingReceptions.length})
+              Historial
             </Button>
             <Button
               variant={activeTab === 'new' ? 'primary' : 'outline'}
@@ -424,26 +411,26 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       {activeTab === 'pending' && (
         <Card>
           <CardHeader>
-            <h3 className="text-base md:text-lg font-semibold">Transferencias Activas</h3>
+            <h3 className="text-base md:text-lg font-semibold">Productos Entregados - Pendientes de Confirmación</h3>
           </CardHeader>
           <CardContent>
-            {activeTransfers.length === 0 ? (
+            {activeReceptions.length === 0 ? (
               <div className="text-center py-8 md:py-12">
                 <Package className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500 text-sm md:text-base">No tienes transferencias activas</p>
+                <p className="text-gray-500 text-sm md:text-base">No tienes productos por confirmar</p>
               </div>
             ) : (
               <div className="space-y-3 md:space-y-4">
-                {activeTransfers.map((transfer) => (
-                  <div key={transfer.id} className="border rounded-lg p-3 md:p-4">
+                {activeReceptions.map((reception) => (
+                  <div key={reception.id} className="border rounded-lg p-3 md:p-4">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(transfer.status)}`}>
-                            {getStatusIcon(transfer.status)}
-                            <span>{getStatusText(transfer.status)}</span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(reception)}`}>
+                            {getStatusIcon(reception)}
+                            <span>{getStatusText(reception)}</span>
                           </span>
-                          {transfer.purpose === 'cliente' && (
+                          {reception.requires_urgent_confirmation && (
                             <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
                               🔥 URGENTE
                             </span>
@@ -451,32 +438,47 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         </div>
                         
                         <h4 className="font-semibold text-sm md:text-lg truncate">
-                          {transfer.brand} {transfer.model}
+                          {reception.brand} {reception.model}
                         </h4>
                         <p className="text-xs md:text-sm text-gray-600 truncate">
-                          Código: {transfer.sneaker_reference_code} | Talla: {transfer.size}
+                          Código: {reception.sneaker_reference_code} | Talla: {reception.size} | Cantidad: {reception.quantity}
                         </p>
                         <p className="text-xs md:text-sm text-gray-500">
-                          {getNextAction(transfer)}
+                          {getNextAction(reception)}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Entregado: {new Date(reception.delivered_at).toLocaleString('es-ES')}
                         </p>
                       </div>
                       
                       <div className="text-right flex-shrink-0">
-                        <p className="text-xs md:text-sm text-gray-500">Tiempo transcurrido</p>
-                        <p className="font-medium text-sm md:text-base">{parseTimeElapsed(transfer.time_elapsed)}</p>
-                        {transfer.estimated_arrival && (
-                          <div className="text-xs text-gray-400 mt-1">
-                            <span>ETA: {new Date(transfer.estimated_arrival).toLocaleTimeString()}</span>
-                          </div>
-                        )}
+                        <p className="text-xs md:text-sm text-gray-500">Tiempo desde entrega</p>
+                        <p className="font-medium text-sm md:text-base">{parseTimeElapsed(reception.delivered_at)}</p>
+                        
+                        {/* Botón de confirmar recepción */}
+                        <Button
+                          onClick={() => handleConfirmReception(reception.id)}
+                          className="bg-green-600 hover:bg-green-700 text-sm mt-2 w-full"
+                          size="sm"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Confirmar Recepción
+                        </Button>
                       </div>
                     </div>
 
-                    {/* Información del corredor si está asignado */}
-                    {transfer.courier_name && (
-                      <div className="mt-3 p-2 md:p-3 bg-blue-50 rounded-md">
-                        <p className="text-xs md:text-sm">
-                          <strong>Corredor asignado:</strong> {getCourierName(transfer)}
+                    {/* Información del corredor */}
+                    <div className="mt-3 p-2 md:p-3 bg-blue-50 rounded-md">
+                      <p className="text-xs md:text-sm">
+                        <strong>Entregado por:</strong> {getCourierName(reception)}
+                      </p>
+                    </div>
+
+                    {/* Notas de entrega si existen */}
+                    {reception.delivery_notes && (
+                      <div className="mt-3 p-2 md:p-3 bg-gray-50 rounded-md">
+                        <p className="text-xs md:text-sm text-gray-700">
+                          <strong>Notas de entrega:</strong> {reception.delivery_notes}
                         </p>
                       </div>
                     )}
@@ -491,53 +493,13 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       {activeTab === 'receptions' && (
         <Card>
           <CardHeader>
-            <h3 className="text-base md:text-lg font-semibold">Productos por Confirmar Recepción</h3>
+            <h3 className="text-base md:text-lg font-semibold">Historial de Recepciones Confirmadas</h3>
           </CardHeader>
           <CardContent>
-            {pendingReceptions.length === 0 ? (
-              <div className="text-center py-8 md:py-12">
-                <CheckCircle className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500 text-sm md:text-base">No tienes productos por confirmar</p>
-              </div>
-            ) : (
-              <div className="space-y-3 md:space-y-4">
-                {pendingReceptions.map((reception: any) => (
-                  <div key={reception.id} className="border rounded-lg p-3 md:p-4">
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-sm md:text-lg truncate">
-                          {reception.brand} {reception.model}
-                        </h4>
-                        <p className="text-xs md:text-sm text-gray-600">
-                          Código: {reception.sneaker_reference_code} | Talla: {reception.size} | Cantidad: {reception.quantity}
-                        </p>
-                        <p className="text-xs md:text-sm text-gray-500">
-                          Entregado por: {reception.courier_name}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          Entregado: {new Date(reception.delivered_at).toLocaleString()}
-                        </p>
-                      </div>
-                      
-                      <Button
-                        onClick={() => handleConfirmReception(reception.id)}
-                        className="bg-green-600 hover:bg-green-700 text-sm md:text-base w-full md:w-auto"
-                        size="sm"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Confirmar Recepción
-                      </Button>
-                    </div>
-
-                    {reception.delivery_notes && (
-                      <div className="mt-3 p-2 md:p-3 bg-gray-50 rounded-md">
-                        <p className="text-xs md:text-sm text-gray-700">{reception.delivery_notes}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="text-center py-8 md:py-12">
+              <CheckCircle className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-500 text-sm md:text-base">Historial de recepciones confirmadas - En desarrollo</p>
+            </div>
           </CardContent>
         </Card>
       )}
