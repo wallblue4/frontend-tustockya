@@ -1,5 +1,5 @@
 // src/services/transfersAPI.js - CORREGIDO PARA USAR ENDPOINTS CORRECTOS
-const BACKEND_URL = import.meta.env.VITE_BACKEND_SERVICE;
+const BACKEND_URL = 'https://tustockya-backend.onrender.com';
 
 const getHeaders = () => {
   const token = localStorage.getItem('token');
