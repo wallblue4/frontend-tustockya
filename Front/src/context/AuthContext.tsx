@@ -13,51 +13,12 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock user data for demonstration
-const MOCK_USERS = [
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'admin@tennis.com',
-    role: 'admin' as UserRole,
-    avatar: 'https://i.pravatar.cc/150?img=1',
-  },
-  {
-    id: '2',
-    name: 'Super User',
-    email: 'super@tennis.com',
-    role: 'superuser' as UserRole,
-    avatar: 'https://i.pravatar.cc/150?img=2',
-  },
-  {
-    id: '3',
-    name: 'Warehouse Manager',
-    email: 'warehouse@tennis.com',
-    role: 'warehouse' as UserRole,
-    avatar: 'https://i.pravatar.cc/150?img=3',
-  },
-  {
-    id: '4',
-    name: 'Seller',
-    email: 'seller@tennis.com',
-    role: 'seller' as UserRole,
-    avatar: 'https://i.pravatar.cc/150?img=4',
-  },
-  {
-    id: '5',
-    name: 'Runner',
-    email: 'runner@tennis.com',
-    role: 'runner' as UserRole,
-    avatar: 'https://i.pravatar.cc/150?img=5',
-  },
-];
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is stored in localStorage
+    //Check if user is stored in localStorage
     //const storedUser = localStorage.getItem('user');
     //if (storedUser) {
     //  setUser(JSON.parse(storedUser));
@@ -104,17 +65,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string): Promise<User> => {
     setLoading(true);
     try {
-      // In a real app, this would be an API call
-      /*
-      const mockUser = MOCK_USERS.find((u) => u.email === email);
-      if (mockUser && password === 'password') {
-        setUser(mockUser);
-        localStorage.setItem('user', JSON.stringify(mockUser));
-        return mockUser;
-      } else {
-        throw new Error('Invalid credentials');
-      }*/
-
       const response = await authAPI.login({ email, password }); //CAMBIO
       if (response.access_token && response.user) {
         const userData: User = {

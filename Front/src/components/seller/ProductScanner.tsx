@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { formatCurrency } from '../../services/api';
+import { formatCurrency, vendorAPI, convertScanResponseToProductOptions, ScanResponse } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Camera, 
@@ -18,8 +18,6 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
-
-
 
 interface StockBySizeInfo {
   size: string;
@@ -49,27 +47,6 @@ interface AvailabilityInfo {
   can_sell: boolean;
   can_request_from_other_locations: boolean;
   recommended_action: string;
-}
-
-interface ProductMatch {
-  rank: number;
-  similarity_score: number;
-  confidence_percentage: number;
-  confidence_level: string;
-  reference: {
-    code: string;
-    brand: string;
-    model: string;
-    color: string;
-    description: string;
-    photo: string;
-  };
-  inventory: InventoryInfo;
-  availability: AvailabilityInfo;
-  classification_source: string;
-  inventory_source: string;
-  original_db_id: number;
-  image_path: string;
 }
 
 interface ProductOption {
@@ -122,32 +99,8 @@ interface ProductScannerProps {
     size: string;
     product: ProductOption;
   }) => void;
-  capturedImage?: File | null; // Imagen desde la cámara
-  scanResult?: any; // Resultado del escaneo inicial
-}
-
-interface StockAPIResponse {
-  success: boolean;
-  scan_timestamp: string;
-  scanned_by: {
-    user_id: number;
-    email: string;
-    name: string;
-    role: string;
-    location_id: number;
-  };
-  user_location: string;
-  best_match: ProductMatch;
-  alternative_matches: ProductMatch[];
-  total_matches_found: number;
-  processing_time_ms: number;
-  image_info: {
-    filename: string;
-    size_bytes: number;
-    content_type: string;
-  };
-  classification_service: any;
-  inventory_service: any;
+  capturedImage?: File | null;
+  scanResult?: any;
 }
 
 // Componente para manejar imágenes con fallback
@@ -196,7 +149,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
   scanResult
 }) => {
   const { user } = useAuth();
-  const authToken = user?.token;
 
   const [isScanning, setIsScanning] = useState(false);
   const [scanOptions, setScanOptions] = useState<ProductOption[]>([]);
@@ -214,290 +166,39 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     }
   }, [capturedImage]);
 
-  // Función corregida para convertir match a ProductOption
-  const convertMatchToProductOption = (match: ProductMatch): ProductOption => {
-    return {
-      id: match.original_db_id.toString(),
-      brand: match.reference.brand,
-      model: match.reference.model,
-      code: match.reference.code,
-      description: match.reference.description,
-      confidence: Math.round(match.confidence_percentage),
-      // Corregir el mapeo de imagen - usar image_path si photo está vacío
-      image: match.reference.photo || match.image_path || null,
-      rank: match.rank,
-      similarity_score: match.similarity_score,
-      confidence_level: match.confidence_level,
-      original_db_id: match.original_db_id,
-      inventory: match.inventory,
-      availability: match.availability,
-      color: match.reference.color
-    };
-  };
-
-  // Datos mock actualizados con URLs de imágenes reales
-  const createMockOptionsWithImages = (): ProductOption[] => [
-    {
-      id: '1',
-      brand: 'Nike',
-      model: 'Air Max 90',
-      code: 'NK-AM90-001',
-      description: 'Zapatillas deportivas clásicas con amortiguación Air',
-      confidence: 95,
-      // URL de imagen real de zapatillas Nike
-      image: 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/99486859-0ff3-46b4-949b-2d16af2ad421/air-max-90-shoes-6n8dKZ.png',
-      rank: 1,
-      similarity_score: 0.95,
-      confidence_level: 'very_high',
-      original_db_id: 1,
-      color: 'Negro/Blanco',
-      inventory: {
-        local_info: {
-          location_number: 1,
-          location_name: 'Local Centro'
-        },
-        pricing: {
-          unit_price: 180000,
-          box_price: 190000
-        },
-        stock_by_size: [
-          {
-            size: '8',
-            quantity_stock: 3,
-            quantity_exhibition: 1,
-            location: 'Local Centro'
-          },
-          {
-            size: '8.5',
-            quantity_stock: 2,
-            quantity_exhibition: 0,
-            location: 'Local Centro'
-          },
-          {
-            size: '9',
-            quantity_stock: 4,
-            quantity_exhibition: 1,
-            location: 'Local Centro'
-          }
-        ],
-        total_stock: 9,
-        total_exhibition: 2,
-        available_sizes: ['8', '8.5', '9'],
-        other_locations: []
-      },
-      availability: {
-        in_stock: true,
-        can_sell: true,
-        can_request_from_other_locations: false,
-        recommended_action: 'Disponible para venta inmediata'
-      }
-    },
-    {
-      id: '2',
-      brand: 'Adidas',
-      model: 'Stan Smith',
-      code: 'AD-SS-003',
-      description: 'Zapatillas minimalistas de tenis clásicas',
-      confidence: 82,
-      // URL de imagen real de Adidas Stan Smith
-      image: 'https://assets.adidas.com/images/h_840,f_auto,q_auto,fl_lossy,c_fill,g_auto/99ca762cb9054cb3af37af7b00e8f45e_9366/Stan_Smith_Shoes_White_FX5500_01_standard.jpg',
-      rank: 2,
-      similarity_score: 0.82,
-      confidence_level: 'high',
-      original_db_id: 3,
-      color: 'Blanco/Verde',
-      inventory: {
-        local_info: {
-          location_number: 1,
-          location_name: 'Local Centro'
-        },
-        pricing: {
-          unit_price: 150000,
-          box_price: 160000
-        },
-        stock_by_size: [
-          {
-            size: '7.5',
-            quantity_stock: 1,
-            quantity_exhibition: 0,
-            location: 'Local Centro'
-          },
-          {
-            size: '8',
-            quantity_stock: 0,
-            quantity_exhibition: 1,
-            location: 'Local Centro'
-          }
-        ],
-        total_stock: 1,
-        total_exhibition: 1,
-        available_sizes: ['7.5'],
-        other_locations: []
-      },
-      availability: {
-        in_stock: true,
-        can_sell: true,
-        can_request_from_other_locations: true,
-        recommended_action: 'Stock limitado - considerar solicitar transferencia'
-      }
-    },
-    {
-      id: '3',
-      brand: 'Jordan',
-      model: 'Air Jordan 1',
-      code: 'JD-AJ1-004',
-      description: 'Zapatillas de baloncesto icónicas retro',
-      confidence: 78,
-      // URL de imagen real de Jordan 1
-      image: 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/b7d9211c-26e7-431a-ac24-b0540fb3c00f/air-jordan-1-retro-high-og-shoes-Pph9MS.png',
-      rank: 3,
-      similarity_score: 0.78,
-      confidence_level: 'high',
-      original_db_id: 4,
-      color: 'Rojo/Negro/Blanco',
-      inventory: {
-        local_info: {
-          location_number: 1,
-          location_name: 'Local Centro'
-        },
-        pricing: {
-          unit_price: 220000,
-          box_price: 230000
-        },
-        stock_by_size: [
-          {
-            size: '9',
-            quantity_stock: 2,
-            quantity_exhibition: 0,
-            location: 'Local Centro'
-          },
-          {
-            size: '9.5',
-            quantity_stock: 1,
-            quantity_exhibition: 1,
-            location: 'Local Centro'
-          }
-        ],
-        total_stock: 3,
-        total_exhibition: 1,
-        available_sizes: ['9', '9.5'],
-        other_locations: []
-      },
-      availability: {
-        in_stock: true,
-        can_sell: true,
-        can_request_from_other_locations: false,
-        recommended_action: 'Disponible para venta inmediata'
-      }
-    }
-  ];
-
-  // Función handleScanFromCamera actualizada con mejor manejo de errores
-  const handleScanFromCamera = async (imageFile: File) => {
-    if (!authToken) {
-      setError('No hay token de autenticación. Por favor, inicia sesión nuevamente.');
-      setCurrentStep('options');
-      return;
+  // Función para convertir los datos de disponibilidad a formato de tallas
+  const convertAvailabilityToSizes = (product: ProductOption): SizeInfo[] => {
+    // Si no hay stock disponible, crear tallas mock basadas en las tallas disponibles del sistema
+    if (product.inventory.total_stock === 0 && product.inventory.available_sizes.length === 0) {
+      // Crear tallas comunes sin stock para mostrar que el producto existe pero no está disponible
+      const commonSizes = ['7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5', '11'];
+      return commonSizes.map(size => ({
+        size,
+        location: product.inventory.local_info.location_name || 'Sin ubicación',
+        storage_type: 'warehouse' as const,
+        quantity: 0,
+        unit_price: product.inventory.pricing.unit_price,
+        box_price: product.inventory.pricing.box_price,
+        total_quantity: 0
+      }));
     }
 
-    setIsScanning(true);
-    setError(null);
-    setCurrentStep('processing');
-
-    try {
-      // Preparar FormData para la API con stock
-      const formData = new FormData();
-      formData.append('image', imageFile);
-
-      console.log('Enviando imagen al servidor...', {
-        fileName: imageFile.name,
-        fileSize: imageFile.size,
-        fileType: imageFile.type
-      });
-
-      // Hacer la llamada a la API con stock
-      const response = await fetch('https://tustockya-backend.onrender.com/api/v1/classify/scan', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error de API:', response.status, errorText);
-        throw new Error(`Error en la API: ${response.status} ${response.statusText}`);
-      }
-
-      const apiData: StockAPIResponse = await response.json();
-      console.log('Respuesta de la API:', apiData);
-
-      if (!apiData.success) {
-        throw new Error('La API no pudo procesar la imagen');
-      }
-
-      // Guardar información del escaneo
-      setScanInfo({
-        scan_timestamp: apiData.scan_timestamp,
-        scanned_by: apiData.scanned_by,
-        user_location: apiData.user_location,
-        processing_time: apiData.processing_time_ms
-      });
-
-      // Convertir la respuesta de la API al formato esperado por el componente
-      const options: ProductOption[] = [];
-      
-      // Agregar el mejor match primero
-      if (apiData.best_match) {
-        console.log('Best match image data:', {
-          photo: apiData.best_match.reference.photo,
-          image_path: apiData.best_match.image_path
-        });
-        options.push(convertMatchToProductOption(apiData.best_match));
-      }
-      
-      // Agregar las alternativas
-      if (apiData.alternative_matches) {
-        options.push(...apiData.alternative_matches.map(convertMatchToProductOption));
-      }
-
-      console.log('Opciones procesadas:', options.map(opt => ({
-        id: opt.id,
-        brand: opt.brand,
-        model: opt.model,
-        image: opt.image
-      })));
-
-      setScanOptions(options);
-      setCurrentStep('options');
-    } catch (err) {
-      console.error('Error al procesar la imagen:', err);
-      
-      // FALLBACK: Usar datos mock con imágenes reales
-      console.log('Usando datos mock como fallback...');
-      
-      const mockOptions = createMockOptionsWithImages();
-      setScanOptions(mockOptions);
-      setScanInfo({
-        scan_timestamp: new Date().toISOString(),
-        scanned_by: {
-          name: user?.name || 'Usuario Mock',
-          email: user?.email || 'usuario@mock.com'
-        },
-        user_location: 'Local Centro (Mock)',
-        processing_time: 1500
-      });
-      setCurrentStep('options');
-    } finally {
-      setIsScanning(false);
+    // Si hay tallas disponibles en el sistema pero sin información detallada de stock
+    if (product.inventory.available_sizes.length > 0) {
+      return product.inventory.available_sizes.map(size => ({
+        size,
+        location: product.inventory.local_info.location_name || 'Local',
+        storage_type: 'warehouse' as const,
+        quantity: 0, // La nueva API no proporciona información detallada por talla
+        unit_price: product.inventory.pricing.unit_price,
+        box_price: product.inventory.pricing.box_price,
+        total_quantity: 0
+      }));
     }
-  };
 
-  const handleProductSelect = async (product: ProductOption) => {
-    try {
-      // Convertir los datos de stock reales al formato del componente
-      const realSizes: SizeInfo[] = product.inventory.stock_by_size.map((stockInfo) => ({
+    // Si hay información detallada de stock por talla (del formato anterior)
+    if (product.inventory.stock_by_size && product.inventory.stock_by_size.length > 0) {
+      return product.inventory.stock_by_size.map((stockInfo) => ({
         size: stockInfo.size,
         location: stockInfo.location,
         storage_type: stockInfo.quantity_stock > 0 ? 'warehouse' : 'display',
@@ -506,10 +207,81 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         box_price: product.inventory.pricing.box_price,
         total_quantity: stockInfo.quantity_stock + stockInfo.quantity_exhibition
       }));
+    }
+
+    // Fallback: crear al menos una entrada para mostrar el producto
+    return [{
+      size: 'Consultar',
+      location: product.inventory.local_info.location_name || 'Local',
+      storage_type: 'warehouse' as const,
+      quantity: 0,
+      unit_price: product.inventory.pricing.unit_price,
+      box_price: product.inventory.pricing.box_price,
+      total_quantity: 0
+    }];
+  };
+
+  // Función handleScanFromCamera actualizada para usar la nueva API
+  const handleScanFromCamera = async (imageFile: File) => {
+    setIsScanning(true);
+    setError(null);
+    setCurrentStep('processing');
+
+    try {
+      console.log('Enviando imagen al servidor...', {
+        fileName: imageFile.name,
+        fileSize: imageFile.size,
+        fileType: imageFile.type
+      });
+
+      // Usar la función del API actualizada
+      const scanResponse: ScanResponse = await vendorAPI.scanProduct(imageFile);
+      console.log('Respuesta de la API:', scanResponse);
+
+      if (!scanResponse.success) {
+        throw new Error('La API no pudo procesar la imagen');
+      }
+
+      // Guardar información del escaneo
+      setScanInfo({
+        scan_timestamp: scanResponse.scan_timestamp,
+        scanned_by: scanResponse.scanned_by,
+        user_location: scanResponse.user_location,
+        processing_time: scanResponse.processing_time_ms,
+        availability_summary: scanResponse.availability_summary,
+        classification_service: scanResponse.classification_service
+      });
+
+      // Convertir la respuesta a formato compatible con el componente
+      const options = convertScanResponseToProductOptions(scanResponse);
+      
+      console.log('Opciones procesadas:', options.map(opt => ({
+        id: opt.id,
+        brand: opt.brand,
+        model: opt.model,
+        image: opt.image,
+        availability: opt.availability
+      })));
+
+      setScanOptions(options);
+      setCurrentStep('options');
+    } catch (err) {
+      console.error('Error al procesar la imagen:', err);
+      setError(err instanceof Error ? err.message : 'Error desconocido al procesar la imagen');
+      setCurrentStep('options');
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleProductSelect = async (product: ProductOption) => {
+    try {
+      // Convertir los datos de disponibilidad al formato de tallas
+      const sizes = convertAvailabilityToSizes(product);
 
       setSelectedProduct({
         product,
-        sizes: realSizes
+        sizes
       });
       setCurrentStep('details');
       setSelectedSize('');
@@ -626,9 +398,9 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
           <div className="flex items-center space-x-3">
             <Camera className="h-5 w-5 text-green-600" />
             <div>
-              <p className="text-sm font-medium text-green-800">Escáner IA - Stock en Tiempo Real</p>
+              <p className="text-sm font-medium text-green-800">Escáner IA - Sistema Actualizado</p>
               <p className="text-sm text-green-700">
-                Conectado a inventario real con datos de stock actualizados
+                Conectado a nueva API de clasificación con información de disponibilidad
               </p>
             </div>
           </div>
@@ -639,18 +411,38 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       {scanInfo && (
         <Card className="border-blue-200 bg-blue-50">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-800">
-                  Escaneado por: {scanInfo.scanned_by.name} - {scanInfo.user_location}
-                </p>
-                <p className="text-xs text-blue-600">
-                  Procesado en {scanInfo.processing_time.toFixed(0)}ms
-                </p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-800">
+                    Escaneado por: {scanInfo.scanned_by.name} - {scanInfo.user_location}
+                  </p>
+                  <p className="text-xs text-blue-600">
+                    Procesado en {scanInfo.processing_time.toFixed(0)}ms
+                  </p>
+                </div>
+                <div className="text-xs text-blue-600">
+                  {new Date(scanInfo.scan_timestamp).toLocaleString()}
+                </div>
               </div>
-              <div className="text-xs text-blue-600">
-                {new Date(scanInfo.scan_timestamp).toLocaleString()}
-              </div>
+              
+              {/* New: Show availability summary */}
+              {scanInfo.availability_summary && (
+                <div className="grid grid-cols-2 gap-4 text-xs text-blue-700 bg-blue-100 p-2 rounded">
+                  <div>Productos clasificados: {scanInfo.availability_summary.products_classified_only}</div>
+                  <div>Venta inmediata: {scanInfo.availability_summary.can_sell_immediately ? 'Sí' : 'No'}</div>
+                  <div>Disponibles localmente: {scanInfo.availability_summary.products_available_locally}</div>
+                  <div>Requieren transferencia: {scanInfo.availability_summary.products_requiring_transfer}</div>
+                </div>
+              )}
+              
+              {/* New: Show classification service info */}
+              {scanInfo.classification_service && (
+                <div className="text-xs text-blue-600">
+                  Modelo: {scanInfo.classification_service.model} | 
+                  Coincidencias en BD: {scanInfo.classification_service.total_database_matches}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -664,7 +456,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
               <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
               <div>
                 <h3 className="text-lg font-semibold">Analizando imagen con IA...</h3>
-                <p className="text-gray-600">Identificando producto y consultando inventario</p>
+                <p className="text-gray-600">Identificando producto y consultando disponibilidad</p>
               </div>
             </div>
           </CardContent>
@@ -757,6 +549,28 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         </Card>
       )}
 
+      {/* No results found */}
+      {currentStep === 'options' && scanOptions.length === 0 && !isScanning && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="p-8 text-center">
+            <div className="space-y-4">
+              <AlertCircle className="h-12 w-12 mx-auto text-yellow-600" />
+              <div>
+                <h3 className="text-lg font-semibold text-yellow-800">No se encontraron productos</h3>
+                <p className="text-yellow-700">No se pudieron identificar productos en la imagen. Intenta con una imagen más clara o un ángulo diferente.</p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => window.location.reload()}
+                className="mt-4"
+              >
+                Intentar de Nuevo
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Product Details and Size Selection */}
       {currentStep === 'details' && selectedProduct && (
         <Card>
@@ -816,11 +630,11 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                       <button
                         key={sizeInfo.size}
                         onClick={() => setSelectedSize(sizeInfo.size)}
-                        disabled={sizeInfo.quantity === 0}
+                        disabled={sizeInfo.quantity === 0 && selectedProduct.product.inventory.total_stock === 0}
                         className={`p-4 border rounded-lg text-left transition-all ${
                           selectedSize === sizeInfo.size
                             ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
-                            : sizeInfo.quantity > 0
+                            : sizeInfo.quantity > 0 || selectedProduct.product.inventory.total_stock > 0
                             ? 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                             : 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-60'
                         }`}
@@ -845,9 +659,10 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                           
                           <div className="flex justify-between items-center">
                             <span className={`font-medium ${
-                              sizeInfo.quantity > 0 ? 'text-success' : 'text-error'
+                              sizeInfo.quantity > 0 || selectedProduct.product.inventory.total_stock > 0 ? 'text-success' : 'text-error'
                             }`}>
-                              {sizeInfo.quantity > 0 ? `${sizeInfo.quantity} disponibles` : 'Sin stock'}
+                              {sizeInfo.quantity > 0 ? `${sizeInfo.quantity} disponibles` : 
+                               selectedProduct.product.inventory.total_stock > 0 ? 'Consultar stock' : 'Sin stock'}
                             </span>
                             <span className="font-bold text-primary">
                               {formatCurrency(sizeInfo.unit_price)}
@@ -867,7 +682,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No hay tallas disponibles en stock para este producto</p>
+                  <p>No hay información de tallas disponible para este producto</p>
                 </div>
               )}
 
@@ -892,7 +707,10 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                           </div>
                           <div>
                             <span className="text-gray-600">Cantidad:</span>
-                            <p className="font-medium text-success">{sizeInfo.quantity} disponibles</p>
+                            <p className="font-medium text-success">
+                              {sizeInfo.quantity > 0 ? `${sizeInfo.quantity} disponibles` : 
+                               selectedProduct.product.inventory.total_stock > 0 ? 'Consultar disponibilidad' : 'Sin stock'}
+                            </p>
                           </div>
                           <div>
                             <span className="text-gray-600">Precio unitario:</span>
@@ -913,14 +731,15 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
               {/* Action Buttons */}
               <div className="flex space-x-4">
-                {selectedSize && selectedProduct.sizes.find(s => s.size === selectedSize)?.quantity > 0 ? (
+                {selectedSize && (selectedProduct.product.availability.can_sell || selectedProduct.product.inventory.total_stock > 0) ? (
                   <>
                     <Button
                       onClick={handleSell}
                       className="flex-1"
+                      disabled={!selectedProduct.product.availability.can_sell && selectedProduct.product.inventory.total_stock === 0}
                     >
                       <ShoppingBag className="h-4 w-4 mr-2" />
-                      Vender Talla {selectedSize}
+                      {selectedProduct.product.availability.can_sell ? `Vender Talla ${selectedSize}` : `Consultar Talla ${selectedSize}`}
                     </Button>
                     <Button
                       onClick={handleSolicitar}
@@ -951,17 +770,28 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                     </Button>
                   </>
                 ) : (
-                  <div className="text-center py-4">
+                  <div className="text-center py-4 w-full">
                     <p className="text-gray-500 mb-4">
-                      Producto no disponible para venta o transferencia
+                      Producto identificado pero no disponible para venta o transferencia
                     </p>
-                    <Button
-                      variant="outline"
-                      onClick={() => window.location.reload()}
-                      className="px-6"
-                    >
-                      Escanear Otro Producto
-                    </Button>
+                    <div className="flex space-x-4">
+                      <Button
+                        onClick={handleSolicitar}
+                        variant="secondary"
+                        className="flex-1"
+                        disabled={!selectedSize}
+                      >
+                        <Package className="h-4 w-4 mr-2" />
+                        Solicitar de Todas Formas
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => window.location.reload()}
+                        className="px-6"
+                      >
+                        Escanear Otro Producto
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>

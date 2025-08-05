@@ -27,39 +27,26 @@ export const LoginPage: React.FC = () => {
         case 'superuser':
           navigate('/superuser');
           break;
-        case 'admin':
+        case 'administrador':
           navigate('/admin');
           break;
-        case 'warehouse':
+        case 'bodeguero':
           navigate('/warehouse');
           break;
         case 'seller':
           navigate('/sellerDashboard');
           break;
-        case 'runner':
+        case 'corredor':
           navigate('/runner');
           break;
         default:
           navigate('/');
       }
     } catch (err) {
-      setError('Correo o contraseña inválidos. Prueba con admin@tennis.com y contraseña "password"');
+      setError('Correo o contraseña inválidos.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const demoLogins = [
-    { role: 'Administrador', email: 'admin@tennis.com' },
-    { role: 'Superusuario', email: 'super@tennis.com' },
-    { role: 'Bodeguero', email: 'warehouse@tennis.com' },
-    { role: 'Vendedor', email: 'seller@tennis.com' },
-    { role: 'Repartidor', email: 'runner@tennis.com' },
-  ];
-
-  const handleDemoLogin = (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword('password');
   };
 
   return (

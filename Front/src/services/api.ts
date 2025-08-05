@@ -141,6 +141,144 @@ interface ReturnData {
   notes?: string;
 }
 
+// NEW: Type definitions for the updated scan response structure
+interface ScanBrandExtraction {
+  original_brand: string;
+  final_brand: string;
+  extraction_method: string;
+}
+
+interface ScanReference {
+  code: string;
+  brand: string;
+  model: string;
+  color: string;
+  description: string;
+  photo: string;
+}
+
+interface ScanAvailabilitySummary {
+  current_location: {
+    has_stock: boolean;
+    total_stock: number;
+    available_sizes: string[];
+    locations_count: number;
+  };
+  other_locations: {
+    has_stock: boolean;
+    total_stock: number;
+    additional_sizes: string[];
+    locations_count: number;
+    can_request_transfer: boolean;
+  };
+  total_system: {
+    total_stock: number;
+    total_locations: number;
+    all_available_sizes: string[];
+  };
+}
+
+interface ScanAvailability {
+  summary: ScanAvailabilitySummary;
+  recommended_action: string;
+  action_type: string;
+  can_sell_now: boolean;
+  can_request_transfer: boolean;
+}
+
+interface ScanLocations {
+  current_location: any[];
+  other_locations: any[];
+  total_locations_found: number;
+}
+
+interface ScanPricing {
+  unit_price: number;
+  box_price: number;
+  has_pricing: boolean;
+}
+
+interface ScanSuggestions {
+  can_add_to_inventory: boolean;
+  can_search_suppliers: boolean;
+  similar_products_available: boolean;
+}
+
+interface ScanMatch {
+  rank: number;
+  similarity_score: number;
+  confidence_percentage: number;
+  confidence_level: string;
+  reference: ScanReference;
+  availability: ScanAvailability;
+  locations: ScanLocations;
+  pricing: ScanPricing;
+  classification_source: string;
+  inventory_source: string;
+  brand_extraction: ScanBrandExtraction;
+  suggestions: ScanSuggestions;
+  original_db_id: number;
+  image_path: string;
+}
+
+interface ScanResults {
+  best_match: ScanMatch;
+  alternative_matches: ScanMatch[];
+  total_matches_found: number;
+}
+
+interface ScanAvailabilitySummaryResponse {
+  products_available_locally: number;
+  products_requiring_transfer: number;
+  products_classified_only: number;
+  total_locations_with_stock: number;
+  can_sell_immediately: boolean;
+  transfer_options_available: boolean;
+  classification_successful: boolean;
+}
+
+interface ScanImageInfo {
+  filename: string;
+  size_bytes: number;
+  content_type: string;
+}
+
+interface ScanClassificationService {
+  service: string;
+  url: string;
+  model: string;
+  total_database_matches: number;
+}
+
+interface ScanInventoryService {
+  source: string;
+  locations_searched: string;
+  include_transfer_options: boolean;
+  search_strategy: string;
+}
+
+interface ScanScannedBy {
+  user_id: number;
+  email: string;
+  name: string;
+  role: string;
+  location_id: number;
+}
+
+// NEW: Complete scan response interface
+export interface ScanResponse {
+  success: boolean;
+  scan_timestamp: string;
+  scanned_by: ScanScannedBy;
+  user_location: string;
+  results: ScanResults;
+  availability_summary: ScanAvailabilitySummaryResponse;
+  processing_time_ms: number;
+  image_info: ScanImageInfo;
+  classification_service: ScanClassificationService;
+  inventory_service: ScanInventoryService;
+}
+
 // Vendor API endpoints
 
 // Auth API - CORREGIDO para coincidir con backend
@@ -159,15 +297,11 @@ export const vendorAPI = {
     return apiRequest('/api/v1/vendor/dashboard')
   },
   
-  // Scanning
-  scanProduct: (imageFile: File) => {
+  // Scanning - UPDATED to return the new scan response structure
+  scanProduct: (imageFile: File): Promise<ScanResponse> => {
     const formData = new FormData();
     formData.append('image', imageFile);
-    return apiRequest('/api/v1/classify/scan', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${getAuthToken()}` },
-      body: formData,
-    });
+    return apiFormDataRequest('/api/v1/classify/scan', formData);
   },
   
   // Sales - ACTUALIZADO para usar FormData según el endpoint
@@ -313,6 +447,66 @@ export const createTransferData = (
     destination_type: transferDetails.destination_type,
     notes: transferDetails.notes
   };
+};
+
+// NEW: Helper function to convert ScanMatch to ProductOption format (for compatibility)
+export const convertScanMatchToProductOption = (match: ScanMatch, index: number = 0) => {
+  return {
+    id: match.original_db_id.toString(),
+    brand: match.reference.brand,
+    model: match.reference.model,
+    code: match.reference.code,
+    description: match.reference.description,
+    confidence: Math.round(match.confidence_percentage),
+    image: match.reference.photo || match.image_path || null,
+    rank: match.rank,
+    similarity_score: match.similarity_score,
+    confidence_level: match.confidence_level,
+    original_db_id: match.original_db_id,
+    color: match.reference.color,
+    // Convert new availability structure to old format for compatibility
+    availability: {
+      in_stock: match.availability.can_sell_now,
+      can_sell: match.availability.can_sell_now,
+      can_request_from_other_locations: match.availability.can_request_transfer,
+      recommended_action: match.availability.recommended_action
+    },
+    // Convert new structure to old inventory format for compatibility
+    inventory: {
+      local_info: {
+        location_number: 10, // From scanned_by.location_id in the example
+        location_name: 'Local #10' // From user_location in the example
+      },
+      pricing: {
+        unit_price: match.pricing.unit_price,
+        box_price: match.pricing.box_price
+      },
+      stock_by_size: [], // No detailed size info in new structure, will be empty
+      total_stock: match.availability.summary.total_system.total_stock,
+      total_exhibition: 0, // Not available in new structure
+      available_sizes: match.availability.summary.total_system.all_available_sizes,
+      other_locations: match.locations.other_locations
+    }
+  };
+};
+
+// NEW: Helper function to convert full scan response to product options array
+export const convertScanResponseToProductOptions = (scanResponse: ScanResponse) => {
+  const options = [];
+  
+  // Add best match first
+  if (scanResponse.results.best_match) {
+    options.push(convertScanMatchToProductOption(scanResponse.results.best_match, 0));
+  }
+  
+  // Add alternative matches
+  if (scanResponse.results.alternative_matches) {
+    scanResponse.results.alternative_matches.forEach((match, index) => {
+      options.push(convertScanMatchToProductOption(match, index + 1));
+    });
+  }
+  
+  return options;
 };
 
 // Helper function to validate payment methods sum matches total
