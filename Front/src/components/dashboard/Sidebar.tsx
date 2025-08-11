@@ -27,6 +27,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
     if (!user) return [];
 
     switch (user.role) {
+      case 'boss':
+        return [
+          { to: '/boss', icon: <Home />, label: 'Dashboard' },
+          { to: '/boss/inventory', icon: <Package />, label: 'Inventario' },
+          { to: '/boss/costs', icon: <BarChart2 />, label: 'Costos' },
+          { to: '/boss/assignments', icon: <Users />, label: 'Asignaciones' },
+          { to: '/boss/analytics', icon: <BarChart2 />, label: 'Métricas' },
+          { to: '/boss/settings', icon: <Settings />, label: 'Configuración' },
+        ];
       case 'superuser':
         return [
           { to: '/superuser', icon: <Home />, label: 'Dashboard' },
@@ -77,9 +86,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
       <div 
         className={`${
           isOpen ? 'translate-x-0' : '-translate-x-full'
-        } fixed top-0 left-0 z-30 w-64 h-screen bg-white shadow-lg transition-transform duration-300 ease-in-out md:translate-x-0`}
+        } fixed top-0 left-0 z-30 w-64 h-full bg-white shadow-lg transition-transform duration-300 ease-in-out md:translate-x-0 flex flex-col`}
       >
-        <div className="flex flex-col h-full">
+        {/* Header - Fixed */}
+        <div className="flex-shrink-0">
           <div className="flex items-center justify-between p-3 sm:p-4 border-b">
             <div className="flex items-center min-w-0">
               <img 
@@ -101,7 +111,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
               </svg>
             </button>
           </div>
-          <nav className="flex-1 py-2 sm:py-4 px-2 overflow-y-auto">
+        </div>
+        
+        {/* Navigation - Scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          <nav className="py-2 sm:py-4 px-2">
             <ul className="space-y-1">
               {links.map((link, index) => (
                 <li key={index}>
@@ -127,7 +141,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
               ))}
             </ul>
           </nav>
-          <div className="p-3 sm:p-4 border-t">
+        </div>
+        
+        {/* Footer - Fixed */}
+        <div className="flex-shrink-0 border-t">
+          <div className="p-3 sm:p-4">
             <button 
               onClick={logout}
               className="flex items-center w-full px-3 sm:px-4 py-2 text-gray-700 rounded-md hover:bg-gray-100 transition-colors text-sm sm:text-base"

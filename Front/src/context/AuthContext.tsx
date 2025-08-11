@@ -32,6 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       // Verificar si hay un usuario guardado en localStorage
+      
       const storedUser = localStorage.getItem('user');
       const storedToken = localStorage.getItem('token');
       
