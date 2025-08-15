@@ -6,8 +6,9 @@ export interface User {
   email: string;
   role: UserRole;
   avatar?: string;
-  token?: string;        // ← Agregar esta línea
-  token_type?: string;   // ← Y esta también si la usas
+  token?: string;
+  token_type?: string;
+  location_id?: number;
 }
 
 export interface Product {
