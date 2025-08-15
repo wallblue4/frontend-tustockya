@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { vendorAPI } from '../../services/transfersAPI';
@@ -163,8 +164,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   // Estados para UI responsivo
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
+  const { user } = useAuth();
   const [requestForm, setRequestForm] = useState({
-    source_location_id: 2,
+    source_location_id: user?.location_id ?? '',
     sneaker_reference_code: '',
     brand: '',
     model: '',
@@ -180,7 +182,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   useEffect(() => {
     if (prefilledProductData) {
       setRequestForm({
-        source_location_id: 2,
+        source_location_id: user?.location_id ?? '',
         sneaker_reference_code: prefilledProductData.sneaker_reference_code || '',
         brand: prefilledProductData.brand || '',
         model: prefilledProductData.model || '',
@@ -191,10 +193,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         destination_type: 'exhibicion',
         notes: `Solicitud desde escáner - Color: ${prefilledProductData.color || 'N/A'}`
       });
-      
       setActiveTab('new');
     }
-  }, [prefilledProductData]);
+  }, [prefilledProductData, user]);
 
   useEffect(() => {
     loadTransfersData();
@@ -257,7 +258,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       alert(`Solicitud creada exitosamente. ID: ${response.transfer_request_id}`);
       
       setRequestForm({
-        source_location_id: 2,
+        source_location_id: user?.location_id ?? '',
         sneaker_reference_code: '',
         brand: '',
         model: '',
