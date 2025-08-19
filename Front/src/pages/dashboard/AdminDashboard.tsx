@@ -11,7 +11,7 @@ import { StatsCard } from '../../components/dashboard/StatsCard';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import CameraVideoCapture from '../../components/admin/CameraVideoCapture';
+import FullScreenCameraCapture from '../../components/admin/FullScreenCameraCapture';
 import { 
   Users, 
   Store, 
@@ -944,7 +944,7 @@ export const AdminDashboard: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Video del Producto (Opcional)
                 </label>
-                <CameraVideoCapture
+                <FullScreenCameraCapture
                   onVideoRecorded={(url, blob) => {
                     console.log("Video listo:", url, blob);
                     // Aquí puedes manejar el blob para subirlo al backend
