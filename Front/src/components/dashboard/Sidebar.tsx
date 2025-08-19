@@ -27,7 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
     if (!user) return [];
 
     switch (user.role) {
-      case 'boss':
+      /*case 'boss':
         return [
           { to: '/boss', icon: <Home />, label: 'Dashboard' },
           { to: '/boss/inventory', icon: <Package />, label: 'Inventario' },
@@ -35,7 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           { to: '/boss/assignments', icon: <Users />, label: 'Asignaciones' },
           { to: '/boss/analytics', icon: <BarChart2 />, label: 'Métricas' },
           { to: '/boss/settings', icon: <Settings />, label: 'Configuración' },
-        ];
+        ];*/
       case 'superuser':
         return [
           { to: '/superuser', icon: <Home />, label: 'Dashboard' },
@@ -43,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           { to: '/superuser/database', icon: <Database />, label: 'Database Management' },
           { to: '/superuser/settings', icon: <Settings />, label: 'Settings' },
         ];
-      case 'admin':
+      case 'administrador':
         return [
           { to: '/admin', icon: <Home />, label: 'Dashboard' },
           { to: '/admin/inventory', icon: <Package />, label: 'Inventory' },
@@ -52,7 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           { to: '/admin/analytics', icon: <BarChart2 />, label: 'Analytics' },
           { to: '/admin/settings', icon: <Settings />, label: 'Settings' },
         ];
-      case 'warehouse':
+      case 'bodeguero':
         return [
           { to: '/warehouse', icon: <Home />, label: 'Dashboard' },
           { to: '/warehouse/requests', icon: <Package />, label: 'Delivery Requests' },
@@ -67,7 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           { to: '/seller/requests', icon: <Package />, label: 'Product Requests' },
           { to: '/seller/settings', icon: <Settings />, label: 'Settings' },
         ];
-      case 'runner':
+      case 'corredor':
         return [
           { to: '/runner', icon: <Home />, label: 'Dashboard' },
           { to: '/runner/deliveries', icon: <Truck />, label: 'Deliveries' },

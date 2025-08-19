@@ -6,7 +6,7 @@ import { HomePage } from './pages/public/HomePage';
 import { LoginPage } from './pages/auth/LoginPage';
 // Dashboard Pages
 import { SuperuserDashboard } from './pages/dashboard/SuperuserDashboard';
-import { AdminDashboard } from './pages/dashboard/AdminDashboard';
+import {AdminDashboard} from './pages/dashboard/AdminDashboard';
 import { WarehouseDashboard } from './pages/dashboard/WarehouseDashboard';
 import { SellerDashboard } from './pages/dashboard/SellerDashboard';
 import { RunnerDashboard } from './pages/dashboard/RunnerDashboard';
@@ -42,34 +42,33 @@ const ProtectedRoute: React.FC<{
 };
 
 // Component to handle root redirect
+
 const RootRedirect: React.FC = () => {
- const { isAuthenticated, loading, user } = useAuth();
- 
- if (loading) {
-   return <LoadingSpinner />;
- }
- 
- if (isAuthenticated && user) {
-   // Redirigir automáticamente al dashboard correspondiente según el rol
-   switch (user.role) {
-     case 'superuser':
-       return <Navigate to="/superuser" replace />;
-     case 'admin':
-       return <Navigate to="/admin" replace />;
-     case 'bodeguero':
-       return <Navigate to="/warehouse" replace />;
-     case 'seller':
-       return <Navigate to="/seller" replace />;
-     case 'corredor':
-       return <Navigate to="/runner" replace />;
-     default:
-       return <HomePage />;
-   }
- }
- 
- // Si no está autenticado, mostrar login
- return <Navigate to="/login" replace />;
+  const { isAuthenticated, loading, user } = useAuth();
+
+  if (loading) return <LoadingSpinner />;
+
+  if (isAuthenticated && user) {
+    switch (user.role) {
+      case 'superuser':
+        return <Navigate to="/superuser" replace />;
+      case 'administrador':
+        return <Navigate to="/administrador" replace />;
+      case 'bodeguero':
+        return <Navigate to="/warehouse" replace />;
+      case 'seller':
+        return <Navigate to="/seller" replace />;
+      case 'corredor':
+        return <Navigate to="/runner" replace />;
+      default:
+        return <Navigate to="/home" replace />;
+    }
+  }
+
+  return <Navigate to="/login" replace />;
 };
+
+
 
 // App Routes Component
 const AppRoutes: React.FC = () => {
@@ -96,9 +95,9 @@ const AppRoutes: React.FC = () => {
        }
      />
      <Route
-       path="/admin"
+       path="/administrador"
        element={
-         <ProtectedRoute allowedRoles={['admin', 'superuser']}>
+         <ProtectedRoute allowedRoles={['administrador', 'superuser']}>
            <AdminDashboard />
          </ProtectedRoute>
        }

@@ -6,7 +6,6 @@ import { Button } from '../../components/ui/Button';
 import { Layout } from '../../components/layout/Layout';
 import { useAuth } from '../../context/AuthContext';
 
-
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,29 +20,51 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
     
     try {
+      console.log('🚀 Iniciando login para:', email);
       const user = await login(email, password);
+      
+      console.log('✅ Usuario logueado:', user);
+      console.log('🎯 Rol del usuario:', user.role);
+      
       // Redirect based on user role
       switch (user.role) {
         case 'superuser':
+          console.log('➡️ Redirigiendo a superuser dashboard');
           navigate('/superuser');
           break;
         case 'administrador':
+          console.log('➡️ Redirigiendo a admin dashboard');
           navigate('/admin');
           break;
         case 'bodeguero':
+          console.log('➡️ Redirigiendo a warehouse dashboard');
           navigate('/warehouse');
           break;
         case 'seller':
+          console.log('➡️ Redirigiendo a seller dashboard');
           navigate('/sellerDashboard');
           break;
         case 'corredor':
+          console.log('➡️ Redirigiendo a runner dashboard');
           navigate('/runner');
           break;
         default:
+          console.log('⚠️ Rol no reconocido, redirigiendo a home');
           navigate('/');
       }
-    } catch (err) {
-      setError('Correo o contraseña inválidos.');
+    } catch (err: any) {
+      console.error('❌ Error en login:', err);
+      
+      // Manejo de errores más específico
+      if (err.response && err.response.status === 401) {
+        setError('Correo o contraseña incorrectos.');
+      } else if (err.response && err.response.status === 403) {
+        setError('Tu cuenta está desactivada. Contacta al administrador.');
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('Error de conexión. Intenta nuevamente.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -64,13 +85,13 @@ export const LoginPage: React.FC = () => {
           </div>
           
           {error && (
-            <div className="bg-error/10 text-error text-sm p-3 rounded-md">
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded-md">
               {error}
             </div>
           )}
           
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            <div className="rounded-md shadow-sm -space-y-px">
+            <div className="space-y-4">
               <Input
                 label="Correo electrónico"
                 id="email"
@@ -122,11 +143,11 @@ export const LoginPage: React.FC = () => {
               type="submit"
               isLoading={isLoading}
               className="w-full"
+              disabled={isLoading}
             >
-              Iniciar sesión
+              {isLoading ? 'Iniciando sesión...' : 'Iniciar sesión'}
             </Button>
           </form>
-          
         </div>
       </div>
     </Layout>

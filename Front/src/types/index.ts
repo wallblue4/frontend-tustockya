@@ -9,6 +9,8 @@ export interface User {
   token?: string;
   token_type?: string;
   location_id?: number;
+  // Puedes agregar location_name si lo usas en el dashboard
+  location_name?: string;
 }
 
 export interface Product {
@@ -62,4 +64,26 @@ export interface Statistic {
   value: number;
   change: number;
   period: string;
+}
+
+// Interfaz para la respuesta de la API de login
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  user: {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+    location_id: number;
+    is_active: boolean;
+    location_name: string;
+  };
+}
+
+// Interfaz para las credenciales de login
+export interface LoginCredentials {
+  email: string;
+  password: string;
 }
