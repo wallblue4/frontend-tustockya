@@ -104,7 +104,7 @@ export const ExpensesForm: React.FC = () => {
             label="Monto"
             type="number"
             value={amount}
-            onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
+            onChange={(e) => setAmount(parseFloat(e.target.value))}
             placeholder="0"
             min="0.01"
             step="0.01"

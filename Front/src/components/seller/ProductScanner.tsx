@@ -69,6 +69,7 @@ interface ProductOption {
 interface SizeInfo {
   size: string;
   location: string;
+  location_number?: number;
   storage_type: 'warehouse' | 'display';
   quantity: number;
   unit_price: number;
@@ -201,6 +202,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       return product.inventory.stock_by_size.map((stockInfo) => ({
         size: stockInfo.size,
         location: stockInfo.location,
+        location_number: (stockInfo as any).location_number ?? product.inventory.local_info.location_number,
         storage_type: stockInfo.quantity_stock > 0 ? 'warehouse' : 'display',
         quantity: stockInfo.quantity_stock,
         unit_price: product.inventory.pricing.unit_price,
@@ -253,8 +255,12 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       });
 
       // Convertir la respuesta a formato compatible con el componente
-      const options = convertScanResponseToProductOptions(scanResponse);
-      
+      let options = convertScanResponseToProductOptions(scanResponse);
+      // Corregir image: null -> undefined para cumplir con ProductOption
+      options = options.map(opt => ({
+        ...opt,
+        image: opt.image === null ? undefined : opt.image
+      }));
       console.log('Opciones procesadas:', options.map(opt => ({
         id: opt.id,
         brand: opt.brand,
@@ -262,7 +268,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         image: opt.image,
         availability: opt.availability
       })));
-
       setScanOptions(options);
       setCurrentStep('options');
     } catch (err) {
@@ -311,16 +316,39 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
   };
 
   const handleSolicitar = () => {
-    if (selectedProduct && selectedSize && onRequestTransfer) {
+    if (selectedProduct && selectedSize && onRequestTransfer && user) {
+      // Buscar la talla seleccionada
+      const sizeInfo = selectedProduct.sizes.find(s => s.size === selectedSize);
+
+      // Buscar el location_id correcto en other_locations para la talla seleccionada
+      let sourceLocationId: number | undefined = undefined;
+      if (selectedProduct.product.inventory.other_locations && Array.isArray(selectedProduct.product.inventory.other_locations)) {
+        for (const loc of selectedProduct.product.inventory.other_locations) {
+          // Verifica si la talla está en el stock_info de esta ubicación
+          if (loc.stock_info && Array.isArray(loc.stock_info.available_sizes)) {
+            const foundSize = loc.stock_info.available_sizes.find((sz: any) => sz.size === selectedSize);
+            if (foundSize && loc.location_info && typeof loc.location_info.location_id === 'number') {
+              sourceLocationId = loc.location_info.location_id;
+              break;
+            }
+          }
+        }
+      }
+      // Fallback: si no se encuentra, usar el location_number anterior
+      if (!sourceLocationId) {
+        sourceLocationId = sizeInfo?.location_number ?? selectedProduct.product.inventory.local_info.location_number;
+      }
+
       const transferData = {
         sneaker_reference_code: selectedProduct.product.code,
         brand: selectedProduct.product.brand,
         model: selectedProduct.product.model,
         color: selectedProduct.product.color,
         size: selectedSize,
-        product: selectedProduct.product
+        product: selectedProduct.product,
+        source_location_id: sizeInfo?.location_number ?? selectedProduct.product.inventory.local_info.location_number,
+        destination_location_id: user.location_id
       };
-      
       console.log('Enviando datos para transferencia:', transferData);
       onRequestTransfer(transferData);
     }
@@ -739,7 +767,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                       disabled={!selectedProduct.product.availability.can_sell && selectedProduct.product.inventory.total_stock === 0}
                     >
                       <ShoppingBag className="h-4 w-4 mr-2" />
-                      {selectedProduct.product.availability.can_sell ? `Vender Talla ${selectedSize}` : `Consultar Talla ${selectedSize}`}
+                      {selectedProduct.product.availability.can_sell ? `Vender Talla ${selectedSize}` : `Vender Talla ${selectedSize}`}
                     </Button>
                     <Button
                       onClick={handleSolicitar}

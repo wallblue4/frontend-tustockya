@@ -471,7 +471,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
                       label="Precio"
                       type="number"
                       value={item.unit_price}
-                      onChange={(e) => updateItem(item.id, 'unit_price', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => updateItem(item.id, 'unit_price', parseFloat(e.target.value) )}
                       placeholder="0"
                       step="0.01"
                       min="0"
@@ -507,7 +507,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
               label="Monto del Descuento"
               type="number"
               value={discountAmount}
-              onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
+              onChange={(e) => setDiscountAmount(parseFloat(e.target.value) )}
               placeholder="0"
               min="0"
               step="0.01"
@@ -572,7 +572,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
                   label="Monto"
                   type="number"
                   value={payment.amount}
-                  onChange={(e) => updatePaymentMethod(index, 'amount', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => updatePaymentMethod(index, 'amount', parseFloat(e.target.value))}
                   placeholder="0"
                   step="0.01"
                   min="0"

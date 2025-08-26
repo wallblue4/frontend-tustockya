@@ -1,4 +1,19 @@
 import React, { useState, useEffect } from 'react';
+// ...existing code...
+import {
+  fetchAllUsers,
+  fetchAllLocations,
+  fetchAllCosts,
+  fetchAllWholesaleOrders,
+  fetchDashboardMetrics,
+  fetchTransfersOverview,
+  fetchUserPerformance,
+  fetchPendingDiscountRequests,
+  fetchReturnNotifications,
+  fetchTodaySales,
+  fetchPendingConfirmationSales,
+  fetchTodayExpenses
+} from '../../services/adminAPI';
 /*import {
   fetchAllUsers,
   fetchAllLocations,
@@ -6,6 +21,8 @@ import React, { useState, useEffect } from 'react';
   fetchAllCosts,
   fetchAllWholesaleOrders
 } from '../../services/adminAPI';*/
+
+
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { StatsCard } from '../../components/dashboard/StatsCard';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
@@ -116,142 +133,124 @@ interface WholesaleOrder {
 }
 
 export const AdminDashboard: React.FC = () => {
-  const [currentView, setCurrentView] = useState<AdminView>('dashboard');
-  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [currentView, setCurrentView] = useState<AdminView>('dashboard');
 
-  // Mock data - En producción vendría de la API
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: '1',
-      name: 'Juan Pérez',
-      email: 'juan@tennis.com',
-      role: 'seller',
-      location: 'Local Centro',
-      status: 'active',
-      createdAt: '2024-01-15'
-    },
-    {
-      id: '2',
-      name: 'María García',
-      email: 'maria@tennis.com',
-      role: 'warehouse',
-      location: 'Local Norte',
-      warehouse: 'Bodega Principal',
-      status: 'active',
-      createdAt: '2024-02-10'
-    },
-    {
-      id: '3',
-      name: 'Carlos López',
-      email: 'carlos@tennis.com',
-      role: 'runner',
-      location: 'Zona Centro',
-      status: 'active',
-      createdAt: '2024-03-05'
-    }
-  ]);
+  // Modal states
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [showCostModal, setShowCostModal] = useState(false);
 
-  const [locations, setLocations] = useState<Location[]>([
-    {
-      id: '1',
-      name: 'Local Centro',
-      address: 'Calle 123 #45-67, Centro',
-      manager: 'Juan Pérez',
-      status: 'active',
-      salesCount: 156,
-      revenue: 2450000
-    },
-    {
-      id: '2',
-      name: 'Local Norte',
-      address: 'Av. Norte #89-12, Norte',
-      manager: 'Ana Rodríguez',
-      status: 'active',
-      salesCount: 98,
-      revenue: 1890000
-    }
-  ]);
+  // User form state
+  const [userForm, setUserForm] = useState({
+    email: '',
+    password: '',
+    nombre: '',
+    apellido: '',
+    rol: 'vendedor' as 'vendedor' | 'corredor' | 'bodeguero',
+    ubicacion: ''
+  });
 
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([
-    {
-      id: '1',
-      name: 'Bodega Principal',
-      address: 'Zona Industrial #123',
-      manager: 'María García',
-      capacity: 5000,
-      currentStock: 3200,
-      status: 'active'
-    },
-    {
-      id: '2',
-      name: 'Bodega Norte',
-      address: 'Av. Industrial #456',
-      manager: 'Pedro Martínez',
-      capacity: 3000,
-      currentStock: 1800,
-      status: 'active'
-    }
-  ]);
+  // Cost form state
+  const [costForm, setCostForm] = useState({
+    tipo: '',
+    valor: 0,
+    frecuencia: '',
+    diaPago: ''
+  });
 
-  const [costs, setCosts] = useState<Cost[]>([
-    {
-      id: '1',
-      type: 'fixed',
-      category: 'Arriendo',
-      description: 'Arriendo Local Centro',
-      amount: 2500000,
-      frequency: 'monthly',
-      location: 'Local Centro',
-      dueDate: '2024-01-31',
-      status: 'paid'
-    },
-    {
-      id: '2',
-      type: 'variable',
-      category: 'Servicios',
-      description: 'Electricidad Local Norte',
-      amount: 450000,
-      frequency: 'monthly',
-      location: 'Local Norte',
-      dueDate: '2024-02-15',
-      status: 'pending'
-    },
-    {
-      id: '3',
-      type: 'variable',
-      category: 'Mercancía',
-      description: 'Compra Nike - Lote 001',
-      amount: 15000000,
-      frequency: 'monthly',
-      dueDate: '2024-02-20',
-      status: 'overdue'
-    }
-  ]);
 
-  const [wholesaleOrders, setWholesaleOrders] = useState<WholesaleOrder[]>([
-    {
-      id: 'WS-001',
-      client: 'Deportes El Campeón',
-      items: [
-        { product: 'Nike Air Max 90', quantity: 50, unitPrice: 180000 },
-        { product: 'Adidas Ultraboost', quantity: 30, unitPrice: 220000 }
-      ],
-      total: 15600000,
-      paid: 10000000,
-      pending: 5600000,
-      status: 'partial',
-      dueDate: '2024-02-28',
-      createdAt: '2024-01-15'
-    }
-  ]);
+  // Estados para datos del backend
+  const [users, setUsers] = useState<User[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [costs, setCosts] = useState<Cost[]>([]);
+  const [wholesaleOrders, setWholesaleOrders] = useState<WholesaleOrder[]>([]);
+  const [dashboardMetrics, setDashboardMetrics] = useState<any>(null);
+  const [transfersOverview, setTransfersOverview] = useState<any>(null);
+  const [userPerformance, setUserPerformance] = useState<any>(null);
+  const [inventoryAlerts, setInventoryAlerts] = useState<any[]>([]);
+  const [pendingDiscounts, setPendingDiscounts] = useState<any[]>([]);
+  const [returnNotifications, setReturnNotifications] = useState<any[]>([]);
+  const [todaySales, setTodaySales] = useState<any[]>([]);
+  const [pendingSales, setPendingSales] = useState<any[]>([]);
+  const [todayExpenses, setTodayExpenses] = useState<any[]>([]);
+  // Cargar datos al montar el componente
+  useEffect(() => {
+    fetchAllUsers().then(setUsers).catch(() => setUsers([]));
+    fetchAllLocations().then(setLocations).catch(() => setLocations([]));
+    fetchAllCosts().then(setCosts).catch(() => setCosts([]));
+    fetchAllWholesaleOrders().then(setWholesaleOrders).catch(() => setWholesaleOrders([]));
+    fetchDashboardMetrics().then(setDashboardMetrics).catch(() => setDashboardMetrics(null));
+    fetchTransfersOverview().then(setTransfersOverview).catch(() => setTransfersOverview(null));
+    fetchUserPerformance({ start_date: '', end_date: '' }).then(setUserPerformance).catch(() => setUserPerformance(null));
+    fetchPendingDiscountRequests().then(setPendingDiscounts).catch(() => setPendingDiscounts([]));
+    fetchReturnNotifications().then(setReturnNotifications).catch(() => setReturnNotifications([]));
+    fetchTodaySales().then(setTodaySales).catch(() => setTodaySales([]));
+    fetchPendingConfirmationSales().then(setPendingSales).catch(() => setPendingSales([]));
+    fetchTodayExpenses().then(setTodayExpenses).catch(() => setTodayExpenses([]));
+    // Puedes agregar más endpoints según lo que se necesite mostrar
+  }, []);
 
   // Estadísticas principales
   const totalRevenue = locations.reduce((sum, loc) => sum + loc.revenue, 0);
   const totalSales = locations.reduce((sum, loc) => sum + loc.salesCount, 0);
   const totalCosts = costs.reduce((sum, cost) => sum + cost.amount, 0);
   const pendingPayments = costs.filter(cost => cost.status === 'pending' || cost.status === 'overdue').length;
+
+  // Creacion de usuarios
+  const handleCreateUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const newUser: User = {
+      id: (users.length + 1).toString(),
+      name: `${userForm.nombre} ${userForm.apellido}`,
+      email: userForm.email,
+      role: userForm.rol,
+      location: userForm.ubicacion,
+      status: 'active',
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+
+    setUsers([...users, newUser]);
+    setUserForm({
+      email: '',
+      password: '',
+      nombre: '',
+      apellido: '',
+      rol: 'vendedor',
+      ubicacion: ''
+    });
+    setShowUserModal(false);
+    alert('Usuario creado exitosamente');
+  };
+
+  // Creacion de costos
+  const handleCreateCost = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const newCost: Cost = {
+      id: (costs.length + 1).toString(),
+      type: 'variable',
+      category: 'Operativo',
+      description: costForm.tipo,
+      amount: costForm.valor,
+      frequency: costForm.frecuencia as 'monthly' | 'weekly' | 'daily',
+      dueDate: costForm.diaPago,
+      status: 'pending'
+    };
+
+    setCosts([...costs, newCost]);
+    setCostForm({
+      tipo: '',
+      valor: 0,
+      frecuencia: '',
+      diaPago: ''
+    });
+    setShowCostModal(false);
+    alert('Costo creado exitosamente');
+  };
+
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -401,7 +400,7 @@ export const AdminDashboard: React.FC = () => {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <h2 className="text-xl font-semibold">Gestión de Usuarios</h2>
-        <Button onClick={() => {/* Abrir modal crear usuario */}}>
+        <Button onClick={() => setShowUserForm(true)}>
           <UserPlus className="h-4 w-4 mr-2" />
           Crear Usuario
         </Button>
@@ -626,7 +625,7 @@ export const AdminDashboard: React.FC = () => {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <h2 className="text-xl font-semibold">Gestión de Costos</h2>
-        <Button onClick={() => {/* Abrir modal crear costo */}}>
+        <Button onClick={() => setShowCostForm(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Registrar Costo
         </Button>

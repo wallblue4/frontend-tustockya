@@ -29,6 +29,8 @@ interface TransfersViewProps {
     color: string;
     size: string;
     product?: any;
+    source_location_id?: number;
+    destination_location_id?: number;
   } | null;
 }
 
@@ -165,8 +167,24 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const { user } = useAuth();
-  const [requestForm, setRequestForm] = useState({
-    source_location_id: user?.location_id ?? '',
+  // source_location_id SIEMPRE sale de user.location_id
+  // source_location_id sale de la ubicación del producto/talla seleccionada en el scanner
+  // destination_location_id sale de la ubicación del usuario actual
+  const [requestForm, setRequestForm] = useState<{
+    source_location_id?: number;
+    destination_location_id?: number;
+    sneaker_reference_code: string;
+    brand: string;
+    model: string;
+    size: string;
+    quantity: number;
+    purpose: string;
+    pickup_type: string;
+    destination_type: string;
+    notes: string;
+  }>({
+    source_location_id: undefined, // origen: producto/talla seleccionada
+    destination_location_id: user?.location_id ?? undefined, // destino: usuario actual
     sneaker_reference_code: '',
     brand: '',
     model: '',
@@ -182,7 +200,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   useEffect(() => {
     if (prefilledProductData) {
       setRequestForm({
-        source_location_id: user?.location_id ?? '',
+        source_location_id: prefilledProductData.source_location_id ?? undefined,
+        destination_location_id: user?.location_id ?? undefined,
         sneaker_reference_code: prefilledProductData.sneaker_reference_code || '',
         brand: prefilledProductData.brand || '',
         model: prefilledProductData.model || '',
@@ -248,17 +267,22 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     e.preventDefault();
     
     try {
-      const response = await vendorAPI.requestTransfer(requestForm);
-      
+      // Si prefilledProductData tiene los IDs, usarlos
+      let transferPayload = { ...requestForm };
+      if (prefilledProductData?.source_location_id) {
+        transferPayload.source_location_id = prefilledProductData.source_location_id;
+      }
+      // destination siempre es el usuario actual
+      transferPayload.destination_location_id = user?.location_id ?? undefined;
+      const response = await vendorAPI.requestTransfer(transferPayload);
       onTransferRequested?.(
-        response.transfer_request_id, 
+        response.transfer_request_id,
         requestForm.purpose === 'cliente'
       );
-      
       alert(`Solicitud creada exitosamente. ID: ${response.transfer_request_id}`);
-      
       setRequestForm({
-        source_location_id: user?.location_id ?? '',
+        source_location_id: typeof user?.location_id === 'number' ? user.location_id : undefined,
+        destination_location_id: undefined,
         sneaker_reference_code: '',
         brand: '',
         model: '',
@@ -269,10 +293,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         destination_type: 'exhibicion',
         notes: ''
       });
-      
       setActiveTab('pending');
       loadTransfersData();
-      
     } catch (err: any) {
       console.error('Error enviando solicitud:', err);
       alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));

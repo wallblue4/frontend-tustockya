@@ -517,21 +517,13 @@ export const SellerDashboard: React.FC = () => {
           <h3 className="text-lg font-semibold">Acciones Rápidas</h3>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2"
               onClick={handleOpenCamera}     
             >
               <Camera className="h-6 w-6" />
               <span className="text-sm">Escanear</span>
-            </Button>
-            
-            <Button 
-              className="h-20 flex flex-col items-center justify-center space-y-2"
-              onClick={handleNewSaleClick}
-            >
-              <ShoppingBag className="h-6 w-6" />
-              <span className="text-sm">Nueva Venta</span>
             </Button>
             
             <Button 
