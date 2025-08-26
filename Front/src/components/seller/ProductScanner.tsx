@@ -324,7 +324,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       let sourceLocationId: number | undefined = undefined;
       if (selectedProduct.product.inventory.other_locations && Array.isArray(selectedProduct.product.inventory.other_locations)) {
         for (const loc of selectedProduct.product.inventory.other_locations) {
-          // Verifica si la talla está en el stock_info de esta ubicación
           if (loc.stock_info && Array.isArray(loc.stock_info.available_sizes)) {
             const foundSize = loc.stock_info.available_sizes.find((sz: any) => sz.size === selectedSize);
             if (foundSize && loc.location_info && typeof loc.location_info.location_id === 'number') {
@@ -346,7 +345,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         color: selectedProduct.product.color,
         size: selectedSize,
         product: selectedProduct.product,
-        source_location_id: sizeInfo?.location_number ?? selectedProduct.product.inventory.local_info.location_number,
+        source_location_id: sourceLocationId,
         destination_location_id: user.location_id
       };
       console.log('Enviando datos para transferencia:', transferData);

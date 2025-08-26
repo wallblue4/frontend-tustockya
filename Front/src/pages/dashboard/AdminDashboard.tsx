@@ -1071,13 +1071,11 @@ export const AdminDashboard: React.FC = () => {
           <div className="flex overflow-x-auto px-4 py-2 space-x-2">
             {[
               { key: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="h-4 w-4" /> },
+              { key: 'inventory', label: 'Inventario', icon: <Package2 className="h-4 w-4" /> },
               { key: 'users', label: 'Usuarios', icon: <Users className="h-4 w-4" /> },
-              { key: 'locations', label: 'Locales', icon: <Store className="h-4 w-4" /> },
-              { key: 'warehouses', label: 'Bodegas', icon: <Warehouse className="h-4 w-4" /> },
               { key: 'costs', label: 'Costos', icon: <DollarSign className="h-4 w-4" /> },
               { key: 'wholesale', label: 'Mayoreo', icon: <ShoppingBag className="h-4 w-4" /> },
               { key: 'analytics', label: 'Análisis', icon: <PieChart className="h-4 w-4" /> },
-              { key: 'inventory', label: 'Inventario', icon: <Package2 className="h-4 w-4" /> },
               { key: 'notifications', label: 'Alertas', icon: <Bell className="h-4 w-4" /> },
             ].map((tab) => (
               <button

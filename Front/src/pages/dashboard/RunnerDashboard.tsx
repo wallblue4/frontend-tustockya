@@ -390,7 +390,7 @@ export const RunnerDashboard: React.FC = () => {
   // Funciones para obtener acciones según estado
   const getActionButton = (transport: AssignedTransport) => {
     switch (transport.action_required) {
-      case 'ir_a_recoger':
+      case 'courrier_assigned':
         return (
           <Button
             onClick={() => handleConfirmPickup(transport.id)}
@@ -406,7 +406,7 @@ export const RunnerDashboard: React.FC = () => {
             Confirmar Recolección
           </Button>
         );
-      case 'confirmar_entrega':
+      case 'entregar':
         return (
           <Button
             onClick={() => handleConfirmDelivery(transport.id)}
