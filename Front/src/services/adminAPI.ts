@@ -1,5 +1,4 @@
-
-const BACKEND_URL = 'https://tustockya-api.onrender.com';
+const BACKEND_URL = 'https://tustockya-api.onrender.com/api/v1/admin/admin';
 
 const getHeaders = () => {
   const token = localStorage.getItem('token');
@@ -51,22 +50,16 @@ interface UserAssignment {
   notes?: string;
 }
 
-interface CostConfiguration {
-  location_id: number;
-  cost_type: 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros';
-  amount: number;
-  frequency: string;
-  description: string;
-  is_active: boolean;
-  effective_date: string; // ISO date
-}
-
 interface WholesaleSaleCreate {
   customer_name: string;
   customer_document: string;
   customer_phone?: string;
   location_id: number;
-  items: Array<any>;
+  items: Array<{
+    reference_code: string;
+    quantity: number;
+    unit_price: number;
+  }>;
   discount_percentage?: number;
   payment_method: string;
   notes?: string;
@@ -78,7 +71,7 @@ interface ReportFilter {
   end_date: string; // ISO date
   user_ids?: number[];
   product_categories?: string[];
-  sale_type?: string;
+  sale_type?: 'detalle' | 'mayor';
 }
 
 interface InventoryAlert {
@@ -87,7 +80,7 @@ interface InventoryAlert {
   threshold_value: number;
   product_reference?: string;
   notification_emails: string[];
-  is_active: boolean;
+  is_active?: boolean;
 }
 
 interface DiscountApproval {
@@ -106,36 +99,23 @@ interface ProductModelAssignment {
   max_stock_per_warehouse?: number;
 }
 
-interface TransferRequestComplete {
-  source_location_id: number;
-  sneaker_reference_code: string;
-  brand: string;
-  model: string;
-  size: string;
-  quantity: number;
-  purpose: string;
-  pickup_type: string;
-  destination_type: string;
+interface AdminLocationAssignmentCreate {
+  admin_id: number;
+  location_id: number;
   notes?: string;
 }
 
-interface DiscountRequestCreate {
-  amount: number;
-  reason: string;
-}
-
-interface ReturnRequestCreate {
-  original_transfer_id: number;
+interface AdminLocationAssignmentBulk {
+  admin_id: number;
+  location_ids: number[];
   notes?: string;
 }
 
-// ========== USUARIOS ==========
-// ===================== USUARIOS =====================
-// Endpoints para gestión de usuarios: crear, listar, actualizar y asignar usuarios a ubicaciones.
+// ========== GESTIÓN DE USUARIOS ==========
 
-// POST /admin/users
+// POST /api/v1/admin/admin/users
 export const createUser = async (userData: UserCreate) => {
-  const response = await fetch(`${BACKEND_URL}/admin/users`, {
+  const response = await fetch(`${BACKEND_URL}/users`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(userData),
@@ -143,9 +123,9 @@ export const createUser = async (userData: UserCreate) => {
   return handleResponse(response);
 };
 
-// GET /admin/users
+// GET /api/v1/admin/admin/users
 export const fetchAllUsers = async (params?: {
-  role?: string;
+  role?: 'vendedor' | 'bodeguero' | 'corredor';
   location_id?: number;
   is_active?: boolean;
 }) => {
@@ -154,16 +134,16 @@ export const fetchAllUsers = async (params?: {
   if (params?.location_id) searchParams.append('location_id', params.location_id.toString());
   if (params?.is_active !== undefined) searchParams.append('is_active', params.is_active.toString());
 
-  const response = await fetch(`${BACKEND_URL}/admin/users?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/users?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// PUT /admin/users/{user_id}
+// PUT /api/v1/admin/admin/users/{user_id}
 export const updateUser = async (userId: number, userData: UserUpdate) => {
-  const response = await fetch(`${BACKEND_URL}/admin/users/${userId}`, {
+  const response = await fetch(`${BACKEND_URL}/users/${userId}`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify(userData),
@@ -171,9 +151,9 @@ export const updateUser = async (userId: number, userData: UserUpdate) => {
   return handleResponse(response);
 };
 
-// POST /admin/users/assign-location
+// POST /api/v1/admin/admin/users/assign-location
 export const assignUserToLocation = async (assignmentData: UserAssignment) => {
-  const response = await fetch(`${BACKEND_URL}/admin/users/assign-location`, {
+  const response = await fetch(`${BACKEND_URL}/users/assign-location`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(assignmentData),
@@ -181,73 +161,130 @@ export const assignUserToLocation = async (assignmentData: UserAssignment) => {
   return handleResponse(response);
 };
 
-// ========== UBICACIONES ==========
-// ===================== UBICACIONES =====================
-// Endpoints para gestión de ubicaciones: listar locales/bodegas y obtener estadísticas por ubicación.
-
-// GET /admin/locations
-export const fetchAllLocations = async (locationType?: 'local' | 'bodega') => {
+// GET /api/v1/admin/admin/available-locations-for-users
+export const fetchAvailableLocationsForUsers = async (role?: 'vendedor' | 'bodeguero' | 'corredor') => {
   const searchParams = new URLSearchParams();
-  if (locationType) searchParams.append('location_type', locationType);
+  if (role) searchParams.append('role', role);
 
-  const response = await fetch(`${BACKEND_URL}/admin/locations?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/available-locations-for-users?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// GET /admin/locations/{location_id}/stats
+// ========== GESTIÓN DE UBICACIONES ==========
+
+// GET /api/v1/admin/admin/locations
+export const fetchAllLocations = async (locationType?: 'local' | 'bodega') => {
+  const searchParams = new URLSearchParams();
+  if (locationType) searchParams.append('location_type', locationType);
+
+  const response = await fetch(`${BACKEND_URL}/locations?${searchParams.toString()}`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/locations/{location_id}/stats
 export const fetchLocationStats = async (locationId: number, startDate: string, endDate: string) => {
   const searchParams = new URLSearchParams({
     start_date: startDate,
     end_date: endDate,
   });
 
-  const response = await fetch(`${BACKEND_URL}/admin/locations/${locationId}/stats?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/locations/${locationId}/stats?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// ========== COSTOS ==========
-// ===================== COSTOS =====================
-// Endpoints para gestión de costos: crear y listar costos por localización y tipo.
+// GET /api/v1/admin/admin/my-locations
+export const fetchMyAssignedLocations = async () => {
+  const response = await fetch(`${BACKEND_URL}/my-locations`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
 
-// POST /admin/costs
-export const createCostConfiguration = async (costData: CostConfiguration) => {
-  const response = await fetch(`${BACKEND_URL}/admin/costs`, {
+// GET /api/v1/admin/admin/can-manage-location/{location_id}
+export const canManageLocation = async (locationId: number) => {
+  const response = await fetch(`${BACKEND_URL}/can-manage-location/${locationId}`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// ========== ASIGNACIONES DE ADMINISTRADORES (Solo BOSS) ==========
+
+// POST /api/v1/admin/admin/admin-assignments
+export const assignAdminToLocation = async (assignmentData: AdminLocationAssignmentCreate) => {
+  const response = await fetch(`${BACKEND_URL}/admin-assignments`, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify(costData),
+    body: JSON.stringify(assignmentData),
   });
   return handleResponse(response);
 };
 
-// GET /admin/costs
-export const fetchAllCosts = async (params?: {
-  location_id?: number;
-  cost_type?: string;
-}) => {
+// GET /api/v1/admin/admin/admin-assignments
+export const fetchAdminAssignments = async (adminId?: number) => {
   const searchParams = new URLSearchParams();
-  if (params?.location_id) searchParams.append('location_id', params.location_id.toString());
-  if (params?.cost_type) searchParams.append('cost_type', params.cost_type);
+  if (adminId) searchParams.append('admin_id', adminId.toString());
 
-  const response = await fetch(`${BACKEND_URL}/admin/costs?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/admin-assignments?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// ========== VENTAS AL POR MAYOR ==========
-// ===================== VENTAS AL POR MAYOR =====================
-// Endpoints para ventas al por mayor: registrar y listar órdenes de venta mayoreo.
+// POST /api/v1/admin/admin/admin-assignments/bulk
+export const assignAdminToMultipleLocations = async (assignmentData: AdminLocationAssignmentBulk) => {
+  const response = await fetch(`${BACKEND_URL}/admin-assignments/bulk`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(assignmentData),
+  });
+  return handleResponse(response);
+};
 
-// POST /admin/wholesale-sales
+// DELETE /api/v1/admin/admin/admin-assignments/{admin_id}/{location_id}
+export const removeAdminAssignment = async (adminId: number, locationId: number) => {
+  const response = await fetch(`${BACKEND_URL}/admin-assignments/${adminId}/${locationId}`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/available-admins
+export const fetchAvailableAdministrators = async () => {
+  const response = await fetch(`${BACKEND_URL}/available-admins`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/unassigned-locations
+export const fetchUnassignedLocations = async () => {
+  const response = await fetch(`${BACKEND_URL}/unassigned-locations`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// ========== VENTAS Y DESCUENTOS ==========
+
+// POST /api/v1/admin/admin/wholesale-sales
 export const createWholesaleSale = async (saleData: WholesaleSaleCreate) => {
-  const response = await fetch(`${BACKEND_URL}/admin/wholesale-sales`, {
+  const response = await fetch(`${BACKEND_URL}/wholesale-sales`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(saleData),
@@ -255,59 +292,18 @@ export const createWholesaleSale = async (saleData: WholesaleSaleCreate) => {
   return handleResponse(response);
 };
 
-// GET /admin/wholesale-orders (manteniendo compatibilidad con el código existente)
-export const fetchAllWholesaleOrders = async () => {
-  const response = await fetch(`${BACKEND_URL}/admin/wholesale-orders`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
-  return handleResponse(response);
-};
-
-// ========== REPORTES ==========
-// ===================== REPORTES =====================
-// Endpoints para generación de reportes de ventas por filtros avanzados.
-
-// POST /admin/reports/sales
-export const generateSalesReport = async (reportFilter: ReportFilter) => {
-  const response = await fetch(`${BACKEND_URL}/admin/reports/sales`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(reportFilter),
-  });
-  return handleResponse(response);
-};
-
-// ========== ALERTAS DE INVENTARIO ==========
-// ===================== ALERTAS DE INVENTARIO =====================
-// Endpoints para crear alertas de inventario (stock bajo, producto vencido, etc).
-
-// POST /admin/inventory-alerts
-export const createInventoryAlert = async (alertData: InventoryAlert) => {
-  const response = await fetch(`${BACKEND_URL}/admin/inventory-alerts`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(alertData),
-  });
-  return handleResponse(response);
-};
-
-// ========== DESCUENTOS ==========
-// ===================== DESCUENTOS =====================
-// Endpoints para gestión de descuentos: solicitudes pendientes y aprobación/rechazo.
-
-// GET /admin/discount-requests/pending
+// GET /api/v1/admin/admin/discount-requests/pending
 export const fetchPendingDiscountRequests = async () => {
-  const response = await fetch(`${BACKEND_URL}/admin/discount-requests/pending`, {
+  const response = await fetch(`${BACKEND_URL}/discount-requests/pending`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// POST /admin/discount-requests/approve
+// POST /api/v1/admin/admin/discount-requests/approve
 export const approveDiscountRequest = async (approvalData: DiscountApproval) => {
-  const response = await fetch(`${BACKEND_URL}/admin/discount-requests/approve`, {
+  const response = await fetch(`${BACKEND_URL}/discount-requests/approve`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(approvalData),
@@ -315,29 +311,24 @@ export const approveDiscountRequest = async (approvalData: DiscountApproval) => 
   return handleResponse(response);
 };
 
-// ========== TRANSFERENCIAS ==========
-// ===================== TRANSFERENCIAS =====================
-// Endpoints para obtener resumen de transferencias realizadas.
+// ========== REPORTES Y ANALYTICS ==========
 
-// GET /admin/transfers/overview
-export const fetchTransfersOverview = async () => {
-  const response = await fetch(`${BACKEND_URL}/admin/transfers/overview`, {
-    method: 'GET',
+// POST /api/v1/admin/admin/reports/sales
+export const generateSalesReport = async (reportFilter: ReportFilter) => {
+  const response = await fetch(`${BACKEND_URL}/reports/sales`, {
+    method: 'POST',
     headers: getHeaders(),
+    body: JSON.stringify(reportFilter),
   });
   return handleResponse(response);
 };
 
-// ========== PERFORMANCE ==========
-// ===================== PERFORMANCE =====================
-// Endpoints para obtener métricas de desempeño de usuarios por fechas y rol.
-
-// GET /admin/performance/users
+// GET /api/v1/admin/admin/performance/users
 export const fetchUserPerformance = async (params: {
   start_date: string;
   end_date: string;
   user_ids?: number[];
-  role?: string;
+  role?: 'vendedor' | 'bodeguero' | 'corredor';
 }) => {
   const searchParams = new URLSearchParams({
     start_date: params.start_date,
@@ -349,54 +340,25 @@ export const fetchUserPerformance = async (params: {
   }
   if (params.role) searchParams.append('role', params.role);
 
-  const response = await fetch(`${BACKEND_URL}/admin/performance/users?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/performance/users?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// ========== ASIGNACIÓN DE MODELOS ==========
-// ===================== ASIGNACIÓN DE MODELOS =====================
-// Endpoints para asignar modelos de producto a bodegas y reglas de distribución.
-
-// POST /admin/product-assignments
-export const createProductAssignment = async (assignmentData: ProductModelAssignment) => {
-  const response = await fetch(`${BACKEND_URL}/admin/product-assignments`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(assignmentData),
-  });
-  return handleResponse(response);
-};
-
-// ========== DASHBOARD ==========
-// ===================== DASHBOARD =====================
-// Endpoints para obtener el resumen y métricas detalladas del dashboard de administrador.
-
-// GET /admin/dashboard
-export const fetchAdminDashboard = async () => {
-  const response = await fetch(`${BACKEND_URL}/admin/dashboard`, {
+// GET /api/v1/admin/admin/transfers/overview
+export const fetchTransfersOverview = async () => {
+  const response = await fetch(`${BACKEND_URL}/transfers/overview`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// GET /admin/dashboard/metrics
-export const fetchDashboardMetrics = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/api/v1/admin/dashboard/metrics`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
-  return handleResponse(response);
-};
+// ========== GESTIÓN DE INVENTARIO ==========
 
-// ========== INVENTARIO POR VIDEO IA ==========
-// ===================== INVENTARIO POR VIDEO IA =====================
-// Endpoints para registrar inventario usando video y datos asociados.
-
-// POST /admin/inventory/video-entry
+// POST /api/v1/admin/admin/inventory/video-entry
 export const createVideoInventoryEntry = async (inventoryData: {
   warehouse_location_id: number;
   estimated_quantity: number;
@@ -425,7 +387,7 @@ export const createVideoInventoryEntry = async (inventoryData: {
   
   formData.append('video_file', inventoryData.video_file);
 
-  const response = await fetch(`${BACKEND_URL}/admin/inventory/video-entry`, {
+  const response = await fetch(`${BACKEND_URL}/inventory/video-entry`, {
     method: 'POST',
     headers: getFormDataHeaders(),
     body: formData,
@@ -433,121 +395,171 @@ export const createVideoInventoryEntry = async (inventoryData: {
   return handleResponse(response);
 };
 
-// ========== ENDPOINTS ADICIONALES (de la primera solicitud) ==========
-// ===================== VENTAS Y GASTOS DIARIOS =====================
-// Endpoints para obtener ventas y gastos diarios, registrar gastos y ventas pendientes de confirmación.
-
-// VENTAS
-// ===================== TRANSFERENCIAS Y DEVOLUCIONES =====================
-// Endpoints para solicitar transferencias, descuentos, devoluciones y gestionar notificaciones relacionadas.
-export const fetchTodaySales = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/sales/today`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
-  return handleResponse(response);
-};
-
-export const fetchPendingConfirmationSales = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/sales/pending-confirmation`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
-  return handleResponse(response);
-};
-
-// GASTOS
-export const createExpense = async (expenseData: {
-  concept: string;
-  amount: number;
-  notes?: string;
-  receipt_image?: File;
+// GET /api/v1/admin/admin/inventory/video-entries
+export const fetchVideoProcessingHistory = async (params?: {
+  limit?: number;
+  status?: string;
+  warehouse_id?: number;
+  date_from?: string;
+  date_to?: string;
 }) => {
-  const formData = new FormData();
-  formData.append('concept', expenseData.concept);
-  formData.append('amount', expenseData.amount.toString());
-  
-  if (expenseData.notes) {
-    formData.append('notes', expenseData.notes);
-  }
-  
-  if (expenseData.receipt_image) {
-    formData.append('receipt_image', expenseData.receipt_image);
-  }
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.append('limit', params.limit.toString());
+  if (params?.status) searchParams.append('status', params.status);
+  if (params?.warehouse_id) searchParams.append('warehouse_id', params.warehouse_id.toString());
+  if (params?.date_from) searchParams.append('date_from', params.date_from);
+  if (params?.date_to) searchParams.append('date_to', params.date_to);
 
-  const response = await fetch(`${BACKEND_URL}/api/v1/expenses/create`, {
-    method: 'POST',
-    headers: getFormDataHeaders(),
-    body: formData,
-  });
-  return handleResponse(response);
-};
-
-export const fetchTodayExpenses = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/expenses/today`, {
+  const response = await fetch(`${BACKEND_URL}/inventory/video-entries?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// TRANSFERENCIAS
-export const requestTransfer = async (transferData: TransferRequestComplete) => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/transfers/request`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ transfer_data: transferData }),
-  });
-  return handleResponse(response);
-};
-
-export const fetchMyTransferRequests = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/transfers/my-requests`, {
+// GET /api/v1/admin/admin/inventory/video-entries/{video_id}
+export const fetchVideoProcessingDetails = async (videoId: number) => {
+  const response = await fetch(`${BACKEND_URL}/inventory/video-entries/${videoId}`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// DESCUENTOS (solicitudes individuales)
-export const requestDiscount = async (discountData: DiscountRequestCreate) => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/discounts/request`, {
+// POST /api/v1/admin/admin/product-assignments
+export const createProductAssignment = async (assignmentData: ProductModelAssignment) => {
+  const response = await fetch(`${BACKEND_URL}/product-assignments`, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify({ discount_data: discountData }),
+    body: JSON.stringify(assignmentData),
   });
   return handleResponse(response);
 };
 
-export const fetchMyDiscountRequests = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/discounts/my-requests`, {
+// GET /api/v1/admin/admin/product-assignments
+export const fetchProductAssignments = async (params?: {
+  product_reference?: string;
+  warehouse_id?: number;
+}) => {
+  const searchParams = new URLSearchParams();
+  if (params?.product_reference) searchParams.append('product_reference', params.product_reference);
+  if (params?.warehouse_id) searchParams.append('warehouse_id', params.warehouse_id.toString());
+
+  const response = await fetch(`${BACKEND_URL}/product-assignments?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// DEVOLUCIONES
-export const requestReturn = async (returnData: ReturnRequestCreate) => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/returns/request`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ return_data: returnData }),
-  });
-  return handleResponse(response);
-};
+// ========== CONFIGURACIÓN Y ALERTAS ==========
 
-export const fetchReturnNotifications = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/notifications/returns`, {
+// GET /api/v1/admin/admin/costs
+export const fetchAllCosts = async (params?: {
+  location_id?: number;
+  cost_type?: 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros';
+}) => {
+  const searchParams = new URLSearchParams();
+  if (params?.location_id) searchParams.append('location_id', params.location_id.toString());
+  if (params?.cost_type) searchParams.append('cost_type', params.cost_type);
+
+  const response = await fetch(`${BACKEND_URL}/costs?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-export const markReturnNotificationAsRead = async (notificationId: number) => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/notifications/returns/${notificationId}/mark-read`, {
+// POST /api/v1/admin/admin/inventory-alerts
+export const createInventoryAlert = async (alertData: InventoryAlert) => {
+  const response = await fetch(`${BACKEND_URL}/inventory-alerts`, {
     method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(alertData),
+  });
+  return handleResponse(response);
+};
+
+// ========== DASHBOARD Y MÉTRICAS ==========
+
+// GET /api/v1/admin/admin/dashboard
+export const fetchAdminDashboard = async () => {
+  const response = await fetch(`${BACKEND_URL}/dashboard`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/dashboard/metrics
+export const fetchDashboardMetrics = async () => {
+  const response = await fetch(`${BACKEND_URL}/dashboard/metrics`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/statistics
+export const fetchAdminStatistics = async () => {
+  const response = await fetch(`${BACKEND_URL}/statistics`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// ========== SISTEMA Y DIAGNÓSTICO ==========
+
+// GET /api/v1/admin/admin/health
+export const fetchAdminModuleHealth = async () => {
+  const response = await fetch(`${BACKEND_URL}/health`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/system/overview
+export const fetchSystemOverview = async () => {
+  const response = await fetch(`${BACKEND_URL}/system/overview`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// POST /api/v1/admin/admin/system/init-additional-tables
+export const initializeAdditionalTables = async () => {
+  const response = await fetch(`${BACKEND_URL}/system/init-additional-tables`, {
+    method: 'POST',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/diagnosis/microservice-connection
+export const testMicroserviceConnection = async () => {
+  const response = await fetch(`${BACKEND_URL}/diagnosis/microservice-connection`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/diagnosis/job-logs/{job_id}
+export const fetchJobLogs = async (jobId: number) => {
+  const response = await fetch(`${BACKEND_URL}/diagnosis/job-logs/${jobId}`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/video-jobs/{job_id}/status
+export const fetchVideoJobStatus = async (jobId: number) => {
+  const response = await fetch(`${BACKEND_URL}/video-jobs/${jobId}/status`, {
+    method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
