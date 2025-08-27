@@ -6,7 +6,7 @@ interface Props {
   onVideoRecorded?: (videoUrl: string | null, blob?: Blob) => void;
 }
 
-const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) => {
+export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
@@ -147,5 +147,3 @@ const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) => {
     </div>
   );
 };
-
-export default FullScreenCameraCapture;
