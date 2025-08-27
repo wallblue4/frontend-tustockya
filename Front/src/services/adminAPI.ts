@@ -1,4 +1,4 @@
-const BACKEND_URL = 'https://tustockya-api.onrender.com/api/v1/admin/admin';
+const BACKEND_URL = 'https://tustockya-api.onrender.com';
 
 const getHeaders = () => {
   const token = localStorage.getItem('token');
@@ -115,7 +115,7 @@ interface AdminLocationAssignmentBulk {
 
 // POST /api/v1/admin/admin/users
 export const createUser = async (userData: UserCreate) => {
-  const response = await fetch(`${BACKEND_URL}/users`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/users`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(userData),
@@ -134,7 +134,7 @@ export const fetchAllUsers = async (params?: {
   if (params?.location_id) searchParams.append('location_id', params.location_id.toString());
   if (params?.is_active !== undefined) searchParams.append('is_active', params.is_active.toString());
 
-  const response = await fetch(`${BACKEND_URL}/users?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/users?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -143,7 +143,7 @@ export const fetchAllUsers = async (params?: {
 
 // PUT /api/v1/admin/admin/users/{user_id}
 export const updateUser = async (userId: number, userData: UserUpdate) => {
-  const response = await fetch(`${BACKEND_URL}/users/${userId}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/users/${userId}`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify(userData),
@@ -153,7 +153,7 @@ export const updateUser = async (userId: number, userData: UserUpdate) => {
 
 // POST /api/v1/admin/admin/users/assign-location
 export const assignUserToLocation = async (assignmentData: UserAssignment) => {
-  const response = await fetch(`${BACKEND_URL}/users/assign-location`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/users/assign-location`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(assignmentData),
@@ -166,7 +166,7 @@ export const fetchAvailableLocationsForUsers = async (role?: 'vendedor' | 'bodeg
   const searchParams = new URLSearchParams();
   if (role) searchParams.append('role', role);
 
-  const response = await fetch(`${BACKEND_URL}/available-locations-for-users?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/available-locations-for-users?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -180,7 +180,7 @@ export const fetchAllLocations = async (locationType?: 'local' | 'bodega') => {
   const searchParams = new URLSearchParams();
   if (locationType) searchParams.append('location_type', locationType);
 
-  const response = await fetch(`${BACKEND_URL}/locations?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/locations?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -194,7 +194,7 @@ export const fetchLocationStats = async (locationId: number, startDate: string, 
     end_date: endDate,
   });
 
-  const response = await fetch(`${BACKEND_URL}/locations/${locationId}/stats?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/locations/${locationId}/stats?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -203,7 +203,7 @@ export const fetchLocationStats = async (locationId: number, startDate: string, 
 
 // GET /api/v1/admin/admin/my-locations
 export const fetchMyAssignedLocations = async () => {
-  const response = await fetch(`${BACKEND_URL}/my-locations`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/my-locations`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -212,7 +212,7 @@ export const fetchMyAssignedLocations = async () => {
 
 // GET /api/v1/admin/admin/can-manage-location/{location_id}
 export const canManageLocation = async (locationId: number) => {
-  const response = await fetch(`${BACKEND_URL}/can-manage-location/${locationId}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/can-manage-location/${locationId}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -223,7 +223,7 @@ export const canManageLocation = async (locationId: number) => {
 
 // POST /api/v1/admin/admin/admin-assignments
 export const assignAdminToLocation = async (assignmentData: AdminLocationAssignmentCreate) => {
-  const response = await fetch(`${BACKEND_URL}/admin-assignments`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/admin-assignments`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(assignmentData),
@@ -236,7 +236,7 @@ export const fetchAdminAssignments = async (adminId?: number) => {
   const searchParams = new URLSearchParams();
   if (adminId) searchParams.append('admin_id', adminId.toString());
 
-  const response = await fetch(`${BACKEND_URL}/admin-assignments?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/admin-assignments?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -245,7 +245,7 @@ export const fetchAdminAssignments = async (adminId?: number) => {
 
 // POST /api/v1/admin/admin/admin-assignments/bulk
 export const assignAdminToMultipleLocations = async (assignmentData: AdminLocationAssignmentBulk) => {
-  const response = await fetch(`${BACKEND_URL}/admin-assignments/bulk`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/admin-assignments/bulk`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(assignmentData),
@@ -255,7 +255,7 @@ export const assignAdminToMultipleLocations = async (assignmentData: AdminLocati
 
 // DELETE /api/v1/admin/admin/admin-assignments/{admin_id}/{location_id}
 export const removeAdminAssignment = async (adminId: number, locationId: number) => {
-  const response = await fetch(`${BACKEND_URL}/admin-assignments/${adminId}/${locationId}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/admin-assignments/${adminId}/${locationId}`, {
     method: 'DELETE',
     headers: getHeaders(),
   });
@@ -264,7 +264,7 @@ export const removeAdminAssignment = async (adminId: number, locationId: number)
 
 // GET /api/v1/admin/admin/available-admins
 export const fetchAvailableAdministrators = async () => {
-  const response = await fetch(`${BACKEND_URL}/available-admins`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/available-admins`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -273,7 +273,7 @@ export const fetchAvailableAdministrators = async () => {
 
 // GET /api/v1/admin/admin/unassigned-locations
 export const fetchUnassignedLocations = async () => {
-  const response = await fetch(`${BACKEND_URL}/unassigned-locations`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/unassigned-locations`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -284,7 +284,7 @@ export const fetchUnassignedLocations = async () => {
 
 // POST /api/v1/admin/admin/wholesale-sales
 export const createWholesaleSale = async (saleData: WholesaleSaleCreate) => {
-  const response = await fetch(`${BACKEND_URL}/wholesale-sales`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/wholesale-sales`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(saleData),
@@ -294,7 +294,7 @@ export const createWholesaleSale = async (saleData: WholesaleSaleCreate) => {
 
 // GET /api/v1/admin/admin/discount-requests/pending
 export const fetchPendingDiscountRequests = async () => {
-  const response = await fetch(`${BACKEND_URL}/discount-requests/pending`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/discount-requests/pending`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -303,7 +303,7 @@ export const fetchPendingDiscountRequests = async () => {
 
 // POST /api/v1/admin/admin/discount-requests/approve
 export const approveDiscountRequest = async (approvalData: DiscountApproval) => {
-  const response = await fetch(`${BACKEND_URL}/discount-requests/approve`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/discount-requests/approve`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(approvalData),
@@ -315,7 +315,7 @@ export const approveDiscountRequest = async (approvalData: DiscountApproval) => 
 
 // POST /api/v1/admin/admin/reports/sales
 export const generateSalesReport = async (reportFilter: ReportFilter) => {
-  const response = await fetch(`${BACKEND_URL}/reports/sales`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/reports/sales`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(reportFilter),
@@ -340,7 +340,7 @@ export const fetchUserPerformance = async (params: {
   }
   if (params.role) searchParams.append('role', params.role);
 
-  const response = await fetch(`${BACKEND_URL}/performance/users?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/performance/users?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -349,7 +349,7 @@ export const fetchUserPerformance = async (params: {
 
 // GET /api/v1/admin/admin/transfers/overview
 export const fetchTransfersOverview = async () => {
-  const response = await fetch(`${BACKEND_URL}/transfers/overview`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/transfers/overview`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -387,7 +387,7 @@ export const createVideoInventoryEntry = async (inventoryData: {
   
   formData.append('video_file', inventoryData.video_file);
 
-  const response = await fetch(`${BACKEND_URL}/inventory/video-entry`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/inventory/video-entry`, {
     method: 'POST',
     headers: getFormDataHeaders(),
     body: formData,
@@ -410,7 +410,7 @@ export const fetchVideoProcessingHistory = async (params?: {
   if (params?.date_from) searchParams.append('date_from', params.date_from);
   if (params?.date_to) searchParams.append('date_to', params.date_to);
 
-  const response = await fetch(`${BACKEND_URL}/inventory/video-entries?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/inventory/video-entries?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -419,7 +419,7 @@ export const fetchVideoProcessingHistory = async (params?: {
 
 // GET /api/v1/admin/admin/inventory/video-entries/{video_id}
 export const fetchVideoProcessingDetails = async (videoId: number) => {
-  const response = await fetch(`${BACKEND_URL}/inventory/video-entries/${videoId}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/inventory/video-entries/${videoId}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -428,7 +428,7 @@ export const fetchVideoProcessingDetails = async (videoId: number) => {
 
 // POST /api/v1/admin/admin/product-assignments
 export const createProductAssignment = async (assignmentData: ProductModelAssignment) => {
-  const response = await fetch(`${BACKEND_URL}/product-assignments`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/product-assignments`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(assignmentData),
@@ -445,7 +445,7 @@ export const fetchProductAssignments = async (params?: {
   if (params?.product_reference) searchParams.append('product_reference', params.product_reference);
   if (params?.warehouse_id) searchParams.append('warehouse_id', params.warehouse_id.toString());
 
-  const response = await fetch(`${BACKEND_URL}/product-assignments?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/product-assignments?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -463,7 +463,7 @@ export const fetchAllCosts = async (params?: {
   if (params?.location_id) searchParams.append('location_id', params.location_id.toString());
   if (params?.cost_type) searchParams.append('cost_type', params.cost_type);
 
-  const response = await fetch(`${BACKEND_URL}/costs?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -472,7 +472,7 @@ export const fetchAllCosts = async (params?: {
 
 // POST /api/v1/admin/admin/inventory-alerts
 export const createInventoryAlert = async (alertData: InventoryAlert) => {
-  const response = await fetch(`${BACKEND_URL}/inventory-alerts`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/inventory-alerts`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(alertData),
@@ -484,7 +484,7 @@ export const createInventoryAlert = async (alertData: InventoryAlert) => {
 
 // GET /api/v1/admin/admin/dashboard
 export const fetchAdminDashboard = async () => {
-  const response = await fetch(`${BACKEND_URL}/dashboard`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/dashboard`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -493,7 +493,7 @@ export const fetchAdminDashboard = async () => {
 
 // GET /api/v1/admin/admin/dashboard/metrics
 export const fetchDashboardMetrics = async () => {
-  const response = await fetch(`${BACKEND_URL}/dashboard/metrics`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/dashboard/metrics`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -502,7 +502,7 @@ export const fetchDashboardMetrics = async () => {
 
 // GET /api/v1/admin/admin/statistics
 export const fetchAdminStatistics = async () => {
-  const response = await fetch(`${BACKEND_URL}/statistics`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/statistics`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -513,7 +513,7 @@ export const fetchAdminStatistics = async () => {
 
 // GET /api/v1/admin/admin/health
 export const fetchAdminModuleHealth = async () => {
-  const response = await fetch(`${BACKEND_URL}/health`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/health`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -522,7 +522,7 @@ export const fetchAdminModuleHealth = async () => {
 
 // GET /api/v1/admin/admin/system/overview
 export const fetchSystemOverview = async () => {
-  const response = await fetch(`${BACKEND_URL}/system/overview`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/system/overview`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -531,7 +531,7 @@ export const fetchSystemOverview = async () => {
 
 // POST /api/v1/admin/admin/system/init-additional-tables
 export const initializeAdditionalTables = async () => {
-  const response = await fetch(`${BACKEND_URL}/system/init-additional-tables`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/system/init-additional-tables`, {
     method: 'POST',
     headers: getHeaders(),
   });
@@ -540,7 +540,7 @@ export const initializeAdditionalTables = async () => {
 
 // GET /api/v1/admin/admin/diagnosis/microservice-connection
 export const testMicroserviceConnection = async () => {
-  const response = await fetch(`${BACKEND_URL}/diagnosis/microservice-connection`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/diagnosis/microservice-connection`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -549,7 +549,7 @@ export const testMicroserviceConnection = async () => {
 
 // GET /api/v1/admin/admin/diagnosis/job-logs/{job_id}
 export const fetchJobLogs = async (jobId: number) => {
-  const response = await fetch(`${BACKEND_URL}/diagnosis/job-logs/${jobId}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/diagnosis/job-logs/${jobId}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -558,7 +558,7 @@ export const fetchJobLogs = async (jobId: number) => {
 
 // GET /api/v1/admin/admin/video-jobs/{job_id}/status
 export const fetchVideoJobStatus = async (jobId: number) => {
-  const response = await fetch(`${BACKEND_URL}/video-jobs/${jobId}/status`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/video-jobs/${jobId}/status`, {
     method: 'GET',
     headers: getHeaders(),
   });
