@@ -585,7 +585,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               </div>
             ) : (
               <div className="space-y-3 md:space-y-4">
-                {pendingTransfers.map((transfer) => (
+                {pendingTransfers
+                  .sort((a, b) => b.status_info.progress_percentage - a.status_info.progress_percentage)
+                  .map((transfer) => (
                   <div key={transfer.id} className="border rounded-lg p-3 md:p-4">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
                       <div className="flex-1 min-w-0">
