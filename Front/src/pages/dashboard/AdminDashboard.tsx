@@ -1,1082 +1,1531 @@
 import React, { useState, useEffect } from 'react';
-// ...existing code...
+import { Card, CardContent, CardHeader } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { Badge } from '../../components/ui/Badge';
+import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
+import { 
+  Users, 
+  DollarSign, 
+  TrendingUp, 
+  TrendingDown, 
+  BarChart3, 
+  Bell, 
+  AlertCircle, 
+  CheckCircle, 
+  FileText, 
+  MapPin, 
+  Package,
+  Package2,
+  Search,
+  Filter,
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  Store,
+  Warehouse,
+  ShoppingBag,
+  Upload,
+  Video,
+  FileImage,
+  Calendar,
+  Target,
+  PieChart,
+  Activity,
+  Building,
+  Box,
+  Truck,
+  ArrowUp,
+  ArrowDown,
+  RefreshCw,
+  Settings,
+  Download
+} from 'lucide-react';
+
+// Import ONLY adminAPI functions
 import {
   fetchAllUsers,
   fetchAllLocations,
   fetchAllCosts,
-  fetchAllWholesaleOrders,
   fetchDashboardMetrics,
-  fetchTransfersOverview,
-  fetchUserPerformance,
+  fetchAdminDashboard,
+  fetchAdminStatistics,
   fetchPendingDiscountRequests,
-  fetchReturnNotifications,
-  fetchTodaySales,
-  fetchPendingConfirmationSales,
-  fetchTodayExpenses
+  createUser,
+  updateUser,
+  createWholesaleSale,
+  createInventoryAlert,
+  approveDiscountRequest,
+  generateSalesReport,
+  fetchUserPerformance,
+  fetchTransfersOverview,
+  createVideoInventoryEntry,
+  fetchVideoProcessingHistory,
+  assignUserToLocation,
+  fetchAvailableLocationsForUsers,
+  fetchMyAssignedLocations,
+  canManageLocation
 } from '../../services/adminAPI';
-/*import {
-  fetchAllUsers,
-  fetchAllLocations,
-  fetchAllWarehouses,
-  fetchAllCosts,
-  fetchAllWholesaleOrders
-} from '../../services/adminAPI';*/
 
-
-import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
+import { formatCurrency, formatDate, capitalize } from '../../utils/formatters';
+import { LoadingSkeleton, TableSkeleton, CardSkeleton } from '../../components/admin/LoadingSkeleton';
+import { ErrorState, EmptyState } from '../../components/admin/ErrorState';
+import { CreateUserModal } from '../../components/admin/CreateUserModal';
+import { EditUserModal } from '../../components/admin/EditUserModal';
+import { CreateCostModal } from '../../components/admin/CreateCostModal';
 import { StatsCard } from '../../components/dashboard/StatsCard';
-import { Card, CardHeader, CardContent } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import FullScreenCameraCapture from '../../components/admin/FullScreenCameraCapture';
-import { 
-  Users, 
-  Store, 
-  Warehouse, 
-  DollarSign, 
-  ShoppingBag, 
-  Package2, 
-  BarChart2,
-  TrendingUp,
-  TrendingDown,
-  Plus,
-  Edit,
-  Trash2,
-  Bell,
-  Calendar,
-  MapPin,
-  CreditCard,
-  AlertCircle,
-  Eye,
-  Filter,
-  Download,
-  Search,
-  Building,
-  UserPlus,
-  Settings,
-  PieChart,
-  Activity,
-  Clock,
-  CheckCircle,
-  XCircle
-} from 'lucide-react';
+import { FullScreenCameraCapture } from '../../components/admin/FullScreenCameraCapture';
 
+type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics';
 
-type AdminView = 
-  | 'dashboard' 
-  | 'users' 
-  | 'locations' 
-  | 'warehouses' 
-  | 'costs' 
-  | 'wholesale' 
-  | 'analytics' 
-  | 'inventory' 
-  | 'notifications';
+interface DashboardData {
+  totalSales: number;
+  totalExpenses: number;
+  totalUsers: number;
+  totalLocations: number;
+  salesGrowth: number;
+  expensesGrowth: number;
+  recentSales: any[];
+  recentExpenses: any[];
+  topProducts: any[];
+  lowStockProducts: any[];
+}
 
 interface User {
-  id: string;
-  name: string;
+  id: number;
+  first_name: string;
+  last_name: string;
   email: string;
-  role: 'seller' | 'runner' | 'warehouse';
-  location: string;
-  warehouse?: string;
-  status: 'active' | 'inactive';
-  createdAt: string;
-}
-
-interface Location {
-  id: string;
-  name: string;
-  address: string;
-  manager: string;
-  status: 'active' | 'inactive';
-  salesCount: number;
-  revenue: number;
-}
-
-interface Warehouse {
-  id: string;
-  name: string;
-  address: string;
-  manager: string;
-  capacity: number;
-  currentStock: number;
-  status: 'active' | 'inactive';
+  role: string;
+  location_name: string;
+  location_id: number;
+  is_active: boolean;
+  created_at: string;
 }
 
 interface Cost {
-  id: string;
-  type: 'fixed' | 'variable';
-  category: string;
-  description: string;
+  id: number;
+  cost_type: string;
   amount: number;
-  frequency: 'monthly' | 'weekly' | 'daily';
-  location?: string;
-  dueDate?: string;
-  status: 'paid' | 'pending' | 'overdue';
+  description: string;
+  location_name: string;
+  location_id: number;
+  frequency: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface Location {
+  id: number;
+  name: string;
+  type: string;
+  address: string;
+  is_active: boolean;
+}
+
+interface Notifications {
+  discounts: any[];
+  returns: any[];
+  inventory: any[];
 }
 
 interface WholesaleOrder {
-  id: string;
-  client: string;
+  id: number;
+  customer_name: string;
+  customer_document: string;
+  customer_phone?: string;
   items: Array<{
-    product: string;
+    reference_code: string;
     quantity: number;
-    unitPrice: number;
+    unit_price: number;
   }>;
-  total: number;
-  paid: number;
-  pending: number;
-  status: 'completed' | 'partial' | 'pending';
-  dueDate: string;
-  createdAt: string;
+  total_amount: number;
+  discount_percentage?: number;
+  payment_method: string;
+  status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
+  created_at: string;
+  location_name: string;
+  location_id: number;
 }
 
 export const AdminDashboard: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all');
   const [currentView, setCurrentView] = useState<AdminView>('dashboard');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Data states
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [costs, setCosts] = useState<Cost[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [availableLocations, setAvailableLocations] = useState<Location[]>([]);
+  const [wholesaleOrders, setWholesaleOrders] = useState<WholesaleOrder[]>([]);
+  const [notifications, setNotifications] = useState<Notifications>({
+    discounts: [],
+    returns: [],
+    inventory: []
+  });
 
   // Modal states
-  const [showUserModal, setShowUserModal] = useState(false);
-  const [showCostModal, setShowCostModal] = useState(false);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [showCreateCostModal, setShowCreateCostModal] = useState(false);
+  const [showCreateWholesaleModal, setShowCreateWholesaleModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
-  // User form state
-  const [userForm, setUserForm] = useState({
-    email: '',
-    password: '',
-    nombre: '',
-    apellido: '',
-    rol: 'vendedor' as 'vendedor' | 'corredor' | 'bodeguero',
-    ubicacion: ''
+  // Filter states
+  const [userFilters, setUserFilters] = useState({
+    search: '',
+    role: '',
+    location: '',
+    status: ''
   });
 
-  // Cost form state
-  const [costForm, setCostForm] = useState({
-    tipo: '',
-    valor: 0,
-    frecuencia: '',
-    diaPago: ''
+  const [costFilters, setCostFilters] = useState({
+    search: '',
+    category: '',
+    location: '',
+    dateFrom: '',
+    dateTo: ''
   });
 
+  const [wholesaleFilters, setWholesaleFilters] = useState({
+    search: '',
+    status: '',
+    dateFrom: '',
+    dateTo: ''
+  });
 
-  // Estados para datos del backend
-  const [users, setUsers] = useState<User[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [costs, setCosts] = useState<Cost[]>([]);
-  const [wholesaleOrders, setWholesaleOrders] = useState<WholesaleOrder[]>([]);
-  const [dashboardMetrics, setDashboardMetrics] = useState<any>(null);
-  const [transfersOverview, setTransfersOverview] = useState<any>(null);
-  const [userPerformance, setUserPerformance] = useState<any>(null);
-  const [inventoryAlerts, setInventoryAlerts] = useState<any[]>([]);
-  const [pendingDiscounts, setPendingDiscounts] = useState<any[]>([]);
-  const [returnNotifications, setReturnNotifications] = useState<any[]>([]);
-  const [todaySales, setTodaySales] = useState<any[]>([]);
-  const [pendingSales, setPendingSales] = useState<any[]>([]);
-  const [todayExpenses, setTodayExpenses] = useState<any[]>([]);
-  // Cargar datos al montar el componente
   useEffect(() => {
-    fetchAllUsers().then(setUsers).catch(() => setUsers([]));
-    fetchAllLocations().then(setLocations).catch(() => setLocations([]));
-    fetchAllCosts().then(setCosts).catch(() => setCosts([]));
-    fetchAllWholesaleOrders().then(setWholesaleOrders).catch(() => setWholesaleOrders([]));
-    fetchDashboardMetrics().then(setDashboardMetrics).catch(() => setDashboardMetrics(null));
-    fetchTransfersOverview().then(setTransfersOverview).catch(() => setTransfersOverview(null));
-    fetchUserPerformance({ start_date: '', end_date: '' }).then(setUserPerformance).catch(() => setUserPerformance(null));
-    fetchPendingDiscountRequests().then(setPendingDiscounts).catch(() => setPendingDiscounts([]));
-    fetchReturnNotifications().then(setReturnNotifications).catch(() => setReturnNotifications([]));
-    fetchTodaySales().then(setTodaySales).catch(() => setTodaySales([]));
-    fetchPendingConfirmationSales().then(setPendingSales).catch(() => setPendingSales([]));
-    fetchTodayExpenses().then(setTodayExpenses).catch(() => setTodayExpenses([]));
-    // Puedes agregar más endpoints según lo que se necesite mostrar
+    loadInitialData();
   }, []);
 
-  // Estadísticas principales
-  const totalRevenue = locations.reduce((sum, loc) => sum + loc.revenue, 0);
-  const totalSales = locations.reduce((sum, loc) => sum + loc.salesCount, 0);
-  const totalCosts = costs.reduce((sum, cost) => sum + cost.amount, 0);
-  const pendingPayments = costs.filter(cost => cost.status === 'pending' || cost.status === 'overdue').length;
+  useEffect(() => {
+    if (currentView === 'users') {
+      loadUsers(userFilters);
+    } else if (currentView === 'costs') {
+      loadCosts(costFilters);
+    } else if (currentView === 'notifications') {
+      loadNotifications();
+    } else if (currentView === 'wholesale') {
+      loadWholesaleOrders(wholesaleFilters);
+    }
+  }, [currentView]);
 
-  // Creacion de usuarios
-  const handleCreateUser = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const newUser: User = {
-      id: (users.length + 1).toString(),
-      name: `${userForm.nombre} ${userForm.apellido}`,
-      email: userForm.email,
-      role: userForm.rol,
-      location: userForm.ubicacion,
-      status: 'active',
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-
-    setUsers([...users, newUser]);
-    setUserForm({
-      email: '',
-      password: '',
-      nombre: '',
-      apellido: '',
-      rol: 'vendedor',
-      ubicacion: ''
-    });
-    setShowUserModal(false);
-    alert('Usuario creado exitosamente');
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      await Promise.all([
+        loadDashboardData(),
+        loadLocations(),
+        loadAvailableLocations()
+      ]);
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+      setError('Error al cargar los datos iniciales');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Creacion de costos
-  const handleCreateCost = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const newCost: Cost = {
-      id: (costs.length + 1).toString(),
-      type: 'variable',
-      category: 'Operativo',
-      description: costForm.tipo,
-      amount: costForm.valor,
-      frequency: costForm.frecuencia as 'monthly' | 'weekly' | 'daily',
-      dueDate: costForm.diaPago,
-      status: 'pending'
-    };
-
-    setCosts([...costs, newCost]);
-    setCostForm({
-      tipo: '',
-      valor: 0,
-      frecuencia: '',
-      diaPago: ''
-    });
-    setShowCostModal(false);
-    alert('Costo creado exitosamente');
+  const loadDashboardData = async () => {
+    try {
+      // Use proper adminAPI endpoints
+      const [dashboardResponse, metricsResponse, statisticsResponse] = await Promise.all([
+        fetchAdminDashboard(),
+        fetchDashboardMetrics(),
+        fetchAdminStatistics()
+      ]);
+      
+      setDashboardData({
+        totalSales: dashboardResponse.total_sales || metricsResponse.total_sales || 0,
+        totalExpenses: dashboardResponse.total_expenses || metricsResponse.total_expenses || 0,
+        totalUsers: dashboardResponse.total_users || metricsResponse.total_users || 0,
+        totalLocations: dashboardResponse.total_locations || metricsResponse.total_locations || 0,
+        salesGrowth: dashboardResponse.sales_growth || metricsResponse.sales_growth || 0,
+        expensesGrowth: dashboardResponse.expenses_growth || metricsResponse.expenses_growth || 0,
+        recentSales: dashboardResponse.recent_sales || [],
+        recentExpenses: dashboardResponse.recent_expenses || [],
+        topProducts: dashboardResponse.top_products || metricsResponse.top_products || [],
+        lowStockProducts: dashboardResponse.low_stock_products || metricsResponse.low_stock_products || []
+      });
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      // Set empty data instead of mock data
+      setDashboardData({
+        totalSales: 0,
+        totalExpenses: 0,
+        totalUsers: 0,
+        totalLocations: 0,
+        salesGrowth: 0,
+        expensesGrowth: 0,
+        recentSales: [],
+        recentExpenses: [],
+        topProducts: [],
+        lowStockProducts: []
+      });
+    }
   };
 
+  const loadUsers = async (filters = {}) => {
+    try {
+      const params: any = {};
+      
+      if (filters.role && filters.role !== '') {
+        params.role = filters.role as 'vendedor' | 'bodeguero' | 'corredor';
+      }
+      
+      if (filters.location && filters.location !== '') {
+        params.location_id = parseInt(filters.location);
+      }
+      
+      if (filters.status && filters.status !== '') {
+        params.is_active = filters.status === 'active';
+      }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
+      const response = await fetchAllUsers(params);
+      setUsers(response.users || response || []);
+    } catch (error) {
+      console.error('Error loading users:', error);
+      setUsers([]);
+    }
   };
 
-  const renderDashboardView = () => (
-    <div className="space-y-6 p-4 md:p-6">
-      {/* Estadísticas principales */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard
-          title="Ventas Totales Diarias"
-          value={formatCurrency(totalRevenue)}
-          change={12.5}
-          icon={<DollarSign className="h-6 w-6" />}
-        />
-        <StatsCard
-          title="Pares Vendidos"
-          value={totalSales.toString()}
-          change={8.3}
-          icon={<Package2 className="h-6 w-6" />}
-        />
-        <StatsCard
-          title="Costos Totales"
-          value={formatCurrency(totalCosts)}
-          change={-5.2}
-          icon={<TrendingDown className="h-6 w-6" />}
-        />
-        <StatsCard
-          title="Pagos Pendientes"
-          value={pendingPayments.toString()}
-          change={0}
-          icon={<AlertCircle className="h-6 w-6" />}
-        />
+  const loadCosts = async (filters = {}) => {
+    try {
+      const params: any = {};
+      
+      if (filters.location && filters.location !== '') {
+        params.location_id = parseInt(filters.location);
+      }
+      
+      if (filters.category && filters.category !== '') {
+        params.cost_type = filters.category as any;
+      }
+
+      const response = await fetchAllCosts(params);
+      setCosts(response.costs || response || []);
+    } catch (error) {
+      console.error('Error loading costs:', error);
+      setCosts([]);
+    }
+  };
+
+  const loadLocations = async () => {
+    try {
+      const response = await fetchAllLocations();
+      setLocations(response.locations || response || []);
+    } catch (error) {
+      console.error('Error loading locations:', error);
+      setLocations([]);
+    }
+  };
+
+  const loadAvailableLocations = async () => {
+    try {
+      const response = await fetchAvailableLocationsForUsers();
+      setAvailableLocations(response.locations || response || []);
+    } catch (error) {
+      console.error('Error loading available locations:', error);
+      setAvailableLocations([]);
+    }
+  };
+
+  const loadWholesaleOrders = async (filters = {}) => {
+    try {
+      // Note: There's no fetchAllWholesaleOrders in the provided API
+      // This would need to be implemented or use a different approach
+      setWholesaleOrders([]);
+    } catch (error) {
+      console.error('Error loading wholesale orders:', error);
+      setWholesaleOrders([]);
+    }
+  };
+
+  const loadNotifications = async () => {
+    try {
+      const [discountsResponse] = await Promise.all([
+        fetchPendingDiscountRequests(),
+        // Note: fetchReturnNotifications is not in the provided API
+        // This would need to be implemented
+      ]);
+      
+      setNotifications({
+        discounts: discountsResponse.requests || discountsResponse || [],
+        returns: [], // Would need proper endpoint
+        inventory: []
+      });
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+      setNotifications({
+        discounts: [],
+        returns: [],
+        inventory: []
+      });
+    }
+  };
+
+  const handleCreateUser = async (userData: any) => {
+    try {
+      await createUser({
+        email: userData.email,
+        password: userData.password,
+        first_name: userData.firstName,
+        last_name: userData.lastName,
+        role: userData.role,
+        location_id: userData.locationId ? parseInt(userData.locationId) : undefined
+      });
+      
+      await loadUsers(userFilters);
+      setShowCreateUserModal(false);
+      alert('Usuario creado exitosamente');
+    } catch (error) {
+      console.error('Error creating user:', error);
+      alert('Error al crear usuario: ' + (error.message || 'Error desconocido'));
+    }
+  };
+
+  const handleUpdateUser = async (userId: number, userData: any) => {
+    try {
+      await updateUser(userId, {
+        first_name: userData.firstName,
+        last_name: userData.lastName,
+        is_active: userData.isActive,
+        location_id: userData.locationId ? parseInt(userData.locationId) : undefined
+      });
+      
+      await loadUsers(userFilters);
+      setEditingUser(null);
+      setShowEditUserModal(false);
+      alert('Usuario actualizado exitosamente');
+    } catch (error) {
+      console.error('Error updating user:', error);
+      alert('Error al actualizar usuario: ' + (error.message || 'Error desconocido'));
+    }
+  };
+
+  const handleCreateCost = async (costData: any) => {
+    try {
+      // Note: There's no createCostConfiguration in the provided API
+      // This would need to be implemented or use createInventoryAlert for inventory costs
+      alert('Función de crear costos no disponible aún');
+    } catch (error) {
+      console.error('Error creating cost:', error);
+      alert('Error al registrar costo: ' + (error.message || 'Error desconocido'));
+    }
+  };
+
+  const handleCreateWholesaleOrder = async (orderData: any) => {
+    try {
+      await createWholesaleSale({
+        customer_name: orderData.customerName,
+        customer_document: orderData.customerDocument,
+        customer_phone: orderData.customerPhone,
+        location_id: orderData.locationId,
+        items: orderData.items,
+        discount_percentage: orderData.discountPercentage,
+        payment_method: orderData.paymentMethod,
+        notes: orderData.notes
+      });
+      
+      await loadWholesaleOrders(wholesaleFilters);
+      setShowCreateWholesaleModal(false);
+      alert('Orden mayorista creada exitosamente');
+    } catch (error) {
+      console.error('Error creating wholesale order:', error);
+      alert('Error al crear orden mayorista: ' + (error.message || 'Error desconocido'));
+    }
+  };
+
+  const handleApproveDiscount = async (discountId: number, approved: boolean, notes?: string) => {
+    try {
+      await approveDiscountRequest({
+        discount_request_id: discountId,
+        approved: approved,
+        admin_notes: notes
+      });
+      
+      await loadNotifications();
+      alert(approved ? 'Descuento aprobado exitosamente' : 'Descuento rechazado');
+    } catch (error) {
+      console.error('Error processing discount:', error);
+      alert('Error al procesar descuento: ' + (error.message || 'Error desconocido'));
+    }
+  };
+
+  const renderDashboardView = () => {
+    if (!dashboardData) return <LoadingSkeleton />;
+
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold">Panel de Administración</h2>
+          <Button onClick={() => loadDashboardData()} size="sm" variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualizar
+          </Button>
+        </div>
+
+        {/* Key Metrics */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatsCard
+            title="Ventas Totales"
+            value={formatCurrency(dashboardData.totalSales)}
+            change={dashboardData.salesGrowth}
+            period="crecimiento"
+            icon={<DollarSign className="h-6 w-6" />}
+          />
+          <StatsCard
+            title="Gastos Totales"
+            value={formatCurrency(dashboardData.totalExpenses)}
+            change={dashboardData.expensesGrowth}
+            period="crecimiento"
+            icon={<TrendingDown className="h-6 w-6" />}
+          />
+          <StatsCard
+            title="Usuarios Activos"
+            value={dashboardData.totalUsers.toString()}
+            icon={<Users className="h-6 w-6" />}
+          />
+          <StatsCard
+            title="Ubicaciones"
+            value={dashboardData.totalLocations.toString()}
+            icon={<Store className="h-6 w-6" />}
+          />
+        </div>
+
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold">Acciones Rápidas</h3>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <Button 
+                className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
+                onClick={() => setCurrentView('users')}
+              >
+                <Users className="h-5 w-5" />
+                <span>Gestionar Usuarios</span>
+              </Button>
+              <Button 
+                className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
+                onClick={() => setCurrentView('inventory')}
+              >
+                <Package className="h-5 w-5" />
+                <span>Ver Inventario</span>
+              </Button>
+              <Button 
+                className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
+                onClick={() => setCurrentView('wholesale')}
+              >
+                <ShoppingBag className="h-5 w-5" />
+                <span>Ventas Mayoreo</span>
+              </Button>
+              <Button 
+                className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
+                onClick={() => setCurrentView('analytics')}
+              >
+                <BarChart3 className="h-5 w-5" />
+                <span>Análisis</span>
+              </Button>
+              <Button 
+                className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
+                onClick={() => setCurrentView('costs')}
+              >
+                <DollarSign className="h-5 w-5" />
+                <span>Ver Costos</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Charts and Recent Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Top Products */}
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold">Productos Más Vendidos</h3>
+            </CardHeader>
+            <CardContent>
+              {dashboardData.topProducts.length > 0 ? (
+                <div className="space-y-4">
+                  {dashboardData.topProducts.map((product, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{product.name || product.model}</p>
+                        <p className="text-sm text-gray-600">{product.sales || product.quantity} unidades</p>
+                      </div>
+                      <p className="font-semibold">{formatCurrency(product.revenue || product.total)}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState 
+                  title="No hay datos de productos"
+                  description="No se encontraron productos más vendidos"
+                  icon={<Package className="h-12 w-12 text-gray-400" />}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Low Stock Alert */}
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold">Productos con Stock Bajo</h3>
+            </CardHeader>
+            <CardContent>
+              {dashboardData.lowStockProducts.length > 0 ? (
+                <div className="space-y-4">
+                  {dashboardData.lowStockProducts.map((product, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-warning/10 rounded-lg">
+                      <div>
+                        <p className="font-medium">{product.name || product.model}</p>
+                        <p className="text-sm text-gray-600">Stock actual: {product.stock || product.current_stock}</p>
+                      </div>
+                      <Badge variant="warning">Bajo Stock</Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState 
+                  title="No hay alertas de stock"
+                  description="Todos los productos tienen stock adecuado"
+                  icon={<CheckCircle className="h-12 w-12 text-success" />}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold">Actividad Reciente</h3>
+            </CardHeader>
+            <CardContent>
+              {dashboardData.recentSales.length > 0 ? (
+                <div className="space-y-3">
+                  {dashboardData.recentSales.slice(0, 5).map((activity, index) => (
+                    <div key={index} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                      <div>
+                        <p className="font-medium">{activity.description || `Actividad #${activity.id}`}</p>
+                        <p className="text-sm text-gray-600">{formatDate(activity.created_at)}</p>
+                      </div>
+                      <p className="font-semibold text-success">
+                        {activity.amount ? formatCurrency(activity.amount) : ''}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState 
+                  title="No hay actividad reciente"
+                  description="No se encontró actividad reciente"
+                  icon={<Activity className="h-12 w-12 text-gray-400" />}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold">Gastos Recientes</h3>
+            </CardHeader>
+            <CardContent>
+              {dashboardData.recentExpenses.length > 0 ? (
+                <div className="space-y-3">
+                  {dashboardData.recentExpenses.slice(0, 5).map((expense, index) => (
+                    <div key={index} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                      <div>
+                        <p className="font-medium">{expense.description}</p>
+                        <p className="text-sm text-gray-600">{formatDate(expense.created_at)}</p>
+                      </div>
+                      <p className="font-semibold text-error">-{formatCurrency(expense.amount)}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState 
+                  title="No hay gastos recientes"
+                  description="No se encontraron gastos recientes"
+                  icon={<DollarSign className="h-12 w-12 text-gray-400" />}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
+    );
+  };
 
-      {/* Acciones rápidas */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Acciones Rápidas</h3>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <Button 
-              className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
-              onClick={() => setCurrentView('users')}
-            >
-              <UserPlus className="h-5 w-5" />
-              <span>Crear Usuario</span>
-            </Button>
-            <Button 
-              className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
-              onClick={() => setCurrentView('locations')}
-            >
-              <Store className="h-5 w-5" />
-              <span>Gestionar Locales</span>
-            </Button>
-            <Button 
-              className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
-              onClick={() => setCurrentView('costs')}
-            >
-              <DollarSign className="h-5 w-5" />
-              <span>Registrar Costos</span>
-            </Button>
-            <Button 
-              className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
-              onClick={() => setCurrentView('wholesale')}
-            >
-              <ShoppingBag className="h-5 w-5" />
-              <span>Venta Mayoreo</span>
-            </Button>
-            <Button 
-              className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
-              onClick={() => setCurrentView('inventory')}
-            >
-              <Package2 className="h-5 w-5" />
-              <span>Agregar Stock</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+  const renderUsersView = () => {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+          <h2 className="text-2xl font-bold">Gestión de Usuarios</h2>
+          <Button onClick={() => setShowCreateUserModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Crear Usuario
+          </Button>
+        </div>
 
-      {/* Resumen por locales */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Resumen por Locales</h3>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {locations.map((location) => (
-              <div key={location.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <Store className="h-8 w-8 text-primary" />
-                  <div>
-                    <h4 className="font-semibold">{location.name}</h4>
-                    <p className="text-sm text-gray-600">{location.manager}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-lg">{formatCurrency(location.revenue)}</p>
-                  <p className="text-sm text-gray-600">{location.salesCount} ventas</p>
-                </div>
+        {/* Filters */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar usuarios..."
+                  value={userFilters.search}
+                  onChange={(e) => setUserFilters(prev => ({ ...prev, search: e.target.value }))}
+                  className="pl-10"
+                />
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <select
+                value={userFilters.role}
+                onChange={(e) => {
+                  setUserFilters(prev => ({ ...prev, role: e.target.value }));
+                  loadUsers({ ...userFilters, role: e.target.value });
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Todos los roles</option>
+                <option value="vendedor">Vendedor</option>
+                <option value="bodeguero">Bodeguero</option>
+                <option value="corredor">Corredor</option>
+              </select>
+              <select
+                value={userFilters.location}
+                onChange={(e) => {
+                  setUserFilters(prev => ({ ...prev, location: e.target.value }));
+                  loadUsers({ ...userFilters, location: e.target.value });
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Todas las ubicaciones</option>
+                {locations.map(location => (
+                  <option key={location.id} value={location.id.toString()}>{location.name}</option>
+                ))}
+              </select>
+              <select
+                value={userFilters.status}
+                onChange={(e) => {
+                  setUserFilters(prev => ({ ...prev, status: e.target.value }));
+                  loadUsers({ ...userFilters, status: e.target.value });
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Todos los estados</option>
+                <option value="active">Activo</option>
+                <option value="inactive">Inactivo</option>
+              </select>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Alertas y notificaciones */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold flex items-center">
-            <Bell className="h-5 w-5 mr-2" />
-            Alertas Importantes
-          </h3>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {costs.filter(cost => cost.status === 'overdue').map((cost) => (
-              <div key={cost.id} className="flex items-center space-x-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <AlertCircle className="h-5 w-5 text-red-500" />
-                <div className="flex-1">
-                  <p className="font-medium text-red-800">{cost.description}</p>
-                  <p className="text-sm text-red-600">Vencido - {formatCurrency(cost.amount)}</p>
-                </div>
+        {/* Users Table */}
+        <Card>
+          <CardContent className="p-0">
+            {users.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {users.map((user) => (
+                      <tr key={user.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <p className="font-medium">{user.first_name} {user.last_name}</p>
+                            <p className="text-sm text-gray-600">ID: {user.id}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {user.email}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge variant="secondary">
+                            {capitalize(user.role)}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {user.location_name || 'Sin asignar'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge variant={user.is_active ? 'success' : 'error'}>
+                            {user.is_active ? 'Activo' : 'Inactivo'}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingUser(user);
+                              setShowEditUserModal(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))}
-            {costs.filter(cost => cost.status === 'pending').map((cost) => (
-              <div key={cost.id} className="flex items-center space-x-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <Clock className="h-5 w-5 text-yellow-500" />
-                <div className="flex-1">
-                  <p className="font-medium text-yellow-800">{cost.description}</p>
-                  <p className="text-sm text-yellow-600">Vence: {cost.dueDate} - {formatCurrency(cost.amount)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const renderUsersView = () => (
-    <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <h2 className="text-xl font-semibold">Gestión de Usuarios</h2>
-        <Button onClick={() => setShowUserForm(true)}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Crear Usuario
-        </Button>
+            ) : (
+              <EmptyState
+                title="No hay usuarios"
+                description="No se encontraron usuarios con los filtros aplicados"
+                icon={<Users className="h-12 w-12 text-gray-400" />}
+              />
+            )}
+          </CardContent>
+        </Card>
       </div>
+    );
+  };
 
-      {/* Filtros */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
-            <div className="flex-1">
+  const renderCostsView = () => {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+          <h2 className="text-2xl font-bold">Gestión de Costos</h2>
+          <Button onClick={() => setShowCreateCostModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Registrar Costo
+          </Button>
+        </div>
+
+        {/* Filters */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar costos..."
+                  value={costFilters.search}
+                  onChange={(e) => setCostFilters(prev => ({ ...prev, search: e.target.value }))}
+                  className="pl-10"
+                />
+              </div>
+              <select
+                value={costFilters.category}
+                onChange={(e) => {
+                  setCostFilters(prev => ({ ...prev, category: e.target.value }));
+                  loadCosts({ ...costFilters, category: e.target.value });
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Todas las categorías</option>
+                <option value="arriendo">Arriendo</option>
+                <option value="servicios">Servicios</option>
+                <option value="nomina">Nómina</option>
+                <option value="mercancia">Mercancía</option>
+                <option value="comisiones">Comisiones</option>
+                <option value="transporte">Transporte</option>
+                <option value="otros">Otros</option>
+              </select>
+              <select
+                value={costFilters.location}
+                onChange={(e) => {
+                  setCostFilters(prev => ({ ...prev, location: e.target.value }));
+                  loadCosts({ ...costFilters, location: e.target.value });
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Todas las ubicaciones</option>
+                {locations.map(location => (
+                  <option key={location.id} value={location.id.toString()}>{location.name}</option>
+                ))}
+              </select>
               <Input
-                placeholder="Buscar usuarios..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                icon={<Search className="h-4 w-4" />}
+                type="date"
+                value={costFilters.dateFrom}
+                onChange={(e) => setCostFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                placeholder="Fecha desde"
+              />
+              <Input
+                type="date"
+                value={costFilters.dateTo}
+                onChange={(e) => setCostFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                placeholder="Fecha hasta"
               />
             </div>
-            <select
-              value={selectedFilter}
-              onChange={(e) => setSelectedFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="all">Todos los roles</option>
-              <option value="seller">Vendedores</option>
-              <option value="warehouse">Bodegueros</option>
-              <option value="runner">Corredores</option>
-            </select>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Lista de usuarios */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {users.map((user) => (
-          <Card key={user.id}>
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">{user.name}</h4>
-                    <p className="text-sm text-gray-600">{user.email}</p>
-                  </div>
-                </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {user.status === 'active' ? 'Activo' : 'Inactivo'}
-                </span>
-              </div>
-              
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Rol:</span>
-                  <span className="font-medium capitalize">{user.role}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Local:</span>
-                  <span className="font-medium">{user.location}</span>
-                </div>
-                {user.warehouse && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Bodega:</span>
-                    <span className="font-medium">{user.warehouse}</span>
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex space-x-2">
-                <Button size="sm" variant="outline" className="flex-1">
-                  <Edit className="h-3 w-3 mr-1" />
-                  Editar
-                </Button>
-                <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
+        {/* Costs Summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-4 text-center">
+              <DollarSign className="h-8 w-8 text-primary mx-auto mb-2" />
+              <p className="text-2xl font-bold">{formatCurrency(costs.reduce((sum, cost) => sum + cost.amount, 0))}</p>
+              <p className="text-sm text-gray-600">Total Costos</p>
             </CardContent>
           </Card>
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderLocationsView = () => (
-    <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <h2 className="text-xl font-semibold">Gestión de Locales</h2>
-        <Button onClick={() => {/* Abrir modal crear local */}}>
-          <Plus className="h-4 w-4 mr-2" />
-          Crear Local
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {locations.map((location) => (
-          <Card key={location.id}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <Store className="h-8 w-8 text-primary" />
-                  <div>
-                    <h3 className="text-lg font-semibold">{location.name}</h3>
-                    <p className="text-sm text-gray-600 flex items-center">
-                      <MapPin className="h-3 w-3 mr-1" />
-                      {location.address}
-                    </p>
-                  </div>
-                </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  location.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {location.status === 'active' ? 'Activo' : 'Inactivo'}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <p className="text-2xl font-bold text-primary">{location.salesCount}</p>
-                  <p className="text-sm text-gray-600">Ventas</p>
-                </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <p className="text-lg font-bold text-success">{formatCurrency(location.revenue)}</p>
-                  <p className="text-sm text-gray-600">Ingresos</p>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-sm text-gray-600">Encargado:</span>
-                <span className="font-medium">{location.manager}</span>
-              </div>
-
-              <div className="flex space-x-2">
-                <Button size="sm" variant="outline" className="flex-1">
-                  <Edit className="h-3 w-3 mr-1" />
-                  Editar
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1">
-                  <Eye className="h-3 w-3 mr-1" />
-                  Ver Detalles
-                </Button>
-              </div>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <BarChart3 className="h-8 w-8 text-success mx-auto mb-2" />
+              <p className="text-2xl font-bold">{costs.length}</p>
+              <p className="text-sm text-gray-600">Registros</p>
             </CardContent>
           </Card>
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderWarehousesView = () => (
-    <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <h2 className="text-xl font-semibold">Gestión de Bodegas</h2>
-        <Button onClick={() => {/* Abrir modal crear bodega */}}>
-          <Plus className="h-4 w-4 mr-2" />
-          Crear Bodega
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {warehouses.map((warehouse) => (
-          <Card key={warehouse.id}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <Warehouse className="h-8 w-8 text-primary" />
-                  <div>
-                    <h3 className="text-lg font-semibold">{warehouse.name}</h3>
-                    <p className="text-sm text-gray-600 flex items-center">
-                      <MapPin className="h-3 w-3 mr-1" />
-                      {warehouse.address}
-                    </p>
-                  </div>
-                </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  warehouse.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {warehouse.status === 'active' ? 'Activa' : 'Inactiva'}
-                </span>
-              </div>
-
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Capacidad utilizada</span>
-                  <span className="text-sm font-medium">
-                    {warehouse.currentStock} / {warehouse.capacity}
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-primary h-2 rounded-full" 
-                    style={{ width: `${(warehouse.currentStock / warehouse.capacity) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-sm text-gray-600">Encargado:</span>
-                <span className="font-medium">{warehouse.manager}</span>
-              </div>
-
-              <div className="flex space-x-2">
-                <Button size="sm" variant="outline" className="flex-1">
-                  <Edit className="h-3 w-3 mr-1" />
-                  Editar
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1">
-                  <Package2 className="h-3 w-3 mr-1" />
-                  Ver Stock
-                </Button>
-              </div>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <TrendingUp className="h-8 w-8 text-warning mx-auto mb-2" />
+              <p className="text-2xl font-bold">{formatCurrency(costs.reduce((sum, cost) => sum + cost.amount, 0) / Math.max(costs.length, 1))}</p>
+              <p className="text-sm text-gray-600">Promedio</p>
             </CardContent>
           </Card>
-        ))}
-      </div>
-    </div>
-  );
+        </div>
 
-  const renderCostsView = () => (
-    <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <h2 className="text-xl font-semibold">Gestión de Costos</h2>
-        <Button onClick={() => setShowCostForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Registrar Costo
-        </Button>
-      </div>
-
-      {/* Resumen de costos */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Costs Table */}
         <Card>
-          <CardContent className="p-4 text-center">
-            <DollarSign className="h-8 w-8 text-primary mx-auto mb-2" />
-            <p className="text-2xl font-bold">{formatCurrency(costs.filter(c => c.type === 'fixed').reduce((sum, c) => sum + c.amount, 0))}</p>
-            <p className="text-sm text-gray-600">Costos Fijos</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <TrendingUp className="h-8 w-8 text-warning mx-auto mb-2" />
-            <p className="text-2xl font-bold">{formatCurrency(costs.filter(c => c.type === 'variable').reduce((sum, c) => sum + c.amount, 0))}</p>
-            <p className="text-sm text-gray-600">Costos Variables</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <AlertCircle className="h-8 w-8 text-error mx-auto mb-2" />
-            <p className="text-2xl font-bold">{costs.filter(c => c.status === 'overdue').length}</p>
-            <p className="text-sm text-gray-600">Pagos Vencidos</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Lista de costos */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Todos los Costos</h3>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {costs.map((cost) => (
-              <div key={cost.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center space-x-4">
-                  <div className={`p-2 rounded-full ${
-                    cost.type === 'fixed' ? 'bg-blue-100' : 'bg-orange-100'
-                  }`}>
-                    {cost.type === 'fixed' ? 
-                      <Building className="h-5 w-5 text-blue-600" /> : 
-                      <Activity className="h-5 w-5 text-orange-600" />
-                    }
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">{cost.description}</h4>
-                    <p className="text-sm text-gray-600">{cost.category} • {cost.location}</p>
-                    {cost.dueDate && (
-                      <p className="text-xs text-gray-500">Vence: {cost.dueDate}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-lg">{formatCurrency(cost.amount)}</p>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    cost.status === 'paid' ? 'bg-green-100 text-green-800' :
-                    cost.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {cost.status === 'paid' ? 'Pagado' : 
-                     cost.status === 'pending' ? 'Pendiente' : 'Vencido'}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const renderWholesaleView = () => (
-    <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <h2 className="text-xl font-semibold">Ventas al Por Mayor</h2>
-        <Button onClick={() => {/* Abrir modal crear venta mayoreo */}}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Venta Mayoreo
-        </Button>
-      </div>
-
-      {/* Resumen de ventas mayoreo */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <ShoppingBag className="h-8 w-8 text-primary mx-auto mb-2" />
-            <p className="text-2xl font-bold">{wholesaleOrders.length}</p>
-            <p className="text-sm text-gray-600">Órdenes Totales</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <DollarSign className="h-8 w-8 text-success mx-auto mb-2" />
-            <p className="text-2xl font-bold">{formatCurrency(wholesaleOrders.reduce((sum, order) => sum + order.paid, 0))}</p>
-            <p className="text-sm text-gray-600">Total Cobrado</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Clock className="h-8 w-8 text-warning mx-auto mb-2" />
-            <p className="text-2xl font-bold">{formatCurrency(wholesaleOrders.reduce((sum, order) => sum + order.pending, 0))}</p>
-            <p className="text-sm text-gray-600">Saldo Pendiente</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Lista de órdenes mayoreo */}
-      <div className="space-y-4">
-        {wholesaleOrders.map((order) => (
-          <Card key={order.id}>
-            <CardContent className="p-6">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-semibold">{order.client}</h3>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      order.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {order.status === 'completed' ? 'Completado' :
-                       order.status === 'partial' ? 'Parcial' : 'Pendiente'}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-2 mb-4">
-                    {order.items.map((item, index) => (
-                      <div key={index} className="flex justify-between text-sm">
-                        <span>{item.product} × {item.quantity}</span>
-                        <span>{formatCurrency(item.unitPrice * item.quantity)}</span>
-                      </div>
+          <CardContent className="p-0">
+            {costs.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Frecuencia</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {costs.map((cost) => (
+                      <tr key={cost.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <p className="font-medium">{cost.description}</p>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge variant="secondary">{capitalize(cost.cost_type)}</Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap font-semibold">
+                          {formatCurrency(cost.amount)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {cost.location_name || 'General'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {capitalize(cost.frequency)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge variant={cost.is_active ? 'success' : 'error'}>
+                            {cost.is_active ? 'Activo' : 'Inactivo'}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                          <Button size="sm" variant="outline">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
                     ))}
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Total:</span>
-                      <span className="font-bold ml-2">{formatCurrency(order.total)}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Pagado:</span>
-                      <span className="font-bold ml-2 text-success">{formatCurrency(order.paid)}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Pendiente:</span>
-                      <span className="font-bold ml-2 text-warning">{formatCurrency(order.pending)}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Vence:</span>
-                      <span className="font-bold ml-2">{order.dueDate}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex flex-col space-y-2 lg:ml-6">
-                  <Button size="sm" variant="outline">
-                    <Edit className="h-3 w-3 mr-1" />
-                    Editar
-                  </Button>
-                  <Button size="sm" variant="outline">
-                    <CreditCard className="h-3 w-3 mr-1" />
-                    Registrar Pago
-                  </Button>
-                </div>
+                  </tbody>
+                </table>
               </div>
+            ) : (
+              <EmptyState
+                title="No hay costos registrados"
+                description="No se encontraron costos con los filtros aplicados"
+                icon={<DollarSign className="h-12 w-12 text-gray-400" />}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
+  const renderLocationsView = () => {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+          <h2 className="text-2xl font-bold">Gestión de Ubicaciones</h2>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Ubicación
+          </Button>
+        </div>
+
+        {/* Location Types Summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Store className="h-8 w-8 text-primary mx-auto mb-2" />
+              <p className="text-2xl font-bold">{locations.filter(l => l.type === 'local').length}</p>
+              <p className="text-sm text-gray-600">Locales de Venta</p>
             </CardContent>
           </Card>
-        ))}
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Warehouse className="h-8 w-8 text-secondary mx-auto mb-2" />
+              <p className="text-2xl font-bold">{locations.filter(l => l.type === 'bodega').length}</p>
+              <p className="text-sm text-gray-600">Bodegas</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Locations List */}
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold">Todas las Ubicaciones</h3>
+          </CardHeader>
+          <CardContent>
+            {locations.length > 0 ? (
+              <div className="space-y-4">
+                {locations.map((location) => (
+                  <div key={location.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <div className={`p-3 rounded-lg ${
+                        location.type === 'local' ? 'bg-primary/10' : 'bg-secondary/10'
+                      }`}>
+                        {location.type === 'local' ? 
+                          <Store className="h-6 w-6 text-primary" /> : 
+                          <Warehouse className="h-6 w-6 text-secondary" />
+                        }
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">{location.name}</h4>
+                        <p className="text-sm text-gray-600">{location.address}</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <Badge variant={location.type === 'local' ? 'primary' : 'secondary'}>
+                            {location.type === 'local' ? 'Local' : 'Bodega'}
+                          </Badge>
+                          <Badge variant={location.is_active ? 'success' : 'error'}>
+                            {location.is_active ? 'Activo' : 'Inactivo'}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button size="sm" variant="outline">
+                        <Eye className="h-4 w-4 mr-1" />
+                        Ver Stats
+                      </Button>
+                      <Button size="sm" variant="outline">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                title="No hay ubicaciones"
+                description="No se encontraron ubicaciones registradas"
+                icon={<MapPin className="h-12 w-12 text-gray-400" />}
+              />
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </div>
-  );
+    );
+  };
 
-  const renderAnalyticsView = () => (
-    <div className="space-y-6 p-4 md:p-6">
-      <h2 className="text-xl font-semibold">Métricas y Análisis</h2>
-      
-      {/* Filtros de tiempo */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline">Hoy</Button>
-            <Button size="sm" variant="outline">Esta Semana</Button>
-            <Button size="sm" variant="outline">Este Mes</Button>
-            <Button size="sm" variant="outline">Personalizado</Button>
-          </div>
-        </CardContent>
-      </Card>
+  const renderNotificationsView = () => {
+    const allNotifications = [
+      ...notifications.discounts.map(n => ({ ...n, type: 'discount' })),
+      ...notifications.returns.map(n => ({ ...n, type: 'return' }))
+    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      {/* Métricas principales */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <h2 className="text-2xl font-bold">Notificaciones</h2>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-4 text-center">
+              <AlertCircle className="h-8 w-8 text-warning mx-auto mb-2" />
+              <p className="text-2xl font-bold">{notifications.discounts.length}</p>
+              <p className="text-sm text-gray-600">Descuentos Pendientes</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <AlertCircle className="h-8 w-8 text-error mx-auto mb-2" />
+              <p className="text-2xl font-bold">{notifications.returns.length}</p>
+              <p className="text-sm text-gray-600">Devoluciones</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Bell className="h-8 w-8 text-primary mx-auto mb-2" />
+              <p className="text-2xl font-bold">{allNotifications.length}</p>
+              <p className="text-sm text-gray-600">Total Notificaciones</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Notifications List */}
         <Card>
-          <CardContent className="p-4 text-center">
-            <BarChart2 className="h-8 w-8 text-primary mx-auto mb-2" />
-            <p className="text-2xl font-bold">254</p>
-            <p className="text-sm text-gray-600">Pares Vendidos Hoy</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Package2 className="h-8 w-8 text-success mx-auto mb-2" />
-            <p className="text-2xl font-bold">12</p>
-            <p className="text-sm text-gray-600">Cajas Vendidas</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <TrendingUp className="h-8 w-8 text-warning mx-auto mb-2" />
-            <p className="text-2xl font-bold">{formatCurrency(4250000)}</p>
-            <p className="text-sm text-gray-600">Ventas del Día</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <PieChart className="h-8 w-8 text-secondary mx-auto mb-2" />
-            <p className="text-2xl font-bold">85%</p>
-            <p className="text-sm text-gray-600">Efectividad</p>
+          <CardHeader>
+            <h3 className="text-lg font-semibold">Todas las Notificaciones</h3>
+          </CardHeader>
+          <CardContent>
+            {allNotifications.length === 0 ? (
+              <EmptyState
+                title="No hay notificaciones"
+                description="No tienes notificaciones pendientes en este momento"
+                icon={<Bell className="h-12 w-12 text-gray-400" />}
+              />
+            ) : (
+              <div className="space-y-4">
+                {allNotifications.map((notification: any) => (
+                  <div key={`${notification.type}-${notification.id}`} className={`p-4 rounded-lg border-l-4 ${
+                    notification.type === 'discount' 
+                      ? 'bg-warning/10 border-warning' 
+                      : 'bg-error/10 border-error'
+                  }`}>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          {notification.type === 'discount' ? (
+                            <AlertCircle className="h-5 w-5 text-warning" />
+                          ) : (
+                            <AlertCircle className="h-5 w-5 text-error" />
+                          )}
+                          <span className="font-medium">
+                            {notification.type === 'discount' ? 'Solicitud de Descuento' : 'Devolución'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700 mb-2">
+                          {notification.reason || notification.message || notification.notes}
+                        </p>
+                        {notification.amount && (
+                          <p className="text-sm font-medium">Monto: {formatCurrency(notification.amount)}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-2">{formatDate(notification.created_at)}</p>
+                      </div>
+                      {notification.type === 'discount' && (
+                        <div className="flex space-x-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-success"
+                            onClick={() => handleApproveDiscount(notification.id, true)}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Aprobar
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-error"
+                            onClick={() => handleApproveDiscount(notification.id, false, 'Rechazado por administrador')}
+                          >
+                            Rechazar
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
-
-      {/* Gráfico placeholder */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Ventas por Local - Últimos 7 Días</h3>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-            <div className="text-center">
-              <BarChart2 className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500">Gráfico de ventas aparecerá aquí</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Tabla de ventas detalladas */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Ventas Detalladas</h3>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Producto</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Talla</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Hora</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Local</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Método Pago</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Monto</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b">
-                  <td className="py-2 px-4 text-sm">Nike Air Max 90</td>
-                  <td className="py-2 px-4 text-sm">9.5</td>
-                  <td className="py-2 px-4 text-sm">14:30</td>
-                  <td className="py-2 px-4 text-sm">Local Centro</td>
-                  <td className="py-2 px-4 text-sm">Tarjeta</td>
-                  <td className="py-2 px-4 text-sm font-medium">{formatCurrency(180000)}</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-2 px-4 text-sm">Adidas Ultraboost</td>
-                  <td className="py-2 px-4 text-sm">8</td>
-                  <td className="py-2 px-4 text-sm">13:15</td>
-                  <td className="py-2 px-4 text-sm">Local Norte</td>
-                  <td className="py-2 px-4 text-sm">Efectivo</td>
-                  <td className="py-2 px-4 text-sm font-medium">{formatCurrency(220000)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+    );
+  };
 
   const renderInventoryView = () => (
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <h2 className="text-xl font-semibold">Gestión de Inventario</h2>
-        <Button onClick={() => {/* Abrir modal agregar stock */}}>
+        <Button onClick={() => {/* Implementar modal agregar stock */}}>
           <Plus className="h-4 w-4 mr-2" />
-          Agregar Stock
+          Agregar Stock por Video
         </Button>
       </div>
-
-      {/* Formulario de nuevo producto */}
+      
+      {/* Video Inventory Form */}
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Agregar Nuevo Stock</h3>
+          <h3 className="text-lg font-semibold">Registrar Inventario por Video</h3>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <Input label="Referencia del Producto" placeholder="Ej: NK-AM90-001" />
-              <Input label="Marca" placeholder="Ej: Nike" />
-              <Input label="Modelo" placeholder="Ej: Air Max 90" />
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Imagen del Producto
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Video del Producto (Opcional)
-                </label>
-                <FullScreenCameraCapture
-                  onVideoRecorded={(url, blob) => {
-                    console.log("Video listo:", url, blob);
-                    // Aquí puedes manejar el blob para subirlo al backend
-                  }}
-                />
-              </div>
-
-
+              <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                <option value="">Seleccionar Bodega</option>
+                {locations.filter(l => l.type === 'bodega').map(location => (
+                  <option key={location.id} value={location.id}>{location.name}</option>
+                ))}
+              </select>
+              <Input placeholder="Cantidad Estimada" type="number" />
+              <Input placeholder="Marca (Opcional)" />
+              <Input placeholder="Modelo (Opcional)" />
+              <Input placeholder="Tallas Esperadas (Ej: 8,8.5,9)" />
+              <textarea 
+                placeholder="Notas adicionales"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                rows={3}
+              />
             </div>
             
             <div className="space-y-4">
-              <h4 className="font-medium">Tallas y Ubicaciones</h4>
-              <div className="space-y-3">
-                {['7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5'].map((size) => (
-                  <div key={size} className="grid grid-cols-3 gap-2">
-                    <Input placeholder={`Talla ${size}`} value={size} disabled />
-                    <Input placeholder="Cantidad" type="number" />
-                    <select className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                      <option value="">Ubicación</option>
-                      <option value="bodega-principal">Bodega Principal</option>
-                      <option value="local-centro">Local Centro</option>
-                      <option value="local-norte">Local Norte</option>
-                    </select>
-                  </div>
-                ))}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Grabar Video del Inventario
+                </label>
+                <FullScreenCameraCapture
+                  onVideoRecorded={async (url, blob) => {
+                    console.log("Video listo para subir:", url, blob);
+                    // Aquí implementar la llamada a createVideoInventoryEntry
+                  }}
+                />
               </div>
             </div>
           </div>
           
           <div className="mt-6 flex justify-end">
             <Button>
-              <Package2 className="h-4 w-4 mr-2" />
-              Agregar al Inventario
+              <Video className="h-4 w-4 mr-2" />
+              Procesar Video de Inventario
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Processing History */}
+      <Card>
+        <CardHeader>
+          <h3 className="text-lg font-semibold">Historial de Procesamiento</h3>
+        </CardHeader>
+        <CardContent>
+          <EmptyState
+            title="Sin historial de videos"
+            description="No hay videos de inventario procesados aún"
+            icon={<Video className="h-12 w-12 text-gray-400" />}
+          />
         </CardContent>
       </Card>
     </div>
   );
 
-  const renderNotificationsView = () => (
-    <div className="space-y-6 p-4 md:p-6">
-      <h2 className="text-xl font-semibold">Centro de Notificaciones</h2>
-      
-      <div className="space-y-4">
-        {/* Notificaciones de pagos próximos */}
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold flex items-center">
-              <Clock className="h-5 w-5 mr-2 text-warning" />
-              Pagos Próximos a Vencer
-            </h3>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {costs.filter(cost => cost.status === 'pending').map((cost) => (
-                <div key={cost.id} className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div>
-                    <p className="font-medium">{cost.description}</p>
-                    <p className="text-sm text-gray-600">Vence: {cost.dueDate}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold">{formatCurrency(cost.amount)}</p>
-                    <Button size="sm" className="mt-1">Marcar como Pagado</Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+  const renderWholesaleView = () => {
+    const totalWholesaleAmount = wholesaleOrders.reduce((sum, order) => sum + order.total_amount, 0);
 
-        {/* Notificaciones de stock bajo */}
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+          <h2 className="text-2xl font-bold">Ventas al Por Mayor</h2>
+          <Button onClick={() => setShowCreateWholesaleModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Orden Mayorista
+          </Button>
+        </div>
+
+        {/* Wholesale Summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4 text-center">
+              <ShoppingBag className="h-8 w-8 text-primary mx-auto mb-2" />
+              <p className="text-2xl font-bold">{wholesaleOrders.length}</p>
+              <p className="text-sm text-gray-600">Órdenes Totales</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <DollarSign className="h-8 w-8 text-success mx-auto mb-2" />
+              <p className="text-2xl font-bold">{formatCurrency(totalWholesaleAmount)}</p>
+              <p className="text-sm text-gray-600">Valor Total</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <CheckCircle className="h-8 w-8 text-success mx-auto mb-2" />
+              <p className="text-2xl font-bold">{wholesaleOrders.filter(o => o.status === 'confirmed').length}</p>
+              <p className="text-sm text-gray-600">Confirmadas</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <AlertCircle className="h-8 w-8 text-warning mx-auto mb-2" />
+              <p className="text-2xl font-bold">{wholesaleOrders.filter(o => o.status === 'pending').length}</p>
+              <p className="text-sm text-gray-600">Pendientes</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Wholesale Orders List */}
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2 text-error" />
-              Alertas de Stock Bajo
-            </h3>
+            <h3 className="text-lg font-semibold">Órdenes Mayoristas</h3>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
-                <div>
-                  <p className="font-medium">Nike Air Max 90 - Talla 9.5</p>
-                  <p className="text-sm text-gray-600">Local Centro - Solo 2 unidades</p>
-                </div>
-                <Button size="sm" variant="outline">Reabastecer</Button>
+            {wholesaleOrders.length > 0 ? (
+              <div className="space-y-4">
+                {wholesaleOrders.map((order) => (
+                  <div key={order.id} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Badge variant={
+                            order.status === 'confirmed' ? 'success' :
+                            order.status === 'pending' ? 'warning' :
+                            order.status === 'delivered' ? 'primary' : 'error'
+                          }>
+                            {order.status === 'confirmed' ? 'Confirmada' :
+                             order.status === 'pending' ? 'Pendiente' :
+                             order.status === 'delivered' ? 'Entregada' : 'Cancelada'}
+                          </Badge>
+                          <span className="text-sm text-gray-500">{formatDate(order.created_at)}</span>
+                        </div>
+                        
+                        <h4 className="font-semibold text-lg">{order.customer_name}</h4>
+                        <p className="text-sm text-gray-600">
+                          {order.customer_document} | {order.customer_phone}
+                        </p>
+                        <p className="text-sm text-gray-600">Ubicación: {order.location_name}</p>
+                      </div>
+                      
+                      <div className="text-right">
+                        <p className="text-xl font-bold">{formatCurrency(order.total_amount)}</p>
+                        {order.discount_percentage && (
+                          <p className="text-sm text-success">Descuento: {order.discount_percentage}%</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Items */}
+                    <div className="space-y-2 mb-3">
+                      {order.items.map((item, index) => (
+                        <div key={index} className="text-sm bg-gray-50 p-2 rounded">
+                          <span className="font-medium">{item.reference_code}</span>
+                          <span className="text-gray-600"> - {item.quantity} unidades × {formatCurrency(item.unit_price)}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-end space-x-2">
+                      <Button size="sm" variant="outline">
+                        <Eye className="h-4 w-4 mr-1" />
+                        Ver Detalles
+                      </Button>
+                      {order.status === 'pending' && (
+                        <Button size="sm">
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Confirmar
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            ) : (
+              <EmptyState
+                title="No hay órdenes mayoristas"
+                description="No se encontraron órdenes de venta al por mayor"
+                icon={<ShoppingBag className="h-12 w-12 text-gray-400" />}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
+    );
+  };
+
+  const renderAnalyticsView = () => {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+          <h2 className="text-2xl font-bold">Análisis y Métricas</h2>
+          <div className="flex space-x-2">
+            <Button size="sm" variant="outline" onClick={() => generateSalesReport({
+              start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+              end_date: new Date().toISOString()
+            })}>
+              <Download className="h-4 w-4 mr-2" />
+              Exportar
+            </Button>
+            <Button size="sm" variant="outline">Hoy</Button>
+            <Button size="sm" variant="outline">Semana</Button>
+            <Button size="sm" variant="outline">Mes</Button>
+          </div>
+        </div>
+
+        {/* Analytics Placeholder */}
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold">Métricas de Rendimiento</h3>
+          </CardHeader>
+          <CardContent>
+            <EmptyState
+              title="Análisis en desarrollo"
+              description="Las métricas detalladas estarán disponibles próximamente"
+              icon={<BarChart3 className="h-12 w-12 text-gray-400" />}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
+  const renderReportsView = () => {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <h2 className="text-2xl font-bold">Reportes y Análisis</h2>
+
+        {/* Report Types */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardContent className="p-6 text-center">
+              <FileText className="h-12 w-12 text-primary mx-auto mb-3" />
+              <h3 className="font-semibold mb-2">Reporte de Ventas</h3>
+              <p className="text-sm text-gray-600 mb-4">Análisis detallado de ventas por período</p>
+              <Button 
+                size="sm" 
+                className="w-full"
+                onClick={() => generateSalesReport({
+                  start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+                  end_date: new Date().toISOString()
+                })}
+              >
+                Generar
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardContent className="p-6 text-center">
+              <Users className="h-12 w-12 text-secondary mx-auto mb-3" />
+              <h3 className="font-semibold mb-2">Rendimiento de Usuarios</h3>
+              <p className="text-sm text-gray-600 mb-4">Performance por vendedor y ubicación</p>
+              <Button 
+                size="sm" 
+                className="w-full"
+                onClick={() => fetchUserPerformance({
+                  start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+                  end_date: new Date().toISOString()
+                })}
+              >
+                Generar
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardContent className="p-6 text-center">
+              <Truck className="h-12 w-12 text-success mx-auto mb-3" />
+              <h3 className="font-semibold mb-2">Reporte de Transferencias</h3>
+              <p className="text-sm text-gray-600 mb-4">Resumen de transferencias entre ubicaciones</p>
+              <Button 
+                size="sm" 
+                className="w-full"
+                onClick={() => fetchTransfersOverview()}
+              >
+                Generar
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Reports Placeholder */}
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold">Reportes Generados</h3>
+          </CardHeader>
+          <CardContent>
+            <EmptyState
+              title="No hay reportes generados"
+              description="Los reportes aparecerán aquí una vez generados"
+              icon={<FileText className="h-12 w-12 text-gray-400" />}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   const renderCurrentView = () => {
     switch (currentView) {
-      case 'users': return renderUsersView();
-      case 'locations': return renderLocationsView();
-      case 'warehouses': return renderWarehousesView();
-      case 'costs': return renderCostsView();
-      case 'wholesale': return renderWholesaleView();
-      case 'analytics': return renderAnalyticsView();
-      case 'inventory': return renderInventoryView();
-      case 'notifications': return renderNotificationsView();
-      default: return renderDashboardView();
+      case 'users':
+        return renderUsersView();
+      case 'costs':
+        return renderCostsView();
+      case 'inventory':
+        return renderInventoryView();
+      case 'wholesale':
+        return renderWholesaleView();
+      case 'analytics':
+        return renderAnalyticsView();
+      case 'locations':
+        return renderLocationsView();
+      case 'notifications':
+        return renderNotificationsView();
+      case 'reports':
+        return renderReportsView();
+      default:
+        return renderDashboardView();
     }
   };
 
+  if (loading && currentView === 'dashboard') {
+    return (
+      <DashboardLayout title="Panel de Administración">
+        <LoadingSkeleton />
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout title="Panel de Administración">
+        <ErrorState 
+          title="Error al cargar datos"
+          description={error}
+          icon={<AlertCircle className="h-12 w-12 text-error" />}
+        />
+      </DashboardLayout>
+    );
+  }
+
   return (
-    <DashboardLayout title={
-      currentView === 'dashboard' ? 'Panel de Administrador' :
-      currentView === 'users' ? 'Gestión de Usuarios' :
-      currentView === 'locations' ? 'Gestión de Locales' :
-      currentView === 'warehouses' ? 'Gestión de Bodegas' :
-      currentView === 'costs' ? 'Gestión de Costos' :
-      currentView === 'wholesale' ? 'Ventas al Por Mayor' :
-      currentView === 'analytics' ? 'Métricas y Análisis' :
-      currentView === 'inventory' ? 'Gestión de Inventario' :
-      'Centro de Notificaciones'
-    }>
+    <DashboardLayout title="Panel de Administración">
       <div className="min-h-screen bg-gray-50">
-        {/* Navigation tabs - Solo visible en móvil */}
+        {/* Navigation tabs - Mobile */}
         <div className="lg:hidden bg-white border-b sticky top-0 z-10">
           <div className="flex overflow-x-auto px-4 py-2 space-x-2">
             {[
-              { key: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="h-4 w-4" /> },
-              { key: 'inventory', label: 'Inventario', icon: <Package2 className="h-4 w-4" /> },
+              { key: 'dashboard', label: 'Dashboard', icon: <BarChart3 className="h-4 w-4" /> },
               { key: 'users', label: 'Usuarios', icon: <Users className="h-4 w-4" /> },
-              { key: 'costs', label: 'Costos', icon: <DollarSign className="h-4 w-4" /> },
+              { key: 'inventory', label: 'Inventario', icon: <Package className="h-4 w-4" /> },
               { key: 'wholesale', label: 'Mayoreo', icon: <ShoppingBag className="h-4 w-4" /> },
+              { key: 'costs', label: 'Costos', icon: <DollarSign className="h-4 w-4" /> },
               { key: 'analytics', label: 'Análisis', icon: <PieChart className="h-4 w-4" /> },
-              { key: 'notifications', label: 'Alertas', icon: <Bell className="h-4 w-4" /> },
+              { key: 'notifications', label: 'Notificaciones', icon: <Bell className="h-4 w-4" /> },
+              { key: 'reports', label: 'Reportes', icon: <FileText className="h-4 w-4" /> },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -1094,21 +1543,21 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Sidebar navigation - Solo visible en desktop */}
+        {/* Sidebar navigation - Desktop */}
         <div className="hidden lg:flex">
           <div className="w-64 bg-white shadow-sm h-screen fixed left-0 top-16 overflow-y-auto">
             <div className="p-4">
               <nav className="space-y-2">
                 {[
-                  { key: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="h-5 w-5" /> },
+                  { key: 'dashboard', label: 'Panel Principal', icon: <BarChart3 className="h-5 w-5" /> },
                   { key: 'users', label: 'Gestión de Usuarios', icon: <Users className="h-5 w-5" /> },
-                  { key: 'locations', label: 'Gestión de Locales', icon: <Store className="h-5 w-5" /> },
-                  { key: 'warehouses', label: 'Gestión de Bodegas', icon: <Warehouse className="h-5 w-5" /> },
+                  { key: 'inventory', label: 'Gestión de Inventario', icon: <Package className="h-5 w-5" /> },
+                  { key: 'wholesale', label: 'Ventas Mayoristas', icon: <ShoppingBag className="h-5 w-5" /> },
                   { key: 'costs', label: 'Gestión de Costos', icon: <DollarSign className="h-5 w-5" /> },
-                  { key: 'wholesale', label: 'Ventas al Por Mayor', icon: <ShoppingBag className="h-5 w-5" /> },
-                  { key: 'analytics', label: 'Métricas y Análisis', icon: <PieChart className="h-5 w-5" /> },
-                  { key: 'inventory', label: 'Gestión de Inventario', icon: <Package2 className="h-5 w-5" /> },
-                  { key: 'notifications', label: 'Centro de Notificaciones', icon: <Bell className="h-5 w-5" /> },
+                  { key: 'analytics', label: 'Análisis y Métricas', icon: <PieChart className="h-5 w-5" /> },
+                  { key: 'locations', label: 'Ubicaciones', icon: <MapPin className="h-5 w-5" /> },
+                  { key: 'notifications', label: 'Notificaciones', icon: <Bell className="h-5 w-5" /> },
+                  { key: 'reports', label: 'Reportes', icon: <FileText className="h-5 w-5" /> },
                 ].map((item) => (
                   <button
                     key={item.key}
@@ -1121,6 +1570,11 @@ export const AdminDashboard: React.FC = () => {
                   >
                     {item.icon}
                     <span>{item.label}</span>
+                    {item.key === 'notifications' && (notifications.discounts.length + notifications.returns.length) > 0 && (
+                      <span className="ml-auto bg-error text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                        {notifications.discounts.length + notifications.returns.length}
+                      </span>
+                    )}
                   </button>
                 ))}
               </nav>
@@ -1135,6 +1589,35 @@ export const AdminDashboard: React.FC = () => {
         <div className="lg:hidden">
           {renderCurrentView()}
         </div>
+
+        {/* Modals */}
+        {showCreateUserModal && (
+          <CreateUserModal 
+            onClose={() => setShowCreateUserModal(false)}
+            onSubmit={handleCreateUser}
+            locations={availableLocations}
+          />
+        )}
+
+        {showEditUserModal && editingUser && (
+          <EditUserModal 
+            user={editingUser}
+            onClose={() => {
+              setShowEditUserModal(false);
+              setEditingUser(null);
+            }}
+            onSubmit={(userData) => handleUpdateUser(editingUser.id, userData)}
+            locations={availableLocations}
+          />
+        )}
+
+        {showCreateCostModal && (
+          <CreateCostModal 
+            onClose={() => setShowCreateCostModal(false)}
+            onSubmit={handleCreateCost}
+            locations={locations}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
