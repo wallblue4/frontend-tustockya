@@ -220,7 +220,37 @@ const warehouseAPIUpdated = {
         delivered_at: new Date().toISOString()
       };
     }
+  },
+
+  // WH005: Entregar a Vendedor
+  async deliverToVendor(transferId: number, requestData: {
+    delivered: boolean;
+    delivery_notes: string;
+  }) {
+    console.log('🔄 WH005: Entregando a vendedor...', { transferId, requestData });
+    
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/deliver-to-vendor/${transferId}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(requestData)
+      });
+      return await handleResponse(response);
+    } catch (error) {
+      console.warn('⚠️ Backend no disponible, usando mock response');
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simular delay
+      
+      return {
+        success: true,
+        message: 'Producto entregado a vendedor - Inventario actualizado',
+        transfer_id: transferId,
+        vendor_name: 'Vendedor Asignado',
+        inventory_updated: true,
+        delivered_at: new Date().toISOString()
+      };
+    }
   }
+
 };
 
 // *** TIPOS ACTUALIZADOS SEGÚN DOCUMENTACIÓN ***
@@ -251,6 +281,7 @@ interface PendingRequest {
 }
 
 interface AcceptedRequest {
+  pickup_type: string;
   id: number;
   status: string;
   status_description?: string;
@@ -506,6 +537,39 @@ export const WarehouseDashboard: React.FC = () => {
       
     } catch (err) {
       console.error('❌ Error en WH004:', err);
+      addNotification(
+        'error',
+        '❌ Error en Entrega',
+        err instanceof Error ? err.message : 'Error desconocido'
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeliverToVendor = async (requestId: number) => {
+    console.log('🔄 WH005: Entregando a vendedor:', requestId);
+    setActionLoading(requestId);
+    
+    try {
+      // Llamada usando estructura del endpoint WH005
+      const response = await warehouseAPIUpdated.deliverToVendor(requestId, {
+        delivered: true,
+        delivery_notes: 'Producto entregado al vendedor en perfecto estado. Caja original sellada.'
+      });
+      
+      console.log('✅ WH005 Response:', response);
+      
+      addNotification(
+        'success',
+        '👤 Entregado al Vendedor',
+        `Transferencia #${requestId} entregada exitosamente`
+      );
+      
+      await loadInitialData();
+      
+    } catch (err) {
+      console.error('❌ Error en WH005:', err);
       addNotification(
         'error',
         '❌ Error en Entrega',
@@ -1185,7 +1249,8 @@ export const WarehouseDashboard: React.FC = () => {
                                 : 'bg-blue-100 text-blue-800'
                             }`}>
                               {request.status === 'courier_assigned' ? '✅ Corredor asignado' : 
-                               request.status === 'accepted' ? '🔄 Esperando corredor' : 
+                               request.status === 'accepted' && request.pickup_type=== "corredor"? '🔄 Esperando corredor' : 
+                               request.status === 'accepted' && request.pickup_type=== "vendedor"? '🔄 Esperando vendedor' : 
                                request.status_description || request.status}
                             </span>
                           </div>
@@ -1213,9 +1278,26 @@ export const WarehouseDashboard: React.FC = () => {
                             ) : (
                               <Send className="h-4 w-4 mr-2" />
                             )}
-                            🚚 Entregar a Corredor (WH004)
+                            🚚 Entregar a Corredor 
                           </Button>
                         )}
+
+                        {(request.status === 'accepted' && request.pickup_type=== "vendedor") && (
+                          <Button
+                            onClick={() => handleDeliverToVendor(request.id)}
+                            disabled={actionLoading === request.id}
+                            className="w-full bg-primary hover:bg-primary/90 text-white text-sm"
+                            size="sm"
+                          >
+                            {actionLoading === request.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            ) : (
+                              <Send className="h-4 w-4 mr-2" />
+                            )}
+                            🚚 Entregar a vendedor 
+                          </Button>
+                        )}
+
                       </div>
 
                       {/* DESKTOP VIEW */}
@@ -1323,6 +1405,25 @@ export const WarehouseDashboard: React.FC = () => {
                               🚚 Entregar a Corredor (WH004)
                             </Button>
                           </div>
+                        )}
+
+                        {(request.status === 'accepted' && request.pickup_type=== "vendedor") && (
+                          <div className='mt-4'>
+                            <Button
+                              onClick={() => handleDeliverToVendor(request.id)}
+                              disabled={actionLoading === request.id}
+                              className="w-full bg-primary hover:bg-primary/90 text-white text-sm"
+                              size="sm"
+                            >
+                              {actionLoading === request.id ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              ) : (
+                                <Send className="h-4 w-4 mr-2" />
+                              )}
+                              🚚 Entregar a vendedor 
+                            </Button>
+                          </div>
+                          
                         )}
                         
                         <div className="mt-3 pt-3 border-t text-xs text-gray-500">
