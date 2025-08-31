@@ -40,6 +40,8 @@ interface SalesFormProps {
     price: number;
     location?: string;
     storage_type?: string;
+    color?: string;
+    image?: string[];
   } | null;
 }
 

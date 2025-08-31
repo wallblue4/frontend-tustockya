@@ -42,6 +42,8 @@ interface PrefilledProduct {
   price: number;
   location?: string;
   storage_type?: string;
+  color?: string;
+  image?: string;
 }
 
 interface PredictionResult {
@@ -357,8 +359,28 @@ export const SellerDashboard: React.FC = () => {
     color?: string;
     image?: string;
   }) => {
-    // Navegar a la ruta de venta y pasar los datos por state
-    navigate('/ventas/nueva', { state: { prefilledProduct: productData } });
+    console.log('🔍 SellerDashboard - Recibiendo datos para venta:', productData);
+  
+    // Convertir los datos al formato que espera SalesForm
+    const prefilledData: PrefilledProduct = {
+      code: productData.code,
+      brand: productData.brand,
+      model: productData.model,
+      size: productData.size,
+      price: productData.price,
+      location: productData.location,
+      storage_type: productData.storage_type,
+      color: productData.color,   
+      image: productData.image 
+    };
+
+    console.log('🔍 SellerDashboard - Datos preparados para SalesForm:', prefilledData);
+  
+    // Establecer los datos prellenados y cambiar a vista de venta
+    setPrefilledProduct(prefilledData);
+    setCurrentView('new-sale');
+    
+    console.log('✅ SellerDashboard - Vista cambiada a new-sale');
   };
 
   const goBack = () => {
@@ -449,12 +471,12 @@ export const SellerDashboard: React.FC = () => {
             </Button>
             <TransfersView 
               prefilledProductData={productDataForTransfer}
+              onSellProduct={handleSellProduct}
               onTransferRequested={(transferId, isUrgent) => {
                 console.log('✅ Transferencia solicitada:', { transferId, isUrgent });
                 loadTransfersSummary(); // Recargar resumen después de nueva transferencia
                 goBack(); // Volver al dashboard después de la solicitud
               }}
-              onSellProduct={handleSellProduct}
             />
           </div>
         );

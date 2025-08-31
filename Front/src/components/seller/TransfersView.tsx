@@ -199,7 +199,8 @@ interface CompletedTransfer {
 
 export const TransfersView: React.FC<TransfersViewProps> = ({ 
   onTransferRequested,
-  prefilledProductData 
+  prefilledProductData,
+  onSellProduct 
 }) => {
   // Usar onSellProduct como prop, igual que en ProductScanner
   const [activeTab, setActiveTab] = useState('pending');
@@ -381,6 +382,49 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       alert('Error confirmando recepción: ' + (err instanceof Error ? err.message : 'Error desconocido'));
     }
   };
+
+
+  const handleConfirmAndSell = async (transfer: PendingTransfer) => {
+  try {
+    // 1. Confirmar recepción primero
+    await vendorAPI.confirmReception(transfer.id, 1, true, 'Producto recibido correctamente');
+    
+    // 2. Preparar datos para SalesForm (similar a ProductScanner)
+    const salesData = {
+      code: transfer.sneaker_reference_code, // Campo directo, no transfer.product_info.reference_code
+      brand: transfer.brand, // Campo directo
+      model: transfer.model, // Campo directo  
+      size: transfer.size, // Campo directo
+      price: transfer.product_price, // Campo directo
+      location: transfer.destination_location_name, // Campo directo
+      storage_type: transfer.destination_type === 'bodega' ? 'warehouse' : 'display', // Campo directo
+      color: transfer.product_color, // Campo directo
+      image: transfer.product_image // Campo directo
+    };
+    
+    // 3. Llamar callback para abrir SalesForm (necesitas agregar este prop)
+    if (onSellProduct) {
+      console.log('🚀 Llamando onSellProduct...');
+      onSellProduct(salesData);
+      console.log('✅ onSellProduct ejecutado');
+      
+      // 4. Mensaje de éxito
+      alert('Recepción confirmada. Abriendo formulario de venta...');
+      
+    } else {
+      console.error('❌ onSellProduct no está definido');
+      alert('Error: No se puede abrir el formulario de ventas. onSellProduct no está definido.');
+      return;
+    }
+
+    loadTransfersData();
+    
+  } catch (err: any) {
+    console.error('Error en confirmar y vender:', err);
+    alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+  }
+};
+
 
   // *** NUEVA FUNCIÓN - Cancelar transferencia ***
   const handleCancelTransfer = async (transferId: number, reason?: string) => {
@@ -684,7 +728,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                           {transfer.brand} {transfer.model}
                         </h4>
                         <p className="text-xs md:text-sm text-gray-600 truncate">
-                          Código: {transfer.product_info.reference_code} | Talla: {transfer.product_info.size} | Cantidad: {transfer.product_info.quantity}
+                          Código: {transfer.sneaker_reference_code} | Talla: {transfer.size} | Cantidad: {transfer.quantity}
                         </p>
                         <p className="text-xs md:text-sm text-gray-500">
                           {getNextAction(transfer)}
@@ -705,7 +749,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         <div className="flex flex-col space-y-2 mt-3">
                           {transfer.status === 'delivered' && (
                             <Button
-                              onClick={() => handleConfirmReception(transfer)}
+                              onClick={() => handleConfirmAndSell(transfer)}
                               className="bg-green-600 hover:bg-green-700 text-sm w-full"
                               size="sm"
                             >
@@ -732,7 +776,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     {/* Información de ubicaciones */}
                     <div className="mt-3 p-2 md:p-3 bg-blue-50 rounded-md">
                       <p className="text-xs md:text-sm">
-                        <strong>Desde:</strong> {transfer.location_info.from.name} → <strong>Hacia:</strong> {transfer.location_info.to.name}
+                        <strong>Desde:</strong> {transfer.location_info?.from.name} → <strong>Hacia:</strong> {transfer.location_info?.to.name}
                       </p>
                       {transfer.status_info.courier_info && (
                         <p className="text-xs md:text-sm mt-1">
