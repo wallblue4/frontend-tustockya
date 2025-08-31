@@ -40,7 +40,7 @@ interface SalesFormProps {
     price: number;
     location?: string;
     storage_type?: string;
-  };
+  } | null;
 }
 
 export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {

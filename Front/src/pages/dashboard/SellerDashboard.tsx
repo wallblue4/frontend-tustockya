@@ -26,6 +26,7 @@ import { ExpensesForm } from '../../components/seller/ExpensesForm';
 import { ExpensesList } from '../../components/seller/ExpensesList';
 import { SalesList } from '../../components/seller/SalesList';
 import { TransfersView } from '../../components/seller/TransfersView';
+import { useNavigate } from 'react-router-dom';
 import { vendorAPI } from '../../services/api';
 import { CameraCapture } from '../../components/seller/CameraCapture';
 import { transfersAPI } from '../../services/transfersAPI';
@@ -58,6 +59,7 @@ interface TransfersSummary {
 }
 
 export const SellerDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [apiData, setApiData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -343,6 +345,7 @@ export const SellerDashboard: React.FC = () => {
     console.log('🔍 SellerDashboard - Vista cambiada a transfers');
   };
 
+  // Función única para abrir SalesForm con datos prellenados, navegando a la ruta de venta
   const handleSellProduct = (productData: {
     code: string;
     brand: string;
@@ -351,23 +354,11 @@ export const SellerDashboard: React.FC = () => {
     price: number;
     location: string;
     storage_type: string;
+    color?: string;
+    image?: string;
   }) => {
-    console.log('Recibiendo datos del producto escaneado:', productData);
-    
-    const prefilledData: PrefilledProduct = {
-      code: productData.code,
-      brand: productData.brand,
-      model: productData.model,
-      size: productData.size,
-      price: productData.price,
-      location: productData.location,
-      storage_type: productData.storage_type
-    };
-    
-    console.log('Datos preparados para prellenar:', prefilledData);
-    
-    setPrefilledProduct(prefilledData);
-    setCurrentView('new-sale');
+    // Navegar a la ruta de venta y pasar los datos por state
+    navigate('/ventas/nueva', { state: { prefilledProduct: productData } });
   };
 
   const goBack = () => {
@@ -463,6 +454,7 @@ export const SellerDashboard: React.FC = () => {
                 loadTransfersSummary(); // Recargar resumen después de nueva transferencia
                 goBack(); // Volver al dashboard después de la solicitud
               }}
+              onSellProduct={handleSellProduct}
             />
           </div>
         );

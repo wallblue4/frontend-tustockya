@@ -32,15 +32,68 @@ interface TransfersViewProps {
     source_location_id?: number;
     destination_location_id?: number;
   } | null;
+  onSellProduct?: (productData: {
+    code: string;
+    brand: string;
+    model: string;
+    size: string;
+    price: number;
+    location: string;
+    storage_type: string;
+    color?: string;
+    image?: string;
+  }) => void;
 }
 
 // *** INTERFACES ACTUALIZADAS SEGÚN DOCUMENTACIÓN ***
 
 // Interfaz para transferencia pendiente (recepciones por confirmar)
 interface PendingTransfer {
-  product_image: string | undefined;
   id: number;
+  requester_id: number;
+  source_location_id: number;
+  destination_location_id: number;
+  sneaker_reference_code: string;
+  brand: string;
+  model: string;
+  size: string;
+  quantity: number;
+  purpose: string;
+  pickup_type: string;
+  destination_type: string;
+  courier_id: number;
+  warehouse_keeper_id: number;
   status: 'pending' | 'accepted' | 'courier_assigned' | 'in_transit' | 'delivered';
+  requested_at: string;
+  accepted_at: string;
+  picked_up_at: string;
+  delivered_at: string;
+  notes: string;
+  confirmed_reception_at: string | null;
+  received_quantity: number | null;
+  reception_notes: string | null;
+  courier_accepted_at: string | null;
+  courier_notes: string | null;
+  estimated_pickup_time: string | null;
+  pickup_notes: string | null;
+  source_location_name: string;
+  source_address: string;
+  source_phone: string | null;
+  destination_location_name: string;
+  destination_address: string;
+  warehouse_keeper_first_name: string;
+  warehouse_keeper_last_name: string;
+  courier_first_name: string;
+  courier_last_name: string;
+  courier_email: string;
+  product_image: string;
+  product_price: number;
+  product_color: string;
+  executed_by: string;
+  executor_name: string;
+  executor_type: string;
+  is_self_pickup: boolean;
+  hours_since_request: number;
   status_info: {
     status: string;
     title: string;
@@ -48,17 +101,17 @@ interface PendingTransfer {
     detail?: string;
     action_required?: string;
     next_step?: string;
-    estimated_time?: string;
-    urgency: 'high' | 'medium' | 'normal';
-    can_cancel: boolean;
     progress_percentage: number;
+    action_endpoint?: string;
+    urgency?: 'high' | 'medium' | 'normal';
+    can_cancel?: boolean;
     courier_info?: {
       name: string;
       email: string;
       picked_up_at?: string;
     };
   };
-  product_info: {
+  product_info?: {
     reference_code: string;
     brand: string;
     model: string;
@@ -66,37 +119,36 @@ interface PendingTransfer {
     quantity: number;
     color: string;
     price: number;
+    total_value?: number;
     image?: string;
-    full_description: string;
+    full_description?: string;
   };
-  location_info: {
+  location_info?: {
     from: {
       name: string;
       address: string;
-      phone: string;
+      phone?: string;
     };
     to: {
       name: string;
       address: string;
     };
   };
-  purpose_info: {
+  purpose_info?: {
     purpose: string;
     description: string;
     priority: string;
     destination_type: string;
-    storage_location: string;
   };
-  timeline: Array<{
+  timeline?: Array<{
     step: string;
     title: string;
     timestamp: string | null;
     completed: boolean;
     description: string;
   }>;
-  hours_since_request: number;
-  days_since_request: number;
-  hours_in_current_state: number;
+  days_since_request?: number;
+  hours_in_current_state?: number;
 }
 
 // Interfaz para transferencia completada (historial)
@@ -149,23 +201,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   onTransferRequested,
   prefilledProductData 
 }) => {
-  // Definición local de onSellProduct: abre el formulario de venta con los datos recibidos
-  const onSellProduct = (productData: {
-    code: string;
-    brand: string;
-    model: string;
-    size: string;
-    price: number;
-    location: string;
-    storage_type: string;
-    color: string;
-  }) => {
-    // Aquí puedes implementar la lógica para abrir el formulario de venta
-    // Por ejemplo, podrías mostrar un modal, cambiar el estado, etc.
-    // Por ahora, solo mostramos los datos en un alert para prueba
-    alert(`Abrir formulario de venta:\n${JSON.stringify(productData, null, 2)}`);
-    // TODO: Implementar la lógica real para mostrar el formulario de venta
-  };
+  // Usar onSellProduct como prop, igual que en ProductScanner
   const [activeTab, setActiveTab] = useState('pending');
   
   // *** ESTADOS ACTUALIZADOS PARA ENDPOINTS CORRECTOS ***
@@ -319,26 +355,27 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     }
   };
 
-  // *** FUNCIÓN ACTUALIZADA - Confirmar recepción para transferencias pendientes ***
-  // FUNCIÓN MODIFICADA: Confirmar recepción y abrir formulario de venta con datos del tenis recibido
+  // Confirmar recepción y llamar a onSellProduct como en ProductScanner
   const handleConfirmReception = async (transfer: PendingTransfer) => {
     try {
       await vendorAPI.confirmReception(transfer.id, 1, true, 'Producto recibido correctamente');
       alert('Recepción confirmada exitosamente');
       loadTransfersData(); // Recargar datos
 
-      // Abrir formulario de venta con datos del tenis recibido
-      const productInfo = transfer.product_info;
-      onSellProduct({
-        code: productInfo.reference_code,
-        brand: productInfo.brand,
-        model: productInfo.model,
-        size: productInfo.size,
-        price: productInfo.price,
-        location: transfer.location_info.to.name,
-        storage_type: transfer.purpose_info.storage_location || 'exhibicion',
-        color: productInfo.color
-      });
+      // Llamar a onSellProduct del padre, igual que ProductScanner
+      if (typeof onSellProduct === 'function') {
+        onSellProduct({
+          code: transfer.sneaker_reference_code,
+          brand: transfer.brand,
+          model: transfer.model,
+          size: transfer.size,
+          price: transfer.product_price,
+          location: transfer.destination_location_name,
+          storage_type: transfer.destination_type || 'exhibicion',
+          color: transfer.product_color,
+          image: transfer.product_image
+        });
+      }
     } catch (err: any) {
       console.error('Error confirmando recepción:', err);
       alert('Error confirmando recepción: ' + (err instanceof Error ? err.message : 'Error desconocido'));
@@ -644,7 +681,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         </div>
                         
                         <h4 className="font-semibold text-sm md:text-lg truncate">
-                          {transfer.product_info.brand} {transfer.product_info.model}
+                          {transfer.brand} {transfer.model}
                         </h4>
                         <p className="text-xs md:text-sm text-gray-600 truncate">
                           Código: {transfer.product_info.reference_code} | Talla: {transfer.product_info.size} | Cantidad: {transfer.product_info.quantity}
