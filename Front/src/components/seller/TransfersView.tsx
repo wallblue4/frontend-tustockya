@@ -38,6 +38,7 @@ interface TransfersViewProps {
 
 // Interfaz para transferencia pendiente (recepciones por confirmar)
 interface PendingTransfer {
+  product_image: string | undefined;
   id: number;
   status: 'pending' | 'accepted' | 'courier_assigned' | 'in_transit' | 'delivered';
   status_info: {
@@ -148,6 +149,23 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   onTransferRequested,
   prefilledProductData 
 }) => {
+  // Definición local de onSellProduct: abre el formulario de venta con los datos recibidos
+  const onSellProduct = (productData: {
+    code: string;
+    brand: string;
+    model: string;
+    size: string;
+    price: number;
+    location: string;
+    storage_type: string;
+    color: string;
+  }) => {
+    // Aquí puedes implementar la lógica para abrir el formulario de venta
+    // Por ejemplo, podrías mostrar un modal, cambiar el estado, etc.
+    // Por ahora, solo mostramos los datos en un alert para prueba
+    alert(`Abrir formulario de venta:\n${JSON.stringify(productData, null, 2)}`);
+    // TODO: Implementar la lógica real para mostrar el formulario de venta
+  };
   const [activeTab, setActiveTab] = useState('pending');
   
   // *** ESTADOS ACTUALIZADOS PARA ENDPOINTS CORRECTOS ***
@@ -302,11 +320,25 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   };
 
   // *** FUNCIÓN ACTUALIZADA - Confirmar recepción para transferencias pendientes ***
-  const handleConfirmReception = async (transferId: number) => {
+  // FUNCIÓN MODIFICADA: Confirmar recepción y abrir formulario de venta con datos del tenis recibido
+  const handleConfirmReception = async (transfer: PendingTransfer) => {
     try {
-      await vendorAPI.confirmReception(transferId, 1, true, 'Producto recibido correctamente');
+      await vendorAPI.confirmReception(transfer.id, 1, true, 'Producto recibido correctamente');
       alert('Recepción confirmada exitosamente');
       loadTransfersData(); // Recargar datos
+
+      // Abrir formulario de venta con datos del tenis recibido
+      const productInfo = transfer.product_info;
+      onSellProduct({
+        code: productInfo.reference_code,
+        brand: productInfo.brand,
+        model: productInfo.model,
+        size: productInfo.size,
+        price: productInfo.price,
+        location: transfer.location_info.to.name,
+        storage_type: transfer.purpose_info.storage_location || 'exhibicion',
+        color: productInfo.color
+      });
     } catch (err: any) {
       console.error('Error confirmando recepción:', err);
       alert('Error confirmando recepción: ' + (err instanceof Error ? err.message : 'Error desconocido'));
@@ -591,6 +623,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   <div key={transfer.id} className="border rounded-lg p-3 md:p-4">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
                       <div className="flex-1 min-w-0">
+                        <div className="mb-4">
+                            <div className=" bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                              <img
+                                src={transfer.product_image}
+                                className="w-32 h-48 object-cover rounded-lg border border-gray-200"
+                              />
+                          </div>
+                        </div>
                         <div className="flex items-center space-x-2 mb-2">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(transfer)}`}>
                             {getStatusIcon(transfer)}
@@ -612,9 +652,6 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         <p className="text-xs md:text-sm text-gray-500">
                           {getNextAction(transfer)}
                         </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Tiempo en estado actual: {parseTimeElapsed(transfer.hours_in_current_state)}
-                        </p>
                       </div>
                       
                       <div className="text-right flex-shrink-0">
@@ -631,12 +668,12 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         <div className="flex flex-col space-y-2 mt-3">
                           {transfer.status === 'delivered' && (
                             <Button
-                              onClick={() => handleConfirmReception(transfer.id)}
+                              onClick={() => handleConfirmReception(transfer)}
                               className="bg-green-600 hover:bg-green-700 text-sm w-full"
                               size="sm"
                             >
                               <CheckCircle className="h-4 w-4 mr-2" />
-                              Confirmar Recepción
+                              Confirmar y Vender
                             </Button>
                           )}
                           

@@ -647,14 +647,6 @@ export const SellerDashboard: React.FC = () => {
                     </div>
                   )}
                   
-                  {/* Debug info - Solo mostrar si no hay transfersSummary */}
-                  {!transfersSummary && (
-                    <div className="bg-red-50 p-3 rounded-lg">
-                      <p className="text-xs text-red-600">Debug: transfersSummary es null</p>
-                      <p className="text-xs text-red-600">Loading: {transfersLoading ? 'true' : 'false'}</p>
-                    </div>
-                  )}
-                  
                   {apiData.pending_actions && apiData.pending_actions.discount_requests && apiData.pending_actions.discount_requests.pending > 0 && (
                     <div className="bg-orange-50 p-3 rounded-lg">
                       <p className="text-2xl font-bold text-orange-600">

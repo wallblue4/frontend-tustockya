@@ -33,6 +33,7 @@ import { courierAPI } from '../../services/transfersAPI';
 
 // Tipos actualizados
 interface AvailableRequest {
+  product_image: string | undefined;
   id: number;
   status: string;
   action_required: string;
@@ -53,14 +54,19 @@ interface AvailableRequest {
 }
 
 interface AssignedTransport {
+  product_image: string | undefined;
   id: number;
   status: string;
   action_required: string;
   action_description: string;
   source_location_name: string;
   destination_location_name: string;
-  product: string;
-  requester_name: string;
+  brand: string;
+  model: string;
+  size: string;
+  quantity: number;
+  requester_first_name: string;
+  requester_last_name: string;
   estimated_pickup_time?: number;
   courier_accepted_at: string;
 }
@@ -481,57 +487,6 @@ export const RunnerDashboard: React.FC = () => {
       />
 
       <div className="space-y-4 md:space-y-6">
-        {/* Header con estadísticas rápidas - RESPONSIVE */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
-          <Card>
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs md:text-sm text-gray-600">Hoy</p>
-                  <p className="text-lg md:text-2xl font-bold text-blue-600">{stats.todayDeliveries}</p>
-                </div>
-                <Truck className="h-6 w-6 md:h-8 md:w-8 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs md:text-sm text-gray-600">Total</p>
-                  <p className="text-lg md:text-2xl font-bold">{stats.totalDeliveries}</p>
-                </div>
-                <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs md:text-sm text-gray-600">Éxito</p>
-                  <p className="text-lg md:text-2xl font-bold text-green-600">{stats.successRate}%</p>
-                </div>
-                <Award className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs md:text-sm text-gray-600">Rating</p>
-                  <p className="text-lg md:text-2xl font-bold text-yellow-600">{stats.rating}</p>
-                </div>
-                <Star className="h-6 w-6 md:h-8 md:w-8 text-yellow-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Navigation Tabs - RESPONSIVE */}
         <Card>
           <CardContent className="p-2 md:p-4">
@@ -672,36 +627,73 @@ export const RunnerDashboard: React.FC = () => {
                     const earnings = calculateEarnings(distance, request.purpose === 'cliente');
                     
                     return (
-                      <div key={request.id} className="border rounded-lg bg-white hover:shadow-lg transition-shadow">
+                      <div key={request.id} className="border rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-300">
+                        
                         {/* MOBILE COMPACT VIEW */}
                         <div className="md:hidden">
                           <div className="p-4">
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                    request.purpose === 'cliente' 
-                                      ? 'bg-red-100 text-red-800 border border-red-200' 
-                                      : 'bg-blue-100 text-blue-800 border border-blue-200'
-                                  }`}>
-                                    {request.request_info.urgency}
-                                  </span>
+                            {/* Header con etiquetas de prioridad */}
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center space-x-2">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  request.purpose === 'cliente' 
+                                    ? 'bg-red-100 text-red-800 border border-red-200' 
+                                    : 'bg-blue-100 text-blue-800 border border-blue-200'
+                                }`}>
+                                  {request.request_info.urgency}
+                                </span>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                ID #{request.id}
+                              </div>
+                            </div>
+                            
+                            {/* Layout horizontal: Imagen vertical a la izquierda, info a la derecha */}
+                            <div className="flex space-x-4 mb-4">
+                              {/* Imagen vertical */}
+                              <div className="flex-shrink-0">
+                                <div className="w-32 h-48 rounded-lg overflow-hidden border border-gray-200">
+                                  <img
+                                    src={request.product_image}
+                                    alt={request.request_info.product_description}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      if (!e.currentTarget.dataset.fallback) {
+                                        e.currentTarget.dataset.fallback = 'true';
+                                        e.currentTarget.src = `https://via.placeholder.com/200x260/f3f4f6/9ca3af?text=${encodeURIComponent(request.request_info.product_description.split(' ')[0])}`;
+                                      }
+                                    }}
+                                  />
                                 </div>
-                                
-                                <h3 className="font-semibold text-base mb-1 truncate">
+                              </div>
+                              
+                              {/* Información del producto */}
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-bold text-base text-gray-900 mb-2 leading-tight">
                                   {request.request_info.product_description}
                                 </h3>
                                 
-                                <p className="text-sm text-gray-600 mb-1">
-                                  <User className="h-3 w-3 inline mr-1" />
-                                  {request.request_info.requester}
-                                </p>
+                                <div className="space-y-2 mb-3">
+                                  <div className="flex items-center space-x-1 text-sm text-gray-700">
+                                    <User className="h-3 w-3 text-gray-400" />
+                                    <span className="font-medium truncate">
+                                      Solicitante: {request.request_info.requester}
+                                    </span>
+                                  </div>
+                                  
+                                  <p className="text-xs text-gray-500">
+                                    ⏱️ {request.hours_since_accepted.toFixed(1)}h • 📍 {distance} km
+                                  </p>
+                                </div>
                                 
-                                <p className="text-xs text-gray-500">
-                                  ⏱️ {request.hours_since_accepted.toFixed(1)}h • 📍 {distance} km
-                                </p>
+                                {/* Ganancia estimada compacta */}
+                                <div className="p-2 bg-green-50 rounded border border-green-200 text-center">
+                                  <div className="text-sm font-bold text-green-700">
+                                    {formatPrice(earnings)}
+                                  </div>
+                                  <div className="text-xs text-green-600">Ganancia estimada</div>
+                                </div>
                               </div>
-                              
                             </div>
                             
                             <Button
@@ -718,8 +710,16 @@ export const RunnerDashboard: React.FC = () => {
                             </Button>
                             
                             {expandedCard === request.id && (
-                              <div className="mt-3 pt-3 border-t space-y-3">
+                              <div className="mb-4 pt-4 border-t space-y-3">
                                 <div className="grid grid-cols-1 gap-3">
+                                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                    <div className="flex items-center mb-1">
+                                      <MapPin className="h-4 w-4 text-blue-600 mr-1" />
+                                      <span className="font-medium text-blue-800 text-sm">Recoger</span>
+                                    </div>
+                                    <p className="text-sm font-medium">{request.request_info.pickup_location}</p>
+                                    <p className="text-xs text-gray-600">{request.request_info.pickup_address}</p>
+                                  </div>
                                   <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                                     <div className="flex items-center mb-1">
                                       <Navigation className="h-4 w-4 text-green-600 mr-1" />
@@ -756,85 +756,124 @@ export const RunnerDashboard: React.FC = () => {
 
                         {/* DESKTOP FULL VIEW */}
                         <div className="hidden md:block p-6">
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="flex-grow">
-                              <div className="flex items-center space-x-3 mb-3">
-                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                  request.purpose === 'cliente' 
-                                    ? 'bg-red-100 text-red-800 border border-red-200' 
-                                    : 'bg-blue-100 text-blue-800 border border-blue-200'
-                                }`}>
-                                  {request.request_info.urgency}
-                                </span>
-                                <span className="text-sm text-gray-500">
-                                  ⏱️ Esperando: {request.hours_since_accepted.toFixed(1)} horas
-                                </span>
+                          {/* Header con etiquetas */}
+                          <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center space-x-3">
+                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                request.purpose === 'cliente' 
+                                  ? 'bg-red-100 text-red-800 border border-red-200' 
+                                  : 'bg-blue-100 text-blue-800 border border-blue-200'
+                              }`}>
+                                {request.request_info.urgency}
+                              </span>
+                              <span className="text-sm text-gray-500">
+                                ⏱️ Esperando: {request.hours_since_accepted.toFixed(1)} horas
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              ID #{request.id}
+                            </div>
+                          </div>
+                          
+                          {/* Layout horizontal: Imagen vertical a la izquierda, información a la derecha */}
+                          <div className="flex space-x-6">
+                            
+                            {/* Imagen del producto vertical */}
+                            <div className="flex-shrink-0">
+                              <div className="w-48 h-64 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                                <img
+                                  src={request.product_image || `https://via.placeholder.com/300x400/e5e7eb/6b7280?text=${encodeURIComponent(request.request_info.product_description)}`}
+                                  alt={request.request_info.product_description}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    if (!e.currentTarget.dataset.fallback) {
+                                      e.currentTarget.dataset.fallback = 'true';
+                                      e.currentTarget.src = `https://via.placeholder.com/300x400/f3f4f6/9ca3af?text=${encodeURIComponent(request.request_info.product_description.split(' ')[0])}`;
+                                    }
+                                  }}
+                                />
                               </div>
                               
-                              <h3 className="font-semibold text-xl mb-2">
-                                {request.request_info.product_description}
-                              </h3>
-                              <p className="text-gray-600 mb-3">
-                                <User className="h-4 w-4 inline mr-1" />
-                                Solicitado por: <strong>{request.request_info.requester}</strong>
-                              </p>
-                            </div>
-                            
-                            <div className="text-right ml-6">
-                              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                              {/* Ganancia estimada debajo de la imagen */}
+                              <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3 text-center">
                                 <p className="text-lg font-bold text-green-700">
                                   {formatPrice(earnings)}
                                 </p>
                                 <p className="text-xs text-green-600">Ganancia estimada</p>
                               </div>
                             </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                              <div className="flex items-center mb-2">
-                                <MapPin className="h-5 w-5 text-blue-600 mr-2" />
-                                <h4 className="font-semibold text-blue-800">Punto de Recolección</h4>
-                              </div>
-                              <p className="font-medium">{request.request_info.pickup_location}</p>
-                              <p className="text-sm text-gray-600">{request.request_info.pickup_address}</p>
-                              <p className="text-xs text-blue-600 mt-1">
-                                📞 Contacto: {request.request_info.warehouse_keeper}
-                              </p>
-                            </div>
                             
-                            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                              <div className="flex items-center mb-2">
-                                <Navigation className="h-5 w-5 text-green-600 mr-2" />
-                                <h4 className="font-semibold text-green-800">Punto de Entrega</h4>
+                            {/* Información del producto */}
+                            <div className="flex-1 space-y-6">
+                              <div>
+                                <h3 className="text-3xl font-bold text-gray-900 mb-3 leading-tight">
+                                  {request.request_info.product_description}
+                                </h3>
+                                
+                                {/* Cliente */}
+                                <div className="p-4 bg-gray-50 rounded-lg mb-6">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                                      <User className="h-6 w-6 text-white" />
+                                    </div>
+                                    <div>
+                                      <div className="font-semibold text-gray-900 text-lg">
+                                        Solicitante: {request.request_info.requester}
+                                      </div>
+                                      <div className="text-sm text-gray-500">Cliente</div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Ruta de entrega */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                    <div className="flex items-center mb-2">
+                                      <MapPin className="h-5 w-5 text-blue-600 mr-2" />
+                                      <h4 className="font-semibold text-blue-800">Punto de Recolección</h4>
+                                    </div>
+                                    <p className="font-medium">{request.request_info.pickup_location}</p>
+                                    <p className="text-sm text-gray-600">{request.request_info.pickup_address}</p>
+                                    <p className="text-xs text-blue-600 mt-1">
+                                      📞 Contacto: {request.request_info.warehouse_keeper}
+                                    </p>
+                                  </div>
+                                  
+                                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                                    <div className="flex items-center mb-2">
+                                      <Navigation className="h-5 w-5 text-green-600 mr-2" />
+                                      <h4 className="font-semibold text-green-800">Punto de Entrega</h4>
+                                    </div>
+                                    <p className="font-medium">{request.request_info.delivery_location}</p>
+                                    <p className="text-sm text-gray-600">{request.request_info.delivery_address}</p>
+                                    <p className="text-xs text-green-600 mt-1">
+                                      📍 Distancia: ~{distance} km
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="p-4 bg-gray-50 rounded-lg border mb-6">
+                                  <p className="text-sm">
+                                    <strong>📋 Siguiente paso:</strong> {request.next_step}
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1">{request.status_description}</p>
+                                </div>
+
+                                <Button
+                                  onClick={() => handleAcceptRequest(request.id)}
+                                  disabled={actionLoading === request.id}
+                                  className="w-full bg-success hover:bg-success/90 text-white py-3"
+                                >
+                                  {actionLoading === request.id ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                  ) : (
+                                    <Truck className="h-4 w-4 mr-2" />
+                                  )}
+                                  Aceptar Entrega (ETA: {request.purpose === 'cliente' ? '15' : '20'} min)
+                                </Button>
                               </div>
-                              <p className="font-medium">{request.request_info.delivery_location}</p>
-                              <p className="text-sm text-gray-600">{request.request_info.delivery_address}</p>
-                              <p className="text-xs text-green-600 mt-1">
-                                📍 Distancia: ~{distance} km
-                              </p>
                             </div>
                           </div>
-
-                          <div className="mb-4 p-3 bg-gray-50 rounded-lg border">
-                            <p className="text-sm">
-                              <strong>📋 Siguiente paso:</strong> {request.next_step}
-                            </p>
-                            <p className="text-xs text-gray-600 mt-1">{request.status_description}</p>
-                          </div>
-
-                          <Button
-                            onClick={() => handleAcceptRequest(request.id)}
-                            disabled={actionLoading === request.id}
-                            className="w-full bg-success hover:bg-success/90 text-white py-3"
-                          >
-                            {actionLoading === request.id ? (
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            ) : (
-                              <Truck className="h-4 w-4 mr-2" />
-                            )}
-                            Aceptar Entrega (ETA: {request.purpose === 'cliente' ? '15' : '20'} min)
-                          </Button>
                         </div>
                       </div>
                     );
@@ -863,113 +902,207 @@ export const RunnerDashboard: React.FC = () => {
               ) : (
                 <div className="space-y-4 md:space-y-6">
                   {assignedTransports.map((transport) => (
-                    <div key={transport.id} className="border rounded-lg bg-white">
+                    <div key={transport.id} className="border rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-300">
+                      
                       {/* MOBILE VIEW */}
-                      <div className="md:hidden p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-base mb-1 truncate">{transport.product}</h4>
-                            <p className="text-sm text-gray-600 mb-1">
-                              <User className="h-3 w-3 inline mr-1" />
-                              Para: <strong>{transport.requester_name}</strong>
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              <Clock className="h-3 w-3 inline mr-1" />
-                              {new Date(transport.courier_accepted_at).toLocaleTimeString()}
-                            </p>
+                      <div className="md:hidden">
+                        <div className="p-4">
+                          {/* Header con estado */}
+                          <div className="flex items-center justify-between mb-4">
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              transport.status === 'courier_assigned' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                              transport.status === 'in_transit' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                              'bg-green-100 text-green-800 border border-green-200'
+                            }`}>
+                              {transport.action_description}
+                            </span>
+                            <div className="text-xs text-gray-500">
+                              ID #{transport.id}
+                            </div>
                           </div>
                           
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            transport.status === 'courier_assigned' ? 'bg-yellow-100 text-yellow-800' :
-                            transport.status === 'in_transit' ? 'bg-blue-100 text-blue-800' :
-                            'bg-green-100 text-green-800'
-                          }`}>
-                            {transport.action_description}
-                          </span>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
-                          <div className="p-2 bg-blue-50 rounded border border-blue-200">
-                            <div className="flex items-center mb-1">
-                              <MapPin className="h-3 w-3 text-blue-600 mr-1" />
-                              <span className="font-medium text-blue-800">Desde</span>
+                          {/* Imagen más grande para mobile */}
+                          <div className="mb-4">
+                            <div className=" bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                              <img
+                                src={transport.product_image}
+                                alt={`${transport.brand} ${transport.model}`}
+                                className="w-32 h-48 object-cover rounded-lg border border-gray-200"
+                              />
                             </div>
-                            <p className="font-medium">{transport.source_location_name}</p>
                           </div>
                           
-                          <div className="p-2 bg-green-50 rounded border border-green-200">
-                            <div className="flex items-center mb-1">
-                              <Navigation className="h-3 w-3 text-green-600 mr-1" />
-                              <span className="font-medium text-green-800">Hacia</span>
+                          {/* Información del producto */}
+                          <div className="mb-4">
+                            <h3 className="font-bold text-lg text-gray-900 mb-2 leading-tight">
+                              {transport.brand} {transport.model}
+                            </h3>
+                            <div className="flex items-center space-x-3 mb-3">
+                              <span className="text-sm font-medium text-blue-600">
+                                Talla {transport.size}
+                              </span>
+                              <span className="text-sm text-gray-500">
+                                Cantidad: {transport.quantity}
+                              </span>
                             </div>
-                            <p className="font-medium">{transport.destination_location_name}</p>
+                            <div className="flex items-center space-x-1 text-sm text-gray-700">
+                              <User className="h-4 w-4 text-gray-400" />
+                              <span className="font-medium">
+                                Solicitante: {transport.requester_first_name} {transport.requester_last_name}
+                              </span>
+                            </div>
                           </div>
+                          
+                          {/* Ruta */}
+                          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2 flex-1 min-w-0">
+                                <div className="flex items-center space-x-1">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                  <span className="text-xs font-medium text-gray-900 truncate">
+                                    {transport.source_location_name}
+                                  </span>
+                                </div>
+                                <div className="flex-1 border-t border-dashed border-gray-300 mx-2"></div>
+                                <div className="flex items-center space-x-1">
+                                  <span className="text-xs font-medium text-gray-900 truncate">
+                                    {transport.destination_location_name}
+                                  </span>
+                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Tiempo estimado */}
+                          {transport.estimated_pickup_time && (
+                            <div className="mb-4 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                              <p className="text-xs flex items-center">
+                                <Clock className="h-3 w-3 text-yellow-600 mr-1" />
+                                <span className="font-medium">ETA: {transport.estimated_pickup_time} minutos</span>
+                              </p>
+                            </div>
+                          )}
+                          
+                          {getActionButton(transport)}
                         </div>
-                        
-                        {transport.estimated_pickup_time && (
-                          <div className="mb-3 p-2 bg-yellow-50 rounded border border-yellow-200">
-                            <p className="text-xs">
-                              <Clock className="h-3 w-3 inline mr-1" />
-                              <strong>ETA:</strong> {transport.estimated_pickup_time} minutos
-                            </p>
-                          </div>
-                        )}
-                        
-                        {getActionButton(transport)}
                       </div>
 
                       {/* DESKTOP VIEW */}
                       <div className="hidden md:block p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-xl mb-2">{transport.product}</h4>
-                            <p className="text-gray-600 mb-2">
-                              <User className="h-4 w-4 inline mr-1" />
-                              Para: <strong>{transport.requester_name}</strong>
-                            </p>
-                            <p className="text-sm text-gray-500 mb-3">
-                              <Clock className="h-4 w-4 inline mr-1" />
-                              Aceptado: {new Date(transport.courier_accepted_at).toLocaleString()}
-                            </p>
-                          </div>
-                          
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            transport.status === 'courier_assigned' ? 'bg-yellow-100 text-yellow-800' :
-                            transport.status === 'in_transit' ? 'bg-blue-100 text-blue-800' :
-                            'bg-green-100 text-green-800'
+                        {/* Header con estado */}
+                        <div className="flex items-center justify-between mb-6">
+                          <span className={`px-4 py-2 rounded-full text-sm font-medium ${
+                            transport.status === 'courier_assigned' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                            transport.status === 'in_transit' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                            'bg-green-100 text-green-800 border border-green-200'
                           }`}>
                             {transport.action_description}
                           </span>
+                          <div className="text-sm text-gray-500">
+                            ID #{transport.id} • {new Date(transport.courier_accepted_at).toLocaleDateString()}
+                          </div>
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <div className="flex items-center mb-1">
-                              <MapPin className="h-4 w-4 text-blue-600 mr-1" />
-                              <span className="font-medium text-blue-800">Desde</span>
+                        
+                        {/* Contenido principal con imagen más grande */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                          
+                          {/* Imagen del producto - más grande */}
+                          <div className="lg:col-span-1">
+                            <div className="w-full h-80 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center shadow-inner">
+                              {/* Aquí irá la imagen del endpoint cuando esté disponible */}
+                              <div className="text-gray-400 text-center">
+                                <div className="text-8xl mb-4">📦</div>
+                                <div className="text-lg">Imagen del producto</div>
+                              </div>
                             </div>
-                            <p className="text-sm font-medium">{transport.source_location_name}</p>
                           </div>
                           
-                          <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                            <div className="flex items-center mb-1">
-                              <Navigation className="h-4 w-4 text-green-600 mr-1" />
-                              <span className="font-medium text-green-800">Hacia</span>
+                          {/* Información del producto y cliente - ajustado para 2 columnas */}
+                          <div className="lg:col-span-2 space-y-6">
+                            <div>
+                              <h3 className="text-3xl font-bold text-gray-900 mb-3 leading-tight">
+                                {transport.brand} {transport.model}
+                              </h3>
+                              
+                              <div className="grid grid-cols-3 gap-4 mb-6">
+                                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                                  <div className="text-xl font-bold text-blue-600">
+                                    {transport.size}
+                                  </div>
+                                  <div className="text-sm text-blue-600 font-medium">Talla</div>
+                                </div>
+                                <div className="text-center p-4 bg-green-50 rounded-lg">
+                                  <div className="text-xl font-bold text-green-600">{transport.quantity}</div>
+                                  <div className="text-sm text-green-600 font-medium">Cantidad</div>
+                                </div>
+                                <div className="text-center p-4 bg-purple-50 rounded-lg">
+                                  <div className="text-xl font-bold text-purple-600">👤</div>
+                                  <div className="text-sm text-purple-600 font-medium">Cliente</div>
+                                </div>
+                              </div>
+                              
+                              {/* Cliente */}
+                              <div className="p-4 bg-gray-50 rounded-lg mb-6">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                                    <User className="h-6 w-6 text-white" />
+                                  </div>
+                                  <div>
+                                    <div className="font-semibold text-gray-900 text-lg">
+                                      Solicitante: {transport.requester_first_name} {transport.requester_last_name}
+                                    </div>
+                                    <div className="text-sm text-gray-500">Cliente</div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Ruta visual */}
+                              <div className="p-4 bg-gray-50 rounded-lg mb-6">
+                                <h4 className="font-semibold text-gray-900 mb-4">Ruta de Entrega</h4>
+                                
+                                <div className="space-y-4">
+                                  <div className="flex items-center space-x-4">
+                                    <div className="w-4 h-4 bg-blue-500 rounded-full flex-shrink-0"></div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm text-gray-500">DESDE</div>
+                                      <div className="font-medium text-gray-900">
+                                        {transport.source_location_name}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="ml-2 border-l-2 border-dashed border-gray-300 h-8"></div>
+                                  
+                                  <div className="flex items-center space-x-4">
+                                    <div className="w-4 h-4 bg-green-500 rounded-full flex-shrink-0"></div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm text-gray-500">HACIA</div>
+                                      <div className="font-medium text-gray-900">
+                                        {transport.destination_location_name}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Tiempo estimado */}
+                              {transport.estimated_pickup_time && (
+                                <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200 mb-4">
+                                  <div className="flex items-center justify-center space-x-2">
+                                    <Clock className="h-5 w-5 text-yellow-600" />
+                                    <span className="text-sm font-medium text-yellow-800">
+                                      ETA: {transport.estimated_pickup_time} minutos
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Botón de acción */}
+                              {getActionButton(transport)}
                             </div>
-                            <p className="text-sm font-medium">{transport.destination_location_name}</p>
                           </div>
                         </div>
-
-                        {transport.estimated_pickup_time && (
-                          <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                            <p className="text-sm">
-                              <Clock className="h-4 w-4 inline mr-1" />
-                              <strong>Tiempo estimado de llegada:</strong> {transport.estimated_pickup_time} minutos
-                            </p>
-                          </div>
-                        )}
-
-                        {getActionButton(transport)}
                       </div>
                     </div>
                   ))}

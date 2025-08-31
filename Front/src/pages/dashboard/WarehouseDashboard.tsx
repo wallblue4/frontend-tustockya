@@ -738,7 +738,7 @@ export const WarehouseDashboard: React.FC = () => {
               <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-3 md:space-y-0">
                 <h2 className="text-lg md:text-xl font-semibold flex items-center">
                   <Package className="h-5 w-5 md:h-6 md:w-6 text-primary mr-2" />
-                  Solicitudes Pendientes (WH001)
+                  Solicitudes Pendientes
                 </h2>
                 
                 {/* Controles de filtros - RESPONSIVE */}
@@ -808,68 +808,94 @@ export const WarehouseDashboard: React.FC = () => {
               ) : (
                 <div className="space-y-4 md:space-y-6">
                   {filteredPendingRequests.map((request) => (
-                    <div key={request.id} className="border rounded-lg bg-white hover:shadow-md transition-shadow">
+                    <div key={request.id} className="border rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-300">
+                      
                       {/* MOBILE COMPACT VIEW */}
                       <div className="md:hidden">
                         <div className="p-4">
-                          <div className="flex items-start space-x-3 mb-3">
+                          {/* Header con etiquetas de prioridad */}
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-2">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(request.priority)}`}>
+                                {request.priority === 'high' ? '🔥 URGENTE' : '📦 Normal'}
+                              </span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
+                                {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' : '📦 Restock'}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              ID #{request.id}
+                            </div>
+                          </div>
+                          
+                          {/* Layout horizontal: Imagen vertical a la izquierda, info a la derecha */}
+                          <div className="flex space-x-4 mb-4">
+                            {/* Imagen vertical */}
                             <div className="flex-shrink-0">
-                              <img
-                                src={request.product_image || `https://via.placeholder.com/80x60/e5e7eb/6b7280?text=${encodeURIComponent(request.brand)}`}
-                                alt={`${request.brand} ${request.model}`}
-                                className="w-20 h-15 object-cover rounded-lg border border-gray-200"
-                                onError={(e) => {
-                                  if (!e.currentTarget.dataset.fallback) {
-                                    e.currentTarget.dataset.fallback = 'true';
-                                    e.currentTarget.src = `https://via.placeholder.com/80x60/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
-                                  }
-                                }}
-                              />
+                              <div className="w-32 h-48 rounded-lg overflow-hidden border border-gray-200">
+                                <img
+                                  src={request.product_image || `https://via.placeholder.com/200x260/e5e7eb/6b7280?text=${encodeURIComponent(request.brand)}`}
+                                  alt={`${request.brand} ${request.model}`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    if (!e.currentTarget.dataset.fallback) {
+                                      e.currentTarget.dataset.fallback = 'true';
+                                      e.currentTarget.src = `https://via.placeholder.com/200x260/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
+                                    }
+                                  }}
+                                />
+                              </div>
                             </div>
                             
+                            {/* Información del producto */}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(request.priority)}`}>
-                                  {request.priority === 'high' ? '🔥 URGENTE' : '📦 Normal'}
-                                </span>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
-                                  {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' : '📦 Restock'}
-                                </span>
-                              </div>
-                              
-                              <h3 className="font-semibold text-base mb-1 truncate">
+                              <h3 className="font-bold text-base text-gray-900 mb-2 leading-tight">
                                 {request.brand} {request.model}
                               </h3>
                               
-                              <p className="text-sm text-gray-600 mb-1">
-                                Talla {request.size} • {request.quantity} unidad{request.quantity > 1 ? 'es' : ''}
-                              </p>
+                              <div className="space-y-2 mb-3">
+                                <div className="flex items-center space-x-3">
+                                  <span className="text-sm font-medium text-blue-600">
+                                    Talla {request.size}
+                                  </span>
+                                  <span className="text-sm text-gray-500">
+                                    {request.quantity} unidad{request.quantity > 1 ? 'es' : ''}
+                                  </span>
+                                </div>
+                                
+                                <div className="flex items-center space-x-1 text-sm text-gray-700">
+                                  <User className="h-3 w-3 text-gray-400" />
+                                  <span className="font-medium truncate">
+                                    Solicitante: {request.requester_first_name ? 
+                                      `${request.requester_first_name} ${request.requester_last_name}` : 
+                                      request.requester_name || 'Usuario'
+                                    }
+                                  </span>
+                                </div>
+                                
+                                <p className="text-xs text-gray-500">
+                                  ⏱️ {formatTimeWaiting(request.requested_at)}
+                                </p>
+                              </div>
                               
-                              <p className="text-xs text-gray-500">
-                                ⏱️ {formatTimeWaiting(request.requested_at)} •{' '}
-                                {request.requester_first_name ? 
-                                  `${request.requester_first_name} ${request.requester_last_name}` : 
-                                  request.requester_name || 'Usuario'
-                                }
-                              </p>
-                            </div>
-                            
-                            <div className="flex flex-col items-end">
-                              <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                              {/* Estado de disponibilidad compacto */}
+                              <div className={`p-2 rounded text-center ${
                                 (request.can_fulfill ?? request.stock_info?.can_fulfill) 
                                   ? 'bg-green-50 text-green-700 border border-green-200' 
                                   : 'bg-red-50 text-red-700 border border-red-200'
                               }`}>
-                                {(request.can_fulfill ?? request.stock_info?.can_fulfill) ? '✅ Disponible' : '❌ Sin stock'}
-                              </span>
-                              <p className="text-xs text-gray-500 mt-1">
-                                Stock: {request.available_stock ?? request.stock_info?.available_stock ?? 0}
-                              </p>
-                              {request.product_price && (
-                                <p className="text-xs font-medium text-green-600">
-                                  {formatPrice(request.product_price)}
-                                </p>
-                              )}
+                                <div className="text-xs font-medium">
+                                  {(request.can_fulfill ?? request.stock_info?.can_fulfill) ? '✅ Disponible' : '❌ Sin stock'}
+                                </div>
+                                <div className="text-xs text-gray-600">
+                                  Stock: {request.available_stock ?? request.stock_info?.available_stock ?? 0}
+                                </div>
+                                {request.product_price && (
+                                  <div className="text-xs font-medium text-green-600 mt-1">
+                                    {formatPrice(request.product_price)}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                           
@@ -877,7 +903,7 @@ export const WarehouseDashboard: React.FC = () => {
                             onClick={() => toggleCardExpansion(request.id)}
                             variant="ghost"
                             size="sm"
-                            className="w-full text-sm"
+                            className="w-full text-sm mb-3"
                           >
                             {expandedCard === request.id ? (
                               <>Menos detalles <ChevronUp className="h-4 w-4 ml-2" /></>
@@ -887,7 +913,7 @@ export const WarehouseDashboard: React.FC = () => {
                           </Button>
                           
                           {expandedCard === request.id && (
-                            <div className="mt-4 pt-4 border-t space-y-3">
+                            <div className="mb-4 pt-4 border-t space-y-3">
                               <div className="grid grid-cols-2 gap-3 text-sm">
                                 <div>
                                   <p className="text-gray-500">Código</p>
@@ -911,7 +937,7 @@ export const WarehouseDashboard: React.FC = () => {
                             </div>
                           )}
                           
-                          <div className="flex space-x-2 mt-4">
+                          <div className="flex space-x-2">
                             <Button 
                               onClick={() => handleAcceptRequest(request.id)}
                               disabled={!(request.can_fulfill ?? request.stock_info?.can_fulfill) || actionLoading === request.id}
@@ -941,124 +967,160 @@ export const WarehouseDashboard: React.FC = () => {
 
                       {/* DESKTOP FULL VIEW */}
                       <div className="hidden md:block p-6">
-                        <div className="flex items-start mb-4">
-                          <div className="flex-shrink-0 mr-4">
-                            <img
-                              src={request.product_image || `https://via.placeholder.com/150x100/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
-                              alt={`${request.brand} ${request.model}`}
-                              className="w-32 h-24 object-cover rounded-lg border border-gray-200 shadow-sm"
-                              onError={(e) => {
-                                if (!e.currentTarget.dataset.fallback) {
-                                  e.currentTarget.dataset.fallback = 'true';
-                                  e.currentTarget.src = `https://via.placeholder.com/150x100/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
-                                }
-                              }}
-                            />
+                        {/* Header con etiquetas */}
+                        <div className="flex items-center justify-between mb-6">
+                          <div className="flex items-center space-x-3">
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(request.priority)}`}>
+                              {request.priority === 'high' ? '🔥 URGENTE' : '📦 Normal'}
+                            </span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
+                              {request.purpose === 'cliente' ? '🏃‍♂️ Cliente Presente' : '📦 Restock'}
+                            </span>
+                            <span className="text-sm text-gray-500">
+                              ⏱️ Esperando: {formatTimeWaiting(request.requested_at)}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            ID #{request.id}
+                          </div>
+                        </div>
+                        
+                        {/* Layout horizontal: Imagen vertical a la izquierda, información a la derecha */}
+                        <div className="flex space-x-6">
+                          
+                          {/* Imagen del producto vertical */}
+                          <div className="flex-shrink-0">
+                            <div className="w-48 h-64 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                              <img
+                                src={request.product_image || `https://via.placeholder.com/300x400/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
+                                alt={`${request.brand} ${request.model}`}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  if (!e.currentTarget.dataset.fallback) {
+                                    e.currentTarget.dataset.fallback = 'true';
+                                    e.currentTarget.src = `https://via.placeholder.com/300x400/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
+                                  }
+                                }}
+                              />
+                            </div>
                             {request.product_price && (
-                              <p className="text-xs text-gray-600 mt-1 text-center font-medium">
+                              <p className="text-center mt-3 font-medium text-green-600 text-lg">
                                 💰 {formatPrice(request.product_price)}
                               </p>
                             )}
                           </div>
-
-                          <div className="flex-grow">
-                            <div className="flex items-center space-x-3 mb-3">
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(request.priority)}`}>
-                                {request.priority === 'high' ? '🔥 URGENTE' : '📦 Normal'}
-                              </span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
-                                {request.purpose === 'cliente' ? '🏃‍♂️ Cliente Presente' : '📦 Restock'}
-                              </span>
-                              <span className="text-sm text-gray-500">
-                                ⏱️ Esperando: {formatTimeWaiting(request.requested_at)}
-                              </span>
-                            </div>
-                            
-                            <h3 className="font-semibold text-xl mb-2">
-                              {request.brand} {request.model}
-                            </h3>
-                            
-                            {request.product_color && (
-                              <p className="text-sm text-gray-600 mb-2">
-                                🎨 <strong>Color:</strong> {request.product_color}
-                              </p>
-                            )}
-                            
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
-                              <div>
-                                <p className="text-gray-500">Código</p>
-                                <p className="font-medium">{request.sneaker_reference_code}</p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Talla</p>
-                                <p className="font-medium">{request.size}</p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Cantidad</p>
-                                <p className="font-medium">{request.quantity}</p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Stock Disponible</p>
-                                <p className="font-medium">{request.available_stock ?? request.stock_info?.available_stock ?? 0}</p>
-                              </div>
-                            </div>
-                            <p className="text-sm text-gray-600">
-                              <User className="h-4 w-4 inline mr-1" />
-                              Solicitado por: <strong>
-                                {request.requester_first_name ? 
-                                  `${request.requester_first_name} ${request.requester_last_name}` : 
-                                  request.requester_name || 'Usuario'
-                                }
-                              </strong>
-                            </p>
-                          </div>
                           
-                          <div className="text-right ml-6">
-                            <div className={`px-4 py-3 rounded-lg border-2 ${
-                              (request.can_fulfill ?? request.stock_info?.can_fulfill) 
-                                ? 'bg-green-50 border-green-200' 
-                                : 'bg-red-50 border-red-200'
-                            }`}>
-                              <p className="text-sm font-medium">
-                                {(request.can_fulfill ?? request.stock_info?.can_fulfill) ? '✅ Disponible' : '❌ No disponible'}
-                              </p>
-                              <p className="text-xs text-gray-600 mt-1">
-                                Stock: {request.available_stock ?? request.stock_info?.available_stock ?? 0} unidades
-                              </p>
+                          {/* Información del producto */}
+                          <div className="flex-1 space-y-6">
+                            <div>
+                              <h3 className="text-3xl font-bold text-gray-900 mb-3 leading-tight">
+                                {request.brand} {request.model}
+                              </h3>
+                              
+                              {request.product_color && (
+                                <p className="text-lg text-gray-600 mb-4">
+                                  🎨 <strong>Color:</strong> {request.product_color}
+                                </p>
+                              )}
+                              
+                              <div className="grid grid-cols-4 gap-4 mb-6">
+                                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                                  <div className="text-xl font-bold text-blue-600">
+                                    {request.size}
+                                  </div>
+                                  <div className="text-sm text-blue-600 font-medium">Talla</div>
+                                </div>
+                                <div className="text-center p-4 bg-green-50 rounded-lg">
+                                  <div className="text-xl font-bold text-green-600">{request.quantity}</div>
+                                  <div className="text-sm text-green-600 font-medium">Cantidad</div>
+                                </div>
+                                <div className="text-center p-4 bg-purple-50 rounded-lg">
+                                  <div className="text-xl font-bold text-purple-600">{request.available_stock ?? request.stock_info?.available_stock ?? 0}</div>
+                                  <div className="text-sm text-purple-600 font-medium">Stock</div>
+                                </div>
+                                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                                  <div className="text-lg font-bold text-gray-600">📦</div>
+                                  <div className="text-sm text-gray-600 font-medium">Producto</div>
+                                </div>
+                              </div>
+                              
+                              {/* Cliente */}
+                              <div className="p-4 bg-gray-50 rounded-lg mb-6">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                                    <User className="h-6 w-6 text-white" />
+                                  </div>
+                                  <div>
+                                    <div className="font-semibold text-gray-900 text-lg">
+                                      Solicitante: {request.requester_first_name ? 
+                                        `${request.requester_first_name} ${request.requester_last_name}` : 
+                                        request.requester_name || 'Usuario'
+                                      }
+                                    </div>
+                                    <div className="text-sm text-gray-500">Cliente</div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Código de referencia */}
+                              <div className="p-4 bg-gray-50 rounded-lg mb-6">
+                                <div className="text-sm text-gray-500 mb-1">Código de referencia</div>
+                                <div className="font-mono font-medium text-gray-900">{request.sneaker_reference_code}</div>
+                              </div>
+                              
+                              {/* Estado de disponibilidad */}
+                              <div className={`p-4 rounded-lg border-2 mb-6 ${
+                                (request.can_fulfill ?? request.stock_info?.can_fulfill) 
+                                  ? 'bg-green-50 border-green-200' 
+                                  : 'bg-red-50 border-red-200'
+                              }`}>
+                                <div className="flex justify-between items-center">
+                                  <span className={`text-lg font-medium ${
+                                    (request.can_fulfill ?? request.stock_info?.can_fulfill) 
+                                      ? 'text-green-700' 
+                                      : 'text-red-700'
+                                  }`}>
+                                    {(request.can_fulfill ?? request.stock_info?.can_fulfill) ? '✅ Disponible' : '❌ No disponible'}
+                                  </span>
+                                  <span className="text-sm text-gray-600">
+                                    Stock disponible: {request.available_stock ?? request.stock_info?.available_stock ?? 0} unidades
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              {request.notes && (
+                                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 mb-6">
+                                  <p className="text-sm">
+                                    <strong>📝 Notas:</strong> {request.notes}
+                                  </p>
+                                </div>
+                              )}
+
+                              <div className="flex space-x-3">
+                                <Button 
+                                  onClick={() => handleAcceptRequest(request.id)}
+                                  disabled={!(request.can_fulfill ?? request.stock_info?.can_fulfill) || actionLoading === request.id}
+                                  className="flex-1 bg-success hover:bg-success/90 disabled:opacity-50"
+                                >
+                                  {actionLoading === request.id ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                  ) : (
+                                    <Send className="h-4 w-4 mr-2" />
+                                  )}
+                                  ✅ Aceptar y Preparar (WH002)
+                                </Button>
+                                <Button 
+                                  onClick={() => handleRejectRequest(request.id)}
+                                  disabled={actionLoading === request.id}
+                                  variant="outline" 
+                                  className="flex-1 text-error hover:bg-error/10 border-error"
+                                >
+                                  <X className="h-4 w-4 mr-2" />
+                                  ❌ Rechazar (WH002)
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-
-                        {request.notes && (
-                          <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <p className="text-sm">
-                              <strong>📝 Notas:</strong> {request.notes}
-                            </p>
-                          </div>
-                        )}
-
-                        <div className="flex space-x-3">
-                          <Button 
-                            onClick={() => handleAcceptRequest(request.id)}
-                            disabled={!(request.can_fulfill ?? request.stock_info?.can_fulfill) || actionLoading === request.id}
-                            className="flex-1 bg-success hover:bg-success/90 disabled:opacity-50"
-                          >
-                            {actionLoading === request.id ? (
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            ) : (
-                              <Send className="h-4 w-4 mr-2" />
-                            )}
-                            ✅ Aceptar y Preparar (WH002)
-                          </Button>
-                          <Button 
-                            onClick={() => handleRejectRequest(request.id)}
-                            disabled={actionLoading === request.id}
-                            variant="outline" 
-                            className="flex-1 text-error hover:bg-error/10 border-error"
-                          >
-                            <X className="h-4 w-4 mr-2" />
-                            ❌ Rechazar (WH002)
-                          </Button>
                         </div>
                       </div>
                     </div>
@@ -1074,7 +1136,7 @@ export const WarehouseDashboard: React.FC = () => {
             <CardHeader>
               <h2 className="text-lg md:text-xl font-semibold flex items-center">
                 <Package className="h-5 w-5 md:h-6 md:w-6 text-primary mr-2" />
-                Transferencias en Preparación (WH003)
+                Transferencias en Preparación
               </h2>
             </CardHeader>
             <CardContent>
@@ -1093,15 +1155,9 @@ export const WarehouseDashboard: React.FC = () => {
                         <div className="flex items-start space-x-3 mb-3">
                           <div className="flex-shrink-0">
                             <img
-                              src={request.product_image || `https://via.placeholder.com/80x60/e5e7eb/6b7280?text=${encodeURIComponent(request.brand)}`}
+                              src={request.product_image }
                               alt={`${request.brand} ${request.model}`}
-                              className="w-20 h-15 object-cover rounded-lg border border-gray-200"
-                              onError={(e) => {
-                                if (!e.currentTarget.dataset.fallback) {
-                                  e.currentTarget.dataset.fallback = 'true';
-                                  e.currentTarget.src = `https://via.placeholder.com/80x60/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
-                                }
-                              }}
+                              className="w-32 h-48 object-cover rounded-lg border border-gray-200"
                             />
                           </div>
                           
