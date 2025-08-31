@@ -1282,7 +1282,7 @@ export const WarehouseDashboard: React.FC = () => {
                           </Button>
                         )}
 
-                        {(request.status === 'accepted' && request.pickup_type=== "vendedor") && (
+                        {(request.status === 'accepted' && request.pickup_type=== "seller") && (
                           <Button
                             onClick={() => handleDeliverToVendor(request.id)}
                             disabled={actionLoading === request.id}
@@ -1407,7 +1407,7 @@ export const WarehouseDashboard: React.FC = () => {
                           </div>
                         )}
 
-                        {(request.status === 'accepted' && request.pickup_type=== "vendedor") && (
+                        {(request.status === 'accepted' && request.pickup_type=== "seller") && (
                           <div className='mt-4'>
                             <Button
                               onClick={() => handleDeliverToVendor(request.id)}
