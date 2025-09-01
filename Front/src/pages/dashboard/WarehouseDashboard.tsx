@@ -59,51 +59,7 @@ const warehouseAPIUpdated = {
       });
       return await handleResponse(response);
     } catch (error) {
-      console.warn('⚠️ Backend no disponible, usando mock data');
-      // Mock data según la documentación
-      return {
-        success: true,
-        pending_requests: [
-          {
-            id: 15,
-            requester_name: 'Juan Pérez',
-            sneaker_reference_code: 'AD-UB22-BLK-001',
-            brand: 'Adidas',
-            model: 'Ultraboost 22',
-            size: '9.5',
-            quantity: 1,
-            purpose: 'cliente',
-            priority: 'high',
-            requested_at: new Date().toISOString(),
-            time_waiting: '5 minutos',
-            can_fulfill: true,
-            available_stock: 3,
-            notes: 'Cliente presente esperando',
-            product_color: 'Negro/Blanco',
-            product_price: '289000'
-          },
-          {
-            id: 16,
-            requester_name: 'María González',
-            sneaker_reference_code: 'NK-AF1-WHT-002',
-            brand: 'Nike',
-            model: 'Air Force 1',
-            size: '10',
-            quantity: 2,
-            purpose: 'restock',
-            priority: 'normal',
-            requested_at: new Date(Date.now() - 600000).toISOString(),
-            time_waiting: '10 minutos',
-            can_fulfill: true,
-            available_stock: 8,
-            notes: 'Restock semanal programado',
-            product_color: 'Blanco',
-            product_price: '349000'
-          }
-        ],
-        urgent_count: 1,
-        total_stock_value: 1580.50
-      };
+      console.warn('⚠️ Backend no disponible');
     }
   },
 
