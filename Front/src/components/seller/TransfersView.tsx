@@ -996,8 +996,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     onChange={(e) => setRequestForm({...requestForm, pickup_type: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base"
                   >
-                    <option value="vendedor">🏃‍♂️ Vendedor</option>
-                    <option value="corredor">🚚 Corredor</option>
+                    <option value="seller">🏃‍♂️ Vendedor</option>
+                    <option value="courrier">🚚 Corredor</option>
                   </select>
                 </div>
                 
