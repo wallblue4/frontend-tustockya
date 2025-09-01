@@ -179,104 +179,26 @@ export const RunnerDashboard: React.FC = () => {
       
       setAvailableRequests(availableResponse.available_requests || []);
       setAssignedTransports(assignedResponse.my_transports || []);
-      setDeliveryHistory(historyResponse.recent_deliveries || []);
+      // Mapear solo los datos importantes para proyectar en el historial
+      const mappedHistory = (historyResponse.delivery_history || []).map((item) => ({
+        id: item.id,
+        status: item.status,
+        product: `${item.brand} ${item.model} - Talla ${item.size}`,
+        delivered_to: `${item.requester_first_name} ${item.requester_last_name}`,
+        delivered_at: item.delivered_at,
+        total_time: item.picked_up_at && item.delivered_at
+          ? `${Math.round((new Date(item.delivered_at) - new Date(item.picked_up_at)) / 60000)} minutos`
+          : '',
+        delivery_successful: item.status === 'completed',
+        distance: item.source_location_name && item.destination_location_name
+          ? `${item.source_location_name} → ${item.destination_location_name}`
+          : undefined
+      }));
+      setDeliveryHistory(mappedHistory);
       
     } catch (err) {
       console.error('Error loading courier data:', err);
       setError('Error conectando con el servidor');
-      
-      // Mock data mejorado para desarrollo
-      setAvailableRequests([
-        {
-          id: 15,
-          status: 'accepted',
-          action_required: 'accept_transport',
-          status_description: 'Disponible para aceptar transporte',
-          next_step: 'Aceptar esta solicitud de transporte',
-          purpose: 'cliente',
-          hours_since_accepted: 0.5,
-          request_info: {
-            pickup_location: 'Bodega Norte',
-            pickup_address: 'Zona Industrial 202',
-            delivery_location: 'Local Principal',
-            delivery_address: 'Calle Principal 123',
-            product_description: 'Adidas Ultraboost 22 - Talla 9.5',
-            urgency: '🔥 Cliente presente',
-            warehouse_keeper: 'Carlos González',
-            requester: 'Juan Pérez'
-          }
-        },
-        {
-          id: 18,
-          status: 'accepted',
-          action_required: 'accept_transport',
-          status_description: 'Disponible para aceptar transporte',
-          next_step: 'Aceptar esta solicitud de transporte',
-          purpose: 'restock',
-          hours_since_accepted: 1.2,
-          request_info: {
-            pickup_location: 'Bodega Sur',
-            pickup_address: 'Zona Industrial 304',
-            delivery_location: 'Local Mall',
-            delivery_address: 'Centro Comercial Norte',
-            product_description: 'Nike Air Force 1 - Talla 10',
-            urgency: '📦 Normal',
-            warehouse_keeper: 'Ana Rodríguez',
-            requester: 'María González'
-          }
-        }
-      ]);
-      
-      setAssignedTransports([
-        {
-          id: 19,
-          status: 'courier_assigned',
-          action_required: 'ir_a_recoger',
-          action_description: 'Ve al punto de recolección',
-          source_location_name: 'Bodega Central',
-          destination_location_name: 'Local Centro',
-          product: 'Puma RS-X - Talla 9',
-          requester_name: 'Carlos López',
-          estimated_pickup_time: 15,
-          courier_accepted_at: new Date(Date.now() - 300000).toISOString()
-        }
-      ]);
-
-      setDeliveryHistory([
-        {
-          id: 20,
-          status: 'completed',
-          product: 'Nike Air Max 90 - Talla 8.5',
-          delivered_to: 'Laura Martínez',
-          delivered_at: new Date(Date.now() - 7200000).toISOString(),
-          total_time: '28 minutos',
-          delivery_successful: true,
-          distance: '4.1 km',
-          earnings: 15000
-        },
-        {
-          id: 21,
-          status: 'completed',
-          product: 'Adidas Stan Smith - Talla 7',
-          delivered_to: 'Pedro Ramírez',
-          delivered_at: new Date(Date.now() - 14400000).toISOString(),
-          total_time: '22 minutos',
-          delivery_successful: true,
-          distance: '2.8 km',
-          earnings: 12000
-        }
-      ]);
-
-      // Mock stats mejorado
-      setStats({
-        totalDeliveries: 47,
-        todayDeliveries: 3,
-        successRate: 98.5,
-        averageTime: '26 min',
-        totalEarnings: 350000,
-        rating: 4.8
-      });
-      
     } finally {
       setLoading(false);
     }
