@@ -86,14 +86,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ data }) => {
       color: 'text-secondary',
       bgColor: 'bg-secondary/10'
     },
-    {
-      title: 'Ingreso Neto',
-      value: formatCurrency(data.today_summary?.net_income || 0),
-      subtitle: `Gastos: ${formatCurrency(expensesData.total_amount || 0)}`,
-      icon: <TrendingUp className="h-6 w-6" />,
-      color: 'text-success',
-      bgColor: 'bg-success/10'
-    }
+    
   ];
 
   const pendingActions = [
@@ -145,55 +138,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ data }) => {
         ))}
       </div>
 
-      {/* Payment Methods Breakdown */}
-      {data.today_summary?.payment_methods_breakdown && data.today_summary.payment_methods_breakdown.length > 0 ? (
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="font-semibold mb-4">Desglose por Método de Pago</h3>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center">
-                <p className="text-sm text-gray-600">Efectivo</p>
-                <p className="text-lg font-bold">{formatCurrency(0)}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-gray-600">Tarjeta</p>
-                <p className="text-lg font-bold">{formatCurrency(0)}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-gray-600">Transferencia</p>
-                <p className="text-lg font-bold">{formatCurrency(0)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="font-semibold mb-4">Desglose por Método de Pago</h3>
-            <div className="text-center text-gray-500">
-              <p>No hay datos de métodos de pago disponibles</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
-      {/* Pending Actions */}
-      <Card>
-        <CardContent className="p-4">
-          <h3 className="font-semibold mb-4">Acciones Pendientes</h3>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {pendingActions.map((action, index) => (
-              <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                <div className={action.color}>{action.icon}</div>
-                <div>
-                  <p className="text-sm text-gray-600">{action.title}</p>
-                  <p className="font-bold text-lg">{action.count}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

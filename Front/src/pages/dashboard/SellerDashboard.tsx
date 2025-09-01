@@ -94,52 +94,10 @@ export const SellerDashboard: React.FC = () => {
       const response = await vendorAPI.getDashboard();
       setApiData(response); 
     } catch (error) {
-      console.warn('Backend API not available, using mock data for development');
+      console.warn('Backend API not available');
       
       setApiError('Conectando con el servidor...');
       
-      // Mock data
-      setApiData({
-        success: true,
-        dashboard_timestamp: new Date().toISOString(),
-        vendor_info: {
-          name: 'Carlos Rodriguez (Mock)',
-          email: 'vendedor6@tustockya.com',
-          location_name: 'Local #5',
-          role: 'seller',
-          location_id: 5
-        },
-        today_summary: {
-          date: new Date().toISOString().split('T')[0],
-          sales: {
-            total_count: 2,
-            pending_confirmations: 0,
-            total_amount: 788000,
-            confirmed_amount: 788000,
-            pending_amount: 0
-          },
-          expenses: {
-            count: 0,
-            total_amount: 0
-          },
-          net_income: 788000,
-          payment_methods_breakdown: []
-        },
-        pending_actions: {
-          sale_confirmations: 0,
-          transfer_requests: {
-            pending: 6,
-            in_transit: 2,
-            delivered: 0
-          },
-          discount_requests: {
-            pending: 0,
-            approved: 0,
-            rejected: 0
-          },
-          return_notifications: 0
-        }
-      });
     } finally {
       setLoading(false);
     }
