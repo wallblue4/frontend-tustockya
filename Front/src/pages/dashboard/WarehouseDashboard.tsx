@@ -1266,7 +1266,7 @@ export const WarehouseDashboard: React.FC = () => {
                           </div>
                         )}
                         
-                        {(request.status === 'courier_assigned' || (request.status === 'accepted' && request.courier_first_name)) && (
+                        {(request.status === 'courier_assigned' || (request.status === 'accepted' && request.pickup_type=== "courrier")) && (
                           <Button
                             onClick={() => handleDeliverToCourier(request.id)}
                             disabled={actionLoading === request.id}
@@ -1390,7 +1390,7 @@ export const WarehouseDashboard: React.FC = () => {
                           </div>
                         )}
 
-                        {(request.status === 'courier_assigned' || (request.status === 'accepted' && request.courier_first_name)) && (
+                        {(request.status === 'courier_assigned' || (request.status === 'accepted' && request.pickup_type=== "courrier")) && (
                           <div className="mt-4">
                             <Button
                               onClick={() => handleDeliverToCourier(request.id)}
