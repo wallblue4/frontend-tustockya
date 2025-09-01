@@ -170,25 +170,39 @@ export const RunnerDashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const [availableResponse, assignedResponse, historyResponse] = await Promise.all([
         courierAPI.getAvailableRequests(),
         courierAPI.getMyAssignedTransports(),
         courierAPI.getMyDeliveries()
       ]);
-      
+
       setAvailableRequests(availableResponse.available_requests || []);
       setAssignedTransports(assignedResponse.my_transports || []);
-      setDeliveryHistory(historyResponse.recent_deliveries || []);
-      
+
+      // Map delivery history from backend response
+      const deliveries = (historyResponse.delivery_history || []).map((item: any) => ({
+        id: item.id,
+        status: item.status,
+        product: `${item.brand} ${item.model} - Talla ${item.size}`,
+        delivered_to: `${item.requester_first_name} ${item.requester_last_name}`,
+        delivered_at: item.delivered_at,
+        total_time: item.delivered_at && item.picked_up_at ? `${Math.round((new Date(item.delivered_at).getTime() - new Date(item.picked_up_at).getTime()) / 60000)} minutos` : '',
+        delivery_successful: item.status === 'completed',
+        distance: undefined, // Optionally calculate if available
+        earnings: undefined // Optionally calculate if available
+      }));
+      setDeliveryHistory(deliveries);
+
     } catch (err) {
       console.error('Error loading courier data:', err);
       setError('Error conectando con el servidor');
-      
+
       // Mock data mejorado para desarrollo
       setAvailableRequests([
         {
           id: 15,
+          product_image: undefined,
           status: 'accepted',
           action_required: 'accept_transport',
           status_description: 'Disponible para aceptar transporte',
@@ -208,6 +222,7 @@ export const RunnerDashboard: React.FC = () => {
         },
         {
           id: 18,
+          product_image: undefined,
           status: 'accepted',
           action_required: 'accept_transport',
           status_description: 'Disponible para aceptar transporte',
@@ -226,17 +241,22 @@ export const RunnerDashboard: React.FC = () => {
           }
         }
       ]);
-      
+
       setAssignedTransports([
         {
           id: 19,
+          product_image: undefined,
           status: 'courier_assigned',
           action_required: 'ir_a_recoger',
           action_description: 'Ve al punto de recolección',
           source_location_name: 'Bodega Central',
           destination_location_name: 'Local Centro',
-          product: 'Puma RS-X - Talla 9',
-          requester_name: 'Carlos López',
+          brand: 'Puma',
+          model: 'RS-X',
+          size: '9',
+          quantity: 1,
+          requester_first_name: 'Carlos',
+          requester_last_name: 'López',
           estimated_pickup_time: 15,
           courier_accepted_at: new Date(Date.now() - 300000).toISOString()
         }
@@ -276,7 +296,7 @@ export const RunnerDashboard: React.FC = () => {
         totalEarnings: 350000,
         rating: 4.8
       });
-      
+
     } finally {
       setLoading(false);
     }
