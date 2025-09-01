@@ -211,6 +211,7 @@ const warehouseAPIUpdated = {
 
 // *** TIPOS ACTUALIZADOS SEGÚN DOCUMENTACIÓN ***
 interface PendingRequest {
+  source_location_name: string;
   id: number;
   requester_name?: string;
   requester_first_name?: string;
@@ -237,6 +238,7 @@ interface PendingRequest {
 }
 
 interface AcceptedRequest {
+  source_location_name: string;
   pickup_type: string;
   id: number;
   status: string;
@@ -872,7 +874,6 @@ export const WarehouseDashboard: React.FC = () => {
                               <h3 className="font-bold text-base text-gray-900 mb-2 leading-tight">
                                 {request.brand} {request.model}
                               </h3>
-                              
                               <div className="space-y-2 mb-3">
                                 <div className="flex items-center space-x-3">
                                   <span className="text-sm font-medium text-blue-600">
@@ -882,7 +883,6 @@ export const WarehouseDashboard: React.FC = () => {
                                     {request.quantity} unidad{request.quantity > 1 ? 'es' : ''}
                                   </span>
                                 </div>
-                                
                                 <div className="flex items-center space-x-1 text-sm text-gray-700">
                                   <User className="h-3 w-3 text-gray-400" />
                                   <span className="font-medium truncate">
@@ -892,10 +892,10 @@ export const WarehouseDashboard: React.FC = () => {
                                     }
                                   </span>
                                 </div>
-                                
-                                <p className="text-xs text-gray-500">
-                                  ⏱️ {formatTimeWaiting(request.requested_at)}
-                                </p>
+                                <div className="flex items-center space-x-1 text-xs text-gray-500">
+                                  <MapPin className="h-3 w-3 text-gray-400 mr-1" />
+                                  <span className="font-medium">Ubicacion: {request.source_location_name || 'N/A'}</span>
+                                </div>
                               </div>
                               
                               {/* Estado de disponibilidad compacto */}
@@ -1194,6 +1194,10 @@ export const WarehouseDashboard: React.FC = () => {
                                 'Usuario'
                               }
                             </p>
+                            <div className="flex items-center space-x-1 text-xs text-gray-500 mb-1">
+                              <MapPin className="h-3 w-3 text-gray-400 mr-1" />
+                              <span className="font-medium">Ubicación: {request.source_location_name || 'N/A'}</span>
+                            </div>
                           </div>
                           
                           <div className="text-right">
