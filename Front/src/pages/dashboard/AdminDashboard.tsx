@@ -43,29 +43,76 @@ import {
   Download
 } from 'lucide-react';
 
-// Import ONLY adminAPI functions
+// Import ALL correct adminAPI functions
 import {
-  fetchAllUsers,
-  fetchAllLocations,
-  fetchAllCosts,
-  fetchDashboardMetrics,
+  // Dashboard & Metrics
   fetchAdminDashboard,
+  fetchDashboardMetrics,
   fetchAdminStatistics,
-  fetchPendingDiscountRequests,
+  
+  // Users Management (5 endpoints)
   createUser,
-  updateUser,
-  createWholesaleSale,
-  createInventoryAlert,
-  approveDiscountRequest,
-  generateSalesReport,
-  fetchUserPerformance,
-  fetchTransfersOverview,
-  createVideoInventoryEntry,
-  fetchVideoProcessingHistory,
-  assignUserToLocation,
+  fetchManagedUsers,
   fetchAvailableLocationsForUsers,
+  updateUser,
+  assignUserToLocation,
+  
+  // Locations Management (2 endpoints)
+  fetchManagedLocations,
+  fetchLocationStatistics,
+  
+  // Costs Management (1 endpoint)
+  fetchCostConfigurations,
+  
+  // Wholesale Sales (1 endpoint)
+  processWholesaleSale,
+  
+  // Reports (1 endpoint)
+  generateSalesReports,
+  
+  // Inventory Alerts (1 endpoint)
+  configureInventoryAlert,
+  
+  // Discounts (2 endpoints)
+  fetchPendingDiscountRequests,
+  approveDiscountRequest,
+  
+  // Transfers (1 endpoint)
+  fetchTransfersOverview,
+  
+  // Performance (1 endpoint)
+  fetchUsersPerformance,
+  
+  // Product Assignments (2 endpoints)
+  assignProductModelToWarehouses,
+  fetchProductAssignments,
+  
+  // Video Inventory (4 endpoints)
+  processVideoInventoryEntry,
+  fetchVideoProcessingHistory,
+  fetchVideoProcessingDetails,
+  fetchVideoJobStatus,
+  
+  // Admin Assignments (5 endpoints)
+  assignAdminToLocation,
+  fetchAdminAssignments,
+  assignAdminToMultipleLocations,
+  removeAdminAssignment,
   fetchMyAssignedLocations,
-  canManageLocation
+  
+  // Utilities (4 endpoints)
+  canManageLocation,
+  fetchAvailableAdministrators,
+  fetchUnassignedLocations,
+  testMicroserviceConnection,
+  
+  // System (4 endpoints)
+  fetchAdminModuleHealth,
+  fetchSystemOverview,
+  initializeAdditionalTables,
+  
+  // Diagnostics (1 endpoint)
+  fetchJobLogs
 } from '../../services/adminAPI';
 
 import { formatCurrency, formatDate, capitalize } from '../../utils/formatters';
@@ -80,39 +127,40 @@ import { FullScreenCameraCapture } from '../../components/admin/FullScreenCamera
 type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics';
 
 interface DashboardData {
-  totalSales: number;
-  totalExpenses: number;
-  totalUsers: number;
-  totalLocations: number;
-  salesGrowth: number;
-  expensesGrowth: number;
-  recentSales: any[];
-  recentExpenses: any[];
-  topProducts: any[];
-  lowStockProducts: any[];
+  admin_name: string;
+  managed_locations: any[];
+  daily_summary: any;
+  pending_tasks: any;
+  performance_overview: any;
+  alerts_summary: any;
+  recent_activities: any[];
 }
 
 interface User {
   id: number;
+  email: string;
   first_name: string;
   last_name: string;
-  email: string;
+  full_name: string;
   role: string;
-  location_name: string;
-  location_id: number;
+  location_id: number | null;
+  location_name: string | null;
   is_active: boolean;
   created_at: string;
 }
 
 interface Cost {
   id: number;
-  cost_type: string;
-  amount: number;
-  description: string;
-  location_name: string;
   location_id: number;
+  location_name: string;
+  cost_type: string;
+  amount: string;
   frequency: string;
+  description: string;
   is_active: boolean;
+  effective_date: string;
+  created_by_user_id: number;
+  created_by_name: string;
   created_at: string;
 }
 
@@ -120,8 +168,13 @@ interface Location {
   id: number;
   name: string;
   type: string;
-  address: string;
+  address: string | null;
+  phone: string | null;
   is_active: boolean;
+  created_at: string;
+  assigned_users_count: number;
+  total_products: number;
+  total_inventory_value: string;
 }
 
 interface Notifications {
@@ -135,27 +188,46 @@ interface WholesaleOrder {
   customer_name: string;
   customer_document: string;
   customer_phone?: string;
-  items: Array<{
-    reference_code: string;
-    quantity: number;
-    unit_price: number;
-  }>;
-  total_amount: number;
-  discount_percentage?: number;
-  payment_method: string;
-  status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
-  created_at: string;
-  location_name: string;
   location_id: number;
+  location_name: string;
+  total_amount: string;
+  discount_amount: string;
+  final_amount: string;
+  payment_method: string;
+  sale_date: string;
+  processed_by_user_id: number;
+  processed_by_name: string;
+  items_count: number;
+  notes: string | null;
+}
+
+interface MetricsData {
+  total_sales_today: string;
+  total_sales_month: string;
+  active_users: number;
+  pending_transfers: number;
+  low_stock_alerts: number;
+  pending_discount_approvals: number;
+  avg_performance_score: number;
 }
 
 export const AdminDashboard: React.FC = () => {
+  // Estado para el formulario de inventario por video (antes estaba dentro de renderInventoryView)
+  // Estado para tallas y cantidades
+  const [videoInventoryForm, setVideoInventoryForm] = useState({
+    warehouse_location_id: 0,
+    product_brand: '',
+    product_model: '',
+    notes: '',
+    sizes: [{ size: '', quantity: '' }]
+  });
   const [currentView, setCurrentView] = useState<AdminView>('dashboard');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Data states
+  // Data states with proper typing
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [metricsData, setMetricsData] = useState<MetricsData | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [costs, setCosts] = useState<Cost[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -177,22 +249,15 @@ export const AdminDashboard: React.FC = () => {
   // Filter states
   const [userFilters, setUserFilters] = useState({
     search: '',
-    role: '',
+    role: '' as '' | 'vendedor' | 'bodeguero' | 'corredor',
     location: '',
     status: ''
   });
 
   const [costFilters, setCostFilters] = useState({
     search: '',
-    category: '',
+    category: '' as '' | 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros',
     location: '',
-    dateFrom: '',
-    dateTo: ''
-  });
-
-  const [wholesaleFilters, setWholesaleFilters] = useState({
-    search: '',
-    status: '',
     dateFrom: '',
     dateTo: ''
   });
@@ -203,15 +268,20 @@ export const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     if (currentView === 'users') {
-      loadUsers(userFilters);
+      loadUsers();
     } else if (currentView === 'costs') {
-      loadCosts(costFilters);
+      loadCosts();
     } else if (currentView === 'notifications') {
       loadNotifications();
-    } else if (currentView === 'wholesale') {
-      loadWholesaleOrders(wholesaleFilters);
     }
   }, [currentView]);
+
+  // Actualiza usuarios cuando cambian los filtros
+  useEffect(() => {
+    if (currentView === 'users') {
+      loadUsers();
+    }
+  }, [userFilters, currentView]);
 
   const loadInitialData = async () => {
     try {
@@ -233,81 +303,77 @@ export const AdminDashboard: React.FC = () => {
 
   const loadDashboardData = async () => {
     try {
-      // Use proper adminAPI endpoints
       const [dashboardResponse, metricsResponse, statisticsResponse] = await Promise.all([
-        fetchAdminDashboard(),
-        fetchDashboardMetrics(),
-        fetchAdminStatistics()
+        fetchAdminDashboard().catch(err => {
+          console.warn('Dashboard endpoint failed:', err);
+          return null;
+        }),
+        fetchDashboardMetrics().catch(err => {
+          console.warn('Metrics endpoint failed:', err);
+          return null;
+        }),
+        fetchAdminStatistics().catch(err => {
+          console.warn('Statistics endpoint failed:', err);
+          return null;
+        })
       ]);
       
-      setDashboardData({
-        totalSales: dashboardResponse.total_sales || metricsResponse.total_sales || 0,
-        totalExpenses: dashboardResponse.total_expenses || metricsResponse.total_expenses || 0,
-        totalUsers: dashboardResponse.total_users || metricsResponse.total_users || 0,
-        totalLocations: dashboardResponse.total_locations || metricsResponse.total_locations || 0,
-        salesGrowth: dashboardResponse.sales_growth || metricsResponse.sales_growth || 0,
-        expensesGrowth: dashboardResponse.expenses_growth || metricsResponse.expenses_growth || 0,
-        recentSales: dashboardResponse.recent_sales || [],
-        recentExpenses: dashboardResponse.recent_expenses || [],
-        topProducts: dashboardResponse.top_products || metricsResponse.top_products || [],
-        lowStockProducts: dashboardResponse.low_stock_products || metricsResponse.low_stock_products || []
-      });
+      if (dashboardResponse) {
+        setDashboardData(dashboardResponse);
+      }
+      
+      if (metricsResponse) {
+        setMetricsData(metricsResponse);
+      }
+      
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      // Set empty data instead of mock data
-      setDashboardData({
-        totalSales: 0,
-        totalExpenses: 0,
-        totalUsers: 0,
-        totalLocations: 0,
-        salesGrowth: 0,
-        expensesGrowth: 0,
-        recentSales: [],
-        recentExpenses: [],
-        topProducts: [],
-        lowStockProducts: []
-      });
+      // Set empty data on error
+      setDashboardData(null);
+      setMetricsData(null);
     }
   };
 
-  const loadUsers = async (filters = {}) => {
+  const loadUsers = async () => {
     try {
       const params: any = {};
       
-      if (filters.role && filters.role !== '') {
-        params.role = filters.role as 'vendedor' | 'bodeguero' | 'corredor';
+      if (userFilters.role && userFilters.role !== '') {
+        params.role = userFilters.role;
       }
       
-      if (filters.location && filters.location !== '') {
-        params.location_id = parseInt(filters.location);
+      if (userFilters.location && userFilters.location !== '') {
+        params.location_id = parseInt(userFilters.location);
       }
       
-      if (filters.status && filters.status !== '') {
-        params.is_active = filters.status === 'active';
+      if (userFilters.status && userFilters.status !== '') {
+        params.is_active = userFilters.status === 'active';
       }
 
-      const response = await fetchAllUsers(params);
-      setUsers(response.users || response || []);
+      const response = await fetchManagedUsers(params);
+      // Handle array response directly or nested in response object
+      setUsers(Array.isArray(response) ? response : response.users || response.data || []);
     } catch (error) {
       console.error('Error loading users:', error);
       setUsers([]);
     }
   };
 
-  const loadCosts = async (filters = {}) => {
+  const loadCosts = async () => {
     try {
       const params: any = {};
       
-      if (filters.location && filters.location !== '') {
-        params.location_id = parseInt(filters.location);
+      if (costFilters.location && costFilters.location !== '') {
+        params.location_id = parseInt(costFilters.location);
       }
       
-      if (filters.category && filters.category !== '') {
-        params.cost_type = filters.category as any;
+      if (costFilters.category && costFilters.category !== '') {
+        params.cost_type = costFilters.category;
       }
 
-      const response = await fetchAllCosts(params);
-      setCosts(response.costs || response || []);
+      const response = await fetchCostConfigurations(params);
+      // Handle array response directly or nested in response object
+      setCosts(Array.isArray(response) ? response : response.costs || response.data || []);
     } catch (error) {
       console.error('Error loading costs:', error);
       setCosts([]);
@@ -316,8 +382,9 @@ export const AdminDashboard: React.FC = () => {
 
   const loadLocations = async () => {
     try {
-      const response = await fetchAllLocations();
-      setLocations(response.locations || response || []);
+      const response = await fetchManagedLocations();
+      // Handle array response directly or nested in response object
+      setLocations(Array.isArray(response) ? response : response.locations || response.data || []);
     } catch (error) {
       console.error('Error loading locations:', error);
       setLocations([]);
@@ -327,35 +394,21 @@ export const AdminDashboard: React.FC = () => {
   const loadAvailableLocations = async () => {
     try {
       const response = await fetchAvailableLocationsForUsers();
-      setAvailableLocations(response.locations || response || []);
+      // Handle array response directly or nested in response object
+      setAvailableLocations(Array.isArray(response) ? response : response.locations || response.data || []);
     } catch (error) {
       console.error('Error loading available locations:', error);
       setAvailableLocations([]);
     }
   };
 
-  const loadWholesaleOrders = async (filters = {}) => {
-    try {
-      // Note: There's no fetchAllWholesaleOrders in the provided API
-      // This would need to be implemented or use a different approach
-      setWholesaleOrders([]);
-    } catch (error) {
-      console.error('Error loading wholesale orders:', error);
-      setWholesaleOrders([]);
-    }
-  };
-
   const loadNotifications = async () => {
     try {
-      const [discountsResponse] = await Promise.all([
-        fetchPendingDiscountRequests(),
-        // Note: fetchReturnNotifications is not in the provided API
-        // This would need to be implemented
-      ]);
+      const discountsResponse = await fetchPendingDiscountRequests();
       
       setNotifications({
-        discounts: discountsResponse.requests || discountsResponse || [],
-        returns: [], // Would need proper endpoint
+        discounts: Array.isArray(discountsResponse) ? discountsResponse : discountsResponse.requests || discountsResponse.data || [],
+        returns: [], // No endpoint available yet
         inventory: []
       });
     } catch (error) {
@@ -373,16 +426,16 @@ export const AdminDashboard: React.FC = () => {
       await createUser({
         email: userData.email,
         password: userData.password,
-        first_name: userData.firstName,
-        last_name: userData.lastName,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
         role: userData.role,
-        location_id: userData.locationId ? parseInt(userData.locationId) : undefined
+        location_id: userData.location_id ? parseInt(userData.location_id) : undefined
       });
       
-      await loadUsers(userFilters);
+      await loadUsers();
       setShowCreateUserModal(false);
       alert('Usuario creado exitosamente');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating user:', error);
       alert('Error al crear usuario: ' + (error.message || 'Error desconocido'));
     }
@@ -391,36 +444,24 @@ export const AdminDashboard: React.FC = () => {
   const handleUpdateUser = async (userId: number, userData: any) => {
     try {
       await updateUser(userId, {
-        first_name: userData.firstName,
-        last_name: userData.lastName,
-        is_active: userData.isActive,
-        location_id: userData.locationId ? parseInt(userData.locationId) : undefined
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        is_active: userData.is_active,
+        location_id: userData.location_id ? parseInt(userData.location_id) : undefined
       });
-      
-      await loadUsers(userFilters);
+      await loadUsers();
       setEditingUser(null);
       setShowEditUserModal(false);
       alert('Usuario actualizado exitosamente');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating user:', error);
       alert('Error al actualizar usuario: ' + (error.message || 'Error desconocido'));
     }
   };
 
-  const handleCreateCost = async (costData: any) => {
-    try {
-      // Note: There's no createCostConfiguration in the provided API
-      // This would need to be implemented or use createInventoryAlert for inventory costs
-      alert('Función de crear costos no disponible aún');
-    } catch (error) {
-      console.error('Error creating cost:', error);
-      alert('Error al registrar costo: ' + (error.message || 'Error desconocido'));
-    }
-  };
-
   const handleCreateWholesaleOrder = async (orderData: any) => {
     try {
-      await createWholesaleSale({
+      await processWholesaleSale({
         customer_name: orderData.customerName,
         customer_document: orderData.customerDocument,
         customer_phone: orderData.customerPhone,
@@ -431,10 +472,9 @@ export const AdminDashboard: React.FC = () => {
         notes: orderData.notes
       });
       
-      await loadWholesaleOrders(wholesaleFilters);
-      setShowCreateWholesaleModal(false);
       alert('Orden mayorista creada exitosamente');
-    } catch (error) {
+      setShowCreateWholesaleModal(false);
+    } catch (error: any) {
       console.error('Error creating wholesale order:', error);
       alert('Error al crear orden mayorista: ' + (error.message || 'Error desconocido'));
     }
@@ -450,15 +490,50 @@ export const AdminDashboard: React.FC = () => {
       
       await loadNotifications();
       alert(approved ? 'Descuento aprobado exitosamente' : 'Descuento rechazado');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing discount:', error);
       alert('Error al procesar descuento: ' + (error.message || 'Error desconocido'));
     }
   };
 
-  const renderDashboardView = () => {
-    if (!dashboardData) return <LoadingSkeleton />;
+  const handleCreateInventoryAlert = async (alertData: any) => {
+    try {
+      await configureInventoryAlert({
+        location_id: alertData.locationId,
+        alert_type: alertData.alertType,
+        threshold_value: alertData.thresholdValue,
+        product_reference: alertData.productReference,
+        notification_emails: alertData.notificationEmails,
+        is_active: alertData.isActive ?? true
+      });
+      
+      alert('Alerta de inventario configurada exitosamente');
+    } catch (error: any) {
+      console.error('Error creating inventory alert:', error);
+      alert('Error al configurar alerta: ' + (error.message || 'Error desconocido'));
+    }
+  };
 
+  const handleVideoInventoryEntry = async (videoData: {
+    warehouse_location_id: number;
+    estimated_quantity: number;
+    product_brand?: string;
+    product_model?: string;
+    expected_sizes?: string;
+    notes?: string;
+    video_file: File;
+  }) => {
+    try {
+      const response = await processVideoInventoryEntry(videoData);
+      alert('Video de inventario procesado exitosamente');
+      console.log('Video processing response:', response);
+    } catch (error: any) {
+      console.error('Error processing video inventory:', error);
+      alert('Error al procesar video: ' + (error.message || 'Error desconocido'));
+    }
+  };
+
+  const renderDashboardView = () => {
     return (
       <div className="space-y-6 p-4 md:p-6">
         <div className="flex justify-between items-center">
@@ -472,28 +547,24 @@ export const AdminDashboard: React.FC = () => {
         {/* Key Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard
-            title="Ventas Totales"
-            value={formatCurrency(dashboardData.totalSales)}
-            change={dashboardData.salesGrowth}
-            period="crecimiento"
+            title="Ventas Hoy"
+            value={metricsData?.total_sales_today ? formatCurrency(parseFloat(metricsData.total_sales_today)) : formatCurrency(0)}
             icon={<DollarSign className="h-6 w-6" />}
           />
           <StatsCard
-            title="Gastos Totales"
-            value={formatCurrency(dashboardData.totalExpenses)}
-            change={dashboardData.expensesGrowth}
-            period="crecimiento"
-            icon={<TrendingDown className="h-6 w-6" />}
+            title="Ventas del Mes"
+            value={metricsData?.total_sales_month ? formatCurrency(parseFloat(metricsData.total_sales_month)) : formatCurrency(0)}
+            icon={<TrendingUp className="h-6 w-6" />}
           />
           <StatsCard
             title="Usuarios Activos"
-            value={dashboardData.totalUsers.toString()}
+            value={metricsData?.active_users?.toString() || '0'}
             icon={<Users className="h-6 w-6" />}
           />
           <StatsCard
-            title="Ubicaciones"
-            value={dashboardData.totalLocations.toString()}
-            icon={<Store className="h-6 w-6" />}
+            title="Transferencias Pendientes"
+            value={metricsData?.pending_transfers?.toString() || '0'}
+            icon={<Truck className="h-6 w-6" />}
           />
         </div>
 
@@ -543,123 +614,91 @@ export const AdminDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Charts and Recent Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Top Products */}
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold">Productos Más Vendidos</h3>
-            </CardHeader>
-            <CardContent>
-              {dashboardData.topProducts.length > 0 ? (
-                <div className="space-y-4">
-                  {dashboardData.topProducts.map((product, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{product.name || product.model}</p>
-                        <p className="text-sm text-gray-600">{product.sales || product.quantity} unidades</p>
+        {/* Admin Dashboard Data */}
+        {dashboardData && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-semibold">Ubicaciones Gestionadas</h3>
+              </CardHeader>
+              <CardContent>
+                {dashboardData.managed_locations?.length > 0 ? (
+                  <div className="space-y-4">
+                    {dashboardData.managed_locations.map((location, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium">{location.location_name}</p>
+                          <p className="text-sm text-gray-600">{location.location_type}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">{formatCurrency(parseFloat(location.daily_sales || 0))}</p>
+                          <p className="text-xs text-gray-500">Ventas diarias</p>
+                        </div>
                       </div>
-                      <p className="font-semibold">{formatCurrency(product.revenue || product.total)}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState 
-                  title="No hay datos de productos"
-                  description="No se encontraron productos más vendidos"
-                  icon={<Package className="h-12 w-12 text-gray-400" />}
-                />
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState 
+                    title="No hay ubicaciones asignadas"
+                    description="No tienes ubicaciones bajo tu gestión"
+                    icon={<Store className="h-12 w-12 text-gray-400" />}
+                  />
+                )}
+              </CardContent>
+            </Card>
 
-          {/* Low Stock Alert */}
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold">Productos con Stock Bajo</h3>
-            </CardHeader>
-            <CardContent>
-              {dashboardData.lowStockProducts.length > 0 ? (
-                <div className="space-y-4">
-                  {dashboardData.lowStockProducts.map((product, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-warning/10 rounded-lg">
-                      <div>
-                        <p className="font-medium">{product.name || product.model}</p>
-                        <p className="text-sm text-gray-600">Stock actual: {product.stock || product.current_stock}</p>
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-semibold">Tareas Pendientes</h3>
+              </CardHeader>
+              <CardContent>
+                {dashboardData.pending_tasks && Object.keys(dashboardData.pending_tasks).length > 0 ? (
+                  <div className="space-y-3">
+                    {Object.entries(dashboardData.pending_tasks).map(([task, count]) => (
+                      <div key={task} className="flex items-center justify-between">
+                        <span className="capitalize">{task.replace('_', ' ')}</span>
+                        <Badge variant="warning">{count as number}</Badge>
                       </div>
-                      <Badge variant="warning">Bajo Stock</Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState 
-                  title="No hay alertas de stock"
-                  description="Todos los productos tienen stock adecuado"
-                  icon={<CheckCircle className="h-12 w-12 text-success" />}
-                />
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState 
+                    title="No hay tareas pendientes"
+                    description="Todas las tareas están al día"
+                    icon={<CheckCircle className="h-12 w-12 text-success" />}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-        {/* Recent Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold">Actividad Reciente</h3>
-            </CardHeader>
-            <CardContent>
-              {dashboardData.recentSales.length > 0 ? (
-                <div className="space-y-3">
-                  {dashboardData.recentSales.slice(0, 5).map((activity, index) => (
-                    <div key={index} className="flex items-center justify-between py-2 border-b last:border-b-0">
-                      <div>
-                        <p className="font-medium">{activity.description || `Actividad #${activity.id}`}</p>
-                        <p className="text-sm text-gray-600">{formatDate(activity.created_at)}</p>
-                      </div>
-                      <p className="font-semibold text-success">
-                        {activity.amount ? formatCurrency(activity.amount) : ''}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState 
-                  title="No hay actividad reciente"
-                  description="No se encontró actividad reciente"
-                  icon={<Activity className="h-12 w-12 text-gray-400" />}
-                />
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold">Gastos Recientes</h3>
-            </CardHeader>
-            <CardContent>
-              {dashboardData.recentExpenses.length > 0 ? (
-                <div className="space-y-3">
-                  {dashboardData.recentExpenses.slice(0, 5).map((expense, index) => (
-                    <div key={index} className="flex items-center justify-between py-2 border-b last:border-b-0">
-                      <div>
-                        <p className="font-medium">{expense.description}</p>
-                        <p className="text-sm text-gray-600">{formatDate(expense.created_at)}</p>
-                      </div>
-                      <p className="font-semibold text-error">-{formatCurrency(expense.amount)}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState 
-                  title="No hay gastos recientes"
-                  description="No se encontraron gastos recientes"
-                  icon={<DollarSign className="h-12 w-12 text-gray-400" />}
-                />
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        {/* Alerts Summary */}
+        {metricsData && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-4 text-center">
+                <AlertCircle className="h-8 w-8 text-warning mx-auto mb-2" />
+                <p className="text-2xl font-bold">{metricsData.low_stock_alerts}</p>
+                <p className="text-sm text-gray-600">Alertas de Stock Bajo</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <Bell className="h-8 w-8 text-primary mx-auto mb-2" />
+                <p className="text-2xl font-bold">{metricsData.pending_discount_approvals}</p>
+                <p className="text-sm text-gray-600">Descuentos Pendientes</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <BarChart3 className="h-8 w-8 text-success mx-auto mb-2" />
+                <p className="text-2xl font-bold">{metricsData.avg_performance_score.toFixed(1)}</p>
+                <p className="text-sm text-gray-600">Score Promedio</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     );
   };
@@ -678,6 +717,7 @@ export const AdminDashboard: React.FC = () => {
         {/* Filters */}
         <Card>
           <CardContent className="p-4">
+            <h3 className="text-lg font-semibold mb-4">Filtros de usuarios</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -688,11 +728,12 @@ export const AdminDashboard: React.FC = () => {
                   className="pl-10"
                 />
               </div>
+              <h4>Tipo de usuario</h4>
               <select
                 value={userFilters.role}
                 onChange={(e) => {
-                  setUserFilters(prev => ({ ...prev, role: e.target.value }));
-                  loadUsers({ ...userFilters, role: e.target.value });
+                  const role = e.target.value as '' | 'vendedor' | 'bodeguero' | 'corredor';
+                  setUserFilters(prev => ({ ...prev, role }));
                 }}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               >
@@ -701,11 +742,11 @@ export const AdminDashboard: React.FC = () => {
                 <option value="bodeguero">Bodeguero</option>
                 <option value="corredor">Corredor</option>
               </select>
+              <h4>Ubicación</h4>
               <select
                 value={userFilters.location}
                 onChange={(e) => {
                   setUserFilters(prev => ({ ...prev, location: e.target.value }));
-                  loadUsers({ ...userFilters, location: e.target.value });
                 }}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               >
@@ -714,11 +755,12 @@ export const AdminDashboard: React.FC = () => {
                   <option key={location.id} value={location.id.toString()}>{location.name}</option>
                 ))}
               </select>
+              <h4>Estado</h4>
               <select
                 value={userFilters.status}
                 onChange={(e) => {
                   setUserFilters(prev => ({ ...prev, status: e.target.value }));
-                  loadUsers({ ...userFilters, status: e.target.value });
+                  setTimeout(() => loadUsers(), 100);
                 }}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               >
@@ -751,7 +793,7 @@ export const AdminDashboard: React.FC = () => {
                       <tr key={user.id}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
-                            <p className="font-medium">{user.first_name} {user.last_name}</p>
+                            <p className="font-medium">{user.full_name}</p>
                             <p className="text-sm text-gray-600">ID: {user.id}</p>
                           </div>
                         </td>
@@ -818,7 +860,7 @@ export const AdminDashboard: React.FC = () => {
         {/* Filters */}
         <Card>
           <CardContent className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -831,8 +873,9 @@ export const AdminDashboard: React.FC = () => {
               <select
                 value={costFilters.category}
                 onChange={(e) => {
-                  setCostFilters(prev => ({ ...prev, category: e.target.value }));
-                  loadCosts({ ...costFilters, category: e.target.value });
+                  const category = e.target.value as typeof costFilters.category;
+                  setCostFilters(prev => ({ ...prev, category }));
+                  setTimeout(() => loadCosts(), 100);
                 }}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               >
@@ -849,7 +892,7 @@ export const AdminDashboard: React.FC = () => {
                 value={costFilters.location}
                 onChange={(e) => {
                   setCostFilters(prev => ({ ...prev, location: e.target.value }));
-                  loadCosts({ ...costFilters, location: e.target.value });
+                  setTimeout(() => loadCosts(), 100);
                 }}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               >
@@ -858,18 +901,10 @@ export const AdminDashboard: React.FC = () => {
                   <option key={location.id} value={location.id.toString()}>{location.name}</option>
                 ))}
               </select>
-              <Input
-                type="date"
-                value={costFilters.dateFrom}
-                onChange={(e) => setCostFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                placeholder="Fecha desde"
-              />
-              <Input
-                type="date"
-                value={costFilters.dateTo}
-                onChange={(e) => setCostFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                placeholder="Fecha hasta"
-              />
+              <Button onClick={() => loadCosts()} size="sm" variant="outline">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Actualizar
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -879,7 +914,9 @@ export const AdminDashboard: React.FC = () => {
           <Card>
             <CardContent className="p-4 text-center">
               <DollarSign className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold">{formatCurrency(costs.reduce((sum, cost) => sum + cost.amount, 0))}</p>
+              <p className="text-2xl font-bold">
+                {formatCurrency(costs.reduce((sum, cost) => sum + parseFloat(cost.amount), 0))}
+              </p>
               <p className="text-sm text-gray-600">Total Costos</p>
             </CardContent>
           </Card>
@@ -893,7 +930,12 @@ export const AdminDashboard: React.FC = () => {
           <Card>
             <CardContent className="p-4 text-center">
               <TrendingUp className="h-8 w-8 text-warning mx-auto mb-2" />
-              <p className="text-2xl font-bold">{formatCurrency(costs.reduce((sum, cost) => sum + cost.amount, 0) / Math.max(costs.length, 1))}</p>
+              <p className="text-2xl font-bold">
+                {costs.length > 0 ? 
+                  formatCurrency(costs.reduce((sum, cost) => sum + parseFloat(cost.amount), 0) / costs.length) : 
+                  formatCurrency(0)
+                }
+              </p>
               <p className="text-sm text-gray-600">Promedio</p>
             </CardContent>
           </Card>
@@ -913,7 +955,6 @@ export const AdminDashboard: React.FC = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Frecuencia</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -921,15 +962,16 @@ export const AdminDashboard: React.FC = () => {
                       <tr key={cost.id}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <p className="font-medium">{cost.description}</p>
+                          <p className="text-sm text-gray-500">por {cost.created_by_name}</p>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <Badge variant="secondary">{capitalize(cost.cost_type)}</Badge>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap font-semibold">
-                          {formatCurrency(cost.amount)}
+                          {formatCurrency(parseFloat(cost.amount))}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {cost.location_name || 'General'}
+                          {cost.location_name}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {capitalize(cost.frequency)}
@@ -938,14 +980,6 @@ export const AdminDashboard: React.FC = () => {
                           <Badge variant={cost.is_active ? 'success' : 'error'}>
                             {cost.is_active ? 'Activo' : 'Inactivo'}
                           </Badge>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                          <Button size="sm" variant="outline">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Eye className="h-4 w-4" />
-                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -970,14 +1004,14 @@ export const AdminDashboard: React.FC = () => {
       <div className="space-y-6 p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <h2 className="text-2xl font-bold">Gestión de Ubicaciones</h2>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Ubicación
+          <Button onClick={() => loadLocations()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualizar
           </Button>
         </div>
 
         {/* Location Types Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
             <CardContent className="p-4 text-center">
               <Store className="h-8 w-8 text-primary mx-auto mb-2" />
@@ -992,12 +1026,19 @@ export const AdminDashboard: React.FC = () => {
               <p className="text-sm text-gray-600">Bodegas</p>
             </CardContent>
           </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Activity className="h-8 w-8 text-success mx-auto mb-2" />
+              <p className="text-2xl font-bold">{locations.filter(l => l.is_active).length}</p>
+              <p className="text-sm text-gray-600">Activas</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Locations List */}
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold">Todas las Ubicaciones</h3>
+            <h3 className="text-lg font-semibold">Ubicaciones Gestionadas</h3>
           </CardHeader>
           <CardContent>
             {locations.length > 0 ? (
@@ -1015,7 +1056,7 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                       <div>
                         <h4 className="font-semibold">{location.name}</h4>
-                        <p className="text-sm text-gray-600">{location.address}</p>
+                        <p className="text-sm text-gray-600">{location.address || 'Sin dirección'}</p>
                         <div className="flex items-center space-x-2 mt-1">
                           <Badge variant={location.type === 'local' ? 'primary' : 'secondary'}>
                             {location.type === 'local' ? 'Local' : 'Bodega'}
@@ -1023,17 +1064,38 @@ export const AdminDashboard: React.FC = () => {
                           <Badge variant={location.is_active ? 'success' : 'error'}>
                             {location.is_active ? 'Activo' : 'Inactivo'}
                           </Badge>
+                          <span className="text-xs text-gray-500">
+                            {location.assigned_users_count} usuarios
+                          </span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex space-x-2">
-                      <Button size="sm" variant="outline">
-                        <Eye className="h-4 w-4 mr-1" />
-                        Ver Stats
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                    <div className="text-right">
+                      <p className="font-semibold">{formatCurrency(parseFloat(location.total_inventory_value))}</p>
+                      <p className="text-xs text-gray-500">{location.total_products} productos</p>
+                      <div className="flex space-x-2 mt-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={async () => {
+                            try {
+                              const stats = await fetchLocationStatistics(
+                                location.id, 
+                                new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                                new Date().toISOString().split('T')[0]
+                              );
+                              console.log('Location stats:', stats);
+                              alert('Ver estadísticas en consola por ahora');
+                            } catch (error) {
+                              console.error('Error fetching location stats:', error);
+                              alert('Error al obtener estadísticas');
+                            }
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Ver Stats
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1041,7 +1103,7 @@ export const AdminDashboard: React.FC = () => {
             ) : (
               <EmptyState
                 title="No hay ubicaciones"
-                description="No se encontraron ubicaciones registradas"
+                description="No se encontraron ubicaciones bajo tu gestión"
                 icon={<MapPin className="h-12 w-12 text-gray-400" />}
               />
             )}
@@ -1055,14 +1117,20 @@ export const AdminDashboard: React.FC = () => {
     const allNotifications = [
       ...notifications.discounts.map(n => ({ ...n, type: 'discount' })),
       ...notifications.returns.map(n => ({ ...n, type: 'return' }))
-    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    ].sort((a, b) => new Date(b.requested_at || b.created_at).getTime() - new Date(a.requested_at || a.created_at).getTime());
 
     return (
       <div className="space-y-6 p-4 md:p-6">
-        <h2 className="text-2xl font-bold">Notificaciones</h2>
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold">Notificaciones</h2>
+          <Button onClick={() => loadNotifications()} size="sm" variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualizar
+          </Button>
+        </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 sm:grid-cols-3 gap-4">
           <Card>
             <CardContent className="p-4 text-center">
               <AlertCircle className="h-8 w-8 text-warning mx-auto mb-2" />
@@ -1117,21 +1185,36 @@ export const AdminDashboard: React.FC = () => {
                           <span className="font-medium">
                             {notification.type === 'discount' ? 'Solicitud de Descuento' : 'Devolución'}
                           </span>
+                          <Badge variant={
+                            notification.status === 'pending' ? 'warning' :
+                            notification.status === 'approved' ? 'success' : 'error'
+                          }>
+                            {notification.status === 'pending' ? 'Pendiente' :
+                             notification.status === 'approved' ? 'Aprobado' : 'Rechazado'}
+                          </Badge>
                         </div>
                         <p className="text-sm text-gray-700 mb-2">
                           {notification.reason || notification.message || notification.notes}
                         </p>
-                        {notification.amount && (
-                          <p className="text-sm font-medium">Monto: {formatCurrency(notification.amount)}</p>
+                        {notification.requester_name && (
+                          <p className="text-sm text-gray-600">Solicitado por: {notification.requester_name}</p>
                         )}
-                        <p className="text-xs text-gray-500 mt-2">{formatDate(notification.created_at)}</p>
+                        {notification.location_name && (
+                          <p className="text-sm text-gray-600">Ubicación: {notification.location_name}</p>
+                        )}
+                        {notification.discount_amount && (
+                          <p className="text-sm font-medium">Descuento: {formatCurrency(parseFloat(notification.discount_amount))}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-2">
+                          {formatDate(notification.requested_at || notification.created_at)}
+                        </p>
                       </div>
-                      {notification.type === 'discount' && (
+                      {notification.type === 'discount' && notification.status === 'pending' && (
                         <div className="flex space-x-2">
                           <Button 
                             size="sm" 
                             variant="outline" 
-                            className="text-success"
+                            className="text-success border-success hover:bg-success hover:text-white"
                             onClick={() => handleApproveDiscount(notification.id, true)}
                           >
                             <CheckCircle className="h-4 w-4 mr-1" />
@@ -1140,7 +1223,7 @@ export const AdminDashboard: React.FC = () => {
                           <Button 
                             size="sm" 
                             variant="outline" 
-                            className="text-error"
+                            className="text-error border-error hover:bg-error hover:text-white"
                             onClick={() => handleApproveDiscount(notification.id, false, 'Rechazado por administrador')}
                           >
                             Rechazar
@@ -1158,84 +1241,198 @@ export const AdminDashboard: React.FC = () => {
     );
   };
 
-  const renderInventoryView = () => (
-    <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <h2 className="text-xl font-semibold">Gestión de Inventario</h2>
-        <Button onClick={() => {/* Implementar modal agregar stock */}}>
-          <Plus className="h-4 w-4 mr-2" />
-          Agregar Stock por Video
-        </Button>
-      </div>
-      
-      {/* Video Inventory Form */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Registrar Inventario por Video</h3>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                <option value="">Seleccionar Bodega</option>
-                {locations.filter(l => l.type === 'bodega').map(location => (
-                  <option key={location.id} value={location.id}>{location.name}</option>
+  const renderInventoryView = () => {
+  // ...el estado ahora está en el componente principal...
+
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+          <h2 className="text-xl font-semibold">Gestión de Inventario</h2>
+          <Button onClick={async () => {
+            try {
+              const history = await fetchVideoProcessingHistory({ limit: 10 });
+              console.log('Video processing history:', history);
+            } catch (error) {
+              console.error('Error fetching video history:', error);
+            }
+          }}>
+            <Video className="h-4 w-4 mr-2" />
+            Ver Historial
+          </Button>
+        </div>
+        
+        {/* Video Inventory Form */}
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold">Registrar Inventario</h3>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                
+                <select 
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={videoInventoryForm.warehouse_location_id}
+                  onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, warehouse_location_id: parseInt(e.target.value) }))}
+                >
+                  <option value={0}>Seleccionar Bodega</option>
+                  {locations.filter(l => l.type === 'bodega').map(location => (
+                    <option key={location.id} value={location.id}>{location.name}</option>
+                  ))}
+                </select>
+                <Input 
+                  placeholder="Marca (Opcional)" 
+                  value={videoInventoryForm.product_brand}
+                  onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_brand: e.target.value }))}
+                />
+                <Input 
+                  placeholder="Modelo (Opcional)" 
+                  value={videoInventoryForm.product_model}
+                  onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_model: e.target.value }))}
+                />
+                
+                {/* Campos para tallas y cantidades */}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tallas y cantidades</label>
+                {videoInventoryForm.sizes.map((entry, idx) => (
+                  <div key={idx} className="flex items-center gap-2 mb-2">
+                    <Input
+                      placeholder="Talla"
+                      value={entry.size}
+                      onChange={e => {
+                        const newSizes = [...videoInventoryForm.sizes];
+                        newSizes[idx].size = e.target.value;
+                        setVideoInventoryForm(prev => ({ ...prev, sizes: newSizes }));
+                      }}
+                      className="w-1/2"
+                    />
+                    <Input
+                      placeholder="Cantidad"
+                      type="number"
+                      value={entry.quantity}
+                      onChange={e => {
+                        const newSizes = [...videoInventoryForm.sizes];
+                        newSizes[idx].quantity = e.target.value;
+                        setVideoInventoryForm(prev => ({ ...prev, sizes: newSizes }));
+                      }}
+                      className="w-1/2"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="ml-2"
+                      onClick={() => {
+                        setVideoInventoryForm(prev => ({
+                          ...prev,
+                          sizes: [...prev.sizes, { size: '', quantity: '' }]
+                        }));
+                      }}
+                    >
+                      +
+                    </Button>
+                    {videoInventoryForm.sizes.length > 1 && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="ml-1 text-red-500"
+                        onClick={() => {
+                          setVideoInventoryForm(prev => ({
+                            ...prev,
+                            sizes: prev.sizes.filter((_, i) => i !== idx)
+                          }));
+                        }}
+                      >
+                        x
+                      </Button>
+                    )}
+                  </div>
                 ))}
-              </select>
-              <Input placeholder="Cantidad Estimada" type="number" />
-              <Input placeholder="Marca (Opcional)" />
-              <Input placeholder="Modelo (Opcional)" />
-              <Input placeholder="Tallas Esperadas (Ej: 8,8.5,9)" />
-              <textarea 
-                placeholder="Notas adicionales"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                rows={3}
-              />
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Grabar Video del Inventario
-                </label>
-                <FullScreenCameraCapture
-                  onVideoRecorded={async (url, blob) => {
-                    console.log("Video listo para subir:", url, blob);
-                    // Aquí implementar la llamada a createVideoInventoryEntry
-                  }}
+                <textarea 
+                  placeholder="Notas adicionales"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  rows={3}
+                  value={videoInventoryForm.notes}
+                  onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, notes: e.target.value }))}
                 />
               </div>
-            </div>
-          </div>
-          
-          <div className="mt-6 flex justify-end">
-            <Button>
-              <Video className="h-4 w-4 mr-2" />
-              Procesar Video de Inventario
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              
+              <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tomar Foto del Inventario
+                  </label>
+                  <FullScreenCameraCapture
+                    mode="photo"
+                    onPhotoCaptured={async (url, blob) => {
+                      // Guardar la foto en el estado
+                      setVideoInventoryForm(prev => ({ ...prev, inventory_photo: blob }));
+                      console.log("Foto lista para subir:", url, blob);
+                    }}
+                  />
+              </div>
 
-      {/* Processing History */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Historial de Procesamiento</h3>
-        </CardHeader>
-        <CardContent>
-          <EmptyState
-            title="Sin historial de videos"
-            description="No hay videos de inventario procesados aún"
-            icon={<Video className="h-12 w-12 text-gray-400" />}
-          />
-        </CardContent>
-      </Card>
-    </div>
-  );
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Grabar Video del Inventario
+                  </label>
+                  <FullScreenCameraCapture
+                    onVideoRecorded={async (url, blob) => {
+                      console.log("Video listo para subir:", url, blob);
+                      
+                      if (videoInventoryForm.warehouse_location_id === 0) {
+                        alert('Por favor selecciona una bodega');
+                        return;
+                      }
+                      
+                      if (videoInventoryForm.estimated_quantity === 0) {
+                        alert('Por favor ingresa la cantidad estimada');
+                        return;
+                      }
+
+                      try {
+                        const videoFile = new File([blob], 'inventory-video.mp4', { type: 'video/mp4' });
+                        await handleVideoInventoryEntry({
+                          ...videoInventoryForm,
+                          video_file: videoFile
+                        });
+                        
+                        // Reset form
+                        setVideoInventoryForm({
+                          warehouse_location_id: 0,
+                          estimated_quantity: 0,
+                          product_brand: '',
+                          product_model: '',
+                          expected_sizes: '',
+                          notes: ''
+                        });
+                      } catch (error) {
+                        console.error('Error processing video:', error);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Processing History */}
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold">Historial de Procesamiento</h3>
+          </CardHeader>
+          <CardContent>
+            <EmptyState
+              title="Sin historial de videos"
+              description="No hay videos de inventario procesados aún"
+              icon={<Video className="h-12 w-12 text-gray-400" />}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   const renderWholesaleView = () => {
-    const totalWholesaleAmount = wholesaleOrders.reduce((sum, order) => sum + order.total_amount, 0);
-
     return (
       <div className="space-y-6 p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
@@ -1247,7 +1444,7 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Wholesale Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Card>
             <CardContent className="p-4 text-center">
               <ShoppingBag className="h-8 w-8 text-primary mx-auto mb-2" />
@@ -1258,22 +1455,10 @@ export const AdminDashboard: React.FC = () => {
           <Card>
             <CardContent className="p-4 text-center">
               <DollarSign className="h-8 w-8 text-success mx-auto mb-2" />
-              <p className="text-2xl font-bold">{formatCurrency(totalWholesaleAmount)}</p>
+              <p className="text-2xl font-bold">
+                {formatCurrency(wholesaleOrders.reduce((sum, order) => sum + parseFloat(order.final_amount), 0))}
+              </p>
               <p className="text-sm text-gray-600">Valor Total</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <CheckCircle className="h-8 w-8 text-success mx-auto mb-2" />
-              <p className="text-2xl font-bold">{wholesaleOrders.filter(o => o.status === 'confirmed').length}</p>
-              <p className="text-sm text-gray-600">Confirmadas</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <AlertCircle className="h-8 w-8 text-warning mx-auto mb-2" />
-              <p className="text-2xl font-bold">{wholesaleOrders.filter(o => o.status === 'pending').length}</p>
-              <p className="text-sm text-gray-600">Pendientes</p>
             </CardContent>
           </Card>
         </div>
@@ -1290,55 +1475,32 @@ export const AdminDashboard: React.FC = () => {
                   <div key={order.id} className="border rounded-lg p-4">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Badge variant={
-                            order.status === 'confirmed' ? 'success' :
-                            order.status === 'pending' ? 'warning' :
-                            order.status === 'delivered' ? 'primary' : 'error'
-                          }>
-                            {order.status === 'confirmed' ? 'Confirmada' :
-                             order.status === 'pending' ? 'Pendiente' :
-                             order.status === 'delivered' ? 'Entregada' : 'Cancelada'}
-                          </Badge>
-                          <span className="text-sm text-gray-500">{formatDate(order.created_at)}</span>
-                        </div>
-                        
                         <h4 className="font-semibold text-lg">{order.customer_name}</h4>
                         <p className="text-sm text-gray-600">
                           {order.customer_document} | {order.customer_phone}
                         </p>
                         <p className="text-sm text-gray-600">Ubicación: {order.location_name}</p>
+                        <p className="text-sm text-gray-600">Procesado por: {order.processed_by_name}</p>
                       </div>
                       
                       <div className="text-right">
-                        <p className="text-xl font-bold">{formatCurrency(order.total_amount)}</p>
-                        {order.discount_percentage && (
-                          <p className="text-sm text-success">Descuento: {order.discount_percentage}%</p>
-                        )}
+                        <p className="text-xl font-bold">{formatCurrency(parseFloat(order.final_amount))}</p>
+                        <p className="text-sm text-gray-500">({order.items_count} items)</p>
+                        <p className="text-xs text-gray-500">{formatDate(order.sale_date)}</p>
                       </div>
                     </div>
 
-                    {/* Items */}
-                    <div className="space-y-2 mb-3">
-                      {order.items.map((item, index) => (
-                        <div key={index} className="text-sm bg-gray-50 p-2 rounded">
-                          <span className="font-medium">{item.reference_code}</span>
-                          <span className="text-gray-600"> - {item.quantity} unidades × {formatCurrency(item.unit_price)}</span>
-                        </div>
-                      ))}
-                    </div>
+                    {order.notes && (
+                      <div className="mb-3">
+                        <p className="text-sm bg-gray-50 p-2 rounded">{order.notes}</p>
+                      </div>
+                    )}
 
                     <div className="flex justify-end space-x-2">
                       <Button size="sm" variant="outline">
                         <Eye className="h-4 w-4 mr-1" />
                         Ver Detalles
                       </Button>
-                      {order.status === 'pending' && (
-                        <Button size="sm">
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Confirmar
-                        </Button>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -1362,17 +1524,99 @@ export const AdminDashboard: React.FC = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <h2 className="text-2xl font-bold">Análisis y Métricas</h2>
           <div className="flex space-x-2">
-            <Button size="sm" variant="outline" onClick={() => generateSalesReport({
-              start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-              end_date: new Date().toISOString()
-            })}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={async () => {
+                try {
+                  const report = await generateSalesReports({
+                    start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    end_date: new Date().toISOString().split('T')[0]
+                  });
+                  console.log('Sales report:', report);
+                  alert('Reporte generado - Ver consola');
+                } catch (error) {
+                  console.error('Error generating report:', error);
+                  alert('Error al generar reporte');
+                }
+              }}
+            >
               <Download className="h-4 w-4 mr-2" />
               Exportar
             </Button>
-            <Button size="sm" variant="outline">Hoy</Button>
-            <Button size="sm" variant="outline">Semana</Button>
-            <Button size="sm" variant="outline">Mes</Button>
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const performance = await fetchUsersPerformance({
+                    start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    end_date: new Date().toISOString().split('T')[0]
+                  });
+                  console.log('User performance:', performance);
+                  alert('Performance data - Ver consola');
+                } catch (error) {
+                  console.error('Error fetching performance:', error);
+                }
+              }}
+            >
+              Performance
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const transfersOverview = await fetchTransfersOverview();
+                  console.log('Transfers overview:', transfersOverview);
+                  alert('Transfers overview - Ver consola');
+                } catch (error) {
+                  console.error('Error fetching transfers:', error);
+                }
+              }}
+            >
+              Transferencias
+            </Button>
           </div>
+        </div>
+
+        {/* Analytics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardContent className="p-6 text-center">
+              <BarChart3 className="h-12 w-12 text-primary mx-auto mb-3" />
+              <h3 className="font-semibold mb-2">Análisis de Ventas</h3>
+              <p className="text-sm text-gray-600 mb-4">Tendencias y patrones de venta</p>
+              <Button size="sm" className="w-full">Analizar</Button>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardContent className="p-6 text-center">
+              <Users className="h-12 w-12 text-secondary mx-auto mb-3" />
+              <h3 className="font-semibold mb-2">Performance del Equipo</h3>
+              <p className="text-sm text-gray-600 mb-4">Rendimiento por usuario y rol</p>
+              <Button size="sm" className="w-full">Ver Métricas</Button>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardContent className="p-6 text-center">
+              <Package className="h-12 w-12 text-success mx-auto mb-3" />
+              <h3 className="font-semibold mb-2">Análisis de Inventario</h3>
+              <p className="text-sm text-gray-600 mb-4">Rotación y optimización de stock</p>
+              <Button size="sm" className="w-full">Optimizar</Button>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardContent className="p-6 text-center">
+              <PieChart className="h-12 w-12 text-warning mx-auto mb-3" />
+              <h3 className="font-semibold mb-2">Análisis Financiero</h3>
+              <p className="text-sm text-gray-600 mb-4">Rentabilidad y costos</p>
+              <Button size="sm" className="w-full">Analizar</Button>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Analytics Placeholder */}
@@ -1407,10 +1651,19 @@ export const AdminDashboard: React.FC = () => {
               <Button 
                 size="sm" 
                 className="w-full"
-                onClick={() => generateSalesReport({
-                  start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-                  end_date: new Date().toISOString()
-                })}
+                onClick={async () => {
+                  try {
+                    const report = await generateSalesReports({
+                      start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                      end_date: new Date().toISOString().split('T')[0]
+                    });
+                    console.log('Sales report generated:', report);
+                    alert('Reporte de ventas generado - revisar consola');
+                  } catch (error) {
+                    console.error('Error generating sales report:', error);
+                    alert('Error al generar reporte de ventas');
+                  }
+                }}
               >
                 Generar
               </Button>
@@ -1425,10 +1678,19 @@ export const AdminDashboard: React.FC = () => {
               <Button 
                 size="sm" 
                 className="w-full"
-                onClick={() => fetchUserPerformance({
-                  start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-                  end_date: new Date().toISOString()
-                })}
+                onClick={async () => {
+                  try {
+                    const performance = await fetchUsersPerformance({
+                      start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                      end_date: new Date().toISOString().split('T')[0]
+                    });
+                    console.log('User performance data:', performance);
+                    alert('Datos de performance obtenidos - revisar consola');
+                  } catch (error) {
+                    console.error('Error fetching user performance:', error);
+                    alert('Error al obtener performance de usuarios');
+                  }
+                }}
               >
                 Generar
               </Button>
@@ -1443,9 +1705,122 @@ export const AdminDashboard: React.FC = () => {
               <Button 
                 size="sm" 
                 className="w-full"
-                onClick={() => fetchTransfersOverview()}
+                onClick={async () => {
+                  try {
+                    const overview = await fetchTransfersOverview();
+                    console.log('Transfers overview:', overview);
+                    alert('Overview de transferencias obtenido - revisar consola');
+                  } catch (error) {
+                    console.error('Error fetching transfers overview:', error);
+                    alert('Error al obtener overview de transferencias');
+                  }
+                }}
               >
                 Generar
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Additional Tools */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold">Herramientas Adicionales</h3>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const assignments = await fetchProductAssignments();
+                    console.log('Product assignments:', assignments);
+                    alert('Asignaciones de productos - revisar consola');
+                  } catch (error) {
+                    console.error('Error fetching product assignments:', error);
+                    alert('Error al obtener asignaciones');
+                  }
+                }}
+              >
+                <Package className="h-4 w-4 mr-2" />
+                Ver Asignaciones de Productos
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const health = await fetchAdminModuleHealth();
+                    console.log('Admin module health:', health);
+                    alert('Estado del módulo admin - revisar consola');
+                  } catch (error) {
+                    console.error('Error checking admin health:', error);
+                    alert('Error al verificar estado del módulo');
+                  }
+                }}
+              >
+                <Activity className="h-4 w-4 mr-2" />
+                Estado del Sistema
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const overview = await fetchSystemOverview();
+                    console.log('System overview:', overview);
+                    alert('Overview del sistema - revisar consola');
+                  } catch (error) {
+                    console.error('Error fetching system overview:', error);
+                    alert('Error al obtener overview del sistema');
+                  }
+                }}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Overview del Sistema
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold">Configuración de Alertas</h3>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={() => {
+                  const alertData = {
+                    locationId: 1, // Example location
+                    alertType: 'inventario_minimo' as const,
+                    thresholdValue: 10,
+                    notificationEmails: ['admin@tustockya.com'],
+                    isActive: true
+                  };
+                  handleCreateInventoryAlert(alertData);
+                }}
+              >
+                <AlertCircle className="h-4 w-4 mr-2" />
+                Crear Alerta de Stock Bajo
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const connection = await testMicroserviceConnection();
+                    console.log('Microservice connection:', connection);
+                    alert('Conexión con microservicio - revisar consola');
+                  } catch (error) {
+                    console.error('Error testing microservice:', error);
+                    alert('Error al probar conexión con microservicio');
+                  }
+                }}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Probar Microservicios
               </Button>
             </CardContent>
           </Card>
@@ -1614,7 +1989,11 @@ export const AdminDashboard: React.FC = () => {
         {showCreateCostModal && (
           <CreateCostModal 
             onClose={() => setShowCreateCostModal(false)}
-            onSubmit={handleCreateCost}
+            onSubmit={(costData) => {
+              // Note: Cost creation endpoint not available in current API
+              alert('Función de crear costos no disponible en el API actual');
+              setShowCreateCostModal(false);
+            }}
             locations={locations}
           />
         )}

@@ -46,7 +46,7 @@ interface UserAssignment {
   user_id: number;
   location_id: number;
   role_in_location?: string;
-  start_date?: string; // ISO date
+  start_date?: string;
   notes?: string;
 }
 
@@ -67,8 +67,8 @@ interface WholesaleSaleCreate {
 
 interface ReportFilter {
   location_ids?: number[];
-  start_date: string; // ISO date
-  end_date: string; // ISO date
+  start_date: string;
+  end_date: string;
   user_ids?: number[];
   product_categories?: string[];
   sale_type?: 'detalle' | 'mayor';
@@ -111,20 +111,29 @@ interface AdminLocationAssignmentBulk {
   notes?: string;
 }
 
-// ========== GESTIÓN DE USUARIOS ==========
+// ========== 1. GESTIÓN DE USUARIOS (5 endpoints) ==========
 
 // POST /api/v1/admin/admin/users
 export const createUser = async (userData: UserCreate) => {
+  // location_id debe ser número o undefined
+  const payload = {
+    email: userData.email,
+    password: userData.password,
+    first_name: userData.first_name,
+    last_name: userData.last_name,
+    role: userData.role,
+    location_id: typeof userData.location_id === 'string' ? parseInt(userData.location_id) : userData.location_id
+  };
   const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/users`, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify(userData),
+    body: JSON.stringify(payload),
   });
   return handleResponse(response);
 };
 
 // GET /api/v1/admin/admin/users
-export const fetchAllUsers = async (params?: {
+export const fetchManagedUsers = async (params?: {
   role?: 'vendedor' | 'bodeguero' | 'corredor';
   location_id?: number;
   is_active?: boolean;
@@ -135,6 +144,18 @@ export const fetchAllUsers = async (params?: {
   if (params?.is_active !== undefined) searchParams.append('is_active', params.is_active.toString());
 
   const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/users?${searchParams.toString()}`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/available-locations-for-users
+export const fetchAvailableLocationsForUsers = async (role?: 'vendedor' | 'bodeguero' | 'corredor') => {
+  const searchParams = new URLSearchParams();
+  if (role) searchParams.append('role', role);
+
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/available-locations-for-users?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -161,22 +182,10 @@ export const assignUserToLocation = async (assignmentData: UserAssignment) => {
   return handleResponse(response);
 };
 
-// GET /api/v1/admin/admin/available-locations-for-users
-export const fetchAvailableLocationsForUsers = async (role?: 'vendedor' | 'bodeguero' | 'corredor') => {
-  const searchParams = new URLSearchParams();
-  if (role) searchParams.append('role', role);
-
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/available-locations-for-users?${searchParams.toString()}`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
-  return handleResponse(response);
-};
-
-// ========== GESTIÓN DE UBICACIONES ==========
+// ========== 2. GESTIÓN DE UBICACIONES (2 endpoints) ==========
 
 // GET /api/v1/admin/admin/locations
-export const fetchAllLocations = async (locationType?: 'local' | 'bodega') => {
+export const fetchManagedLocations = async (locationType?: 'local' | 'bodega') => {
   const searchParams = new URLSearchParams();
   if (locationType) searchParams.append('location_type', locationType);
 
@@ -188,7 +197,7 @@ export const fetchAllLocations = async (locationType?: 'local' | 'bodega') => {
 };
 
 // GET /api/v1/admin/admin/locations/{location_id}/stats
-export const fetchLocationStats = async (locationId: number, startDate: string, endDate: string) => {
+export const fetchLocationStatistics = async (locationId: number, startDate: string, endDate: string) => {
   const searchParams = new URLSearchParams({
     start_date: startDate,
     end_date: endDate,
@@ -201,89 +210,28 @@ export const fetchLocationStats = async (locationId: number, startDate: string, 
   return handleResponse(response);
 };
 
-// GET /api/v1/admin/admin/my-locations
-export const fetchMyAssignedLocations = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/my-locations`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
-  return handleResponse(response);
-};
+// ========== 3. GESTIÓN DE COSTOS (1 endpoint) ==========
 
-// GET /api/v1/admin/admin/can-manage-location/{location_id}
-export const canManageLocation = async (locationId: number) => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/can-manage-location/${locationId}`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
-  return handleResponse(response);
-};
-
-// ========== ASIGNACIONES DE ADMINISTRADORES (Solo BOSS) ==========
-
-// POST /api/v1/admin/admin/admin-assignments
-export const assignAdminToLocation = async (assignmentData: AdminLocationAssignmentCreate) => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/admin-assignments`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(assignmentData),
-  });
-  return handleResponse(response);
-};
-
-// GET /api/v1/admin/admin/admin-assignments
-export const fetchAdminAssignments = async (adminId?: number) => {
+// GET /api/v1/admin/admin/costs
+export const fetchCostConfigurations = async (params?: {
+  location_id?: number;
+  cost_type?: 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros';
+}) => {
   const searchParams = new URLSearchParams();
-  if (adminId) searchParams.append('admin_id', adminId.toString());
+  if (params?.location_id) searchParams.append('location_id', params.location_id.toString());
+  if (params?.cost_type) searchParams.append('cost_type', params.cost_type);
 
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/admin-assignments?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// POST /api/v1/admin/admin/admin-assignments/bulk
-export const assignAdminToMultipleLocations = async (assignmentData: AdminLocationAssignmentBulk) => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/admin-assignments/bulk`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(assignmentData),
-  });
-  return handleResponse(response);
-};
-
-// DELETE /api/v1/admin/admin/admin-assignments/{admin_id}/{location_id}
-export const removeAdminAssignment = async (adminId: number, locationId: number) => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/admin-assignments/${adminId}/${locationId}`, {
-    method: 'DELETE',
-    headers: getHeaders(),
-  });
-  return handleResponse(response);
-};
-
-// GET /api/v1/admin/admin/available-admins
-export const fetchAvailableAdministrators = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/available-admins`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
-  return handleResponse(response);
-};
-
-// GET /api/v1/admin/admin/unassigned-locations
-export const fetchUnassignedLocations = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/unassigned-locations`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
-  return handleResponse(response);
-};
-
-// ========== VENTAS Y DESCUENTOS ==========
+// ========== 4. VENTAS AL POR MAYOR (1 endpoint) ==========
 
 // POST /api/v1/admin/admin/wholesale-sales
-export const createWholesaleSale = async (saleData: WholesaleSaleCreate) => {
+export const processWholesaleSale = async (saleData: WholesaleSaleCreate) => {
   const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/wholesale-sales`, {
     method: 'POST',
     headers: getHeaders(),
@@ -291,6 +239,32 @@ export const createWholesaleSale = async (saleData: WholesaleSaleCreate) => {
   });
   return handleResponse(response);
 };
+
+// ========== 5. REPORTES (1 endpoint) ==========
+
+// POST /api/v1/admin/admin/reports/sales
+export const generateSalesReports = async (reportFilter: ReportFilter) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/reports/sales`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(reportFilter),
+  });
+  return handleResponse(response);
+};
+
+// ========== 6. ALERTAS DE INVENTARIO (1 endpoint) ==========
+
+// POST /api/v1/admin/admin/inventory-alerts
+export const configureInventoryAlert = async (alertData: InventoryAlert) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/inventory-alerts`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(alertData),
+  });
+  return handleResponse(response);
+};
+
+// ========== 7. DESCUENTOS (2 endpoints) ==========
 
 // GET /api/v1/admin/admin/discount-requests/pending
 export const fetchPendingDiscountRequests = async () => {
@@ -311,20 +285,21 @@ export const approveDiscountRequest = async (approvalData: DiscountApproval) => 
   return handleResponse(response);
 };
 
-// ========== REPORTES Y ANALYTICS ==========
+// ========== 8. TRANSFERENCIAS (1 endpoint) ==========
 
-// POST /api/v1/admin/admin/reports/sales
-export const generateSalesReport = async (reportFilter: ReportFilter) => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/reports/sales`, {
-    method: 'POST',
+// GET /api/v1/admin/admin/transfers/overview
+export const fetchTransfersOverview = async () => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/transfers/overview`, {
+    method: 'GET',
     headers: getHeaders(),
-    body: JSON.stringify(reportFilter),
   });
   return handleResponse(response);
 };
 
+// ========== 9. PERFORMANCE (1 endpoint) ==========
+
 // GET /api/v1/admin/admin/performance/users
-export const fetchUserPerformance = async (params: {
+export const fetchUsersPerformance = async (params: {
   start_date: string;
   end_date: string;
   user_ids?: number[];
@@ -347,19 +322,96 @@ export const fetchUserPerformance = async (params: {
   return handleResponse(response);
 };
 
-// GET /api/v1/admin/admin/transfers/overview
-export const fetchTransfersOverview = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/transfers/overview`, {
+// ========== 10. ASIGNACIÓN DE PRODUCTOS (2 endpoints) ==========
+
+// POST /api/v1/admin/admin/product-assignments
+export const assignProductModelToWarehouses = async (assignmentData: ProductModelAssignment) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/product-assignments`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(assignmentData),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/product-assignments
+export const fetchProductAssignments = async (params?: {
+  product_reference?: string;
+  warehouse_id?: number;
+}) => {
+  const searchParams = new URLSearchParams();
+  if (params?.product_reference) searchParams.append('product_reference', params.product_reference);
+  if (params?.warehouse_id) searchParams.append('warehouse_id', params.warehouse_id.toString());
+
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/product-assignments?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// ========== GESTIÓN DE INVENTARIO ==========
+// ========== 11. DASHBOARD (2 endpoints) ==========
+
+// GET /api/v1/admin/admin/dashboard
+export const fetchAdminDashboard = async () => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/dashboard`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/dashboard/metrics
+export const fetchDashboardMetrics = async () => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/dashboard/metrics`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// ========== 12. SISTEMA (4 endpoints) ==========
+
+// GET /api/v1/admin/admin/health
+export const fetchAdminModuleHealth = async () => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/health`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/statistics
+export const fetchAdminStatistics = async () => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/statistics`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// POST /api/v1/admin/admin/system/init-additional-tables
+export const initializeAdditionalTables = async () => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/system/init-additional-tables`, {
+    method: 'POST',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/system/overview
+export const fetchSystemOverview = async () => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/system/overview`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// ========== 13. INVENTARIO POR VIDEO IA (4 endpoints) ==========
 
 // POST /api/v1/admin/admin/inventory/video-entry
-export const createVideoInventoryEntry = async (inventoryData: {
+export const processVideoInventoryEntry = async (inventoryData: {
   warehouse_location_id: number;
   estimated_quantity: number;
   product_brand?: string;
@@ -426,9 +478,66 @@ export const fetchVideoProcessingDetails = async (videoId: number) => {
   return handleResponse(response);
 };
 
-// POST /api/v1/admin/admin/product-assignments
-export const createProductAssignment = async (assignmentData: ProductModelAssignment) => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/product-assignments`, {
+// GET /api/v1/admin/admin/video-jobs/{job_id}/status
+export const fetchVideoJobStatus = async (jobId: number) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/video-jobs/${jobId}/status`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// ========== 14. WEBHOOKS Y CALLBACKS (2 endpoints) ==========
+
+// POST /api/v1/admin/admin/video-processing-complete
+export const videoProcessingCompleteWebhook = async (webhookData: {
+  job_id: number;
+  status: string;
+  results: string;
+}) => {
+  const formData = new URLSearchParams();
+  formData.append('job_id', webhookData.job_id.toString());
+  formData.append('status', webhookData.status);
+  formData.append('results', webhookData.results);
+
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/video-processing-complete`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: formData,
+  });
+  return handleResponse(response);
+};
+
+// POST /api/v1/admin/admin/video-callback
+export const videoProcessingCallback = async (callbackData: {
+  job_id: number;
+  status: string;
+  results: string;
+}) => {
+  const formData = new URLSearchParams();
+  formData.append('job_id', callbackData.job_id.toString());
+  formData.append('status', callbackData.status);
+  formData.append('results', callbackData.results);
+
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/video-callback`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: formData,
+  });
+  return handleResponse(response);
+};
+
+// ========== 15. ASIGNACIONES DE ADMINISTRADOR (5 endpoints) ==========
+
+// POST /api/v1/admin/admin/admin-assignments
+export const assignAdminToLocation = async (assignmentData: AdminLocationAssignmentCreate) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/admin-assignments`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(assignmentData),
@@ -436,103 +545,70 @@ export const createProductAssignment = async (assignmentData: ProductModelAssign
   return handleResponse(response);
 };
 
-// GET /api/v1/admin/admin/product-assignments
-export const fetchProductAssignments = async (params?: {
-  product_reference?: string;
-  warehouse_id?: number;
-}) => {
+// GET /api/v1/admin/admin/admin-assignments
+export const fetchAdminAssignments = async (adminId?: number) => {
   const searchParams = new URLSearchParams();
-  if (params?.product_reference) searchParams.append('product_reference', params.product_reference);
-  if (params?.warehouse_id) searchParams.append('warehouse_id', params.warehouse_id.toString());
+  if (adminId) searchParams.append('admin_id', adminId.toString());
 
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/product-assignments?${searchParams.toString()}`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/admin-assignments?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// ========== CONFIGURACIÓN Y ALERTAS ==========
-
-// GET /api/v1/admin/admin/costs
-export const fetchAllCosts = async (params?: {
-  location_id?: number;
-  cost_type?: 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros';
-}) => {
-  const searchParams = new URLSearchParams();
-  if (params?.location_id) searchParams.append('location_id', params.location_id.toString());
-  if (params?.cost_type) searchParams.append('cost_type', params.cost_type);
-
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs?${searchParams.toString()}`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
-  return handleResponse(response);
-};
-
-// POST /api/v1/admin/admin/inventory-alerts
-export const createInventoryAlert = async (alertData: InventoryAlert) => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/inventory-alerts`, {
+// POST /api/v1/admin/admin/admin-assignments/bulk
+export const assignAdminToMultipleLocations = async (assignmentData: AdminLocationAssignmentBulk) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/admin-assignments/bulk`, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify(alertData),
+    body: JSON.stringify(assignmentData),
   });
   return handleResponse(response);
 };
 
-// ========== DASHBOARD Y MÉTRICAS ==========
+// DELETE /api/v1/admin/admin/admin-assignments/{admin_id}/{location_id}
+export const removeAdminAssignment = async (adminId: number, locationId: number) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/admin-assignments/${adminId}/${locationId}`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
 
-// GET /api/v1/admin/admin/dashboard
-export const fetchAdminDashboard = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/dashboard`, {
+// GET /api/v1/admin/admin/my-locations
+export const fetchMyAssignedLocations = async () => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/my-locations`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// GET /api/v1/admin/admin/dashboard/metrics
-export const fetchDashboardMetrics = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/dashboard/metrics`, {
+// ========== 16. UTILIDADES ADMINISTRATIVAS (4 endpoints) ==========
+
+// GET /api/v1/admin/admin/can-manage-location/{location_id}
+export const canManageLocation = async (locationId: number) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/can-manage-location/${locationId}`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// GET /api/v1/admin/admin/statistics
-export const fetchAdminStatistics = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/statistics`, {
+// GET /api/v1/admin/admin/available-admins
+export const fetchAvailableAdministrators = async () => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/available-admins`, {
     method: 'GET',
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
-// ========== SISTEMA Y DIAGNÓSTICO ==========
-
-// GET /api/v1/admin/admin/health
-export const fetchAdminModuleHealth = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/health`, {
+// GET /api/v1/admin/admin/unassigned-locations
+export const fetchUnassignedLocations = async () => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/unassigned-locations`, {
     method: 'GET',
-    headers: getHeaders(),
-  });
-  return handleResponse(response);
-};
-
-// GET /api/v1/admin/admin/system/overview
-export const fetchSystemOverview = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/system/overview`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
-  return handleResponse(response);
-};
-
-// POST /api/v1/admin/admin/system/init-additional-tables
-export const initializeAdditionalTables = async () => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/system/init-additional-tables`, {
-    method: 'POST',
     headers: getHeaders(),
   });
   return handleResponse(response);
@@ -547,18 +623,11 @@ export const testMicroserviceConnection = async () => {
   return handleResponse(response);
 };
 
+// ========== 17. DIAGNÓSTICO (1 endpoint) ==========
+
 // GET /api/v1/admin/admin/diagnosis/job-logs/{job_id}
 export const fetchJobLogs = async (jobId: number) => {
   const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/diagnosis/job-logs/${jobId}`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
-  return handleResponse(response);
-};
-
-// GET /api/v1/admin/admin/video-jobs/{job_id}/status
-export const fetchVideoJobStatus = async (jobId: number) => {
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/video-jobs/${jobId}/status`, {
     method: 'GET',
     headers: getHeaders(),
   });

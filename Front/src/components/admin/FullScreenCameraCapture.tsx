@@ -75,7 +75,7 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
           onClick={openFullScreenCamera}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
         >
-          📹 Grabar Video con Cámara
+          📹 Abrir camara
         </Button>
         
         {videoUrl && (
