@@ -719,15 +719,6 @@ export const AdminDashboard: React.FC = () => {
           <CardContent className="p-4">
             <h3 className="text-lg font-semibold mb-4">Filtros de usuarios</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Buscar usuarios..."
-                  value={userFilters.search}
-                  onChange={(e) => setUserFilters(prev => ({ ...prev, search: e.target.value }))}
-                  className="pl-10"
-                />
-              </div>
               <h4>Tipo de usuario</h4>
               <select
                 value={userFilters.role}
@@ -760,7 +751,6 @@ export const AdminDashboard: React.FC = () => {
                 value={userFilters.status}
                 onChange={(e) => {
                   setUserFilters(prev => ({ ...prev, status: e.target.value }));
-                  setTimeout(() => loadUsers(), 100);
                 }}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               >
@@ -823,9 +813,6 @@ export const AdminDashboard: React.FC = () => {
                             }}
                           >
                             <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Eye className="h-4 w-4" />
                           </Button>
                         </td>
                       </tr>

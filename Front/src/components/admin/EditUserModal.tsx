@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, User, Mail, MapPin } from 'lucide-react';
+import { X, User, Mail } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 
@@ -47,22 +47,12 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.email) {
-      newErrors.email = 'El email es requerido';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'El email no es válido';
-    }
-
     if (!formData.first_name.trim()) {
       newErrors.first_name = 'El nombre es requerido';
     }
 
     if (!formData.last_name.trim()) {
       newErrors.last_name = 'El apellido es requerido';
-    }
-
-    if (!formData.role) {
-      newErrors.role = 'El rol es requerido';
     }
 
     setErrors(newErrors);
@@ -76,8 +66,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
 
     setIsSubmitting(true);
     try {
+      // Solo enviar los campos editables
       await onSubmit({
-        ...formData,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        is_active: formData.is_active,
         location_id: formData.location_id ? parseInt(formData.location_id) : undefined
       });
     } catch (error) {
@@ -141,7 +134,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
             onChange={(e) => handleInputChange('email', e.target.value)}
             error={errors.email}
             icon={<Mail className="h-4 w-4 text-gray-400" />}
-            required
+            disabled
+            readOnly
           />
 
           <div>
@@ -151,15 +145,13 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
             <select
               value={formData.role}
               onChange={(e) => handleInputChange('role', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                errors.role ? 'border-error' : 'border-gray-300'
-              }`}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
+              disabled
             >
               <option value="vendedor">Vendedor</option>
               <option value="bodeguero">Bodeguero</option>
               <option value="corredor">Corredor</option>
             </select>
-            {errors.role && <p className="mt-1 text-sm text-error">{errors.role}</p>}
           </div>
 
           <div>
@@ -180,17 +172,34 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
             </select>
           </div>
 
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="is_active"
-              checked={formData.is_active}
-              onChange={(e) => handleInputChange('is_active', e.target.checked)}
-              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-            />
-            <label htmlFor="is_active" className="ml-2 text-sm text-gray-700">
-              Usuario activo
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Estado del Usuario
             </label>
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="is_active"
+                checked={formData.is_active}
+                onChange={(e) => handleInputChange('is_active', e.target.checked)}
+                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+              />
+              <label htmlFor="is_active" className="text-sm text-gray-700">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  formData.is_active 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {formData.is_active ? 'Activo' : 'Inactivo'}
+                </span>
+              </label>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              {formData.is_active 
+                ? 'El usuario puede acceder al sistema' 
+                : 'El usuario no puede acceder al sistema'
+              }
+            </p>
           </div>
           
           <div className="flex justify-end space-x-3 pt-4">

@@ -17,7 +17,8 @@ import {
   User,
   MapPin,
   Calendar,
-  History
+  History,
+  RotateCcw
 } from 'lucide-react';
 
 interface TransfersViewProps {
@@ -442,6 +443,31 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     }
   };
 
+  // *** NUEVA FUNCIÓN - Solicitar devolución ***
+  const handleRequestReturn = async (transfer: PendingTransfer) => {
+    if (!confirm(`¿Estás seguro de que quieres solicitar la devolución de ${transfer.brand} ${transfer.model} talla ${transfer.size}?`)) {
+      return;
+    }
+    
+    try {
+      console.log('🔄 Solicitando devolución para transferencia:', transfer.id);
+      
+      const returnData = {
+        original_transfer_id: transfer.id
+      };
+      
+      const response = await vendorAPI.requestReturn(returnData);
+      
+      console.log('✅ Devolución solicitada:', response);
+      alert(`Devolución solicitada exitosamente. ID: ${response.return_request_id}\n\n${response.message}`);
+      
+      loadTransfersData(); // Recargar datos
+    } catch (err: any) {
+      console.error('❌ Error solicitando devolución:', err);
+      alert('Error solicitando devolución: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+    }
+  };
+
   // *** FUNCIONES HELPER ACTUALIZADAS ***
   
   // Función para calcular tiempo transcurrido
@@ -748,14 +774,26 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         {/* Botones de acción */}
                         <div className="flex flex-col space-y-2 mt-3">
                           {transfer.status === 'delivered' && (
-                            <Button
-                              onClick={() => handleConfirmAndSell(transfer)}
-                              className="bg-green-600 hover:bg-green-700 text-sm w-full"
-                              size="sm"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Confirmar y Vender
-                            </Button>
+                            <>
+                              <Button
+                                onClick={() => handleConfirmAndSell(transfer)}
+                                className="bg-green-600 hover:bg-green-700 text-sm w-full"
+                                size="sm"
+                              >
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Confirmar y Vender
+                              </Button>
+                              
+                              <Button
+                                onClick={() => handleRequestReturn(transfer)}
+                                className="bg-orange-600 hover:bg-orange-700 text-sm w-full"
+                                size="sm"
+                                variant="outline"
+                              >
+                                <RotateCcw className="h-4 w-4 mr-2" />
+                                Devolver
+                              </Button>
+                            </>
                           )}
                           
                           {transfer.status_info.can_cancel && (

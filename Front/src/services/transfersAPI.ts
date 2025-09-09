@@ -1,4 +1,6 @@
-// src/services/transfersAPI.js - CORREGIDO PARA USAR ENDPOINTS CORRECTOS
+// src/services/transfersAPI.ts - CORREGIDO PARA USAR ENDPOINTS CORRECTOS
+import type { ReturnRequestCreate, ReturnResponse } from '../types/transfers';
+
 const BACKEND_URL = 'https://tustockya-backend.onrender.com';
 
 const getHeaders = () => {
@@ -9,7 +11,7 @@ const getHeaders = () => {
   };
 };
 
-const handleResponse = async (response) => {
+const handleResponse = async (response: Response) => {
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
     throw new Error(error.detail || `Error ${response.status}`);
@@ -17,15 +19,54 @@ const handleResponse = async (response) => {
   return response.json();
 };
 
+// Mock data básico para fallbacks
+const mockData = {
+  seller: {
+    pendingTransfers: [
+      {
+        id: 1,
+        status: 'delivered' as const,
+        sneaker_reference_code: 'MOCK-001',
+        brand: 'Mock Brand',
+        model: 'Mock Model',
+        size: '42',
+        quantity: 1,
+        purpose: 'cliente' as const,
+        priority: 'high' as const,
+        requested_at: new Date().toISOString(),
+        time_elapsed: '2h',
+        next_action: 'Confirmar recepción',
+        courier_name: 'Mock Courier'
+      }
+    ],
+    completedTransfers: [
+      {
+        id: 2,
+        status: 'completed' as const,
+        sneaker_reference_code: 'MOCK-002',
+        brand: 'Mock Brand',
+        model: 'Mock Model',
+        size: '41',
+        quantity: 1,
+        purpose: 'restock' as const,
+        priority: 'normal' as const,
+        requested_at: new Date().toISOString(),
+        time_elapsed: '1h',
+        next_action: 'Completado'
+      }
+    ]
+  }
+};
+
 // NUEVA FUNCIÓN: Intentar conectar al backend primero
-const tryBackendFirst = async (apiCall) => {
+const tryBackendFirst = async (apiCall: () => Promise<any>) => {
   try {
     console.log('🌐 Intentando conectar con el backend...');
     const result = await apiCall();
     console.log('✅ Backend disponible, usando datos reales');
     return { success: true, data: result };
   } catch (error) {
-    console.warn('⚠️ Backend no disponible, usando modo mock:', error.message);
+    console.warn('⚠️ Backend no disponible, usando modo mock:', (error as Error).message);
     return { success: false, error };
   }
 };
@@ -308,6 +349,26 @@ export const vendorAPI = {
           net_income: 2300000
         }
       };
+    }
+  },
+
+  // *** NUEVA FUNCIÓN - Solicitar devolución ***
+  async requestReturn(returnData: ReturnRequestCreate): Promise<ReturnResponse> {
+    console.log('🔄 Solicitando devolución...', returnData);
+    
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/v1/returns/request`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(returnData)
+      });
+      
+      const result = await handleResponse(response);
+      console.log('✅ Devolución solicitada exitosamente');
+      return result;
+    } catch (error) {
+      console.error('❌ Error al solicitar devolución:', error);
+      throw error;
     }
   }
 };
