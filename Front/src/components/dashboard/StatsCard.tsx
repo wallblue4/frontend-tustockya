@@ -24,12 +24,11 @@ export const StatsCard: React.FC<StatsCardProps> = ({
     <Card className="h-full">
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-gray-500">{title}</h3>
+          <h3 className="text-sm font-medium text-foreground">{title}</h3>
           {icon && <div className="text-primary">{icon}</div>}
         </div>
         <div className="flex items-end space-x-2">
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          
+          <p className="text-2xl font-bold text-primary">{value}</p>
           {change !== undefined && (
             <div 
               className={`flex items-center text-sm ${
@@ -37,7 +36,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
                   ? 'text-success' 
                   : isNegative 
                   ? 'text-error' 
-                  : 'text-gray-500'
+                  : 'text-muted-foreground'
               }`}
             >
               {isPositive ? (
@@ -50,7 +49,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
           )}
         </div>
         {period && change !== undefined && (
-          <p className="mt-1 text-xs text-gray-500">{period}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{period}</p>
         )}
       </div>
     </Card>

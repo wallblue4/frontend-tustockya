@@ -77,11 +77,11 @@ export const TransferNotifications: React.FC<TransferNotificationsProps> = ({
 
       {/* Panel de notificaciones */}
       {isOpen && (
-        <Card className="absolute top-12 right-0 w-80 max-h-96 overflow-y-auto shadow-lg">
+        <Card className="absolute top-12 right-0 w-80 max-h-96 overflow-y-auto shadow-xl border border-border">
           <CardContent className="p-0">
-            <div className="p-4 border-b bg-gray-50">
+            <div className="p-4 border-b border-border bg-muted/20">
               <div className="flex justify-between items-center">
-                <h3 className="font-semibold">Notificaciones</h3>
+                <h3 className="font-semibold text-foreground">Notificaciones</h3>
                 <div className="flex space-x-2">
                   {notifications.length > 0 && (
                     <Button
@@ -106,8 +106,8 @@ export const TransferNotifications: React.FC<TransferNotificationsProps> = ({
 
             <div className="max-h-80 overflow-y-auto">
               {notifications.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
-                  <Bell className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                <div className="p-6 text-center text-muted-foreground bg-card">
+                  <Bell className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   <p>No hay notificaciones</p>
                 </div>
               ) : (
@@ -122,9 +122,9 @@ export const TransferNotifications: React.FC<TransferNotificationsProps> = ({
                           {getIcon(notification.type)}
                         </div>
                         <div className="flex-grow min-w-0">
-                          <h4 className="font-medium text-sm">{notification.title}</h4>
-                          <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                          <p className="text-xs text-gray-400 mt-2">
+                          <h4 className="font-medium text-sm text-foreground">{notification.title}</h4>
+                          <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
+                          <p className="text-xs text-muted-foreground mt-2">
                             {notification.timestamp.toLocaleTimeString()}
                           </p>
                           

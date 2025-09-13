@@ -121,7 +121,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ data }) => {
       {/* Main Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => (
-          <Card key={index}>
+          <Card key={index} className="bg-card">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className={`p-2 rounded-lg ${stat.bgColor}`}>
@@ -129,9 +129,9 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ data }) => {
                 </div>
               </div>
               <div>
-                <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
-                <p className="text-xl font-bold text-gray-900">{stat.value}</p>
-                <p className="text-xs text-gray-500">{stat.subtitle}</p>
+                <p className="text-sm text-muted-foreground mb-1">{stat.title}</p>
+                <p className="text-xl font-bold text-foreground">{stat.value}</p>
+                <p className="text-xs text-muted-foreground">{stat.subtitle}</p>
               </div>
             </CardContent>
           </Card>

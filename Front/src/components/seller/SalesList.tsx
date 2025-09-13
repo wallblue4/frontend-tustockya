@@ -227,11 +227,11 @@ export const SalesList: React.FC = () => {
 
   if (loading) {
     return (
-      <Card>
+      <Card className="bg-card">
         <CardContent className="p-6">
           <div className="flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <span className="ml-2">Cargando ventas...</span>
+            <span className="ml-2 text-foreground">Cargando ventas...</span>
           </div>
         </CardContent>
       </Card>
@@ -240,11 +240,11 @@ export const SalesList: React.FC = () => {
 
   if (!salesData) {
     return (
-      <Card>
+      <Card className="bg-card">
         <CardContent className="p-6">
           <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
-            <p className="text-red-600">Error al cargar las ventas del día</p>
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-3" />
+            <p className="text-destructive">Error al cargar las ventas del día</p>
           </div>
         </CardContent>
       </Card>
@@ -255,76 +255,76 @@ export const SalesList: React.FC = () => {
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="bg-card">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Ventas</p>
-                <p className="text-xl font-bold">{formatCurrency(salesData.summary.total_amount)}</p>
-                <p className="text-xs text-gray-500">{salesData.summary.total_sales} ventas</p>
+                <p className="text-sm text-muted-foreground">Total Ventas</p>
+                <p className="text-xl font-bold text-foreground">{formatCurrency(salesData.summary.total_amount)}</p>
+                <p className="text-xs text-muted-foreground">{salesData.summary.total_sales} ventas</p>
               </div>
               <ShoppingBag className="h-8 w-8 text-primary" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-card">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Confirmadas</p>
+                <p className="text-sm text-muted-foreground">Confirmadas</p>
                 <p className="text-xl font-bold text-success">{salesData.summary.confirmed_sales}</p>
-                <p className="text-xs text-gray-500">{salesData.summary.total_items} productos</p>
+                <p className="text-xs text-muted-foreground">{salesData.summary.total_items} productos</p>
               </div>
               <CheckCircle className="h-8 w-8 text-success" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-card">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Pendientes</p>
+                <p className="text-sm text-muted-foreground">Pendientes</p>
                 <p className="text-xl font-bold text-warning">{salesData.summary.pending_confirmation}</p>
-                <p className="text-xs text-gray-500">{formatCurrency(salesData.summary.pending_amount)}</p>
+                <p className="text-xs text-muted-foreground">{formatCurrency(salesData.summary.pending_amount)}</p>
               </div>
               <Clock className="h-8 w-8 text-warning" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-card">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Promedio</p>
-                <p className="text-xl font-bold text-blue-600">{formatCurrency(salesData.summary.average_sale)}</p>
-                <p className="text-xs text-gray-500">por venta</p>
+                <p className="text-sm text-muted-foreground">Promedio</p>
+                <p className="text-xl font-bold text-primary">{formatCurrency(salesData.summary.average_sale)}</p>
+                <p className="text-xs text-muted-foreground">por venta</p>
               </div>
-              <DollarSign className="h-8 w-8 text-blue-600" />
+              <DollarSign className="h-8 w-8 text-primary" />
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Payment Methods Stats */}
-      <Card>
+      <Card className="bg-card">
         <CardHeader>
-          <h3 className="text-lg font-semibold">Métodos de Pago</h3>
+          <h3 className="text-lg font-semibold text-foreground">Métodos de Pago</h3>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {Object.entries(salesData.summary.payment_methods_stats).map(([method, stats]) => (
-              <div key={method} className="bg-gray-50 p-3 rounded-lg">
+              <div key={method} className="bg-muted/20 p-3 rounded-lg border border-border">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     {getPaymentMethodIcon(method)}
-                    <span className="font-medium">{getPaymentMethodLabel(method)}</span>
+                    <span className="font-medium text-foreground">{getPaymentMethodLabel(method)}</span>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">{formatCurrency(stats.amount)}</p>
-                    <p className="text-sm text-gray-600">{stats.count} transacciones</p>
+                    <p className="font-bold text-foreground">{formatCurrency(stats.amount)}</p>
+                    <p className="text-sm text-muted-foreground">{stats.count} transacciones</p>
                   </div>
                 </div>
               </div>
@@ -334,19 +334,19 @@ export const SalesList: React.FC = () => {
       </Card>
 
       {/* Filter and Sales List */}
-      <Card>
+      <Card className="bg-card">
         <CardHeader>
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold flex items-center">
+            <h3 className="text-lg font-semibold flex items-center text-foreground">
               <ShoppingBag className="h-5 w-5 mr-2" />
               Ventas del Día - {salesData.date}
             </h3>
             <div className="flex items-center space-x-2">
-              <Filter className="h-4 w-4 text-gray-500" />
+              <Filter className="h-4 w-4 text-muted-foreground" />
               <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value as any)}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className="px-3 py-1 border border-border bg-card text-foreground rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="all">Todas ({salesData.summary.total_sales})</option>
                 <option value="confirmed">Confirmadas ({salesData.summary.confirmed_sales})</option>
@@ -357,15 +357,15 @@ export const SalesList: React.FC = () => {
         </CardHeader>
         <CardContent>
           {error && (
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
-              <p className="text-sm text-amber-800">Modo de desarrollo - Usando datos de prueba</p>
+            <div className="mb-4 p-3 bg-warning/20 border border-warning/30 rounded-md">
+              <p className="text-sm text-warning">Modo de desarrollo - Usando datos de prueba</p>
             </div>
           )}
           
           {filteredSales.length === 0 ? (
             <div className="text-center py-8">
-              <ShoppingBag className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500">
+              <ShoppingBag className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">
                 {filter === 'all' ? 'No hay ventas registradas hoy' : 
                  filter === 'confirmed' ? 'No hay ventas confirmadas' : 
                  'No hay ventas pendientes'}
@@ -374,7 +374,7 @@ export const SalesList: React.FC = () => {
           ) : (
             <div className="space-y-4">
               {filteredSales.map((sale) => (
-                <div key={sale.id} className="border rounded-lg p-4">
+                <div key={sale.id} className="border border-border bg-card rounded-lg p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
@@ -385,16 +385,16 @@ export const SalesList: React.FC = () => {
                         }`}>
                           {sale.status_info.is_confirmed ? 'Confirmada' : 'Pendiente'}
                         </span>
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm text-muted-foreground">
                           ID: {sale.id} • {formatSaleDate(sale.sale_date)}
                         </span>
                         {sale.status_info.has_receipt && (
-                          <Receipt className="h-4 w-4 text-blue-500" title="Tiene comprobante" />
+                          <Receipt className="h-4 w-4 text-primary" title="Tiene comprobante" />
                         )}
                       </div>
                       
-                      <div className="text-sm text-gray-600 mb-2">
-                        <span className="font-medium">{sale.first_name} {sale.last_name}</span>
+                      <div className="text-sm text-muted-foreground mb-2">
+                        <span className="font-medium text-foreground">{sale.first_name} {sale.last_name}</span>
                         <span className="mx-2">•</span>
                         <span>{sale.location_name}</span>
                       </div>
@@ -403,10 +403,10 @@ export const SalesList: React.FC = () => {
                       <div className="space-y-1 mb-3">
                         {sale.items.map((item, index) => (
                           <div key={index} className="text-sm">
-                            <span className="font-medium">{item.brand} {item.model}</span>
-                            <span className="text-gray-600"> - {item.color} • Talla {item.size} × {item.quantity}</span>
-                            <span className="ml-2 text-gray-500">({formatCurrency(item.unit_price)})</span>
-                            <span className="text-xs text-gray-400 ml-1">Ref: {item.sneaker_reference_code}</span>
+                            <span className="font-medium text-foreground">{item.brand} {item.model}</span>
+                            <span className="text-muted-foreground"> - {item.color} • Talla {item.size} × {item.quantity}</span>
+                            <span className="ml-2 text-muted-foreground">({formatCurrency(item.unit_price)})</span>
+                            <span className="text-xs text-muted-foreground ml-1">Ref: {item.sneaker_reference_code}</span>
                           </div>
                         ))}
                       </div>
@@ -414,25 +414,25 @@ export const SalesList: React.FC = () => {
                       {/* Payment Methods */}
                       <div className="flex flex-wrap gap-2 mb-2">
                         {sale.payment_methods.map((payment, index) => (
-                          <div key={index} className="flex items-center space-x-1 text-xs bg-gray-100 px-2 py-1 rounded">
+                          <div key={index} className="flex items-center space-x-1 text-xs bg-muted/30 px-2 py-1 rounded">
                             {getPaymentMethodIcon(payment.payment_type)}
-                            <span>{getPaymentMethodLabel(payment.payment_type)}: {formatCurrency(payment.amount)}</span>
+                            <span className="text-foreground">{getPaymentMethodLabel(payment.payment_type)}: {formatCurrency(payment.amount)}</span>
                             {payment.reference && (
-                              <span className="text-gray-500">({payment.reference})</span>
+                              <span className="text-muted-foreground">({payment.reference})</span>
                             )}
                           </div>
                         ))}
                       </div> 
 
                       {sale.notes && (
-                        <div className="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-700">
+                        <div className="mt-2 p-2 bg-muted/20 rounded text-sm text-foreground">
                           <strong>Notas:</strong> {sale.notes}
                         </div>
                       )}
                     </div>
                     
                     <div className="text-right ml-4">
-                      <p className="text-xl font-bold">{formatCurrency(sale.total_amount)}</p>
+                      <p className="text-xl font-bold text-foreground">{formatCurrency(sale.total_amount)}</p>
                       {sale.status_info.confirmation_pending && (
                         <Button
                           size="sm"
@@ -444,7 +444,7 @@ export const SalesList: React.FC = () => {
                         </Button>
                       )}
                       {sale.confirmed_at && (
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           Confirmada: {formatSaleDate(sale.confirmed_at)}
                         </p>
                       )}

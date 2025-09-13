@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
+import Select from '../../components/ui/Select';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { 
   Users, 
@@ -535,9 +536,9 @@ export const AdminDashboard: React.FC = () => {
 
   const renderDashboardView = () => {
     return (
-      <div className="space-y-6 p-4 md:p-6">
+      <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Panel de Administración</h2>
+          <h2 className="text-2xl font-bold text-foreground">Panel de Administración</h2>
           <Button onClick={() => loadDashboardData()} size="sm" variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             Actualizar
@@ -547,23 +548,23 @@ export const AdminDashboard: React.FC = () => {
         {/* Key Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard
-            title="Ventas Hoy"
-            value={metricsData?.total_sales_today ? formatCurrency(parseFloat(metricsData.total_sales_today)) : formatCurrency(0)}
+            title={<span className="text-foreground">Ventas Hoy</span>}
+            value={<span className="text-primary font-bold">{metricsData?.total_sales_today ? formatCurrency(parseFloat(metricsData.total_sales_today)) : formatCurrency(0)}</span>}
             icon={<DollarSign className="h-6 w-6" />}
           />
           <StatsCard
-            title="Ventas del Mes"
-            value={metricsData?.total_sales_month ? formatCurrency(parseFloat(metricsData.total_sales_month)) : formatCurrency(0)}
+            title={<span className="text-foreground">Ventas del Mes</span>}
+            value={<span className="text-primary font-bold">{metricsData?.total_sales_month ? formatCurrency(parseFloat(metricsData.total_sales_month)) : formatCurrency(0)}</span>}
             icon={<TrendingUp className="h-6 w-6" />}
           />
           <StatsCard
-            title="Usuarios Activos"
-            value={metricsData?.active_users?.toString() || '0'}
+            title={<span className="text-foreground">Usuarios Activos</span>}
+            value={<span className="text-primary font-bold">{metricsData?.active_users?.toString() || '0'}</span>}
             icon={<Users className="h-6 w-6" />}
           />
           <StatsCard
-            title="Transferencias Pendientes"
-            value={metricsData?.pending_transfers?.toString() || '0'}
+            title={<span className="text-foreground">Transferencias Pendientes</span>}
+            value={<span className="text-primary font-bold">{metricsData?.pending_transfers?.toString() || '0'}</span>}
             icon={<Truck className="h-6 w-6" />}
           />
         </div>
@@ -625,7 +626,7 @@ export const AdminDashboard: React.FC = () => {
                 {dashboardData.managed_locations?.length > 0 ? (
                   <div className="space-y-4">
                     {dashboardData.managed_locations.map((location, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div key={index} className=" flex items-center justify-between p-3 bg-card rounded-lg">
                         <div>
                           <p className="font-medium">{location.location_name}</p>
                           <p className="text-sm text-gray-600">{location.location_type}</p>
@@ -705,9 +706,9 @@ export const AdminDashboard: React.FC = () => {
 
   const renderUsersView = () => {
     return (
-      <div className="space-y-6 p-4 md:p-6">
+      <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <h2 className="text-2xl font-bold">Gestión de Usuarios</h2>
+          <h2 className="text-2xl font-bold text-foreground">Gestión de Usuarios</h2>
           <Button onClick={() => setShowCreateUserModal(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Crear Usuario
@@ -720,44 +721,42 @@ export const AdminDashboard: React.FC = () => {
             <h3 className="text-lg font-semibold mb-4">Filtros de usuarios</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <h4>Tipo de usuario</h4>
-              <select
+              <Select
                 value={userFilters.role}
                 onChange={(e) => {
                   const role = e.target.value as '' | 'vendedor' | 'bodeguero' | 'corredor';
                   setUserFilters(prev => ({ ...prev, role }));
                 }}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">Todos los roles</option>
-                <option value="vendedor">Vendedor</option>
-                <option value="bodeguero">Bodeguero</option>
-                <option value="corredor">Corredor</option>
-              </select>
+                options={[
+                  { value: '', label: 'Todos los roles' },
+                  { value: 'vendedor', label: 'Vendedor' },
+                  { value: 'bodeguero', label: 'Bodeguero' },
+                  { value: 'corredor', label: 'Corredor' },
+                ]}
+              />
               <h4>Ubicación</h4>
-              <select
+              <Select
                 value={userFilters.location}
                 onChange={(e) => {
                   setUserFilters(prev => ({ ...prev, location: e.target.value }));
                 }}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">Todas las ubicaciones</option>
-                {locations.map(location => (
-                  <option key={location.id} value={location.id.toString()}>{location.name}</option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: 'Todas las ubicaciones' },
+                  ...locations.map(location => ({ value: location.id.toString(), label: location.name }))
+                ]}
+              />
               <h4>Estado</h4>
-              <select
+              <Select
                 value={userFilters.status}
                 onChange={(e) => {
                   setUserFilters(prev => ({ ...prev, status: e.target.value }));
                 }}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">Todos los estados</option>
-                <option value="active">Activo</option>
-                <option value="inactive">Inactivo</option>
-              </select>
+                options={[
+                  { value: '', label: 'Todos los estados' },
+                  { value: 'active', label: 'Activo' },
+                  { value: 'inactive', label: 'Inactivo' },
+                ]}
+              />
             </div>
           </CardContent>
         </Card>
@@ -767,58 +766,58 @@ export const AdminDashboard: React.FC = () => {
           <CardContent className="p-0">
             {users.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {users.map((user) => (
-                      <tr key={user.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <p className="font-medium">{user.full_name}</p>
-                            <p className="text-sm text-gray-600">ID: {user.id}</p>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {user.email}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge variant="secondary">
-                            {capitalize(user.role)}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {user.location_name || 'Sin asignar'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge variant={user.is_active ? 'success' : 'error'}>
-                            {user.is_active ? 'Activo' : 'Inactivo'}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setEditingUser(user);
-                              setShowEditUserModal(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </td>
+                  <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
+                    <thead className="bg-popover text-popover-foreground">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Usuario</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Email</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Rol</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Ubicación</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Estado</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Acciones</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {users.map((user) => (
+                        <tr key={user.id} className="border-b border-border last:border-b-0 bg-card hover:bg-muted/10 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div>
+                              <p className="font-medium text-foreground">{user.full_name}</p>
+                              <p className="text-sm text-muted-foreground">ID: {user.id}</p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                            {user.email}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge variant="secondary">
+                              {capitalize(user.role)}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                            {user.location_name || 'Sin asignar'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge variant={user.is_active ? 'success' : 'error'}>
+                              {user.is_active ? 'Activo' : 'Inactivo'}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingUser(user);
+                                setShowEditUserModal(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
               </div>
             ) : (
               <EmptyState
@@ -835,9 +834,9 @@ export const AdminDashboard: React.FC = () => {
 
   const renderCostsView = () => {
     return (
-      <div className="space-y-6 p-4 md:p-6">
+      <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <h2 className="text-2xl font-bold">Gestión de Costos</h2>
+          <h2 className="text-2xl font-bold text-foreground">Gestión de Costos</h2>
           <Button onClick={() => setShowCreateCostModal(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Registrar Costo
@@ -857,37 +856,35 @@ export const AdminDashboard: React.FC = () => {
                   className="pl-10"
                 />
               </div>
-              <select
+              <Select
                 value={costFilters.category}
                 onChange={(e) => {
                   const category = e.target.value as typeof costFilters.category;
                   setCostFilters(prev => ({ ...prev, category }));
                   setTimeout(() => loadCosts(), 100);
                 }}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">Todas las categorías</option>
-                <option value="arriendo">Arriendo</option>
-                <option value="servicios">Servicios</option>
-                <option value="nomina">Nómina</option>
-                <option value="mercancia">Mercancía</option>
-                <option value="comisiones">Comisiones</option>
-                <option value="transporte">Transporte</option>
-                <option value="otros">Otros</option>
-              </select>
-              <select
+                options={[
+                  { value: '', label: 'Todas las categorías' },
+                  { value: 'arriendo', label: 'Arriendo' },
+                  { value: 'servicios', label: 'Servicios' },
+                  { value: 'nomina', label: 'Nómina' },
+                  { value: 'mercancia', label: 'Mercancía' },
+                  { value: 'comisiones', label: 'Comisiones' },
+                  { value: 'transporte', label: 'Transporte' },
+                  { value: 'otros', label: 'Otros' },
+                ]}
+              />
+              <Select
                 value={costFilters.location}
                 onChange={(e) => {
                   setCostFilters(prev => ({ ...prev, location: e.target.value }));
                   setTimeout(() => loadCosts(), 100);
                 }}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">Todas las ubicaciones</option>
-                {locations.map(location => (
-                  <option key={location.id} value={location.id.toString()}>{location.name}</option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: 'Todas las ubicaciones' },
+                  ...locations.map(location => ({ value: location.id.toString(), label: location.name }))
+                ]}
+              />
               <Button onClick={() => loadCosts()} size="sm" variant="outline">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualizar
@@ -1232,12 +1229,12 @@ export const AdminDashboard: React.FC = () => {
   // ...el estado ahora está en el componente principal...
 
     return (
-      <div className="space-y-6 p-4 md:p-6">
+      <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <h2 className="text-xl font-semibold">Gestión de Inventario</h2>
+          <h2 className="text-xl font-semibold text-foreground">Gestión de Inventario</h2>
           <Button onClick={async () => {
             try {
-              const history = await fetchVideoProcessingHistory({ limit: 10 });
+              const history = await fetchVideoProcessingHistory();
               console.log('Video processing history:', history);
             } catch (error) {
               console.error('Error fetching video history:', error);
@@ -1248,7 +1245,6 @@ export const AdminDashboard: React.FC = () => {
           </Button>
         </div>
         
-        {/* Video Inventory Form */}
         <Card>
           <CardHeader>
             <h3 className="text-lg font-semibold">Registrar Inventario</h3>
@@ -1257,16 +1253,15 @@ export const AdminDashboard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 
-                <select 
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={videoInventoryForm.warehouse_location_id}
+                <Select
+                  value={videoInventoryForm.warehouse_location_id.toString()}
                   onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, warehouse_location_id: parseInt(e.target.value) }))}
-                >
-                  <option value={0}>Seleccionar Bodega</option>
-                  {locations.filter(l => l.type === 'bodega').map(location => (
-                    <option key={location.id} value={location.id}>{location.name}</option>
-                  ))}
-                </select>
+                  options={[
+                    { value: '0', label: 'Seleccionar Bodega' },
+                    ...locations.filter(l => l.type === 'bodega').map(location => ({ value: location.id.toString(), label: location.name }))
+                  ]}
+                />
+                
                 <Input 
                   placeholder="Marca (Opcional)" 
                   value={videoInventoryForm.product_brand}
@@ -1279,7 +1274,7 @@ export const AdminDashboard: React.FC = () => {
                 />
                 
                 {/* Campos para tallas y cantidades */}
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tallas y cantidades</label>
+                <label className="block text-sm font-medium text-foreground mb-1">Tallas y cantidades</label>
                 {videoInventoryForm.sizes.map((entry, idx) => (
                   <div key={idx} className="flex items-center gap-2 mb-2">
                     <Input
@@ -1328,22 +1323,21 @@ export const AdminDashboard: React.FC = () => {
                           }));
                         }}
                       >
-                        x
+                        -
                       </Button>
                     )}
                   </div>
                 ))}
-                <textarea 
+                <textarea
                   placeholder="Notas adicionales"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  rows={3}
+                  className="w-full px-3 py-2 border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent placeholder:text-muted-foreground resize-none min-h-[80px]"
                   value={videoInventoryForm.notes}
                   onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, notes: e.target.value }))}
                 />
               </div>
-              
+
               <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     Tomar Foto del Inventario
                   </label>
                   <FullScreenCameraCapture
@@ -1358,10 +1352,11 @@ export const AdminDashboard: React.FC = () => {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     Grabar Video del Inventario
                   </label>
                   <FullScreenCameraCapture
+                    mode="video"
                     onVideoRecorded={async (url, blob) => {
                       console.log("Video listo para subir:", url, blob);
                       
@@ -1445,7 +1440,7 @@ export const AdminDashboard: React.FC = () => {
               <p className="text-2xl font-bold">
                 {formatCurrency(wholesaleOrders.reduce((sum, order) => sum + parseFloat(order.final_amount), 0))}
               </p>
-              <p className="text-sm text-gray-600">Valor Total</p>
+              <p className="text-sm text-gray-600">Ventas Totales</p>
             </CardContent>
           </Card>
         </div>
@@ -1461,18 +1456,15 @@ export const AdminDashboard: React.FC = () => {
                 {wholesaleOrders.map((order) => (
                   <div key={order.id} className="border rounded-lg p-4">
                     <div className="flex justify-between items-start mb-3">
-                      <div className="flex-1">
+                      <div>
                         <h4 className="font-semibold text-lg">{order.customer_name}</h4>
-                        <p className="text-sm text-gray-600">
-                          {order.customer_document} | {order.customer_phone}
-                        </p>
+                        <p className="text-sm text-gray-600">Doc: {order.customer_document}</p>
                         <p className="text-sm text-gray-600">Ubicación: {order.location_name}</p>
                         <p className="text-sm text-gray-600">Procesado por: {order.processed_by_name}</p>
                       </div>
                       
                       <div className="text-right">
                         <p className="text-xl font-bold">{formatCurrency(parseFloat(order.final_amount))}</p>
-                        <p className="text-sm text-gray-500">({order.items_count} items)</p>
                         <p className="text-xs text-gray-500">{formatDate(order.sale_date)}</p>
                       </div>
                     </div>
@@ -1581,7 +1573,7 @@ export const AdminDashboard: React.FC = () => {
           <Card className="cursor-pointer hover:shadow-lg transition-shadow">
             <CardContent className="p-6 text-center">
               <Users className="h-12 w-12 text-secondary mx-auto mb-3" />
-              <h3 className="font-semibold mb-2">Performance del Equipo</h3>
+              <h3 className="font-semibold mb-2">Performance de Usuarios</h3>
               <p className="text-sm text-gray-600 mb-4">Rendimiento por usuario y rol</p>
               <Button size="sm" className="w-full">Ver Métricas</Button>
             </CardContent>
@@ -1600,7 +1592,7 @@ export const AdminDashboard: React.FC = () => {
             <CardContent className="p-6 text-center">
               <PieChart className="h-12 w-12 text-warning mx-auto mb-3" />
               <h3 className="font-semibold mb-2">Análisis Financiero</h3>
-              <p className="text-sm text-gray-600 mb-4">Rentabilidad y costos</p>
+              <p className="text-sm text-gray-600 mb-4">Costos, márgenes y rentabilidad</p>
               <Button size="sm" className="w-full">Analizar</Button>
             </CardContent>
           </Card>
@@ -1625,14 +1617,16 @@ export const AdminDashboard: React.FC = () => {
 
   const renderReportsView = () => {
     return (
-      <div className="space-y-6 p-4 md:p-6">
-        <h2 className="text-2xl font-bold">Reportes y Análisis</h2>
+      <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+          <h2 className="text-2xl font-bold text-foreground">Reportes y Análisis</h2>
+        </div>
 
         {/* Report Types */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card className="cursor-pointer hover:shadow-lg transition-shadow">
             <CardContent className="p-6 text-center">
-              <FileText className="h-12 w-12 text-primary mx-auto mb-3" />
+              <BarChart3 className="h-12 w-12 text-primary mx-auto mb-3" />
               <h3 className="font-semibold mb-2">Reporte de Ventas</h3>
               <p className="text-sm text-gray-600 mb-4">Análisis detallado de ventas por período</p>
               <Button 
@@ -1644,7 +1638,7 @@ export const AdminDashboard: React.FC = () => {
                       start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                       end_date: new Date().toISOString().split('T')[0]
                     });
-                    console.log('Sales report generated:', report);
+                    console.log('Sales report:', report);
                     alert('Reporte de ventas generado - revisar consola');
                   } catch (error) {
                     console.error('Error generating sales report:', error);
@@ -1783,7 +1777,8 @@ export const AdminDashboard: React.FC = () => {
                     locationId: 1, // Example location
                     alertType: 'inventario_minimo' as const,
                     thresholdValue: 10,
-                    notificationEmails: ['admin@tustockya.com'],
+                    productReference: '',
+                    notificationEmails: ['admin@example.com'],
                     isActive: true
                   };
                   handleCreateInventoryAlert(alertData);
@@ -1875,9 +1870,9 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <DashboardLayout title="Panel de Administración">
-      <div className="min-h-screen bg-gray-50">
-        {/* Navigation tabs - Mobile */}
-        <div className="lg:hidden bg-white border-b sticky top-0 z-10">
+      <div className="min-h-screen bg-background">
+        {/* Mobile navigation */}
+        <div className="lg:hidden bg-card border-b border-border sticky top-0 z-10">
           <div className="flex overflow-x-auto px-4 py-2 space-x-2">
             {[
               { key: 'dashboard', label: 'Dashboard', icon: <BarChart3 className="h-4 w-4" /> },
@@ -1894,8 +1889,8 @@ export const AdminDashboard: React.FC = () => {
                 onClick={() => setCurrentView(tab.key as AdminView)}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${
                   currentView === tab.key
-                    ? 'bg-primary text-white'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'bg-primary text-primary-foreground shadow-lg'
+                    : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground'
                 }`}
               >
                 {tab.icon}
@@ -1907,17 +1902,17 @@ export const AdminDashboard: React.FC = () => {
 
         {/* Sidebar navigation - Desktop */}
         <div className="hidden lg:flex">
-          <div className="w-64 bg-white shadow-sm h-screen fixed left-0 top-16 overflow-y-auto">
+          <div className="w-64 bg-card border-r border-border h-screen sticky top-0 overflow-y-auto">
             <div className="p-4">
               <nav className="space-y-2">
                 {[
                   { key: 'dashboard', label: 'Panel Principal', icon: <BarChart3 className="h-5 w-5" /> },
                   { key: 'users', label: 'Gestión de Usuarios', icon: <Users className="h-5 w-5" /> },
                   { key: 'inventory', label: 'Gestión de Inventario', icon: <Package className="h-5 w-5" /> },
-                  { key: 'wholesale', label: 'Ventas Mayoristas', icon: <ShoppingBag className="h-5 w-5" /> },
+                  { key: 'wholesale', label: 'Ventas Mayoreo', icon: <ShoppingBag className="h-5 w-5" /> },
                   { key: 'costs', label: 'Gestión de Costos', icon: <DollarSign className="h-5 w-5" /> },
-                  { key: 'analytics', label: 'Análisis y Métricas', icon: <PieChart className="h-5 w-5" /> },
                   { key: 'locations', label: 'Ubicaciones', icon: <MapPin className="h-5 w-5" /> },
+                  { key: 'analytics', label: 'Análisis', icon: <PieChart className="h-5 w-5" /> },
                   { key: 'notifications', label: 'Notificaciones', icon: <Bell className="h-5 w-5" /> },
                   { key: 'reports', label: 'Reportes', icon: <FileText className="h-5 w-5" /> },
                 ].map((item) => (
@@ -1926,8 +1921,8 @@ export const AdminDashboard: React.FC = () => {
                     onClick={() => setCurrentView(item.key as AdminView)}
                     className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left ${
                       currentView === item.key
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-foreground hover:bg-muted/20'
                     }`}
                   >
                     {item.icon}
@@ -1942,7 +1937,7 @@ export const AdminDashboard: React.FC = () => {
               </nav>
             </div>
           </div>
-          <div className="ml-64 flex-1">
+          <div className="ml-64 flex-1 bg-background">
             {renderCurrentView()}
           </div>
         </div>
@@ -1965,8 +1960,8 @@ export const AdminDashboard: React.FC = () => {
           <EditUserModal 
             user={editingUser}
             onClose={() => {
-              setShowEditUserModal(false);
               setEditingUser(null);
+              setShowEditUserModal(false);
             }}
             onSubmit={(userData) => handleUpdateUser(editingUser.id, userData)}
             locations={availableLocations}
@@ -1977,8 +1972,7 @@ export const AdminDashboard: React.FC = () => {
           <CreateCostModal 
             onClose={() => setShowCreateCostModal(false)}
             onSubmit={(costData) => {
-              // Note: Cost creation endpoint not available in current API
-              alert('Función de crear costos no disponible en el API actual');
+              console.log('Creating cost:', costData);
               setShowCreateCostModal(false);
             }}
             locations={locations}

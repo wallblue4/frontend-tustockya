@@ -490,7 +490,7 @@ export const RunnerDashboard: React.FC = () => {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-gray-500">Cargando entregas...</p>
+            <p className="text-muted-foreground">Cargando entregas...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -581,11 +581,16 @@ export const RunnerDashboard: React.FC = () => {
         )}
 
         {error && (
-          <Card className="border-amber-200 bg-amber-50">
+          <Card className="border-warning/30 bg-warning/10">
             <CardContent className="p-3 md:p-4">
               <div className="flex items-center space-x-3">
-                <AlertCircle className="h-4 w-4 md:h-5 md:w-5 text-amber-600" />
-                <p className="text-amber-800 text-sm">{error} - Usando datos de prueba</p>
+                <AlertCircle className="h-4 w-4 md:h-5 md:w-5 text-warning" />
+                <div>
+                  <p className="text-sm font-medium text-warning">Modo de Desarrollo</p>
+                  <p className="text-sm text-warning">
+                    Usando datos de prueba. El servidor backend no está disponible.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -616,7 +621,7 @@ export const RunnerDashboard: React.FC = () => {
                   <select
                     value={purposeFilter}
                     onChange={(e) => setPurposeFilter(e.target.value as any)}
-                    className={`px-2 py-1 md:px-3 md:py-2 border border-gray-300 rounded-md text-xs md:text-sm ${showFilters ? 'block' : 'hidden md:block'}`}
+                    className={`px-2 py-1 md:px-3 md:py-2 border border-border rounded-md text-xs md:text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary ${showFilters ? 'block' : 'hidden md:block'}`}
                   >
                     <option value="all">Todos los tipos</option>
                     <option value="cliente">Solo urgentes</option>
@@ -628,9 +633,9 @@ export const RunnerDashboard: React.FC = () => {
             <CardContent>
               {filteredAvailableRequests.length === 0 ? (
                 <div className="text-center py-8 md:py-12">
-                  <Package className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
+                  <Package className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
                   <h3 className="text-base md:text-lg font-medium">No hay entregas disponibles</h3>
-                  <p className="text-gray-500 text-sm">
+                  <p className="text-muted-foreground text-sm">
                     {purposeFilter !== 'all' 
                       ? 'No hay entregas que coincidan con el filtro'
                       : 'Revisa en unos minutos para nuevas solicitudes.'
@@ -663,7 +668,7 @@ export const RunnerDashboard: React.FC = () => {
                                   {request.request_info.urgency}
                                 </span>
                               </div>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-muted-foreground">
                                 ID #{request.id}
                               </div>
                             </div>
@@ -701,7 +706,7 @@ export const RunnerDashboard: React.FC = () => {
                                     </span>
                                   </div>
                                   
-                                  <p className="text-xs text-gray-500">
+                                  <p className="text-xs text-muted-foreground">
                                     ⏱️ {request.hours_since_accepted.toFixed(1)}h • 📍 {distance} km
                                   </p>
                                 </div>
@@ -786,11 +791,11 @@ export const RunnerDashboard: React.FC = () => {
                               }`}>
                                 {request.request_info.urgency}
                               </span>
-                              <span className="text-sm text-gray-500">
+                              <span className="text-sm text-muted-foreground">
                                 ⏱️ Esperando: {request.hours_since_accepted.toFixed(1)} horas
                               </span>
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-muted-foreground">
                               ID #{request.id}
                             </div>
                           </div>
@@ -840,7 +845,7 @@ export const RunnerDashboard: React.FC = () => {
                                       <div className="font-semibold text-gray-900 text-lg">
                                         Solicitante: {request.request_info.requester}
                                       </div>
-                                      <div className="text-sm text-gray-500">Cliente</div>
+                                      <div className="text-sm text-muted-foreground">Cliente</div>
                                     </div>
                                   </div>
                                 </div>
@@ -915,9 +920,9 @@ export const RunnerDashboard: React.FC = () => {
             <CardContent>
               {assignedTransports.length === 0 ? (
                 <div className="text-center py-8 md:py-12">
-                  <Truck className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
+                  <Truck className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
                   <h3 className="text-base md:text-lg font-medium">No tienes entregas asignadas</h3>
-                  <p className="text-gray-500 text-sm">Las entregas que aceptes aparecerán aquí.</p>
+                  <p className="text-muted-foreground text-sm">Las entregas que aceptes aparecerán aquí.</p>
                 </div>
               ) : (
                 <div className="space-y-4 md:space-y-6">
@@ -936,7 +941,7 @@ export const RunnerDashboard: React.FC = () => {
                             }`}>
                               {transport.action_description}
                             </span>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-muted-foreground">
                               ID #{transport.id}
                             </div>
                           </div>
@@ -961,7 +966,7 @@ export const RunnerDashboard: React.FC = () => {
                               <span className="text-sm font-medium text-blue-600">
                                 Talla {transport.size}
                               </span>
-                              <span className="text-sm text-gray-500">
+                              <span className="text-sm text-muted-foreground">
                                 Cantidad: {transport.quantity}
                               </span>
                             </div>
@@ -1019,7 +1024,7 @@ export const RunnerDashboard: React.FC = () => {
                           }`}>
                             {transport.action_description}
                           </span>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-muted-foreground">
                             ID #{transport.id} • {new Date(transport.courier_accepted_at).toLocaleDateString()}
                           </div>
                         </div>
@@ -1072,7 +1077,7 @@ export const RunnerDashboard: React.FC = () => {
                                     <div className="font-semibold text-gray-900 text-lg">
                                       Solicitante: {transport.requester_first_name} {transport.requester_last_name}
                                     </div>
-                                    <div className="text-sm text-gray-500">Cliente</div>
+                                    <div className="text-sm text-muted-foreground">Cliente</div>
                                   </div>
                                 </div>
                               </div>
@@ -1085,7 +1090,7 @@ export const RunnerDashboard: React.FC = () => {
                                   <div className="flex items-center space-x-4">
                                     <div className="w-4 h-4 bg-blue-500 rounded-full flex-shrink-0"></div>
                                     <div className="flex-1 min-w-0">
-                                      <div className="text-sm text-gray-500">DESDE</div>
+                                      <div className="text-sm text-muted-foreground">DESDE</div>
                                       <div className="font-medium text-gray-900">
                                         {transport.source_location_name}
                                       </div>
@@ -1097,7 +1102,7 @@ export const RunnerDashboard: React.FC = () => {
                                   <div className="flex items-center space-x-4">
                                     <div className="w-4 h-4 bg-green-500 rounded-full flex-shrink-0"></div>
                                     <div className="flex-1 min-w-0">
-                                      <div className="text-sm text-gray-500">HACIA</div>
+                                      <div className="text-sm text-muted-foreground">HACIA</div>
                                       <div className="font-medium text-gray-900">
                                         {transport.destination_location_name}
                                       </div>
@@ -1143,9 +1148,9 @@ export const RunnerDashboard: React.FC = () => {
             <CardContent>
               {deliveryHistory.length === 0 ? (
                 <div className="text-center py-8 md:py-12">
-                  <CheckCircle className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
+                  <CheckCircle className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
                   <h3 className="text-base md:text-lg font-medium">No hay entregas completadas</h3>
-                  <p className="text-gray-500 text-sm">Tu historial de entregas aparecerá aquí.</p>
+                  <p className="text-muted-foreground text-sm">Tu historial de entregas aparecerá aquí.</p>
                 </div>
               ) : (
                 <div className="space-y-3 md:space-y-4">
@@ -1160,7 +1165,7 @@ export const RunnerDashboard: React.FC = () => {
                               <User className="h-3 w-3 inline mr-1" />
                               {delivery.delivered_to}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-muted-foreground">
                               <Clock className="h-3 w-3 inline mr-1" />
                               {new Date(delivery.delivered_at).toLocaleDateString()}
                             </p>
@@ -1172,7 +1177,7 @@ export const RunnerDashboard: React.FC = () => {
                             }`}>
                               {delivery.delivery_successful ? '✅' : '❌'}
                             </span>
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                               {delivery.total_time}
                             </p>
                           </div>
@@ -1181,18 +1186,18 @@ export const RunnerDashboard: React.FC = () => {
                         <div className="grid grid-cols-3 gap-2 text-xs">
                           {delivery.distance && (
                             <div>
-                              <p className="text-gray-500">Distancia</p>
+                              <p className="text-muted-foreground">Distancia</p>
                               <p className="font-medium">{delivery.distance}</p>
                             </div>
                           )}
                           {delivery.earnings && (
                             <div>
-                              <p className="text-gray-500">Ganancia</p>
+                              <p className="text-muted-foreground">Ganancia</p>
                               <p className="font-medium text-green-600">{formatPrice(delivery.earnings)}</p>
                             </div>
                           )}
                           <div>
-                            <p className="text-gray-500">Estado</p>
+                            <p className="text-muted-foreground">Estado</p>
                             <p className="font-medium text-xs">{delivery.status}</p>
                           </div>
                         </div>
@@ -1207,7 +1212,7 @@ export const RunnerDashboard: React.FC = () => {
                               <User className="h-4 w-4 inline mr-1" />
                               Entregado a: <strong>{delivery.delivered_to}</strong>
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-muted-foreground">
                               <Clock className="h-4 w-4 inline mr-1" />
                               {new Date(delivery.delivered_at).toLocaleString()}
                             </p>
@@ -1219,7 +1224,7 @@ export const RunnerDashboard: React.FC = () => {
                             }`}>
                               {delivery.delivery_successful ? '✅ Exitosa' : '❌ Fallida'}
                             </span>
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                               ⏱️ {delivery.total_time}
                             </p>
                           </div>
@@ -1228,18 +1233,18 @@ export const RunnerDashboard: React.FC = () => {
                         <div className="grid grid-cols-3 gap-4 text-sm">
                           {delivery.distance && (
                             <div>
-                              <p className="text-gray-500">Distancia</p>
+                              <p className="text-muted-foreground">Distancia</p>
                               <p className="font-medium">{delivery.distance}</p>
                             </div>
                           )}
                           {delivery.earnings && (
                             <div>
-                              <p className="text-gray-500">Ganancia</p>
+                              <p className="text-muted-foreground">Ganancia</p>
                               <p className="font-medium text-green-600">{formatPrice(delivery.earnings)}</p>
                             </div>
                           )}
                           <div>
-                            <p className="text-gray-500">Estado</p>
+                            <p className="text-muted-foreground">Estado</p>
                             <p className="font-medium">{delivery.status}</p>
                           </div>
                         </div>
@@ -1262,7 +1267,7 @@ export const RunnerDashboard: React.FC = () => {
                 <div className="space-y-3 md:space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm md:text-base">Total entregas realizadas:</span>
-                    <span className="font-bold">{stats.totalDeliveries}</span>
+                    <span className="font-bold text-primary">{stats.totalDeliveries}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm md:text-base">Entregas completadas hoy:</span>
@@ -1274,15 +1279,15 @@ export const RunnerDashboard: React.FC = () => {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm md:text-base">Tiempo promedio:</span>
-                    <span className="font-bold">{stats.averageTime}</span>
+                    <span className="font-bold text-orange-600">{stats.averageTime}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm md:text-base">Ganancias totales:</span>
                     <span className="font-bold text-green-600">{formatPrice(stats.totalEarnings)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm md:text-base">Rating promedio:</span>
-                    <span className="font-bold text-yellow-600">{stats.rating} ⭐</span>
+                    <span className="text-sm md:text-base">Calificación promedio:</span>
+                    <span className="font-bold text-yellow-600">⭐ {stats.rating}</span>
                   </div>
                 </div>
               </CardContent>
@@ -1293,18 +1298,16 @@ export const RunnerDashboard: React.FC = () => {
                 <h3 className="text-base md:text-lg font-semibold">📈 Rendimiento Semanal</h3>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-7 gap-1 md:gap-2 mb-4">
+                <div className="flex justify-between items-end h-32 mb-4">
                   {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day, index) => {
                     const deliveries = [8, 12, 6, 15, 11, 4, 2][index];
-                    const maxDeliveries = 15;
-                    const height = (deliveries / maxDeliveries) * 100;
                     
                     return (
-                      <div key={day} className="text-center">
-                        <div className="bg-gray-200 h-16 md:h-20 rounded flex items-end justify-center">
+                      <div key={day} className="flex flex-col items-center">
+                        <div className="flex flex-col justify-end h-24 mb-2">
                           <div 
                             className="bg-blue-500 rounded-t w-full flex items-end justify-center text-xs text-white font-medium"
-                            style={{ height: `${height}%`, minHeight: deliveries > 0 ? '16px' : '0' }}
+                            style={{ height: `${(deliveries / 15) * 100}%`, minHeight: '20px', width: '24px' }}
                           >
                             {deliveries > 0 && deliveries}
                           </div>
@@ -1316,15 +1319,15 @@ export const RunnerDashboard: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-3 gap-2 md:gap-4 text-center text-xs md:text-sm">
                   <div>
-                    <p className="text-gray-500">Promedio diario</p>
+                    <p className="text-muted-foreground">Promedio diario</p>
                     <p className="font-bold">8.3 entregas</p>
                   </div>
                   <div>
-                    <p className="text-gray-500">Mejor día</p>
+                    <p className="text-muted-foreground">Mejor día</p>
                     <p className="font-bold text-green-600">Jueves (15)</p>
                   </div>
                   <div>
-                    <p className="text-gray-500">Total semanal</p>
+                    <p className="text-muted-foreground">Total semanal</p>
                     <p className="font-bold">58 entregas</p>
                   </div>
                 </div>

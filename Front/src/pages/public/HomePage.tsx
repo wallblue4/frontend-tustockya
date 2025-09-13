@@ -47,9 +47,11 @@ export const HomePage: React.FC = () => {
   return (
     <Layout>
       {/* Sección Hero */}
-      <section className="relative bg-gradient-to-r from-primary to-blue-700 text-white py-16 md:py-24">
+      <section className="relative bg-gradient-to-br from-primary via-primary-dark to-blue-800 text-white py-16 md:py-24 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute right-0 top-0 w-1/2 h-full bg-white/10 transform -skew-x-12"></div>
+          <div className="absolute right-0 top-0 w-1/2 h-full bg-primary-foreground/5 transform -skew-x-12"></div>
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/20 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-600/20 rounded-full blur-3xl"></div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid md:grid-cols-2 gap-8 items-center">
@@ -58,12 +60,12 @@ export const HomePage: React.FC = () => {
               <p className="text-lg mb-8">Eleva tu juego con nuestros tenis profesionales diseñados para comodidad, rendimiento y estilo.</p>
               <div className="flex space-x-4">
                 <Link to="/products">
-                  <Button size="lg" className="bg-white text-primary hover:bg-gray-100">
+                  <Button size="lg" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 shadow-xl">
                     Comprar Ahora <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
                 <Link to="/about">
-                  <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
+                  <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10 backdrop-blur-sm">
                     Saber Más
                   </Button>
                 </Link>
@@ -73,7 +75,7 @@ export const HomePage: React.FC = () => {
               <img 
                 src="https://images.pexels.com/photos/1032110/pexels-photo-1032110.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" 
                 alt="Tenis premium" 
-                className="rounded-lg shadow-2xl h-auto max-h-[400px] w-full object-cover" 
+                className="rounded-xl shadow-2xl h-auto max-h-[400px] w-full object-cover border border-primary/20" 
               />
             </div>
           </div>
@@ -81,18 +83,18 @@ export const HomePage: React.FC = () => {
       </section>
 
       {/* Productos Destacados */}
-      <section className="py-16">
+      <section className="py-16 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900">Tenis Destacados</h2>
-            <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
+            <h2 className="text-3xl font-bold text-foreground">Tenis Destacados</h2>
+            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
               Descubre nuestros tenis más populares, diseñados para rendimiento y comodidad en cualquier superficie.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {productosDestacados.map((producto) => (
-              <Card key={producto.id} hoverable className="group">
+              <Card key={producto.id} hoverable className="group bg-card border-border">
                 <div className="relative overflow-hidden">
                   <img 
                     src={producto.image} 
@@ -100,29 +102,29 @@ export const HomePage: React.FC = () => {
                     className="w-full h-60 object-cover transform transition-transform group-hover:scale-105" 
                   />
                   {producto.originalPrice && (
-                    <div className="absolute top-2 right-2 bg-accent text-white text-xs font-bold px-2 py-1 rounded">
+                    <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                       OFERTA
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="primary" size="sm" className="transform translate-y-4 group-hover:translate-y-0 transition-transform">
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                    <Button variant="primary" size="sm" className="transform translate-y-4 group-hover:translate-y-0 transition-transform shadow-xl">
                       <ShoppingBag className="mr-2 h-4 w-4" /> Añadir al Carrito
                     </Button>
                   </div>
                 </div>
                 <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg mb-1">{producto.name}</h3>
+                  <h3 className="font-semibold text-lg mb-1 text-foreground">{producto.name}</h3>
                   <div className="flex items-center mb-2">
                     <div className="flex items-center">
                       <Star className="h-4 w-4 fill-warning text-warning" />
-                      <span className="text-sm text-gray-700 ml-1">{producto.rating}</span>
+                      <span className="text-sm text-foreground ml-1 font-medium">{producto.rating}</span>
                     </div>
-                    <span className="text-xs text-gray-500 ml-1">({producto.reviews} reseñas)</span>
+                    <span className="text-xs text-muted-foreground ml-1">({producto.reviews} reseñas)</span>
                   </div>
                   <div className="flex items-center">
-                    <span className="text-lg font-bold text-gray-900">${producto.price}</span>
+                    <span className="text-lg font-bold text-primary">${producto.price}</span>
                     {producto.originalPrice && (
-                      <span className="ml-2 text-sm text-gray-500 line-through">${producto.originalPrice}</span>
+                      <span className="ml-2 text-sm text-muted-foreground line-through">${producto.originalPrice}</span>
                     )}
                   </div>
                 </CardContent>
@@ -132,7 +134,7 @@ export const HomePage: React.FC = () => {
 
           <div className="text-center mt-12">
             <Link to="/products">
-              <Button variant="secondary">
+              <Button variant="outline" className="border-primary/30 text-primary hover:bg-primary/10">
                 Ver Todos los Productos <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -141,75 +143,75 @@ export const HomePage: React.FC = () => {
       </section>
 
       {/* Sección de Características */}
-      <section className="bg-gray-50 py-16">
+      <section className="bg-muted/5 py-16 border-t border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900">¿Por qué elegir TennisHub?</h2>
-            <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
+            <h2 className="text-3xl font-bold text-foreground">¿Por qué elegir TennisHub?</h2>
+            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
               Nos dedicamos a proporcionar la mejor experiencia en calzado deportivo con productos premium y servicio excepcional.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <Card className="text-center p-6">
+            <Card className="text-center p-6 hover:border-primary/30 transition-all duration-300">
               <div className="flex justify-center mb-4">
                 <div className="p-3 bg-primary/10 rounded-full">
                   <ShoppingBag className="h-8 w-8 text-primary" />
                 </div>
               </div>
-              <h3 className="text-lg font-semibold mb-2">Calidad Premium</h3>
-              <p className="text-gray-600">Selección cuidadosa de las mejores marcas y modelos exclusivos.</p>
+              <h3 className="text-lg font-semibold mb-2 text-foreground">Calidad Premium</h3>
+              <p className="text-muted-foreground">Selección cuidadosa de las mejores marcas y modelos exclusivos.</p>
             </Card>
 
-            <Card className="text-center p-6">
+            <Card className="text-center p-6 hover:border-primary/30 transition-all duration-300">
               <div className="flex justify-center mb-4">
                 <div className="p-3 bg-primary/10 rounded-full">
                   <Truck className="h-8 w-8 text-primary" />
                 </div>
               </div>
-              <h3 className="text-lg font-semibold mb-2">Entrega Rápida</h3>
-              <p className="text-gray-600">Sistema eficiente para que recibas tus tenis lo más rápido posible.</p>
+              <h3 className="text-lg font-semibold mb-2 text-foreground">Entrega Rápida</h3>
+              <p className="text-muted-foreground">Sistema eficiente para que recibas tus tenis lo más rápido posible.</p>
             </Card>
 
-            <Card className="text-center p-6">
+            <Card className="text-center p-6 hover:border-primary/30 transition-all duration-300">
               <div className="flex justify-center mb-4">
                 <div className="p-3 bg-primary/10 rounded-full">
                   <CreditCard className="h-8 w-8 text-primary" />
                 </div>
               </div>
-              <h3 className="text-lg font-semibold mb-2">Pago Seguro</h3>
-              <p className="text-gray-600">Múltiples opciones de pago seguro para una experiencia sin problemas.</p>
+              <h3 className="text-lg font-semibold mb-2 text-foreground">Pago Seguro</h3>
+              <p className="text-muted-foreground">Múltiples opciones de pago seguro para una experiencia sin problemas.</p>
             </Card>
 
-            <Card className="text-center p-6">
+            <Card className="text-center p-6 hover:border-primary/30 transition-all duration-300">
               <div className="flex justify-center mb-4">
                 <div className="p-3 bg-primary/10 rounded-full">
                   <Headphones className="h-8 w-8 text-primary" />
                 </div>
               </div>
-              <h3 className="text-lg font-semibold mb-2">Soporte 24/7</h3>
-              <p className="text-gray-600">Nuestro equipo de atención al cliente siempre está listo para ayudarte.</p>
+              <h3 className="text-lg font-semibold mb-2 text-foreground">Soporte 24/7</h3>
+              <p className="text-muted-foreground">Nuestro equipo de atención al cliente siempre está listo para ayudarte.</p>
             </Card>
           </div>
         </div>
       </section>
 
       {/* Sección de Boletín */}
-      <section className="py-16 bg-white">
+      <section className="py-16 bg-background border-t border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-primary rounded-lg shadow-xl overflow-hidden">
+          <div className="bg-gradient-to-r from-primary to-primary-dark rounded-xl shadow-2xl overflow-hidden border border-primary/20">
             <div className="p-10 text-center">
-              <h2 className="text-3xl font-bold text-white mb-4">Suscríbete para Actualizaciones</h2>
-              <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
+              <h2 className="text-3xl font-bold text-primary-foreground mb-4">Suscríbete para Actualizaciones</h2>
+              <p className="text-primary-foreground/80 mb-6 max-w-2xl mx-auto">
                 Recibe ofertas exclusivas, nuevas llegadas y consejos directamente en tu bandeja de entrada.
               </p>
               <div className="flex flex-col sm:flex-row max-w-md mx-auto sm:max-w-lg">
                 <input
                   type="email"
                   placeholder="Ingresa tu correo"
-                  className="flex-grow px-4 py-3 rounded-l-md focus:outline-none sm:rounded-r-none"
+                  className="flex-grow px-4 py-3 rounded-l-lg focus:outline-none sm:rounded-r-none bg-card text-foreground border border-border focus:ring-2 focus:ring-primary/50"
                 />
-                <Button className="mt-2 sm:mt-0 rounded-md sm:rounded-l-none bg-white text-primary hover:bg-gray-100">
+                <Button className="mt-2 sm:mt-0 rounded-lg sm:rounded-l-none bg-primary-foreground text-primary hover:bg-primary-foreground/90 shadow-lg">
                   Suscribirse
                 </Button>
               </div>

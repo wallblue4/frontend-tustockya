@@ -290,7 +290,6 @@ export const WarehouseDashboard: React.FC = () => {
   });
 
   // HOOKS
-  const { user } = useAuth();
   const {
     notifications,
     dismissNotification,
@@ -611,7 +610,7 @@ export const WarehouseDashboard: React.FC = () => {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-gray-500">Cargando solicitudes de bodega...</p>
+            <p className="text-muted-foreground">Cargando solicitudes de bodega...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -634,7 +633,7 @@ export const WarehouseDashboard: React.FC = () => {
             <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Total Solicitudes</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">Total Solicitudes</p>
                   <p className="text-lg md:text-2xl font-bold">{stats.totalRequests}</p>
                 </div>
                 <Package className="h-6 w-6 md:h-8 md:w-8 text-blue-500" />
@@ -646,7 +645,7 @@ export const WarehouseDashboard: React.FC = () => {
             <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">🔥 Urgentes</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">🔥 Urgentes</p>
                   <p className="text-lg md:text-2xl font-bold text-red-600">{stats.urgentRequests}</p>
                 </div>
                 <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-red-500" />
@@ -658,7 +657,7 @@ export const WarehouseDashboard: React.FC = () => {
             <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">⏱️ Tiempo Prom.</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">⏱️ Tiempo Prom.</p>
                   <p className="text-lg md:text-2xl font-bold">{stats.averageResponseTime}</p>
                 </div>
                 <Clock className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
@@ -670,7 +669,7 @@ export const WarehouseDashboard: React.FC = () => {
             <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">✅ Completación</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">✅ Completación</p>
                   <p className="text-lg md:text-2xl font-bold">{stats.completionRate}%</p>
                 </div>
                 <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
@@ -743,11 +742,16 @@ export const WarehouseDashboard: React.FC = () => {
         )}
 
         {error && (
-          <Card className="border-amber-200 bg-amber-50">
+          <Card className="border-warning/30 bg-warning/10">
             <CardContent className="p-3 md:p-4">
               <div className="flex items-center space-x-3">
-                <AlertCircle className="h-4 w-4 md:h-5 md:w-5 text-amber-600" />
-                <p className="text-amber-800 text-sm">⚠️ {error}</p>
+                <AlertCircle className="h-4 w-4 md:h-5 md:w-5 text-warning" />
+                <div>
+                  <p className="text-sm font-medium text-warning">Modo de Desarrollo</p>
+                  <p className="text-sm text-warning">
+                    Usando datos de prueba. El servidor backend no está disponible.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -790,7 +794,7 @@ export const WarehouseDashboard: React.FC = () => {
                     <select
                       value={priorityFilter}
                       onChange={(e) => setPriorityFilter(e.target.value as any)}
-                      className="px-2 py-1 md:px-3 md:py-2 border border-gray-300 rounded-md text-xs md:text-sm"
+                      className="px-2 py-1 md:px-3 md:py-2 border border-border rounded-md text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground"
                     >
                       <option value="all">Todas las prioridades</option>
                       <option value="high">🔥 Urgentes</option>
@@ -800,7 +804,7 @@ export const WarehouseDashboard: React.FC = () => {
                     <select
                       value={purposeFilter}
                       onChange={(e) => setPurposeFilter(e.target.value as any)}
-                      className="px-2 py-1 md:px-3 md:py-2 border border-gray-300 rounded-md text-xs md:text-sm"
+                      className="px-2 py-1 md:px-3 md:py-2 border border-border rounded-md text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground"
                     >
                       <option value="all">Todos los propósitos</option>
                       <option value="cliente">🏃‍♂️ Cliente presente</option>
@@ -813,14 +817,14 @@ export const WarehouseDashboard: React.FC = () => {
             <CardContent>
               {filteredPendingRequests.length === 0 ? (
                 <div className="text-center py-8 md:py-12">
-                  <Package className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
+                  <Package className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
                   <h3 className="text-base md:text-lg font-medium">
                     {searchTerm || priorityFilter !== 'all' || purposeFilter !== 'all' 
                       ? 'No hay solicitudes que coincidan con los filtros'
                       : 'No hay solicitudes pendientes'
                     }
                   </h3>
-                  <p className="text-gray-500 text-sm">
+                  <p className="text-muted-foreground text-sm">
                     {searchTerm || priorityFilter !== 'all' || purposeFilter !== 'all'
                       ? 'Prueba ajustando los filtros de búsqueda'
                       : 'Las nuevas solicitudes de transferencia aparecerán aquí automáticamente.'
@@ -1162,9 +1166,9 @@ export const WarehouseDashboard: React.FC = () => {
             <CardContent>
               {acceptedRequests.length === 0 ? (
                 <div className="text-center py-8 md:py-12">
-                  <CheckCircle className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
+                  <CheckCircle className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
                   <h3 className="text-base md:text-lg font-medium">No hay transferencias en preparación</h3>
-                  <p className="text-gray-500 text-sm">Las solicitudes aceptadas aparecerán aquí para ser entregadas a corredores.</p>
+                  <p className="text-muted-foreground text-sm">Las solicitudes aceptadas aparecerán aquí para ser entregadas a corredores.</p>
                 </div>
               ) : (
                 <div className="space-y-4 md:space-y-6">
@@ -1175,7 +1179,7 @@ export const WarehouseDashboard: React.FC = () => {
                         <div className="flex items-start space-x-3 mb-3">
                           <div className="flex-shrink-0">
                             <img
-                              src={request.product_image }
+                              src={request.product_image || `https://via.placeholder.com/200x260/e5e7eb/6b7280?text=${encodeURIComponent(request.brand)}`}
                               alt={`${request.brand} ${request.model}`}
                               className="w-32 h-48 object-cover rounded-lg border border-gray-200"
                             />
@@ -1185,16 +1189,16 @@ export const WarehouseDashboard: React.FC = () => {
                             <h4 className="font-semibold text-base mb-1">
                               {request.brand} {request.model}
                             </h4>
-                            <p className="text-sm text-gray-600 mb-1">
+                            <p className="text-sm text-muted-foreground mb-1">
                               Talla {request.size} • {request.quantity} unidad{request.quantity > 1 ? 'es' : ''}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-muted-foreground">
                               Solicitado por: {request.requester_first_name ? 
                                 `${request.requester_first_name} ${request.requester_last_name}` : 
                                 'Usuario'
                               }
                             </p>
-                            <div className="flex items-center space-x-1 text-xs text-gray-500 mb-1">
+                            <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-1">
                               <MapPin className="h-3 w-3 text-gray-400 mr-1" />
                               <span className="font-medium">Ubicación: {request.source_location_name || 'N/A'}</span>
                             </div>
@@ -1288,12 +1292,12 @@ export const WarehouseDashboard: React.FC = () => {
                             </h4>
                             
                             {request.product_color && (
-                              <p className="text-sm text-gray-600 mb-2">
+                              <p className="text-sm text-muted-foreground mb-2">
                                 🎨 <strong>Color:</strong> {request.product_color}
                               </p>
                             )}
                             
-                            <p className="text-sm text-gray-600 mb-2">
+                            <p className="text-sm text-muted-foreground mb-2">
                               <User className="h-4 w-4 inline mr-1" />
                               Solicitado por: <strong>
                                 {request.requester_first_name ? 
@@ -1313,7 +1317,7 @@ export const WarehouseDashboard: React.FC = () => {
                               </div>
                             )}
                             
-                            <div className="flex items-center space-x-4 text-sm text-gray-500">
+                            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                               <span>
                                 <Clock className="h-4 w-4 inline mr-1" />
                                 Estado: {request.status_description || request.status}
@@ -1477,7 +1481,7 @@ export const WarehouseDashboard: React.FC = () => {
                       <span className="font-bold text-blue-600">12 min</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: '80%' }}></div>
+                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: '75%' }}></div>
                     </div>
                   </div>
                 </div>
@@ -1487,7 +1491,7 @@ export const WarehouseDashboard: React.FC = () => {
             {/* Card adicional con información de endpoints */}
             <Card className="lg:col-span-2">
               <CardHeader>
-                <h3 className="text-base md:text-lg font-semibold">🔧 Estado de la Integración</h3>
+                <h3 className="text-base md:text-lg font-semibold">🔧 Estado del Sistema</h3>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1498,6 +1502,7 @@ export const WarehouseDashboard: React.FC = () => {
                       <li>• <strong>WH002:</strong> POST /warehouse/accept-request</li>
                       <li>• <strong>WH003:</strong> GET /warehouse/accepted-requests</li>
                       <li>• <strong>WH004:</strong> POST /warehouse/deliver-to-courier</li>
+                      <li>• <strong>WH005:</strong> POST /warehouse/deliver-to-vendor</li>
                     </ul>
                   </div>
                   <div className="space-y-2">
@@ -1511,11 +1516,10 @@ export const WarehouseDashboard: React.FC = () => {
                     </ul>
                   </div>
                 </div>
-                
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    <strong>💡 Tip:</strong> El sistema usa polling cada 15 segundos según la documentación. 
-                    Si el backend no está disponible, se muestran datos de prueba para facilitar el desarrollo.
+                    <strong>ℹ️ Información:</strong> El sistema está configurado para trabajar con el backend en producción. 
+                    Si el servidor no está disponible, se utilizan datos de prueba para desarrollo.
                   </p>
                 </div>
               </CardContent>

@@ -86,11 +86,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
       <div 
         className={`${
           isOpen ? 'translate-x-0' : '-translate-x-full'
-        } fixed top-0 left-0 z-30 w-64 h-full bg-white shadow-lg transition-transform duration-300 ease-in-out md:translate-x-0 flex flex-col`}
+        } fixed top-0 left-0 z-30 w-64 h-full bg-card shadow-xl border-r border-border transition-transform duration-300 ease-in-out md:translate-x-0 flex flex-col`}
       >
         {/* Header - Fixed */}
         <div className="flex-shrink-0">
-          <div className="flex items-center justify-between p-3 sm:p-4 border-b">
+          <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border">
             <div className="flex items-center min-w-0">
               <img 
                 src={user?.avatar || 'https://via.placeholder.com/40'} 
@@ -98,12 +98,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 className="h-8 w-8 sm:h-10 sm:w-10 rounded-full mr-2 sm:mr-3 flex-shrink-0" 
               />
               <div className="min-w-0">
-                <p className="font-medium text-gray-800 text-sm sm:text-base truncate">{user?.name}</p>
-                <p className="text-xs text-gray-500 capitalize truncate">{user?.role}</p>
+                <p className="font-medium text-foreground text-sm sm:text-base truncate">{user?.name}</p>
+                <p className="text-xs text-muted-foreground capitalize truncate">{user?.role}</p>
               </div>
             </div>
             <button 
-              className="md:hidden text-gray-500 hover:text-gray-700 flex-shrink-0"
+              className="md:hidden text-muted-foreground hover:text-foreground flex-shrink-0"
               onClick={toggleSidebar}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -122,10 +122,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                   <NavLink
                     to={link.to}
                     className={({ isActive }) => 
-                      `flex items-center px-3 sm:px-4 py-2 sm:py-3 text-gray-700 rounded-md transition-colors text-sm sm:text-base ${
+                      `flex items-center px-3 sm:px-4 py-2 sm:py-3 text-foreground rounded-md transition-colors text-sm sm:text-base ${
                         isActive 
-                          ? 'bg-primary text-white' 
-                          : 'hover:bg-gray-100'
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'hover:bg-muted/20'
                       }`
                     }
                     onClick={() => {
@@ -144,11 +144,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         </div>
         
         {/* Footer - Fixed */}
-        <div className="flex-shrink-0 border-t">
+        <div className="flex-shrink-0 border-t border-border">
           <div className="p-3 sm:p-4">
             <button 
               onClick={logout}
-              className="flex items-center w-full px-3 sm:px-4 py-2 text-gray-700 rounded-md hover:bg-gray-100 transition-colors text-sm sm:text-base"
+              className="flex items-center w-full px-3 sm:px-4 py-2 text-foreground rounded-md hover:bg-muted/20 transition-colors text-sm sm:text-base"
             >
               <LogOut className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
               <span className="truncate">Cerrar sesion</span>
@@ -160,7 +160,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
       {/* Overlay for mobile */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-20 md:hidden"
           onClick={toggleSidebar}
         ></div>
       )}

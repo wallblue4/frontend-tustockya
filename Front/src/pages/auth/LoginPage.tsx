@@ -73,20 +73,22 @@ export const LoginPage: React.FC = () => {
 
   return (
     <Layout hideFooter>
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
+      <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8 bg-card p-8 rounded-xl shadow-2xl border border-border backdrop-blur-sm">
           <div className="text-center">
             <div className="flex justify-center">
-              <Shoe className="h-12 w-12 text-primary" />
+              <div className="p-3 bg-primary/10 rounded-full">
+                <Shoe className="h-12 w-12 text-primary" />
+              </div>
             </div>
-            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Iniciar sesión</h2>
-            <p className="mt-2 text-sm text-gray-600">
+            <h2 className="mt-6 text-3xl font-extrabold text-foreground">Iniciar sesión</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
               Accede a tu panel de TuStockYa
             </p>
           </div>
           
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded-md">
+            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm p-3 rounded-lg backdrop-blur-sm">
               {error}
             </div>
           )}
@@ -122,7 +124,7 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className={`absolute right-3 top-8 focus:outline-none ${showPassword ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600'}`}
+                  className={`absolute right-3 top-8 focus:outline-none ${showPassword ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
                   tabIndex={-1}
                   aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 >
@@ -149,15 +151,15 @@ export const LoginPage: React.FC = () => {
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
-                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                  className="h-4 w-4 text-primary focus:ring-primary/50 border-border rounded bg-card"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-foreground">
                   Recordarme
                 </label>
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-medium text-primary hover:text-primary-dark">
+                <a href="#" className="font-medium text-primary hover:text-primary/80 transition-colors">
                   ¿Olvidaste tu contraseña?
                 </a>
               </div>
@@ -166,7 +168,7 @@ export const LoginPage: React.FC = () => {
             <Button
               type="submit"
               isLoading={isLoading}
-              className="w-full"
+              className="w-full shadow-lg hover:shadow-xl hover:shadow-primary/25"
               disabled={isLoading}
             >
               {isLoading ? 'Iniciando sesión...' : 'Iniciar sesión'}

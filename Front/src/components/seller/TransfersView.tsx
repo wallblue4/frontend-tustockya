@@ -541,15 +541,15 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     <div className="space-y-4 md:space-y-6">
       {/* Indicador de datos prefilled */}
       {prefilledProductData && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-primary/30 bg-primary/10">
           <CardContent className="p-3 md:p-4">
             <div className="flex items-center space-x-3">
-              <Package className="h-4 w-4 md:h-5 md:w-5 text-blue-600 flex-shrink-0" />
+              <Package className="h-4 w-4 md:h-5 md:w-5 text-primary flex-shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-blue-800">
+                <p className="text-sm font-medium text-primary">
                   Producto desde Escáner IA
                 </p>
-                <p className="text-sm text-blue-700 truncate">
+                <p className="text-sm text-primary truncate">
                   {prefilledProductData.brand} {prefilledProductData.model} - Talla {prefilledProductData.size}
                 </p>
               </div>
@@ -563,26 +563,26 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         <Card>
           <CardContent className="p-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <p className="text-2xl font-bold text-gray-600">{totalPending}</p>
-                <p className="text-xs text-gray-600">Total Pendientes</p>
+              <div className="bg-muted/20 p-3 rounded-lg">
+                <p className="text-2xl font-bold text-muted-foreground">{totalPending}</p>
+                <p className="text-xs text-muted-foreground">Total Pendientes</p>
               </div>
               {urgentCount > 0 && (
-                <div className="bg-red-50 p-3 rounded-lg">
-                  <p className="text-2xl font-bold text-red-600">{urgentCount}</p>
-                  <p className="text-xs text-red-600">🔥 Urgentes</p>
+                <div className="bg-destructive/10 p-3 rounded-lg">
+                  <p className="text-2xl font-bold text-destructive">{urgentCount}</p>
+                  <p className="text-xs text-destructive">🔥 Urgentes</p>
                 </div>
               )}
               {normalCount > 0 && (
-                <div className="bg-green-50 p-3 rounded-lg">
-                  <p className="text-2xl font-bold text-green-600">{normalCount}</p>
-                  <p className="text-xs text-green-600">✅ Normales</p>
+                <div className="bg-success/10 p-3 rounded-lg">
+                  <p className="text-2xl font-bold text-success">{normalCount}</p>
+                  <p className="text-xs text-success">✅ Normales</p>
                 </div>
               )}
               {todayStats && (
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <p className="text-2xl font-bold text-blue-600">{todayStats.completed || 0}</p>
-                  <p className="text-xs text-blue-600">Completadas Hoy</p>
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <p className="text-2xl font-bold text-primary">{todayStats.completed || 0}</p>
+                  <p className="text-xs text-primary">Completadas Hoy</p>
                 </div>
               )}
             </div>
@@ -597,7 +597,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
           <div className="md:hidden">
             <button
               onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="w-full flex items-center justify-between p-3 border border-gray-300 rounded-lg bg-white"
+              className="w-full flex items-center justify-between p-3 border border-border rounded-lg bg-card"
             >
               <div className="flex items-center space-x-2">
                 {activeTab === 'pending' && <Package className="h-4 w-4 text-primary" />}
@@ -608,7 +608,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   {activeTab === 'completed' && 'Historial del Día'}
                   {activeTab === 'new' && 'Nueva Solicitud'}
                   {prefilledProductData && activeTab === 'new' && (
-                    <span className="ml-2 px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
+                    <span className="ml-2 px-2 py-1 bg-primary text-primary-foreground text-xs rounded-full">
                       ●
                     </span>
                   )}
@@ -618,14 +618,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             </button>
             
             {showMobileMenu && (
-              <div className="mt-2 border border-gray-300 rounded-lg bg-white shadow-lg">
+              <div className="mt-2 border border-border rounded-lg bg-card shadow-lg">
                 <button
                   onClick={() => {
                     setActiveTab('pending');
                     setShowMobileMenu(false);
                   }}
-                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 ${
-                    activeTab === 'pending' ? 'bg-blue-50 text-blue-700' : ''
+                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/20 ${
+                    activeTab === 'pending' ? 'bg-primary/10 text-primary' : ''
                   }`}
                 >
                   <Package className="h-4 w-4" />
@@ -636,8 +636,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     setActiveTab('completed');
                     setShowMobileMenu(false);
                   }}
-                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 border-t ${
-                    activeTab === 'completed' ? 'bg-blue-50 text-blue-700' : ''
+                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/20 border-t ${
+                    activeTab === 'completed' ? 'bg-primary/10 text-primary' : ''
                   }`}
                 >
                   <History className="h-4 w-4" />
@@ -648,15 +648,15 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     setActiveTab('new');
                     setShowMobileMenu(false);
                   }}
-                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 border-t ${
-                    activeTab === 'new' ? 'bg-blue-50 text-blue-700' : ''
-                  } ${prefilledProductData ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}
+                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/20 border-t ${
+                    activeTab === 'new' ? 'bg-primary/10 text-primary' : ''
+                  } ${prefilledProductData ? 'ring-2 ring-primary ring-opacity-50' : ''}`}
                 >
                   <Plus className="h-4 w-4" />
                   <span>
                     Nueva Solicitud
                     {prefilledProductData && (
-                      <span className="ml-2 px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
+                      <span className="ml-2 px-2 py-1 bg-primary text-primary-foreground text-xs rounded-full">
                         ●
                       </span>
                     )}
@@ -685,12 +685,12 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             <Button
               variant={activeTab === 'new' ? 'primary' : 'outline'}
               onClick={() => setActiveTab('new')}
-              className={prefilledProductData ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}
+              className={prefilledProductData ? 'ring-2 ring-primary ring-opacity-50' : ''}
             >
               <Plus className="h-4 w-4 mr-2" />
               Nueva Solicitud
               {prefilledProductData && (
-                <span className="ml-2 px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
+                <span className="ml-2 px-2 py-1 bg-primary text-primary-foreground text-xs rounded-full">
                   ●
                 </span>
               )}
@@ -700,11 +700,11 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       </Card>
 
       {error && (
-        <Card className="border-amber-200 bg-amber-50">
+        <Card className="border-warning/30 bg-warning/10">
           <CardContent className="p-3 md:p-4">
             <div className="flex items-center space-x-3">
-              <AlertCircle className="h-4 w-4 md:h-5 md:w-5 text-amber-600 flex-shrink-0" />
-              <p className="text-amber-800 text-sm">{error}</p>
+              <AlertCircle className="h-4 w-4 md:h-5 md:w-5 text-warning flex-shrink-0" />
+              <p className="text-warning text-sm">{error}</p>
             </div>
           </CardContent>
         </Card>
@@ -719,8 +719,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
           <CardContent>
             {pendingTransfers.length === 0 ? (
               <div className="text-center py-8 md:py-12">
-                <Package className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500 text-sm md:text-base">No tienes transferencias pendientes</p>
+                <Package className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm md:text-base">No tienes transferencias pendientes</p>
               </div>
             ) : (
               <div className="space-y-3 md:space-y-4">
@@ -753,23 +753,23 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         <h4 className="font-semibold text-sm md:text-lg truncate">
                           {transfer.brand} {transfer.model}
                         </h4>
-                        <p className="text-xs md:text-sm text-gray-600 truncate">
+                        <p className="text-xs md:text-sm text-muted-foreground truncate">
                           Código: {transfer.sneaker_reference_code} | Talla: {transfer.size} | Cantidad: {transfer.quantity}
                         </p>
-                        <p className="text-xs md:text-sm text-gray-500">
+                        <p className="text-xs md:text-sm text-muted-foreground">
                           {getNextAction(transfer)}
                         </p>
                       </div>
                       
                       <div className="text-right flex-shrink-0">
-                        <p className="text-xs md:text-sm text-gray-500">Progreso</p>
-                        <div className="w-20 bg-gray-200 rounded-full h-2 mb-2">
+                        <p className="text-xs md:text-sm text-muted-foreground">Progreso</p>
+                        <div className="w-20 bg-muted/30 rounded-full h-2 mb-2">
                           <div 
-                            className="bg-blue-600 h-2 rounded-full" 
+                            className="bg-primary h-2 rounded-full" 
                             style={{ width: `${transfer.status_info.progress_percentage}%` }}
                           ></div>
                         </div>
-                        <p className="text-xs text-gray-500">{transfer.status_info.progress_percentage}%</p>
+                        <p className="text-xs text-muted-foreground">{transfer.status_info.progress_percentage}%</p>
                         
                         {/* Botones de acción */}
                         <div className="flex flex-col space-y-2 mt-3">
@@ -812,7 +812,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     </div>
 
                     {/* Información de ubicaciones */}
-                    <div className="mt-3 p-2 md:p-3 bg-blue-50 rounded-md">
+                    <div className="mt-3 p-2 md:p-3 bg-primary/10 rounded-md">
                       <p className="text-xs md:text-sm">
                         <strong>Desde:</strong> {transfer.location_info?.from.name} → <strong>Hacia:</strong> {transfer.location_info?.to.name}
                       </p>
@@ -825,17 +825,17 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
                     {/* Timeline visual */}
                     {transfer.timeline && (
-                      <div className="mt-3 p-2 md:p-3 bg-gray-50 rounded-md">
-                        <p className="text-xs font-medium text-gray-700 mb-2">Progreso de la transferencia:</p>
+                      <div className="mt-3 p-2 md:p-3 bg-muted/20 rounded-md">
+                        <p className="text-xs font-medium text-foreground mb-2">Progreso de la transferencia:</p>
                         <div className="space-y-1">
                           {transfer.timeline.slice(-3).map((step, index) => (
                             <div key={index} className="flex items-center space-x-2 text-xs">
-                              <div className={`w-2 h-2 rounded-full ${step.completed ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                              <span className={step.completed ? 'text-green-700' : 'text-gray-500'}>
+                              <div className={`w-2 h-2 rounded-full ${step.completed ? 'bg-success' : 'bg-muted'}`}></div>
+                              <span className={step.completed ? 'text-success' : 'text-muted-foreground'}>
                                 {step.title}
                               </span>
                               {step.timestamp && (
-                                <span className="text-gray-400">
+                                <span className="text-muted-foreground">
                                   {new Date(step.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                               )}
@@ -865,8 +865,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
           <CardContent>
             {completedTransfers.length === 0 ? (
               <div className="text-center py-8 md:py-12">
-                <History className="h-8 w-8 md:h-12 md:w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500 text-sm md:text-base">No hay transferencias completadas hoy</p>
+                <History className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm md:text-base">No hay transferencias completadas hoy</p>
               </div>
             ) : (
               <div className="space-y-3 md:space-y-4">
@@ -886,29 +886,29 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         <h4 className="font-semibold text-sm md:text-lg truncate">
                           {transfer.product_info.brand} {transfer.product_info.model}
                         </h4>
-                        <p className="text-xs md:text-sm text-gray-600 truncate">
+                        <p className="text-xs md:text-sm text-muted-foreground truncate">
                           Código: {transfer.product_info.reference_code} | Talla: {transfer.product_info.size}
                         </p>
-                        <p className="text-xs md:text-sm text-gray-500">
+                        <p className="text-xs md:text-sm text-muted-foreground">
                           {transfer.result_info.description}
                         </p>
                       </div>
                       
                       <div className="text-right flex-shrink-0">
-                        <p className="text-xs md:text-sm text-gray-500">Duración</p>
+                        <p className="text-xs md:text-sm text-muted-foreground">Duración</p>
                         <p className="font-medium text-sm md:text-base">{transfer.time_info.duration}</p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-muted-foreground">
                           {transfer.time_info.requested_at} - {transfer.time_info.completed_at}
                         </p>
                         {transfer.result_info.result === 'success' && (
-                          <p className="text-xs font-medium text-green-600 mt-1">
+                          <p className="text-xs font-medium text-success mt-1">
                             ${transfer.product_info.total_value.toFixed(2)}
                           </p>
                         )}
                       </div>
                     </div>
 
-                    <div className="mt-3 p-2 md:p-3 bg-gray-50 rounded-md">
+                    <div className="mt-3 p-2 md:p-3 bg-muted/20 rounded-md">
                       <p className="text-xs md:text-sm">
                         <strong>Ruta:</strong> {transfer.locations.from} → {transfer.locations.to}
                       </p>
@@ -945,7 +945,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             <form onSubmit={handleNewRequest} className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Código de Referencia {prefilledProductData?.sneaker_reference_code && '✅'}
                   </label>
                   <input
@@ -954,14 +954,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     onChange={(e) => setRequestForm({...requestForm, sneaker_reference_code: e.target.value})}
                     placeholder="AD-UB22-BLK-001"
                     required
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base ${
-                      prefilledProductData?.sneaker_reference_code ? 'border-blue-300 bg-blue-50' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${
+                      prefilledProductData?.sneaker_reference_code ? 'border-primary/30 bg-primary/10' : 'border-border'
                     }`}
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Marca {prefilledProductData?.brand && '✅'}
                   </label>
                   <input
@@ -970,8 +970,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     onChange={(e) => setRequestForm({...requestForm, brand: e.target.value})}
                     placeholder="Adidas"
                     required
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base ${
-                      prefilledProductData?.brand ? 'border-blue-300 bg-blue-50' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${
+                      prefilledProductData?.brand ? 'border-primary/30 bg-primary/10' : 'border-border'
                     }`}
                   />
                 </div>
@@ -979,7 +979,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Modelo {prefilledProductData?.model && '✅'}
                   </label>
                   <input
@@ -988,13 +988,13 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     onChange={(e) => setRequestForm({...requestForm, model: e.target.value})}
                     placeholder="Ultraboost 22"
                     required
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base ${
-                      prefilledProductData?.model ? 'border-blue-300 bg-blue-50' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${
+                      prefilledProductData?.model ? 'border-primary/30 bg-primary/10' : 'border-border'
                     }`}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Talla {prefilledProductData?.size && '✅'}
                   </label>
                   <input
@@ -1003,8 +1003,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     onChange={(e) => setRequestForm({...requestForm, size: e.target.value})}
                     placeholder="9.5"
                     required
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base ${
-                      prefilledProductData?.size ? 'border-blue-300 bg-blue-50' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${
+                      prefilledProductData?.size ? 'border-primary/30 bg-primary/10' : 'border-border'
                     }`}
                   />
                 </div>
@@ -1012,13 +1012,13 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Propósito
                   </label>
                   <select
                     value={requestForm.purpose}
                     onChange={(e) => setRequestForm({...requestForm, purpose: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground"
                   >
                     <option value="cliente">🔥 Cliente Presente (Urgente)</option>
                     <option value="restock">📦 Restock (Normal)</option>
@@ -1026,13 +1026,13 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Recoge
                   </label>
                   <select
                     value={requestForm.pickup_type}
                     onChange={(e) => setRequestForm({...requestForm, pickup_type: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground"
                   >
                     <option value="vendedor">🏃‍♂️ Vendedor</option>
                     <option value="corredor">🚚 Corredor</option>
@@ -1040,7 +1040,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Cantidad
                   </label>
                   <input
@@ -1049,21 +1049,21 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     onChange={(e) => setRequestForm({...requestForm, quantity: parseInt(e.target.value) || 1})}
                     min="1"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Notas Adicionales
                 </label>
                 <textarea
                   value={requestForm.notes}
                   onChange={(e) => setRequestForm({...requestForm, notes: e.target.value})}
                   rows={3}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base ${
-                    prefilledProductData ? 'border-blue-300 bg-blue-50' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${
+                    prefilledProductData ? 'border-primary/30 bg-primary/10' : 'border-border'
                   }`}
                   placeholder="Información adicional sobre la transferencia..."
                 />

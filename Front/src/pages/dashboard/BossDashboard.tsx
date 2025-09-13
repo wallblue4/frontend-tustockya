@@ -317,12 +317,12 @@ export const BossDashboard: React.FC = () => {
                   <div className="flex items-center space-x-3">
                     <Store className="h-6 w-6 text-primary" />
                     <div>
-                      <h4 className="font-medium">{location.name}</h4>
-                      <p className="text-sm text-gray-600">{location.pairs} pares</p>
+                      <h4 className="font-medium text-foreground">{location.name}</h4>
+                      <p className="text-sm text-muted-foreground">{location.pairs} pares</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">{formatCurrency(location.sales)}</p>
+                    <p className="font-bold text-foreground">{formatCurrency(location.sales)}</p>
                   </div>
                 </div>
               ))}
@@ -346,20 +346,20 @@ export const BossDashboard: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-4 bg-primary/10 rounded-lg">
                   <Package className="h-8 w-8 text-primary mx-auto mb-2" />
-                  <p className="text-2xl font-bold">{totalInventoryPairs}</p>
-                  <p className="text-sm text-gray-600">Total Pares</p>
+                  <p className="text-2xl font-bold text-foreground">{totalInventoryPairs}</p>
+                  <p className="text-sm text-muted-foreground">Total Pares</p>
                 </div>
                 <div className="text-center p-4 bg-secondary/10 rounded-lg">
                   <Warehouse className="h-8 w-8 text-secondary mx-auto mb-2" />
-                  <p className="text-2xl font-bold">{inventory.length}</p>
-                  <p className="text-sm text-gray-600">Referencias</p>
+                  <p className="text-2xl font-bold text-foreground">{inventory.length}</p>
+                  <p className="text-sm text-muted-foreground">Referencias</p>
                 </div>
               </div>
               <div className="space-y-2">
                 {inventory.slice(0, 3).map((item) => (
                   <div key={item.id} className="flex justify-between items-center text-sm">
-                    <span>{item.brand} {item.model}</span>
-                    <span className="font-medium">{item.totalPairs} pares</span>
+                    <span className="text-foreground">{item.brand} {item.model}</span>
+                    <span className="font-medium text-foreground">{item.totalPairs} pares</span>
                   </div>
                 ))}
               </div>
@@ -429,12 +429,12 @@ export const BossDashboard: React.FC = () => {
                 <div key={cost.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
                   <div>
                     <p className="font-medium">{cost.description}</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       {cost.status === 'overdue' ? 'Vencido' : 'Vence'}: {cost.dueDate}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-error">{formatCurrency(cost.amount)}</p>
+                    <p className="font-bold text-destructive">{formatCurrency(cost.amount)}</p>
                   </div>
                 </div>
               ))}
@@ -676,15 +676,15 @@ export const BossDashboard: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="font-semibold">{assignment.userName}</h4>
-                    <p className="text-sm text-gray-600">{assignment.userRole}</p>
+                    <p className="text-sm text-muted-foreground">{assignment.userRole}</p>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {assignment.assignedTo.map((location, index) => (
-                        <span key={index} className="px-2 py-1 bg-gray-100 rounded-full text-xs">
+                        <span key={index} className="px-2 py-1 bg-muted/30 rounded-full text-xs text-foreground">
                           {location}
                         </span>
                       ))}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Creado: {formatDate(assignment.createdAt)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Creado: {formatDate(assignment.createdAt)}</p>
                   </div>
                 </div>
                 <div className="flex space-x-2">
@@ -693,7 +693,7 @@ export const BossDashboard: React.FC = () => {
                     Editar
                   </Button>
                   <Button size="sm" variant="outline" className="text-error hover:text-error">
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-3 w-3 text-destructive" />
                   </Button>
                 </div>
               </div>
@@ -721,23 +721,23 @@ export const BossDashboard: React.FC = () => {
               <Input label="Modelo" placeholder="Ej: Air Max 90" />
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Imagen del Producto
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                  <FileImage className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-600">Subir imagen</p>
+                <div className="border-2 border-dashed border-border rounded-lg p-4 text-center bg-card">
+                  <FileImage className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">Subir imagen</p>
                   <input type="file" accept="image/*" className="hidden" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Video del Producto (Opcional)
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                  <Video className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-600">Subir video</p>
+                <div className="border-2 border-dashed border-border rounded-lg p-4 text-center bg-card">
+                  <Video className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">Subir video</p>
                   <input type="file" accept="video/*" className="hidden" />
                 </div>
               </div>
@@ -745,13 +745,13 @@ export const BossDashboard: React.FC = () => {
 
             {/* Tallas y ubicaciones */}
             <div className="space-y-4">
-              <h4 className="font-medium">Tallas y Ubicaciones</h4>
+              <h4 className="font-medium text-foreground">Tallas y Ubicaciones</h4>
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {['7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5', '11', '11.5', '12'].map((size) => (
                   <div key={size} className="grid grid-cols-3 gap-2">
                     <Input placeholder={`Talla ${size}`} value={size} disabled />
                     <Input placeholder="Cantidad" type="number" min="0" />
-                    <select className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm">
+                    <select className="px-3 py-2 border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm">
                       <option value="">Ubicación</option>
                       <option value="bodega-principal">Bodega Principal</option>
                       <option value="bodega-norte">Bodega Norte</option>
@@ -766,7 +766,7 @@ export const BossDashboard: React.FC = () => {
           </div>
 
           <div className="mt-6 flex justify-end space-x-4">
-            <Button variant="outline">Cancelar</Button>
+            <Button variant="outline" className="text-foreground">Cancelar</Button>
             <Button>
               <Package className="h-4 w-4 mr-2" />
               Agregar al Inventario
@@ -797,7 +797,7 @@ export const BossDashboard: React.FC = () => {
             <p className="text-sm text-gray-600">Ventas Totales (Mes)</p>
             <div className="flex items-center justify-center mt-1">
               <ArrowUp className="h-3 w-3 text-success mr-1" />
-              <span className="text-xs text-success">+15.3%</span>
+              <span className="text-xs text-success font-medium">+15.3%</span>
             </div>
           </CardContent>
         </Card>
@@ -808,7 +808,7 @@ export const BossDashboard: React.FC = () => {
             <p className="text-sm text-gray-600">Pares Vendidos (Mes)</p>
             <div className="flex items-center justify-center mt-1">
               <ArrowUp className="h-3 w-3 text-success mr-1" />
-              <span className="text-xs text-success">+8.7%</span>
+              <span className="text-xs text-success font-medium">+8.7%</span>
             </div>
           </CardContent>
         </Card>
@@ -819,7 +819,7 @@ export const BossDashboard: React.FC = () => {
             <p className="text-sm text-gray-600">Cajas Vendidas (Mes)</p>
             <div className="flex items-center justify-center mt-1">
               <ArrowUp className="h-3 w-3 text-success mr-1" />
-              <span className="text-xs text-success">+22.1%</span>
+              <span className="text-xs text-success font-medium">+22.1%</span>
             </div>
           </CardContent>
         </Card>
@@ -830,7 +830,7 @@ export const BossDashboard: React.FC = () => {
             <p className="text-sm text-gray-600">Efectividad</p>
             <div className="flex items-center justify-center mt-1">
               <ArrowUp className="h-3 w-3 text-success mr-1" />
-              <span className="text-xs text-success">+3.2%</span>
+              <span className="text-xs text-success font-medium">+3.2%</span>
             </div>
           </CardContent>
         </Card>
@@ -842,10 +842,10 @@ export const BossDashboard: React.FC = () => {
           <h3 className="text-lg font-semibold">Tendencia de Ventas - Últimos 30 Días</h3>
         </CardHeader>
         <CardContent>
-          <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+          <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg border border-border">
             <div className="text-center">
-              <BarChart2 className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500">Gráfico de tendencias aparecerá aquí</p>
+              <BarChart2 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">Gráfico de tendencias aparecerá aquí</p>
             </div>
           </div>
         </CardContent>
@@ -860,43 +860,43 @@ export const BossDashboard: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead>
-                <tr className="border-b">
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Producto</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Talla</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Hora</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Local</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Ubicación</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Método</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Monto</th>
+                <tr className="border-b border-border">
+                  <th className="py-2 px-4 text-left text-sm font-medium text-muted-foreground">Producto</th>
+                  <th className="py-2 px-4 text-left text-sm font-medium text-muted-foreground">Talla</th>
+                  <th className="py-2 px-4 text-left text-sm font-medium text-muted-foreground">Hora</th>
+                  <th className="py-2 px-4 text-left text-sm font-medium text-muted-foreground">Local</th>
+                  <th className="py-2 px-4 text-left text-sm font-medium text-muted-foreground">Ubicación</th>
+                  <th className="py-2 px-4 text-left text-sm font-medium text-muted-foreground">Método</th>
+                  <th className="py-2 px-4 text-left text-sm font-medium text-muted-foreground">Monto</th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b">
-                  <td className="py-2 px-4 text-sm">Nike Air Max 90</td>
-                  <td className="py-2 px-4 text-sm">9.5</td>
-                  <td className="py-2 px-4 text-sm">14:30</td>
-                  <td className="py-2 px-4 text-sm">Local Centro</td>
-                  <td className="py-2 px-4 text-sm">Exhibición</td>
-                  <td className="py-2 px-4 text-sm">Tarjeta</td>
-                  <td className="py-2 px-4 text-sm font-medium">{formatCurrency(180000)}</td>
+                <tr className="border-b border-border">
+                  <td className="py-2 px-4 text-sm text-foreground">Nike Air Max 90</td>
+                  <td className="py-2 px-4 text-sm text-foreground">9.5</td>
+                  <td className="py-2 px-4 text-sm text-foreground">14:30</td>
+                  <td className="py-2 px-4 text-sm text-foreground">Local Centro</td>
+                  <td className="py-2 px-4 text-sm text-foreground">Exhibición</td>
+                  <td className="py-2 px-4 text-sm text-foreground">Tarjeta</td>
+                  <td className="py-2 px-4 text-sm font-medium text-foreground">{formatCurrency(180000)}</td>
                 </tr>
-                <tr className="border-b">
-                  <td className="py-2 px-4 text-sm">Adidas Ultraboost</td>
-                  <td className="py-2 px-4 text-sm">8</td>
-                  <td className="py-2 px-4 text-sm">13:15</td>
-                  <td className="py-2 px-4 text-sm">Local Norte</td>
-                  <td className="py-2 px-4 text-sm">Bodega</td>
-                  <td className="py-2 px-4 text-sm">Efectivo</td>
-                  <td className="py-2 px-4 text-sm font-medium">{formatCurrency(220000)}</td>
+                <tr className="border-b border-border">
+                  <td className="py-2 px-4 text-sm text-foreground">Adidas Ultraboost</td>
+                  <td className="py-2 px-4 text-sm text-foreground">8</td>
+                  <td className="py-2 px-4 text-sm text-foreground">13:15</td>
+                  <td className="py-2 px-4 text-sm text-foreground">Local Norte</td>
+                  <td className="py-2 px-4 text-sm text-foreground">Bodega</td>
+                  <td className="py-2 px-4 text-sm text-foreground">Efectivo</td>
+                  <td className="py-2 px-4 text-sm font-medium text-foreground">{formatCurrency(220000)}</td>
                 </tr>
-                <tr className="border-b">
-                  <td className="py-2 px-4 text-sm">Puma Suede Classic</td>
-                  <td className="py-2 px-4 text-sm">10</td>
-                  <td className="py-2 px-4 text-sm">12:45</td>
-                  <td className="py-2 px-4 text-sm">Local Sur</td>
-                  <td className="py-2 px-4 text-sm">Exhibición</td>
-                  <td className="py-2 px-4 text-sm">Transferencia</td>
-                  <td className="py-2 px-4 text-sm font-medium">{formatCurrency(150000)}</td>
+                <tr className="border-b border-border">
+                  <td className="py-2 px-4 text-sm text-foreground">Puma Suede Classic</td>
+                  <td className="py-2 px-4 text-sm text-foreground">10</td>
+                  <td className="py-2 px-4 text-sm text-foreground">12:45</td>
+                  <td className="py-2 px-4 text-sm text-foreground">Local Sur</td>
+                  <td className="py-2 px-4 text-sm text-foreground">Exhibición</td>
+                  <td className="py-2 px-4 text-sm text-foreground">Transferencia</td>
+                  <td className="py-2 px-4 text-sm font-medium text-foreground">{formatCurrency(150000)}</td>
                 </tr>
               </tbody>
             </table>
@@ -948,10 +948,10 @@ export const BossDashboard: React.FC = () => {
           <h3 className="text-lg font-semibold">Balance Mensual</h3>
         </CardHeader>
         <CardContent>
-          <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+          <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg border border-border">
             <div className="text-center">
-              <PieChart className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500">Gráfico de balance aparecerá aquí</p>
+              <PieChart className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">Gráfico de balance aparecerá aquí</p>
             </div>
           </div>
         </CardContent>
@@ -981,9 +981,9 @@ export const BossDashboard: React.FC = () => {
       currentView === 'analytics' ? 'Métricas y Análisis' :
       'Balance Histórico'
     }>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         {/* Navigation tabs - Solo visible en móvil */}
-        <div className="lg:hidden bg-white border-b sticky top-0 z-10">
+        <div className="lg:hidden bg-card border-b border-border sticky top-0 z-10">
           <div className="flex overflow-x-auto px-4 py-2 space-x-2">
             {[
               { key: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="h-4 w-4" /> },
@@ -999,8 +999,8 @@ export const BossDashboard: React.FC = () => {
                 onClick={() => setCurrentView(tab.key as BossView)}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${
                   currentView === tab.key
-                    ? 'bg-primary text-white'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/20'
                 }`}
               >
                 {tab.icon}
@@ -1012,7 +1012,7 @@ export const BossDashboard: React.FC = () => {
 
         {/* Sidebar navigation - Solo visible en desktop */}
         <div className="hidden lg:flex">
-          <div className="w-64 bg-white shadow-sm h-screen fixed left-0 top-16 overflow-y-auto">
+          <div className="w-64 bg-card shadow-xl border-r border-border h-screen fixed left-0 top-16 overflow-y-auto">
             <div className="p-4">
               <nav className="space-y-2">
                 {[
@@ -1029,8 +1029,8 @@ export const BossDashboard: React.FC = () => {
                     onClick={() => setCurrentView(item.key as BossView)}
                     className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left ${
                       currentView === item.key
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-foreground hover:bg-muted/20'
                     }`}
                   >
                     {item.icon}

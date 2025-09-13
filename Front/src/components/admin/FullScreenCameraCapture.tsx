@@ -93,14 +93,13 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+    <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Header con botón cerrar */}
-      <div className="flex justify-between items-center p-4 bg-black/80 text-white">
-        <h2 className="text-lg font-semibold">Grabar Video</h2>
+      <div className="flex justify-between items-center p-4 bg-card/80 backdrop-blur-sm text-foreground border-b border-border">
+        <h2 className="text-lg font-semibold text-foreground">Grabar Video</h2>
         <Button 
-          variant="secondary" 
+          variant="outline" 
           onClick={closeFullScreen}
-          className="bg-gray-600 hover:bg-gray-700 text-white"
         >
           ✕ Cerrar
         </Button>
@@ -108,7 +107,7 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
 
       {/* Error message */}
       {error && (
-        <div className="bg-red-600 text-white p-3 text-center">
+        <div className="bg-destructive/20 text-destructive p-3 text-center border-b border-destructive/30">
           {error}
         </div>
       )}
@@ -125,11 +124,11 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
       </div>
 
       {/* Controls footer */}
-      <div className="p-4 bg-black/80 flex justify-center gap-4">
+      <div className="p-4 bg-card/80 backdrop-blur-sm flex justify-center gap-4 border-t border-border">
         {stream && !recording && (
           <Button 
             onClick={startRecording} 
-            className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-full text-lg"
+            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground px-8 py-3 rounded-full text-lg"
           >
             ● REC
           </Button>
@@ -138,7 +137,7 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
         {recording && (
           <Button 
             onClick={stopRecording} 
-            className="bg-gray-600 hover:bg-gray-700 text-white px-8 py-3 rounded-full text-lg animate-pulse"
+            className="bg-muted hover:bg-muted/90 text-foreground px-8 py-3 rounded-full text-lg animate-pulse"
           >
             ■ Parar
           </Button>

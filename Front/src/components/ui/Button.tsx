@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   icon?: React.ReactNode;
@@ -16,19 +16,20 @@ export const Button: React.FC<ButtonProps> = ({
   className = '',
   ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2';
+  const baseStyles = 'inline-flex items-center justify-center rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none';
   
   const variantStyles = {
-    primary: 'bg-primary text-white hover:bg-primary-dark',
-    secondary: 'bg-white text-primary border border-primary hover:bg-gray-50',
-    outline: 'border border-gray-300 bg-transparent hover:bg-gray-50',
-    ghost: 'bg-transparent hover:bg-gray-100',
+    primary: 'bg-primary text-primary-foreground hover:bg-primary-dark shadow-lg hover:shadow-xl hover:shadow-primary/25',
+    secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-md',
+    outline: 'border border-border bg-transparent hover:bg-primary/10 text-foreground hover:text-primary hover:border-primary/50 transition-all',
+    ghost: 'bg-transparent hover:bg-primary/10 text-foreground hover:text-primary transition-all',
+    destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-md',
   };
   
   const sizeStyles = {
-    sm: 'text-sm px-3 py-1.5',
-    md: 'text-sm px-4 py-2',
-    lg: 'text-base px-6 py-3',
+    sm: 'text-sm px-3 py-1.5 h-8',
+    md: 'text-sm px-4 py-2 h-9',
+    lg: 'text-base px-6 py-3 h-11',
   };
   
   const buttonStyles = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`;

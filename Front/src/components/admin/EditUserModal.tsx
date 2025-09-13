@@ -88,21 +88,21 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div 
         className="absolute inset-0" 
         onClick={onClose}
       />
       
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md relative z-10 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h3 className="text-lg font-semibold flex items-center">
+      <div className="bg-card rounded-lg shadow-xl w-full max-w-md relative z-10 max-h-[90vh] overflow-y-auto border border-border">
+        <div className="flex justify-between items-center p-6 border-b border-border">
+          <h3 className="text-lg font-semibold flex items-center text-foreground">
             <User className="h-5 w-5 mr-2" />
             Editar Usuario
           </h3>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-muted-foreground hover:text-foreground"
           >
             <X className="h-5 w-5" />
           </button>
@@ -139,13 +139,13 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Rol
             </label>
             <select
               value={formData.role}
               onChange={(e) => handleInputChange('role', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
+              className="w-full px-3 py-2 border border-border rounded-md bg-muted/30 text-muted-foreground cursor-not-allowed"
               disabled
             >
               <option value="vendedor">Vendedor</option>
@@ -155,13 +155,13 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Ubicación
             </label>
             <select
               value={formData.location_id}
               onChange={(e) => handleInputChange('location_id', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Sin asignar</option>
               {locations.map((location) => (
@@ -173,7 +173,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Estado del Usuario
             </label>
             <div className="flex items-center space-x-3">
@@ -184,17 +184,17 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
                 onChange={(e) => handleInputChange('is_active', e.target.checked)}
                 className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
               />
-              <label htmlFor="is_active" className="text-sm text-gray-700">
+              <label htmlFor="is_active" className="text-sm text-foreground">
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                   formData.is_active 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
+                    ? 'bg-success/20 text-success' 
+                    : 'bg-destructive/20 text-destructive'
                 }`}>
                   {formData.is_active ? 'Activo' : 'Inactivo'}
                 </span>
               </label>
             </div>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               {formData.is_active 
                 ? 'El usuario puede acceder al sistema' 
                 : 'El usuario no puede acceder al sistema'

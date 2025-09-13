@@ -62,11 +62,11 @@ export const ExpensesList: React.FC = () => {
 
   if (loading) {
     return (
-      <Card>
+      <Card className="bg-card">
         <CardContent className="p-6">
           <div className="flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <span className="ml-2">Cargando gastos...</span>
+            <span className="ml-2 text-foreground">Cargando gastos...</span>
           </div>
         </CardContent>
       </Card>
@@ -76,9 +76,9 @@ export const ExpensesList: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Summary Card */}
-      <Card>
+      <Card className="bg-card">
         <CardHeader>
-          <h3 className="text-lg font-semibold flex items-center">
+          <h3 className="text-lg font-semibold flex items-center text-foreground">
             <DollarSign className="h-5 w-5 mr-2" />
             Resumen de Gastos del Día
           </h3>
@@ -86,45 +86,45 @@ export const ExpensesList: React.FC = () => {
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-gray-600">Total de Gastos</p>
-              <p className="text-2xl font-bold text-error">{formatCurrency(totalExpenses)}</p>
+              <p className="text-sm text-muted-foreground">Total de Gastos</p>
+              <p className="text-2xl font-bold text-destructive">{formatCurrency(totalExpenses)}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Número de Gastos</p>
-              <p className="text-2xl font-bold">{expenses.length}</p>
+              <p className="text-sm text-muted-foreground">Número de Gastos</p>
+              <p className="text-2xl font-bold text-foreground">{expenses.length}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Expenses List */}
-      <Card>
+      <Card className="bg-card">
         <CardHeader>
-          <h3 className="text-lg font-semibold flex items-center">
+          <h3 className="text-lg font-semibold flex items-center text-foreground">
             <Receipt className="h-5 w-5 mr-2" />
             Gastos del Día
           </h3>
         </CardHeader>
         <CardContent>
           {error && (
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
-              <p className="text-sm text-amber-800">Modo de desarrollo - Usando datos de prueba</p>
+            <div className="mb-4 p-3 bg-warning/20 border border-warning/30 rounded-md">
+              <p className="text-sm text-warning">Modo de desarrollo - Usando datos de prueba</p>
             </div>
           )}
           
           {expenses.length === 0 ? (
             <div className="text-center py-8">
-              <Receipt className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500">No hay gastos registrados hoy</p>
+              <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">No hay gastos registrados hoy</p>
             </div>
           ) : (
             <div className="space-y-4">
               {expenses.map((expense) => (
-                <div key={expense.id} className="border rounded-lg p-4">
+                <div key={expense.id} className="border border-border bg-card rounded-lg p-4">
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-lg">{expense.concept}</h4>
-                      <div className="flex items-center text-sm text-gray-600 mt-1">
+                      <h4 className="font-semibold text-lg text-foreground">{expense.concept}</h4>
+                      <div className="flex items-center text-sm text-muted-foreground mt-1">
                         <Calendar className="h-4 w-4 mr-1" />
                         <span>{formatDate(expense.created_at)}</span>
                         {expense.has_receipt && (
@@ -136,13 +136,13 @@ export const ExpensesList: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-xl font-bold text-error">{formatCurrency(expense.amount)}</p>
+                      <p className="text-xl font-bold text-destructive">{formatCurrency(expense.amount)}</p>
                     </div>
                   </div>
                   
                   {expense.notes && (
-                    <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                      <p className="text-sm text-gray-700">{expense.notes}</p>
+                    <div className="mt-3 p-3 bg-muted/20 rounded-md">
+                      <p className="text-sm text-foreground">{expense.notes}</p>
                     </div>
                   )}
                 </div>

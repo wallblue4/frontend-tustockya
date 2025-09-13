@@ -188,10 +188,10 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
             <div className="w-full h-full flex items-center justify-center bg-gray-900 text-center p-4 sm:p-8">
               <div className="text-center max-w-sm">
                 <div className="p-4 bg-red-500/20 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                  <Camera className="h-10 w-10 text-red-400" />
+                  <Camera className="h-10 w-10 text-destructive" />
                 </div>
-                <h4 className="text-white font-semibold mb-2">Error de Cámara</h4>
-                <p className="text-gray-300 text-sm mb-6 leading-relaxed">{error}</p>
+                <h4 className="text-foreground font-semibold mb-2">Error de Cámara</h4>
+                <p className="text-muted-foreground text-sm mb-6 leading-relaxed">{error}</p>
                 <div className="space-y-3">
                   <Button 
                     onClick={startCamera} 
@@ -203,16 +203,16 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                   <Button 
                     variant="outline" 
                     onClick={handleClose} 
-                    className="w-full border-gray-600 text-gray-300 hover:bg-white/10"
+                    className="w-full border-border text-muted-foreground hover:bg-muted/10"
                   >
                     Cancelar
                   </Button>
                 </div>
                 
                 {/* Instrucciones adicionales */}
-                <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <h5 className="text-blue-300 font-medium text-sm mb-2">💡 Consejos:</h5>
-                  <ul className="text-gray-400 text-xs space-y-1 text-left">
+                <div className="mt-6 p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                  <h5 className="text-primary font-medium text-sm mb-2">💡 Consejos:</h5>
+                  <ul className="text-muted-foreground text-xs space-y-1 text-left">
                     <li>• Asegúrate de permitir el acceso a la cámara</li>
                     <li>• Cierra otras apps que usen la cámara</li>
                     <li>• Recarga la página si el problema persiste</li>
@@ -243,7 +243,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                   <Button 
                     onClick={retakePhoto} 
                     variant="outline" 
-                    className="flex-1 border-gray-600 text-gray-300 hover:bg-white/10 bg-black/50 backdrop-blur-sm"
+                    className="flex-1 border-border text-foreground hover:bg-muted/10 bg-black/50 backdrop-blur-sm"
                     disabled={isProcessing}
                   >
                     <RotateCcw className="h-4 w-4 mr-2" />
@@ -321,8 +321,8 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
               
               {/* Instructional text - Responsive positioning */}
               <div className="absolute top-2 sm:top-4 left-2 sm:left-4 right-2 sm:right-4 z-20">
-                <div className="bg-black/60 backdrop-blur-sm rounded-lg p-2 sm:p-3">
-                  <div className="flex items-center space-x-2 text-white">
+                <div className="bg-card/60 backdrop-blur-sm rounded-lg p-2 sm:p-3 border border-border/30">
+                  <div className="flex items-center space-x-2 text-foreground">
                     <Zap className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
                     <span className="text-xs sm:text-sm font-medium">
                       {isStreaming ? 'Cámara lista para escanear' : 'Iniciando cámara...'}
@@ -397,7 +397,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
       {/* Texto instructivo - Fixed at bottom */}
       <div className="flex-shrink-0 px-4 pb-4 pt-2 safe-area-bottom">
         <div className="text-center">
-          <p className="text-gray-300 text-xs sm:text-sm">
+          <p className="text-muted-foreground text-xs sm:text-sm">
             Mantén el producto dentro del recuadro para mejor reconocimiento
           </p>
         </div>

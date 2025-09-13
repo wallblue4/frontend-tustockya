@@ -4,23 +4,81 @@
 
 @layer base {
   :root {
-    --primary: 210 100% 50%;
-    --primary-dark: 210 100% 40%;
-    --secondary: 195 100% 50%;
-    --accent: 25 100% 50%;
-    --success: 142 76% 36%;
-    --warning: 45 100% 51%;
-    --error: 0 100% 50%;
-    --background: 210 50% 98%;
-    --foreground: 210 50% 10%;
+    /* Colores principales */
+    --primary: 206 100% 50%;           /* #0EA5E9 - Sky Blue 500 */
+    --primary-dark: 204 96% 42%;       /* #0284C7 - Sky Blue 600 */
+    --primary-foreground: 210 40% 98%; /* Texto sobre azul */
+    
+    --secondary: 215 28% 17%;          /* #1E293B - Slate 800 */
+    --secondary-foreground: 210 40% 98%;
+    
+    --accent: 206 100% 50%;            /* Mismo azul para acentos */
+    --accent-foreground: 210 40% 98%;
+    
+    /* Estados */
+    --success: 142 76% 36%;            /* Verde para éxito */
+    --success-foreground: 0 0% 100%;
+    --warning: 45 100% 51%;            /* Amarillo para advertencias */
+    --warning-foreground: 0 0% 0%;
+    --error: 0 100% 50%;               /* Rojo para errores */
+    --error-foreground: 0 0% 100%;
+    
+    /* Fondos y superficies */
+    --background: 222 84% 5%;          /* #0F172A - Slate 900 Negro azulado */
+    --foreground: 210 40% 98%;         /* #F8FAFC - Slate 50 Blanco */
+    --card: 215 28% 17%;               /* #1E293B - Slate 800 Gris oscuro */
+    --card-foreground: 210 40% 98%;
+    --popover: 215 28% 17%;            /* #1E293B - Slate 800 */
+    --popover-foreground: 210 40% 98%;
+    
+    /* Bordes y elementos */
+    --border: 215 20% 27%;             /* #334155 - Slate 700 para bordes */
+    --input: 215 20% 27%;
+    --ring: 206 100% 50%;              /* Azul para focus */
+    
+    /* Elementos mutados */
+    --muted: 215 16% 47%;              /* #64748B - Slate 500 Gris medio */
+    --muted-foreground: 215 20% 65%;
+    
+    /* Elementos destructivos */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
   }
 
+  * {
+    @apply border-border;
+  }
+  
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground font-sans min-h-screen;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold leading-tight;
+    @apply font-semibold leading-tight text-foreground;
+  }
+
+  /* Elegant thin scrollbar styling for dark theme */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted) / 0.3);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted) / 0.5);
+  }
+  
+  ::-webkit-scrollbar-corner {
+    background: transparent;
   }
 }
 
@@ -30,18 +88,18 @@
   }
 
   .btn-primary {
-    @apply bg-primary text-white hover:bg-primary-dark;
+    @apply bg-primary text-primary-foreground hover:bg-primary-dark;
   }
 
   .btn-secondary {
-    @apply bg-white text-primary border border-primary hover:bg-gray-50;
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/90;
   }
 
   .card {
-    @apply bg-white rounded-lg shadow-md overflow-hidden;
+    @apply bg-card text-card-foreground rounded-lg shadow-lg overflow-hidden border border-border;
   }
 
   .input {
-    @apply px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
+    @apply px-3 py-2 border border-input bg-card rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-foreground placeholder:text-muted-foreground;
   }
 }

@@ -420,13 +420,13 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
   return (
     <div className="space-y-6">
       {/* API Integration Notice */}
-      <Card className="border-green-200 bg-green-50">
+      <Card className="border-success/30 bg-success/10">
         <CardContent className="p-4">
           <div className="flex items-center space-x-3">
-            <Camera className="h-5 w-5 text-green-600" />
+            <Camera className="h-5 w-5 text-success" />
             <div>
-              <p className="text-sm font-medium text-green-800">Escáner IA - Sistema Actualizado</p>
-              <p className="text-sm text-green-700">
+              <p className="text-sm font-medium text-success">Escáner IA - Sistema Actualizado</p>
+              <p className="text-sm text-success">
                 Conectado a nueva API de clasificación con información de disponibilidad
               </p>
             </div>
@@ -436,26 +436,26 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
       {/* Scan Info */}
       {scanInfo && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-primary/30 bg-primary/10">
           <CardContent className="p-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-800">
+                  <p className="text-sm font-medium text-primary">
                     Escaneado por: {scanInfo.scanned_by.name} - {scanInfo.user_location}
                   </p>
-                  <p className="text-xs text-blue-600">
+                  <p className="text-xs text-primary">
                     Procesado en {scanInfo.processing_time.toFixed(0)}ms
                   </p>
                 </div>
-                <div className="text-xs text-blue-600">
+                <div className="text-xs text-primary">
                   {new Date(scanInfo.scan_timestamp).toLocaleString()}
                 </div>
               </div>
               
               {/* New: Show availability summary */}
               {scanInfo.availability_summary && (
-                <div className="grid grid-cols-2 gap-4 text-xs text-blue-700 bg-blue-100 p-2 rounded">
+                <div className="grid grid-cols-2 gap-4 text-xs text-primary bg-primary/20 p-2 rounded">
                   <div>Productos clasificados: {scanInfo.availability_summary.products_classified_only}</div>
                   <div>Venta inmediata: {scanInfo.availability_summary.can_sell_immediately ? 'Sí' : 'No'}</div>
                   <div>Disponibles localmente: {scanInfo.availability_summary.products_available_locally}</div>
@@ -465,7 +465,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
               
               {/* New: Show classification service info */}
               {scanInfo.classification_service && (
-                <div className="text-xs text-blue-600">
+                <div className="text-xs text-primary">
                   Modelo: {scanInfo.classification_service.model} | 
                   Coincidencias en BD: {scanInfo.classification_service.total_database_matches}
                 </div>
@@ -514,7 +514,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-semibold text-lg truncate">
+                        <h4 className="font-semibold text-lg truncate text-foreground">
                           {option.description || `${option.brand} ${option.model}`}
                         </h4>
                         <div className="flex flex-col items-end space-y-1">
@@ -527,7 +527,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                         </div>
                       </div>
                       
-                      <p className="text-sm text-gray-600 mb-2">
+                      <p className="text-sm text-muted-foreground mb-2">
                         Código: {option.code} | Color: {option.color} | Modelo: {option.model}
                       </p>
                       
@@ -553,7 +553,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                             {formatCurrency(option.inventory.pricing.unit_price)}
                           </span>
                           {option.inventory.pricing.box_price > 0 && (
-                            <span className="text-gray-500 ml-2">
+                            <span className="text-muted-foreground ml-2">
                               (Caja: {formatCurrency(option.inventory.pricing.box_price)})
                             </span>
                           )}
@@ -561,7 +561,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                       )}
 
                       <div className="mt-3 flex items-center justify-between">
-                        <span className="text-xs text-gray-400">Ranking: #{option.rank}</span>
+                        <span className="text-xs text-muted-foreground">Ranking: #{option.rank}</span>
                         <div className="flex items-center text-primary">
                           <span className="text-sm font-medium">Seleccionar</span>
                           <ArrowRight className="h-4 w-4 ml-1" />
@@ -578,13 +578,13 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
       {/* No results found */}
       {currentStep === 'options' && scanOptions.length === 0 && !isScanning && (
-        <Card className="border-yellow-200 bg-yellow-50">
+        <Card className="border-warning/30 bg-warning/10">
           <CardContent className="p-8 text-center">
             <div className="space-y-4">
-              <AlertCircle className="h-12 w-12 mx-auto text-yellow-600" />
+              <AlertCircle className="h-12 w-12 mx-auto text-warning" />
               <div>
-                <h3 className="text-lg font-semibold text-yellow-800">No se encontraron productos</h3>
-                <p className="text-yellow-700">No se pudieron identificar productos en la imagen. Intenta con una imagen más clara o un ángulo diferente.</p>
+                <h3 className="text-lg font-semibold text-warning">No se encontraron productos</h3>
+                <p className="text-warning">No se pudieron identificar productos en la imagen. Intenta con una imagen más clara o un ángulo diferente.</p>
               </div>
               <Button
                 variant="outline"
@@ -613,24 +613,24 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
           <CardContent>
             <div className="space-y-6">
               {/* Product Info */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-semibold text-xl mb-2">
+              <div className="bg-muted/20 p-4 rounded-lg">
+                <h4 className="font-semibold text-xl mb-2 text-foreground">
                   {selectedProduct.product.description || `${selectedProduct.product.brand} ${selectedProduct.product.model}`}
                 </h4>
-                <p className="text-gray-600 mb-1">
+                <p className="text-muted-foreground mb-1">
                   Código: {selectedProduct.product.code} | Color: {selectedProduct.product.color} | Modelo: {selectedProduct.product.model}
                 </p>
-                <p className="text-sm text-gray-500 mb-3">Marca: {selectedProduct.product.brand}</p>
+                <p className="text-sm text-muted-foreground mb-3">Marca: {selectedProduct.product.brand}</p>
                 
                 {/* Availability Status */}
                 <div className={`p-3 rounded-md border ${getAvailabilityColor(selectedProduct.product.availability)}`}>
                   <div className="flex items-center space-x-2 mb-2">
                     {getAvailabilityIcon(selectedProduct.product.availability)}
-                    <span className="font-medium">
+                    <span className="font-medium text-foreground">
                       {selectedProduct.product.availability.recommended_action}
                     </span>
                   </div>
-                  <div className="text-sm">
+                  <div className="text-sm text-muted-foreground">
                     Stock total: {selectedProduct.product.inventory.total_stock} unidades
                     {selectedProduct.product.inventory.total_exhibition > 0 && (
                       <span className="ml-2">| Exhibición: {selectedProduct.product.inventory.total_exhibition}</span>
@@ -642,7 +642,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getConfidenceLevelColor(selectedProduct.product.confidence_level)}`}>
                     Confianza: {getConfidenceLevelText(selectedProduct.product.confidence_level)} ({selectedProduct.product.confidence}%)
                   </span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted-foreground">
                     Similitud: {(selectedProduct.product.similarity_score * 100).toFixed(1)}%
                   </span>
                 </div>
@@ -651,7 +651,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
               {/* Size Selection */}
               {selectedProduct.sizes.length > 0 ? (
                 <div>
-                  <h5 className="font-medium mb-3">Selecciona una Talla:</h5>
+                  <h5 className="font-medium mb-3 text-foreground">Selecciona una Talla:</h5>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {selectedProduct.sizes.map((sizeInfo) => (
                       <button
@@ -662,24 +662,24 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                           selectedSize === sizeInfo.size
                             ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
                             : sizeInfo.quantity > 0 || selectedProduct.product.inventory.total_stock > 0
-                            ? 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                            : 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-60'
+                            ? 'border-border hover:border-primary/50 hover:shadow-sm bg-card'
+                            : 'border-border bg-muted/30 cursor-not-allowed opacity-60'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <span className="font-semibold text-lg">Talla {sizeInfo.size}</span>
+                          <span className="font-semibold text-lg text-foreground">Talla {sizeInfo.size}</span>
                           {selectedSize === sizeInfo.size && (
                             <Check className="h-5 w-5 text-primary" />
                           )}
                         </div>
                         
                         <div className="space-y-1 text-sm">
-                          <div className="flex items-center text-gray-600">
+                          <div className="flex items-center text-muted-foreground">
                             <MapPin className="h-3 w-3 mr-1" />
                             <span>{sizeInfo.location}</span>
                           </div>
                           
-                          <div className="flex items-center text-gray-600">
+                          <div className="flex items-center text-muted-foreground">
                             {getStorageTypeIcon(sizeInfo.storage_type)}
                             <span className="ml-1">{getStorageTypeLabel(sizeInfo.storage_type)}</span>
                           </div>
@@ -697,7 +697,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                           </div>
                           
                           {sizeInfo.box_price > 0 && sizeInfo.box_price !== sizeInfo.unit_price && (
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-muted-foreground">
                               Precio caja: {formatCurrency(sizeInfo.box_price)}
                             </div>
                           )}
@@ -707,8 +707,8 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <div className="text-center py-8 text-muted-foreground">
+                  <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <p>No hay información de tallas disponible para este producto</p>
                 </div>
               )}
@@ -725,27 +725,27 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                         <h6 className="font-medium text-primary mb-3">Talla {selectedSize} Seleccionada</h6>
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
-                            <span className="text-gray-600">Ubicación:</span>
-                            <p className="font-medium">{sizeInfo.location}</p>
+                            <span className="text-muted-foreground">Ubicación:</span>
+                            <p className="font-medium text-foreground">{sizeInfo.location}</p>
                           </div>
                           <div>
-                            <span className="text-gray-600">Almacenamiento:</span>
-                            <p className="font-medium">{getStorageTypeLabel(sizeInfo.storage_type)}</p>
+                            <span className="text-muted-foreground">Almacenamiento:</span>
+                            <p className="font-medium text-foreground">{getStorageTypeLabel(sizeInfo.storage_type)}</p>
                           </div>
                           <div>
-                            <span className="text-gray-600">Cantidad:</span>
+                            <span className="text-muted-foreground">Cantidad:</span>
                             <p className="font-medium text-success">
                               {sizeInfo.quantity > 0 ? `${sizeInfo.quantity} disponibles` : 
                                selectedProduct.product.inventory.total_stock > 0 ? 'Consultar disponibilidad' : 'Sin stock'}
                             </p>
                           </div>
                           <div>
-                            <span className="text-gray-600">Precio unitario:</span>
+                            <span className="text-muted-foreground">Precio unitario:</span>
                             <p className="font-bold text-lg text-primary">{formatCurrency(sizeInfo.unit_price)}</p>
                           </div>
                           {sizeInfo.box_price > 0 && sizeInfo.box_price !== sizeInfo.unit_price && (
                             <div className="col-span-2">
-                              <span className="text-gray-600">Precio por caja:</span>
+                              <span className="text-muted-foreground">Precio por caja:</span>
                               <p className="font-medium text-primary">{formatCurrency(sizeInfo.box_price)}</p>
                             </div>
                           )}
@@ -798,7 +798,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                   </>
                 ) : (
                   <div className="text-center py-4 w-full">
-                    <p className="text-gray-500 mb-4">
+                    <p className="text-muted-foreground mb-4">
                       Producto identificado pero no disponible para venta o transferencia
                     </p>
                     <div className="flex space-x-4">

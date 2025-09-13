@@ -9,9 +9,9 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children, hideFooter = false }) => {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
-      <main className="flex-grow">{children}</main>
+      <main className="flex-grow bg-background">{children}</main>
       {!hideFooter && <Footer />}
     </div>
   );

@@ -113,7 +113,7 @@ export const ExpensesForm: React.FC = () => {
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Comprobante (Opcional)
             </label>
             <div className="flex items-center space-x-4">
@@ -131,8 +131,8 @@ export const ExpensesForm: React.FC = () => {
               )}
             </div>
             {receiptFile && (
-              <div className="mt-2 p-2 bg-green-50 rounded-lg">
-                <p className="text-green-800 text-sm">
+              <div className="mt-2 p-2 bg-success/20 rounded-lg border border-success/30">
+                <p className="text-success text-sm">
                   ✅ Comprobante listo para enviar: {receiptFile.name} ({(receiptFile.size / 1024).toFixed(1)} KB)
                 </p>
               </div>
@@ -140,41 +140,41 @@ export const ExpensesForm: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Notas Adicionales (Opcional)
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground"
               placeholder="Detalles adicionales sobre el gasto..."
             />
           </div>
 
           {/* Preview Section */}
           {(concept || amount > 0) && (
-            <div className="p-4 bg-gray-50 rounded-lg border">
-              <h3 className="font-medium text-gray-800 mb-2">Vista Previa del Gasto:</h3>
+            <div className="p-4 bg-muted/20 rounded-lg border border-border">
+              <h3 className="font-medium text-foreground mb-2">Vista Previa del Gasto:</h3>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Concepto:</span>
-                  <span className="font-medium">{concept || 'Sin especificar'}</span>
+                  <span className="text-muted-foreground">Concepto:</span>
+                  <span className="font-medium text-foreground">{concept || 'Sin especificar'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Monto:</span>
-                  <span className="font-bold text-green-600">{formatCurrency(amount)}</span>
+                  <span className="text-muted-foreground">Monto:</span>
+                  <span className="font-bold text-success">{formatCurrency(amount)}</span>
                 </div>
                 {receiptFile && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Comprobante:</span>
-                    <span className="text-green-600">✓ Adjunto</span>
+                    <span className="text-muted-foreground">Comprobante:</span>
+                    <span className="text-success">✓ Adjunto</span>
                   </div>
                 )}
                 {notes && (
                   <div className="mt-2">
-                    <span className="text-gray-600 block">Notas:</span>
-                    <span className="text-gray-800 text-xs italic">{notes}</span>
+                    <span className="text-muted-foreground block">Notas:</span>
+                    <span className="text-foreground text-xs italic">{notes}</span>
                   </div>
                 )}
               </div>

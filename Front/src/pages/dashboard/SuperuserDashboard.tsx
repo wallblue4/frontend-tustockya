@@ -65,10 +65,10 @@ export const SuperuserDashboard: React.FC = () => {
                   { id: 2, name: 'María Rodríguez', email: 'maria@tennishub.com' },
                   { id: 3, name: 'David Chen', email: 'david@tennishub.com' },
                 ].map((admin) => (
-                  <div key={admin.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                  <div key={admin.id} className="flex items-center justify-between p-3 bg-muted/20 rounded-md">
                     <div>
                       <p className="font-medium">{admin.name}</p>
-                      <p className="text-sm text-gray-600">{admin.email}</p>
+                      <p className="text-sm text-muted-foreground">{admin.email}</p>
                     </div>
                     <Button variant="ghost" size="sm" className="text-error hover:text-error">
                       <Trash2 className="h-4 w-4" />
@@ -91,22 +91,22 @@ export const SuperuserDashboard: React.FC = () => {
             <div className="space-y-6">
               <div>
                 <h3 className="font-medium mb-3">Estado de la Base de Datos</h3>
-                <div className="p-4 rounded-md bg-gray-50">
+                <div className="p-4 rounded-md bg-muted/20">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-gray-500">Tamaño de la Base de Datos</p>
+                      <p className="text-sm text-muted-foreground">Tamaño de la Base de Datos</p>
                       <p className="font-medium">1.45 GB</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Último Respaldo</p>
+                      <p className="text-sm text-muted-foreground">Último Respaldo</p>
                       <p className="font-medium">Hoy, 03:45 AM</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Registros</p>
+                      <p className="text-sm text-muted-foreground">Registros</p>
                       <p className="font-medium">67,582</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Estado</p>
+                      <p className="text-sm text-muted-foreground">Estado</p>
                       <p className="text-success font-medium">Con Espacio</p>
                     </div>
                   </div>
@@ -127,7 +127,7 @@ export const SuperuserDashboard: React.FC = () => {
               
               <div>
                 <h3 className="font-medium mb-3">Registro de la Base de Datos</h3>
-                <div className="bg-gray-900 text-gray-300 p-3 rounded-md font-mono text-xs h-36 overflow-y-auto">
+                <div className="bg-secondary text-muted-foreground p-3 rounded-md font-mono text-xs h-36 overflow-y-auto">
                   <p>[2025-07-18 09:32:12] INFO: Respaldo de base de datos completado exitosamente</p>
                   <p>[2025-07-18 00:05:03] INFO: Proceso de limpieza automático ejecutado</p>
                   <p>[2025-07-17 18:43:27] WARN: Alto tráfico detectado, capacidad del servidor aumentada</p>

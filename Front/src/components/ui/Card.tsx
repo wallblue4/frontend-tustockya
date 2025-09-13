@@ -14,8 +14,8 @@ export const Card: React.FC<CardProps> = ({
   return (
     <div 
       className={`
-        bg-white rounded-lg shadow-md overflow-hidden
-        ${hoverable ? 'transition-transform hover:shadow-lg hover:-translate-y-1' : ''}
+        bg-card text-card-foreground rounded-lg shadow-xl overflow-hidden border border-border backdrop-blur-sm
+        ${hoverable ? 'transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1 hover:border-primary/50' : ''}
         ${className}
       `}
     >
@@ -29,7 +29,7 @@ export const CardHeader: React.FC<{ children: React.ReactNode; className?: strin
   className = '' 
 }) => {
   return (
-    <div className={`px-6 py-4 border-b ${className}`}>
+    <div className={`px-6 py-4 border-b border-border bg-muted/10 ${className}`}>
       {children}
     </div>
   );
@@ -51,7 +51,7 @@ export const CardFooter: React.FC<{ children: React.ReactNode; className?: strin
   className = '' 
 }) => {
   return (
-    <div className={`px-6 py-4 border-t ${className}`}>
+    <div className={`px-6 py-4 border-t border-border bg-muted/10 ${className}`}>
       {children}
     </div>
   );

@@ -272,16 +272,16 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
             <h3 className="font-medium mb-3">Productos</h3>
             <div className="space-y-2">
               {items.map(item => (
-                <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <div key={item.id} className="flex justify-between items-center p-3 bg-muted/20 rounded-lg border border-border">
                   <div>
-                    <p className="font-medium">{item.brand} {item.model}</p>
-                    {item.color && <p className="text-sm text-gray-500">Color: {item.color}</p>}
-                    <p className="text-sm text-gray-600">
+                    <p className="font-medium text-foreground">{item.brand} {item.model}</p>
+                    {item.color && <p className="text-sm text-muted-foreground">Color: {item.color}</p>}
+                    <p className="text-sm text-muted-foreground">
                       Talla {item.size} × {item.quantity}
                     </p>
-                    <p className="text-xs text-gray-500">Ref: {item.sneaker_reference_code}</p>
+                    <p className="text-xs text-muted-foreground">Ref: {item.sneaker_reference_code}</p>
                   </div>
-                  <p className="font-semibold">{formatCurrency(item.quantity * item.unit_price)}</p>
+                  <p className="font-semibold text-foreground">{formatCurrency(item.quantity * item.unit_price)}</p>
                 </div>
               ))}
             </div>
@@ -290,14 +290,14 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
           {/* Discount Summary */}
           {discountAmount > 0 && (
             <div>
-              <h3 className="font-medium mb-3">Descuento Aplicado</h3>
-              <div className="p-3 bg-accent/10 rounded-lg">
+              <h3 className="font-medium mb-3 text-foreground">Descuento Aplicado</h3>
+              <div className="p-3 bg-accent/10 rounded-lg border border-accent/30">
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="font-medium text-accent">Descuento</p>
-                    <p className="text-sm text-gray-600">{discountReason}</p>
+                    <p className="font-medium text-primary">Descuento</p>
+                    <p className="text-sm text-muted-foreground">{discountReason}</p>
                   </div>
-                  <p className="font-semibold text-accent">-{formatCurrency(discountAmount)}</p>
+                  <p className="font-semibold text-primary">-{formatCurrency(discountAmount)}</p>
                 </div>
               </div>
             </div>
@@ -305,17 +305,17 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
 
           {/* Payment Summary */}
           <div>
-            <h3 className="font-medium mb-3">Métodos de Pago</h3>
+            <h3 className="font-medium mb-3 text-foreground">Métodos de Pago</h3>
             <div className="space-y-2">
               {paymentMethods.map((payment, index) => (
-                <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <div key={index} className="flex justify-between items-center p-3 bg-muted/20 rounded-lg border border-border">
                   <div>
-                    <p className="font-medium capitalize">{payment.type}</p>
+                    <p className="font-medium capitalize text-foreground">{payment.type}</p>
                     {payment.reference && (
-                      <p className="text-sm text-gray-600">Ref: {payment.reference}</p>
+                      <p className="text-sm text-muted-foreground">Ref: {payment.reference}</p>
                     )}
                   </div>
-                  <p className="font-semibold">{formatCurrency(payment.amount)}</p>
+                  <p className="font-semibold text-foreground">{formatCurrency(payment.amount)}</p>
                 </div>
               ))}
             </div>
@@ -348,18 +348,18 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
             <div className="border-t pt-4 space-y-2">
               {notes && (
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Notas:</p>
-                  <p className="text-sm text-gray-600">{notes}</p>
+                  <p className="text-sm font-medium text-foreground">Notas:</p>
+                  <p className="text-sm text-muted-foreground">{notes}</p>
                 </div>
               )}
               {receiptFile && (
-                <div className="flex items-center text-sm text-gray-600">
+                <div className="flex items-center text-sm text-muted-foreground">
                   <CheckCircle className="h-4 w-4 mr-1 text-success" />
                   <span>Comprobante adjunto: {receiptFile.name} ({(receiptFile.size / 1024 / 1024).toFixed(2)} MB)</span>
                 </div>
               )}
               {requiresConfirmation && (
-                <div className="flex items-center text-sm text-amber-600">
+                <div className="flex items-center text-sm text-warning">
                   <AlertCircle className="h-4 w-4 mr-1" />
                   <span>Requiere confirmación posterior</span>
                 </div>
@@ -421,7 +421,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
         </CardHeader>
         <CardContent>
           {items.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No hay productos agregados</p>
+            <p className="text-muted-foreground text-center py-8">No hay productos agregados</p>
           ) : (
             <div className="space-y-4">
               {items.map((item) => (
@@ -483,7 +483,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
                       variant="outline"
                       size="sm"
                       onClick={() => removeItem(item.id)}
-                      className="text-error hover:text-error"
+                      className="text-destructive hover:text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -535,7 +535,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
           </div>
           {discountAmount > 0 && (
             <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-              <p className="text-blue-800 text-sm">
+              <p className="text-primary text-sm">
                 💡 <strong>Tip:</strong> Haz clic en "Solicitar Descuento" para registrar la solicitud en el sistema antes de proceder con la venta.
               </p>
             </div>
@@ -559,11 +559,11 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
             {paymentMethods.map((payment, index) => (
               <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Tipo</label>
                   <select
                     value={payment.type}
                     onChange={(e) => updatePaymentMethod(index, 'type', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
                   >
                     <option value="efectivo">Efectivo</option>
                     <option value="tarjeta">Tarjeta</option>
@@ -606,33 +606,33 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
           </div>
 
           {/* Payment Validation */}
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+          <div className="mt-4 p-4 bg-muted/20 rounded-lg">
             <div className="flex justify-between items-center">
-              <span>Subtotal Productos:</span>
-              <span className="font-semibold">{formatCurrency(itemsSubtotal)}</span>
+              <span className="text-foreground">Subtotal Productos:</span>
+              <span className="font-semibold text-foreground">{formatCurrency(itemsSubtotal)}</span>
             </div>
             {discountAmount > 0 && (
-              <div className="flex justify-between items-center text-accent">
+              <div className="flex justify-between items-center text-primary">
                 <span>Descuento:</span>
                 <span className="font-semibold">-{formatCurrency(discountAmount)}</span>
               </div>
             )}
-            <div className="flex justify-between items-center border-t pt-2">
+            <div className="flex justify-between items-center text-lg font-bold border-t border-border pt-2 text-foreground">
               <span>Total a Pagar:</span>
-              <span className="font-semibold">{formatCurrency(totalAmount)}</span>
+              <span>{formatCurrency(totalAmount)}</span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center text-sm text-muted-foreground">
               <span>Total Pagos:</span>
-              <span className="font-semibold">{formatCurrency(paymentsTotal)}</span>
+              <span>{formatCurrency(paymentsTotal)}</span>
             </div>
             <div className={`flex justify-between items-center font-bold ${
-              isValidSale ? 'text-success' : 'text-error'
+              isValidSale ? 'text-success' : 'text-destructive'
             }`}>
               <span>Diferencia:</span>
               <span>{formatCurrency(Math.abs(totalAmount - paymentsTotal))}</span>
             </div>
             {!isValidSale && totalAmount > 0 && (
-              <p className="text-error text-sm mt-2">
+              <p className="text-destructive text-sm mt-2">
                 {Math.abs(totalAmount - paymentsTotal) > 0.01 
                   ? 'Los montos no coinciden' 
                   : 'Complete todos los campos requeridos'}
@@ -650,7 +650,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
         <CardContent className="space-y-4">
           {/* Receipt Upload */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Comprobante (Opcional)
             </label>
             <div className="flex items-center space-x-4">
@@ -679,14 +679,14 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
 
           {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Notas Adicionales
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground"
               placeholder="Notas sobre la venta..."
             />
           </div>
@@ -698,9 +698,9 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
               id="requiresConfirmation"
               checked={requiresConfirmation}
               onChange={(e) => setRequiresConfirmation(e.target.checked)}
-              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+              className="h-4 w-4 text-primary focus:ring-primary/50 border-border rounded bg-card"
             />
-            <label htmlFor="requiresConfirmation" className="ml-2 text-sm text-gray-700">
+            <label htmlFor="requiresConfirmation" className="ml-2 text-sm text-foreground">
               Requiere confirmación posterior
             </label>
           </div>

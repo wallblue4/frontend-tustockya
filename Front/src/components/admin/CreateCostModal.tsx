@@ -109,21 +109,21 @@ export const CreateCostModal: React.FC<CreateCostModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div 
         className="absolute inset-0" 
         onClick={onClose}
       />
       
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md relative z-10 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h3 className="text-lg font-semibold flex items-center">
+      <div className="bg-card rounded-lg shadow-xl w-full max-w-md relative z-10 max-h-[90vh] overflow-y-auto border border-border">
+        <div className="flex justify-between items-center p-6 border-b border-border">
+          <h3 className="text-lg font-semibold flex items-center text-foreground">
             <DollarSign className="h-5 w-5 mr-2" />
             Registrar Nuevo Costo
           </h3>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-muted-foreground hover:text-foreground"
           >
             <X className="h-5 w-5" />
           </button>
@@ -131,7 +131,7 @@ export const CreateCostModal: React.FC<CreateCostModalProps> = ({
         
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Tipo de Costo
             </label>
             <select
@@ -140,25 +140,25 @@ export const CreateCostModal: React.FC<CreateCostModalProps> = ({
                 handleInputChange('cost_type', e.target.value);
                 setFormData(prev => ({ ...prev, category: '' })); // Reset category
               }}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                errors.cost_type ? 'border-error' : 'border-gray-300'
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground ${
+                errors.cost_type ? 'border-destructive' : 'border-border'
               }`}
             >
               <option value="fijo">Costo Fijo</option>
               <option value="variable">Costo Variable</option>
             </select>
-            {errors.cost_type && <p className="mt-1 text-sm text-error">{errors.cost_type}</p>}
+            {errors.cost_type && <p className="mt-1 text-sm text-destructive">{errors.cost_type}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Categoría
             </label>
             <select
               value={formData.category}
               onChange={(e) => handleInputChange('category', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                errors.category ? 'border-error' : 'border-gray-300'
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground ${
+                errors.category ? 'border-destructive' : 'border-border'
               }`}
             >
               <option value="">Seleccionar categoría</option>
@@ -168,7 +168,7 @@ export const CreateCostModal: React.FC<CreateCostModalProps> = ({
                 </option>
               ))}
             </select>
-            {errors.category && <p className="mt-1 text-sm text-error">{errors.category}</p>}
+            {errors.category && <p className="mt-1 text-sm text-destructive">{errors.category}</p>}
           </div>
 
           <Input
@@ -177,7 +177,7 @@ export const CreateCostModal: React.FC<CreateCostModalProps> = ({
             onChange={(e) => handleInputChange('description', e.target.value)}
             error={errors.description}
             placeholder="Ej: Arriendo local centro comercial"
-            icon={<Tag className="h-4 w-4 text-gray-400" />}
+            icon={<Tag className="h-4 w-4 text-muted-foreground" />}
             required
           />
 
@@ -190,19 +190,19 @@ export const CreateCostModal: React.FC<CreateCostModalProps> = ({
             placeholder="0"
             min="0"
             step="1000"
-            icon={<DollarSign className="h-4 w-4 text-gray-400" />}
+            icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
             required
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Frecuencia
             </label>
             <select
               value={formData.frequency}
               onChange={(e) => handleInputChange('frequency', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                errors.frequency ? 'border-error' : 'border-gray-300'
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground ${
+                errors.frequency ? 'border-destructive' : 'border-border'
               }`}
             >
               <option value="diario">Diario</option>
@@ -210,17 +210,17 @@ export const CreateCostModal: React.FC<CreateCostModalProps> = ({
               <option value="mensual">Mensual</option>
               <option value="anual">Anual</option>
             </select>
-            {errors.frequency && <p className="mt-1 text-sm text-error">{errors.frequency}</p>}
+            {errors.frequency && <p className="mt-1 text-sm text-destructive">{errors.frequency}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Ubicación (Opcional)
             </label>
             <select
               value={formData.location_id}
               onChange={(e) => handleInputChange('location_id', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Todas las ubicaciones</option>
               {locations.map((location) => (
@@ -236,7 +236,7 @@ export const CreateCostModal: React.FC<CreateCostModalProps> = ({
             type="date"
             value={formData.due_date}
             onChange={(e) => handleInputChange('due_date', e.target.value)}
-            icon={<Calendar className="h-4 w-4 text-gray-400" />}
+            icon={<Calendar className="h-4 w-4 text-muted-foreground" />}
           />
           
           <div className="flex justify-end space-x-3 pt-4">
