@@ -113,8 +113,8 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
         </div>
       )}
 
-      {/* Video container */}
-      <div className="flex-1 flex items-center justify-center p-4">
+      {/* Video container with controls at bottom */}
+      <div className="flex-1 flex items-center justify-center p-4 relative">
         <video
           ref={videoRef}
           autoPlay
@@ -122,27 +122,25 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
           className="w-full h-full object-cover"
           style={{ maxHeight: "calc(100vh - 160px)" }}
         />
-      </div>
-
-      {/* Controls footer */}
-      <div className="p-6 bg-black/90 backdrop-blur-sm flex justify-center gap-4">
-        {stream && !recording && (
-          <Button 
-            onClick={startRecording} 
-            className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-full text-lg font-semibold shadow-lg"
-          >
-            ● REC
-          </Button>
-        )}
-        
-        {recording && (
-          <Button 
-            onClick={stopRecording} 
-            className="bg-white hover:bg-gray-200 text-black px-8 py-4 rounded-full text-lg font-semibold animate-pulse shadow-lg"
-          >
-            ■ Parar
-          </Button>
-        )}
+        {/* Controls overlayed at the bottom center */}
+  <div className="absolute left-0 w-full flex justify-center z-10" style={{ bottom: '7%' }}>
+          {stream && !recording && (
+            <Button 
+              onClick={startRecording} 
+              className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-full text-lg font-semibold shadow-lg"
+            >
+              ● REC
+            </Button>
+          )}
+          {recording && (
+            <Button 
+              onClick={stopRecording} 
+              className="bg-white hover:bg-gray-200 text-black px-8 py-4 rounded-full text-lg font-semibold animate-pulse shadow-lg"
+            >
+              ■ Parar
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
