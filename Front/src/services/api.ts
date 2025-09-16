@@ -285,6 +285,7 @@ export interface ScanResponse {
 // Auth API - CORREGIDO para coincidir con backend
 
 // ESTE ES EL LOGUEO PARA LOS 3 ROLES (CORREDOR, SELLER, BODEGUERO)
+/*
 export const authAPI = {
   login: (credentials: { email: string; password: string }) => 
     apiRequest('/api/v1/auth/login', {
@@ -294,7 +295,7 @@ export const authAPI = {
       getCurrentUser: () => apiRequest('/api/v1/auth/me'),                   
       };
       
-/*
+*/
       export const authAPI = {
         login: (credentials: { email: string; password: string }) => 
         apiRequest('/api/v1/auth/auth/login-json', {
@@ -306,7 +307,6 @@ export const authAPI = {
       }),
       getCurrentUser: () => apiRequest('/api/v1/auth/auth/me'),
     };
-*/
     
 export const vendorAPI = {
   // Dashboard
