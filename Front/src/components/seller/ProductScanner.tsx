@@ -70,6 +70,8 @@ interface SizeInfo {
   size: string;
   location: string;
   location_number?: number;
+  location_name?: string;
+  location_type?: 'local' | 'bodega';
   storage_type: 'warehouse' | 'display';
   quantity: number;
   unit_price: number;
@@ -169,13 +171,64 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
   // Función para convertir los datos de disponibilidad a formato de tallas
   const convertAvailabilityToSizes = (product: ProductOption): SizeInfo[] => {
-    // Si no hay stock disponible, crear tallas mock basadas en las tallas disponibles del sistema
+    // Si tienes la estructura de locations (de la nueva API), úsala para mapear tallas con ubicación y tipo
+    if ((product as any).locations) {
+      const allSizes: SizeInfo[] = [];
+      // current_location
+      if ((product as any).locations.current_location) {
+        (product as any).locations.current_location.forEach((locObj: any) => {
+          const locInfo = locObj.location_info;
+          const stockInfo = locObj.stock_info;
+          if (stockInfo && stockInfo.available_sizes) {
+            stockInfo.available_sizes.forEach((sz: any) => {
+              allSizes.push({
+                size: sz.size,
+                location: locInfo.location_name,
+                location_name: locInfo.location_name,
+                location_type: locInfo.location_type,
+                storage_type: 'warehouse',
+                quantity: sz.quantity_stock,
+                unit_price: locObj.product_info.unit_price,
+                box_price: locObj.product_info.box_price,
+                total_quantity: sz.quantity_stock + (sz.quantity_exhibition || 0)
+              });
+            });
+          }
+        });
+      }
+      // other_locations
+      if ((product as any).locations.other_locations) {
+        (product as any).locations.other_locations.forEach((locObj: any) => {
+          const locInfo = locObj.location_info;
+          const stockInfo = locObj.stock_info;
+          if (stockInfo && stockInfo.available_sizes) {
+            stockInfo.available_sizes.forEach((sz: any) => {
+              allSizes.push({
+                size: sz.size,
+                location: locInfo.location_name,
+                location_name: locInfo.location_name,
+                location_type: locInfo.location_type,
+                storage_type: 'warehouse',
+                quantity: sz.quantity_stock,
+                unit_price: locObj.product_info.unit_price,
+                box_price: locObj.product_info.box_price,
+                total_quantity: sz.quantity_stock + (sz.quantity_exhibition || 0)
+              });
+            });
+          }
+        });
+      }
+      return allSizes;
+    }
+
+    // Fallbacks antiguos:
     if (product.inventory.total_stock === 0 && product.inventory.available_sizes.length === 0) {
-      // Crear tallas comunes sin stock para mostrar que el producto existe pero no está disponible
       const commonSizes = ['7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5', '11'];
       return commonSizes.map(size => ({
         size,
         location: product.inventory.local_info.location_name || 'Sin ubicación',
+        location_name: product.inventory.local_info.location_name || 'Sin ubicación',
+        location_type: undefined,
         storage_type: 'warehouse' as const,
         quantity: 0,
         unit_price: product.inventory.pricing.unit_price,
@@ -183,25 +236,25 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         total_quantity: 0
       }));
     }
-
-    // Si hay tallas disponibles en el sistema pero sin información detallada de stock
     if (product.inventory.available_sizes.length > 0) {
       return product.inventory.available_sizes.map(size => ({
         size,
         location: product.inventory.local_info.location_name || 'Local',
+        location_name: product.inventory.local_info.location_name || 'Local',
+        location_type: undefined,
         storage_type: 'warehouse' as const,
-        quantity: 0, // La nueva API no proporciona información detallada por talla
+        quantity: 0,
         unit_price: product.inventory.pricing.unit_price,
         box_price: product.inventory.pricing.box_price,
         total_quantity: 0
       }));
     }
-
-    // Si hay información detallada de stock por talla (del formato anterior)
     if (product.inventory.stock_by_size && product.inventory.stock_by_size.length > 0) {
       return product.inventory.stock_by_size.map((stockInfo) => ({
         size: stockInfo.size,
         location: stockInfo.location,
+        location_name: stockInfo.location,
+        location_type: undefined,
         location_number: (stockInfo as any).location_number ?? product.inventory.local_info.location_number,
         storage_type: stockInfo.quantity_stock > 0 ? 'warehouse' : 'display',
         quantity: stockInfo.quantity_stock,
@@ -210,11 +263,11 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         total_quantity: stockInfo.quantity_stock + stockInfo.quantity_exhibition
       }));
     }
-
-    // Fallback: crear al menos una entrada para mostrar el producto
     return [{
       size: 'Consultar',
       location: product.inventory.local_info.location_name || 'Local',
+      location_name: product.inventory.local_info.location_name || 'Local',
+      location_type: undefined,
       storage_type: 'warehouse' as const,
       quantity: 0,
       unit_price: product.inventory.pricing.unit_price,
@@ -618,7 +671,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                   {selectedProduct.product.description || `${selectedProduct.product.brand} ${selectedProduct.product.model}`}
                 </h4>
                 <p className="text-muted-foreground mb-1">
-                  Código: {selectedProduct.product.code} | Color: {selectedProduct.product.color} | Modelo: {selectedProduct.product.model}
+                  Código: {selectedProduct.product.code} | Modelo: {selectedProduct.product.model}
                 </p>
                 <p className="text-sm text-muted-foreground mb-3">Marca: {selectedProduct.product.brand}</p>
                 
@@ -655,7 +708,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {selectedProduct.sizes.map((sizeInfo) => (
                       <button
-                        key={sizeInfo.size}
+                        key={sizeInfo.size + '-' + (sizeInfo.location_name || sizeInfo.location)}
                         onClick={() => setSelectedSize(sizeInfo.size)}
                         disabled={sizeInfo.quantity === 0 && selectedProduct.product.inventory.total_stock === 0}
                         className={`p-4 border rounded-lg text-left transition-all ${
@@ -672,18 +725,24 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                             <Check className="h-5 w-5 text-primary" />
                           )}
                         </div>
-                        
                         <div className="space-y-1 text-sm">
-                          <div className="flex items-center text-muted-foreground">
+                          <div className="flex items-center text-muted-foreground gap-2">
                             <MapPin className="h-3 w-3 mr-1" />
-                            <span>{sizeInfo.location}</span>
+                            <span>{sizeInfo.location_name || sizeInfo.location}</span>
+                            {sizeInfo.location_type && (
+                              <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold ${
+                                sizeInfo.location_type === 'local'
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'bg-secondary/10 text-secondary'
+                              }`}>
+                                {sizeInfo.location_type === 'local' ? 'Local' : 'Bodega'}
+                              </span>
+                            )}
                           </div>
-                          
                           <div className="flex items-center text-muted-foreground">
                             {getStorageTypeIcon(sizeInfo.storage_type)}
                             <span className="ml-1">{getStorageTypeLabel(sizeInfo.storage_type)}</span>
                           </div>
-                          
                           <div className="flex justify-between items-center">
                             <span className={`font-medium ${
                               sizeInfo.quantity > 0 || selectedProduct.product.inventory.total_stock > 0 ? 'text-success' : 'text-error'
@@ -695,7 +754,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                               {formatCurrency(sizeInfo.unit_price)}
                             </span>
                           </div>
-                          
                           {sizeInfo.box_price > 0 && sizeInfo.box_price !== sizeInfo.unit_price && (
                             <div className="text-xs text-muted-foreground">
                               Precio caja: {formatCurrency(sizeInfo.box_price)}
