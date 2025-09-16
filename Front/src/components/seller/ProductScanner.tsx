@@ -276,6 +276,62 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     }];
   };
 
+  // Convierte la respuesta de la API a ProductOption[]
+  function convertScanResponseToProductOptions(scanResponse: any): ProductOption[] {
+    if (!scanResponse || !scanResponse.results) return [];
+    const { best_match, alternative_matches } = scanResponse.results;
+    const allMatches = [best_match, ...(alternative_matches || [])].filter(Boolean);
+
+    return allMatches.map((match: any, idx: number) => {
+      const ref = match.reference || {};
+      const locations = match.locations || {};
+      // Unificar estructura de inventory para el componente
+      const inventory: InventoryInfo = {
+        local_info: {
+          location_number: locations.current_location && locations.current_location[0]?.location_info?.location_id || 0,
+          location_name: locations.current_location && locations.current_location[0]?.location_info?.location_name || '',
+        },
+        pricing: {
+          unit_price: match.pricing?.unit_price || 0,
+          box_price: match.pricing?.box_price || 0,
+        },
+        stock_by_size: (locations.current_location && locations.current_location[0]?.stock_info?.available_sizes || []).map((sz: any) => ({
+          size: sz.size,
+          quantity_stock: sz.quantity_stock,
+          quantity_exhibition: sz.quantity_exhibition,
+          location: locations.current_location[0]?.location_info?.location_name || ''
+        })),
+        total_stock: locations.current_location && locations.current_location[0]?.stock_info?.total_stock || 0,
+        total_exhibition: locations.current_location && locations.current_location[0]?.stock_info?.total_exhibition || 0,
+        available_sizes: locations.current_location && locations.current_location[0]?.stock_info?.available_sizes?.map((sz: any) => sz.size) || [],
+        other_locations: locations.other_locations || []
+      };
+      // Adaptar availability
+      const availability: AvailabilityInfo = {
+        in_stock: !!match.availability?.summary?.current_location?.has_stock,
+        can_sell: !!match.availability?.can_sell_now,
+        can_request_from_other_locations: !!match.availability?.can_request_transfer,
+        recommended_action: match.availability?.recommended_action || ''
+      };
+      return {
+        id: ref.code || `product-${idx}`,
+        brand: ref.brand || '',
+        model: ref.model || '',
+        code: ref.code || '',
+        description: ref.description || '',
+        color: ref.color || '',
+        image: ref.photo || match.product_info?.image_url || undefined,
+        confidence: match.confidence_percentage || Math.round((match.similarity_score || 0) * 100),
+        rank: match.rank || idx + 1,
+        similarity_score: match.similarity_score || 0,
+        confidence_level: match.confidence_level || '',
+        original_db_id: match.original_db_id || 0,
+        inventory,
+        availability,
+      };
+    });
+  }
+
   // Función handleScanFromCamera actualizada para usar la nueva API
   const handleScanFromCamera = async (imageFile: File) => {
     setIsScanning(true);
@@ -290,7 +346,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       });
 
       // Usar la función del API actualizada
-      const scanResponse: ScanResponse = await vendorAPI.scanProduct(imageFile);
+      const scanResponse: any = await vendorAPI.scanProduct(imageFile);
       console.log('Respuesta de la API:', scanResponse);
 
       if (!scanResponse.success) {
