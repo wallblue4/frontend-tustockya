@@ -1,19 +1,18 @@
-// FullScreenCameraCapture.tsx
+// FullScreenPhotoCapture.tsx
 import React, { useRef, useState } from "react";
 import { Button } from "../ui/Button";
 
 interface Props {
-  onVideoRecorded?: (videoUrl: string | null, blob?: Blob) => void;
+  onPhotoTaken?: (photoUrl: string | null, blob?: Blob) => void;
 }
 
-export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) => {
+export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [recording, setRecording] = useState(false);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const openFullScreenCamera = async () => {
@@ -23,7 +22,7 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" }, // Usar cámara trasera por defecto
-        audio: true,
+        audio: false, // No necesitamos audio para fotos
       });
       setStream(mediaStream);
       if (videoRef.current) videoRef.current.srcObject = mediaStream;
@@ -36,36 +35,34 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
     stream?.getTracks().forEach((track) => track.stop());
     setStream(null);
     setIsFullScreen(false);
-    setRecording(false);
     if (videoRef.current) videoRef.current.srcObject = null;
   };
 
-  const startRecording = () => {
-    if (!stream) return;
-    setRecording(true);
+  const takePhoto = () => {
+    if (!stream || !videoRef.current || !canvasRef.current) return;
 
-    const recorder = new MediaRecorder(stream);
-    const chunks: BlobPart[] = [];
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
 
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunks.push(e.data);
-    };
+    if (!context) return;
 
-    recorder.onstop = () => {
-      const blob = new Blob(chunks, { type: "video/webm" });
-      const url = URL.createObjectURL(blob);
-      setVideoUrl(url);
-      onVideoRecorded?.(url, blob);
-      closeFullScreen();
-    };
+    // Configurar el canvas con las dimensiones del video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
 
-    mediaRecorderRef.current = recorder;
-    recorder.start();
-  };
+    // Dibujar el frame actual del video en el canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  const stopRecording = () => {
-    setRecording(false);
-    mediaRecorderRef.current?.stop();
+    // Convertir a blob
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        setPhotoUrl(url);
+        onPhotoTaken?.(url, blob);
+        closeFullScreen();
+      }
+    }, 'image/jpeg', 0.9);
   };
 
   if (!isFullScreen) {
@@ -75,16 +72,16 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
           onClick={openFullScreenCamera}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
         >
-          📹 Abrir camara
+          📸 Abrir camara
         </Button>
         
-        {videoUrl && (
+        {photoUrl && (
           <div className="mt-3">
-            <p className="text-sm text-gray-600 mb-2">Video grabado:</p>
-            <video 
-              src={videoUrl} 
-              controls 
-              className="w-full max-w-xs rounded-lg shadow border"
+            <p className="text-sm text-gray-600 mb-2">Foto tomada:</p>
+            <img 
+              src={photoUrl} 
+              alt="Foto del producto"
+              className="w-full max-w-xs rounded-lg shadow border object-cover"
             />
           </div>
         )}
@@ -94,9 +91,12 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black flex flex-col" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}>
+      {/* Canvas oculto para capturar la foto */}
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+      
       {/* Header con botón cerrar */}
       <div className="flex justify-between items-center p-4 bg-black/90 backdrop-blur-sm">
-        <h2 className="text-lg font-semibold text-white">Grabar Video</h2>
+        <h2 className="text-lg font-semibold text-white">Tomar Foto</h2>
         <Button 
           variant="ghost" 
           onClick={closeFullScreen}
@@ -126,21 +126,12 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
 
       {/* Controls footer */}
       <div className="p-6 bg-black/90 backdrop-blur-sm flex justify-center gap-4">
-        {stream && !recording && (
+        {stream && (
           <Button 
-            onClick={startRecording} 
-            className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-full text-lg font-semibold shadow-lg"
+            onClick={takePhoto} 
+            className="bg-white hover:bg-gray-200 text-black px-8 py-4 rounded-full text-lg font-semibold shadow-lg"
           >
-            ● REC
-          </Button>
-        )}
-        
-        {recording && (
-          <Button 
-            onClick={stopRecording} 
-            className="bg-white hover:bg-gray-200 text-black px-8 py-4 rounded-full text-lg font-semibold animate-pulse shadow-lg"
-          >
-            ■ Parar
+            📸 Tomar Foto
           </Button>
         )}
       </div>

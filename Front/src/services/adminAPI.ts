@@ -12,7 +12,9 @@ const getFormDataHeaders = () => {
   const token = localStorage.getItem('token');
   return {
     'Authorization': `Bearer ${token}`
-    // No incluir Content-Type para FormData, el browser lo maneja automáticamente
+    // CRÍTICO: NO incluir Content-Type para FormData
+    // El navegador debe configurar automáticamente:
+    // Content-Type: multipart/form-data; boundary=----WebKitFormBoundary...
   };
 };
 
@@ -583,37 +585,146 @@ export const fetchSystemOverview = async () => {
 // POST /api/v1/admin/admin/inventory/video-entry
 export const processVideoInventoryEntry = async (inventoryData: {
   warehouse_location_id: number;
-  estimated_quantity: number;
-  product_brand?: string;
-  product_model?: string;
-  expected_sizes?: string;
-  notes?: string;
+  size_quantities_json: string; // JSON de tallas y cantidades
+  unit_price: number;
   video_file: File;
+  product_brand?: string | null;
+  product_model?: string | null;
+  box_price?: number | null;
+  notes?: string | null;
+  reference_image?: File | null;
 }) => {
   const formData = new FormData();
+  
+  // ORDEN EXACTO según el curl correcto:
+  
+  // 1. warehouse_location_id (obligatorio)
   formData.append('warehouse_location_id', inventoryData.warehouse_location_id.toString());
-  formData.append('estimated_quantity', inventoryData.estimated_quantity.toString());
   
-  if (inventoryData.product_brand) {
-    formData.append('product_brand', inventoryData.product_brand);
-  }
-  if (inventoryData.product_model) {
-    formData.append('product_model', inventoryData.product_model);
-  }
-  if (inventoryData.expected_sizes) {
-    formData.append('expected_sizes', inventoryData.expected_sizes);
-  }
-  if (inventoryData.notes) {
-    formData.append('notes', inventoryData.notes);
+  // 2. size_quantities_json (obligatorio)
+  formData.append('size_quantities_json', inventoryData.size_quantities_json);
+  
+  // 3. product_brand (opcional pero siempre presente)
+  const productBrand = inventoryData.product_brand?.trim() || '';
+  formData.append('product_brand', productBrand);
+  
+  // 4. product_model (opcional pero siempre presente)
+  const productModel = inventoryData.product_model?.trim() || '';
+  formData.append('product_model', productModel);
+  
+  // 5. notes (opcional pero siempre presente)
+  const notes = inventoryData.notes?.trim() || '';
+  formData.append('notes', notes);
+  
+  // 6. reference_image (siempre presente)
+  if (inventoryData.reference_image && inventoryData.reference_image instanceof File) {
+    formData.append('reference_image', inventoryData.reference_image);
+  } else {
+    // Crear un archivo vacío pequeño en lugar de blob vacío
+    const emptyFile = new File([''], 'empty.jpg', { type: 'image/jpeg' });
+    formData.append('reference_image', emptyFile);
   }
   
+  // 7. video_file (obligatorio)
   formData.append('video_file', inventoryData.video_file);
+  
+  // 8. unit_price (obligatorio)
+  formData.append('unit_price', inventoryData.unit_price.toString());
+  
+  // 9. box_price (opcional pero siempre presente)
+  const boxPrice = inventoryData.box_price || 0;
+  formData.append('box_price', boxPrice.toString());
+
+  // Log detallado de lo que se está enviando (en orden de envío)
+  console.log('=== PAYLOAD COMPLETO PARA API (ORDEN CORRECTO) ===');
+  console.log('1. warehouse_location_id:', inventoryData.warehouse_location_id);
+  console.log('2. size_quantities_json:', inventoryData.size_quantities_json);
+  console.log('3. product_brand:', productBrand || '(vacío)');
+  console.log('4. product_model:', productModel || '(vacío)');
+  console.log('5. notes:', notes || '(vacío)');
+  if (inventoryData.reference_image && inventoryData.reference_image instanceof File) {
+    console.log('6. reference_image: File presente -', inventoryData.reference_image.name, inventoryData.reference_image.size, 'bytes');
+  } else {
+    console.log('6. reference_image: Archivo vacío (no se tomó foto)');
+  }
+  console.log('7. video_file (size):', inventoryData.video_file.size, 'bytes');
+  console.log('7. video_file (type):', inventoryData.video_file.type);
+  console.log('8. unit_price:', inventoryData.unit_price);
+  console.log('9. box_price:', boxPrice);
+  
+  // Log de FormData contents
+  console.log('=== FORMDATA CONTENTS ===');
+  const expectedFields = [
+    'warehouse_location_id', 'size_quantities_json', 'product_brand', 
+    'product_model', 'notes', 'reference_image', 'video_file', 
+    'unit_price', 'box_price'
+  ];
+  
+  const actualFields = [];
+  for (let [key, value] of formData.entries()) {
+    actualFields.push(key);
+    if (value instanceof File) {
+      console.log(`${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
+    } else {
+      console.log(`${key}: ${value}`);
+    }
+  }
+  
+  // Verificar que todos los campos esperados estén presentes
+  const missingFields = expectedFields.filter(field => !actualFields.includes(field));
+  const extraFields = actualFields.filter(field => !expectedFields.includes(field));
+  
+  console.log('Campos esperados:', expectedFields.length);
+  console.log('Campos actuales:', actualFields.length);
+  if (missingFields.length > 0) {
+    console.error('⚠️  CAMPOS FALTANTES:', missingFields);
+  }
+  if (extraFields.length > 0) {
+    console.warn('⚠️  CAMPOS EXTRA:', extraFields);
+  }
+  if (missingFields.length === 0 && extraFields.length === 0) {
+    console.log('✅ TODOS LOS CAMPOS ESTÁN PRESENTES');
+  }
+  console.log('================================');
+
+  // Preparar headers mínimos (SOLO Authorization)
+  const headers = getFormDataHeaders();
+  console.log('=== HEADERS ENVIADOS ===');
+  console.log('Headers que se enviarán:', headers);
+  console.log('IMPORTANTE: Content-Type será configurado automáticamente por el navegador');
+  console.log('Esto genera el curl correcto con --form en lugar de --data-raw');
+  console.log('');
+  console.log('Curl equivalente esperado:');
+  console.log(`curl --location '${BACKEND_URL}/api/v1/admin/admin/inventory/video-entry' \\`);
+  console.log(`--header 'Authorization: Bearer ${headers.Authorization?.replace('Bearer ', '')}' \\`);
+  console.log(`--form 'warehouse_location_id="${inventoryData.warehouse_location_id}"' \\`);
+  console.log(`--form 'size_quantities_json="${inventoryData.size_quantities_json}"' \\`);
+  console.log(`--form 'product_brand="${productBrand}"' \\`);
+  console.log(`--form 'product_model="${productModel}"' \\`);
+  console.log(`--form 'notes="${notes}"' \\`);
+  console.log(`--form 'reference_image=@file' \\`);
+  console.log(`--form 'video_file=@file' \\`);
+  console.log(`--form 'unit_price="${inventoryData.unit_price}"' \\`);
+  console.log(`--form 'box_price="${boxPrice}"'`);
+  console.log('========================');
 
   const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/inventory/video-entry`, {
     method: 'POST',
-    headers: getFormDataHeaders(),
+    headers: headers,
     body: formData,
   });
+  
+  console.log('=== RESPUESTA DEL SERVIDOR ===');
+  console.log('Status:', response.status);
+  console.log('Status Text:', response.statusText);
+  console.log('Headers:', Object.fromEntries(response.headers.entries()));
+  
+  // Clonar la respuesta para poder leerla dos veces
+  const responseClone = response.clone();
+  const responseText = await responseClone.text();
+  console.log('Response Body (raw):', responseText);
+  console.log('==============================');
+  
   return handleResponse(response);
 };
 

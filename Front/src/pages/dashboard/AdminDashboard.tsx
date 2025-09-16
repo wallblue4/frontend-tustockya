@@ -16,10 +16,8 @@ import {
   FileText, 
   MapPin, 
   Package,
-  Search,
   Plus,
   Edit,
-  Trash2,
   Eye,
   Store,
   Warehouse,
@@ -30,8 +28,6 @@ import {
   Activity,
   Building,
   Truck,
-  ArrowUp,
-  ArrowDown,
   RefreshCw,
   Settings,
   Download
@@ -106,6 +102,7 @@ import { EditUserModal } from '../../components/admin/EditUserModal';
 import { CreateCostModal } from '../../components/admin/CreateCostModal';
 import { StatsCard } from '../../components/dashboard/StatsCard';
 import { FullScreenCameraCapture } from '../../components/admin/FullScreenCameraCapture';
+import { FullScreenPhotoCapture } from '../../components/admin/FullScreenPhotoCapture';
 
 type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics';
 
@@ -131,22 +128,6 @@ interface User {
   is_active: boolean;
   created_at: string;
 }
-
-interface Cost {
-  id: number;
-  location_id: number;
-  location_name: string;
-  cost_type: string;
-  amount: string;
-  frequency: string;
-  description: string;
-  is_active: boolean;
-  effective_date: string;
-  created_by_user_id: number;
-  created_by_name: string;
-  created_at: string;
-}
-
 interface Location {
   id: number;
   name: string;
@@ -194,16 +175,56 @@ interface MetricsData {
   avg_performance_score: number;
 }
 
+interface OperationalDashboard {
+  summary: {
+    total_locations: number;
+    total_overdue_amount: string;
+    total_upcoming_amount: string;
+    critical_alerts_count: number;
+  };
+  locations_status: Array<{
+    location_id: number;
+    location_name: string;
+    monthly_costs: string;
+    overdue_amount: string;
+    overdue_count: number;
+    upcoming_count: number;
+    status: 'ok' | 'attention' | 'critical';
+  }>;
+  critical_alerts: Array<{
+    location_name: string;
+    cost_type: string;
+    amount: string;
+    days_overdue: number;
+    priority: 'low' | 'medium' | 'high';
+    due_date: string;
+  }>;
+  upcoming_week: Array<{
+    location_name: string;
+    cost_type: string;
+    amount: string;
+    due_date: string;
+    days_until_due: number;
+  }>;
+  monthly_summary: {
+    total_monthly_costs: string;
+    total_paid_this_month: string;
+    total_pending_this_month: string;
+  };
+}
+
 export const AdminDashboard: React.FC = () => {
-  // Estado para el formulario de inventario por video (antes estaba dentro de renderInventoryView)
-  // Estado para tallas y cantidades
+  // Estado para el formulario de inventario por video
   const [videoInventoryForm, setVideoInventoryForm] = useState({
     warehouse_location_id: 0,
-    estimated_quantity: 0,
     product_brand: '',
     product_model: '',
+    unit_price: 0,
+    box_price: 0,
     notes: '',
-    sizes: [{ size: '', quantity: '' }]
+    sizes: [{ size: '', quantity: '' }],
+    reference_image: null as File | null,
+    video_file: null as File | null
   });
   const [currentView, setCurrentView] = useState<AdminView>('dashboard');
   const [loading, setLoading] = useState(true);
@@ -213,7 +234,7 @@ export const AdminDashboard: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [metricsData, setMetricsData] = useState<MetricsData | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [costs, setCosts] = useState<Cost[]>([]);
+  const [operationalData, setOperationalData] = useState<OperationalDashboard | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [availableLocations, setAvailableLocations] = useState<Location[]>([]);
   const [wholesaleOrders] = useState<WholesaleOrder[]>([]);
@@ -340,22 +361,11 @@ export const AdminDashboard: React.FC = () => {
 
   const loadCosts = async () => {
     try {
-      const params: any = {};
-      
-      if (costFilters.location && costFilters.location !== '') {
-        params.location_id = parseInt(costFilters.location);
-      }
-      
-      if (costFilters.category) {
-        params.cost_type = costFilters.category;
-      }
-
-      const response = await fetchOperationalDashboard(params);
-      // Handle array response directly or nested in response object
-      setCosts(Array.isArray(response) ? response : response.costs || response.data || []);
+      const response = await fetchOperationalDashboard();
+      setOperationalData(response);
     } catch (error) {
-      console.error('Error loading costs:', error);
-      setCosts([]);
+      console.error('Error loading operational dashboard:', error);
+      setOperationalData(null);
     }
   };
 
@@ -475,9 +485,15 @@ export const AdminDashboard: React.FC = () => {
 
   const handleCreateCost = async (costData: any) => {
     try {
+      // Validar que location_id sea válido
+      if (!costData.location_id) {
+        alert('Por favor selecciona una ubicación válida');
+        return;
+      }
+
       // Mapear los datos del modal al formato que espera la API
       const apiData = {
-        location_id: costData.location_id || 1, // Default location if none selected
+        location_id: parseInt(costData.location_id.toString()),
         cost_type: mapCostTypeToAPI(costData.category),
         amount: parseFloat(costData.amount.toString()),
         frequency: mapFrequencyToAPI(costData.frequency),
@@ -486,10 +502,20 @@ export const AdminDashboard: React.FC = () => {
         end_date: costData.due_date || undefined
       };
 
-      await createCostConfiguration(apiData);
-      await loadCosts();
-      setShowCreateCostModal(false);
-      alert('Costo registrado exitosamente');
+      console.log('Enviando datos al API:', apiData);
+      
+      const response = await createCostConfiguration(apiData);
+      
+      console.log('Respuesta del API:', response);
+      
+      // Verificar si la respuesta indica éxito
+      if (response && (response.id || response.success !== false)) {
+        await loadCosts();
+        setShowCreateCostModal(false);
+        alert(`¡Costo registrado exitosamente!\n\nID: ${response.id}\nDescripción: ${response.description}\nMonto: ${formatCurrency(parseFloat(response.amount))}\nTipo: ${capitalize(response.cost_type)}`);
+      } else {
+        throw new Error('La respuesta del servidor no indica éxito');
+      }
     } catch (error: any) {
       console.error('Error creating cost:', error);
       alert('Error al registrar costo: ' + (error.message || 'Error desconocido'));
@@ -525,12 +551,14 @@ export const AdminDashboard: React.FC = () => {
   // Helper functions para mapear datos del modal a la API
   const mapCostTypeToAPI = (category: string): 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros' => {
     const mapping: Record<string, typeof mapCostTypeToAPI extends (x: any) => infer R ? R : never> = {
+      // Costos Fijos
       'Arriendo': 'arriendo',
       'Servicios Públicos': 'servicios',
       'Internet': 'servicios',
       'Seguros': 'otros',
       'Nómina': 'nomina',
       'Otros Fijos': 'otros',
+      // Costos Variables
       'Mercancía': 'mercancia',
       'Transporte': 'transporte',
       'Publicidad': 'otros',
@@ -554,20 +582,104 @@ export const AdminDashboard: React.FC = () => {
 
   const handleVideoInventoryEntry = async (videoData: {
     warehouse_location_id: number;
-    estimated_quantity: number;
+    unit_price: number;
     product_brand?: string;
     product_model?: string;
-    expected_sizes?: string;
+    box_price?: number;
     notes?: string;
-    video_file: File;
+    sizes: Array<{ size: string; quantity: string }>;
+    video_file: File | null;
+    reference_image?: File | null;
   }) => {
     try {
-      const response = await processVideoInventoryEntry(videoData);
-      alert('Video de inventario procesado exitosamente');
-      console.log('Video processing response:', response);
+      // Validar que hay un video
+      if (!videoData.video_file) {
+        alert('❌ Error: No se encontró el archivo de video');
+        return;
+      }
+
+      // Validar tallas y cantidades
+      const validSizes = videoData.sizes.filter(s => s.size.trim() && s.quantity.trim() && parseInt(s.quantity) > 0);
+      
+      if (validSizes.length === 0) {
+        alert('Por favor ingresa al menos una talla con cantidad válida');
+        return;
+      }
+
+      // Convertir tallas a formato JSON requerido
+      const sizeQuantitiesJson = JSON.stringify(
+        validSizes.map(s => ({
+          size: s.size.trim(),
+          quantity: parseInt(s.quantity)
+        }))
+      );
+
+      const inventoryPayload = {
+        warehouse_location_id: videoData.warehouse_location_id,
+        size_quantities_json: sizeQuantitiesJson,
+        unit_price: videoData.unit_price,
+        video_file: videoData.video_file,
+        product_brand: videoData.product_brand || '',
+        product_model: videoData.product_model || '',
+        box_price: videoData.box_price || 0,
+        notes: videoData.notes || '',
+        reference_image: videoData.reference_image && videoData.reference_image instanceof File ? videoData.reference_image : null
+      };
+
+      console.log('Enviando datos de inventario:', inventoryPayload);
+      
+      const response = await processVideoInventoryEntry(inventoryPayload);
+      
+      console.log('Respuesta del servidor:', response);
+      
+      // Verificar si la respuesta indica éxito
+      if (response && response.success) {
+        const totalQuantity = response.total_quantity || validSizes.reduce((sum, s) => sum + parseInt(s.quantity), 0);
+        
+        alert(`¡Inventario registrado exitosamente! 🎉
+
+📦 Producto: ${response.brand || 'N/A'} ${response.model || 'N/A'}
+🏷️ Código: ${response.reference_code}
+📍 Bodega: ${response.warehouse_name}
+📊 Cantidad Total: ${totalQuantity} unidades
+💰 Precio Unitario: ${formatCurrency(response.unit_price)}
+🎯 Confianza IA: ${Math.round((response.ai_confidence_score || 0) * 100)}%
+
+${response.sizes_created ? `Tallas registradas:
+${response.sizes_created.map((s: any) => `• Talla ${s.size}: ${s.quantity} unidades`).join('\n')}` : ''}
+
+Procesado en ${response.processing_time_seconds || 0}s`);
+      } else {
+        throw new Error('La respuesta del servidor no indica éxito');
+      }
     } catch (error: any) {
       console.error('Error processing video inventory:', error);
-      alert('Error al procesar video: ' + (error.message || 'Error desconocido'));
+      
+      // Manejar diferentes tipos de errores
+      let errorMessage = 'Error al procesar inventario por video';
+      
+      if (error.message && error.message.includes('ValidationError')) {
+        errorMessage = `⚠️ Error en el servidor: El backend procesó tu petición pero hay un problema en la respuesta.
+        
+📋 Esto significa que:
+• Tu video y datos fueron recibidos correctamente
+• El procesamiento de IA se ejecutó
+• Hay un error en el formato de respuesta del servidor
+
+🔧 El equipo técnico debe revisar la configuración del endpoint.
+        
+Error técnico: ${error.message}`;
+      } else if (error.message && error.message.includes('Field required')) {
+        errorMessage = `🔧 Error de configuración del servidor: Falta un campo en la respuesta.
+        
+Tu inventario puede haberse procesado correctamente, pero el servidor no puede devolver la respuesta completa.
+        
+Detalle técnico: ${error.message}`;
+      } else {
+        errorMessage = `❌ Error al procesar inventario: ${error.message || 'Error desconocido'}`;
+      }
+      
+      alert(errorMessage);
     }
   };
 
@@ -884,44 +996,33 @@ export const AdminDashboard: React.FC = () => {
         <Card>
           <CardContent className="p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Buscar costos..."
-                  value={costFilters.search}
-                  onChange={(e) => setCostFilters(prev => ({ ...prev, search: e.target.value }))}
-                  className="pl-10"
-                />
-              </div>
-              <Select
-                value={costFilters.category}
-                onChange={(e) => {
-                  const category = e.target.value as typeof costFilters.category;
-                  setCostFilters(prev => ({ ...prev, category }));
-                  setTimeout(() => loadCosts(), 100);
-                }}
-                options={[
-                  { value: '', label: 'Todas las categorías' },
-                  { value: 'arriendo', label: 'Arriendo' },
-                  { value: 'servicios', label: 'Servicios' },
-                  { value: 'nomina', label: 'Nómina' },
-                  { value: 'mercancia', label: 'Mercancía' },
-                  { value: 'comisiones', label: 'Comisiones' },
-                  { value: 'transporte', label: 'Transporte' },
-                  { value: 'otros', label: 'Otros' },
-                ]}
-              />
-              <Select
-                value={costFilters.location}
-                onChange={(e) => {
-                  setCostFilters(prev => ({ ...prev, location: e.target.value }));
-                  setTimeout(() => loadCosts(), 100);
-                }}
-                options={[
-                  { value: '', label: 'Todas las ubicaciones' },
-                  ...locations.map(location => ({ value: location.id.toString(), label: location.name }))
-                ]}
-              />
+               <Select
+                 value={costFilters.category}
+                 onChange={(e) => {
+                   const category = e.target.value as typeof costFilters.category;
+                   setCostFilters(prev => ({ ...prev, category }));
+                 }}
+                 options={[
+                   { value: '', label: 'Todas las categorías' },
+                   { value: 'arriendo', label: 'Arriendo' },
+                   { value: 'servicios', label: 'Servicios' },
+                   { value: 'nomina', label: 'Nómina' },
+                   { value: 'mercancia', label: 'Mercancía' },
+                   { value: 'comisiones', label: 'Comisiones' },
+                   { value: 'transporte', label: 'Transporte' },
+                   { value: 'otros', label: 'Otros' },
+                 ]}
+               />
+               <Select
+                 value={costFilters.location}
+                 onChange={(e) => {
+                   setCostFilters(prev => ({ ...prev, location: e.target.value }));
+                 }}
+                 options={[
+                   { value: '', label: 'Todas las ubicaciones' },
+                   ...locations.map(location => ({ value: location.id.toString(), label: location.name }))
+                 ]}
+               />
               <Button onClick={() => loadCosts()} size="sm" variant="outline">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualizar
@@ -930,293 +1031,290 @@ export const AdminDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Costs Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <DollarSign className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold">
-                {formatCurrency(costs.reduce((sum, cost) => sum + parseFloat(cost.amount), 0))}
-              </p>
-              <p className="text-sm text-gray-600">Total Costos</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <BarChart3 className="h-8 w-8 text-success mx-auto mb-2" />
-              <p className="text-2xl font-bold">{costs.length}</p>
-              <p className="text-sm text-gray-600">Registros</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <TrendingUp className="h-8 w-8 text-warning mx-auto mb-2" />
-              <p className="text-2xl font-bold">
-                {costs.length > 0 ? 
-                  formatCurrency(costs.reduce((sum, cost) => sum + parseFloat(cost.amount), 0) / costs.length) : 
-                  formatCurrency(0)
-                }
-              </p>
-              <p className="text-sm text-gray-600">Promedio</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <CheckCircle className="h-8 w-8 text-success mx-auto mb-2" />
-              <p className="text-2xl font-bold">{costs.filter(c => c.is_active).length}</p>
-              <p className="text-sm text-gray-600">Activos</p>
-            </CardContent>
-          </Card>
-        </div>
+         {/* Costs Summary */}
+         {operationalData && (
+           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+             <Card>
+               <CardContent className="p-4 text-center">
+                 <DollarSign className="h-8 w-8 text-primary mx-auto mb-2" />
+                 <p className="text-2xl font-bold">
+                   {formatCurrency(parseFloat(operationalData.monthly_summary.total_monthly_costs))}
+                 </p>
+                 <p className="text-sm text-gray-600">Costos Mensuales</p>
+               </CardContent>
+             </Card>
+             <Card>
+               <CardContent className="p-4 text-center">
+                 <AlertCircle className="h-8 w-8 text-error mx-auto mb-2" />
+                 <p className="text-2xl font-bold">
+                   {formatCurrency(parseFloat(operationalData.summary.total_overdue_amount))}
+                 </p>
+                 <p className="text-sm text-gray-600">Monto Vencido</p>
+               </CardContent>
+             </Card>
+             <Card>
+               <CardContent className="p-4 text-center">
+                 <BarChart3 className="h-8 w-8 text-warning mx-auto mb-2" />
+                 <p className="text-2xl font-bold">{operationalData.summary.critical_alerts_count}</p>
+                 <p className="text-sm text-gray-600">Alertas Críticas</p>
+               </CardContent>
+             </Card>
+             <Card>
+               <CardContent className="p-4 text-center">
+                 <Building className="h-8 w-8 text-success mx-auto mb-2" />
+                 <p className="text-2xl font-bold">{operationalData.summary.total_locations}</p>
+                 <p className="text-sm text-gray-600">Ubicaciones</p>
+               </CardContent>
+             </Card>
+           </div>
+         )}
 
-        {/* Advanced Cost Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold flex items-center">
-                <AlertCircle className="h-5 w-5 mr-2 text-warning" />
-                Alertas y Notificaciones
-              </h3>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    const overdueAlerts = await fetchOverdueAlerts();
-                    console.log('Overdue alerts:', overdueAlerts);
-                    alert('Alertas vencidas obtenidas - revisar consola');
-                  } catch (error) {
-                    console.error('Error fetching overdue alerts:', error);
-                    alert('Error al obtener alertas vencidas');
-                  }
-                }}
-              >
-                <AlertCircle className="h-4 w-4 mr-2" />
-                Ver Alertas Vencidas
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    const upcomingPayments = await fetchUpcomingPayments(7);
-                    console.log('Upcoming payments:', upcomingPayments);
-                    alert('Pagos próximos obtenidos - revisar consola');
-                  } catch (error) {
-                    console.error('Error fetching upcoming payments:', error);
-                    alert('Error al obtener pagos próximos');
-                  }
-                }}
-              >
-                <Calendar className="h-4 w-4 mr-2" />
-                Pagos Próximos (7 días)
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold flex items-center">
-                <BarChart3 className="h-5 w-5 mr-2 text-primary" />
-                Dashboard Operativo
-              </h3>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    const operationalDashboard = await fetchOperationalDashboard();
-                    console.log('Operational dashboard:', operationalDashboard);
-                    alert('Dashboard operativo obtenido - revisar consola');
-                  } catch (error) {
-                    console.error('Error fetching operational dashboard:', error);
-                    alert('Error al obtener dashboard operativo');
-                  }
-                }}
-              >
-                <PieChart className="h-4 w-4 mr-2" />
-                Ver Dashboard Operativo
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    const health = await fetchCostsModuleHealth();
-                    console.log('Costs module health:', health);
-                    alert('Estado del módulo de costos - revisar consola');
-                  } catch (error) {
-                    console.error('Error checking costs module health:', error);
-                    alert('Error al verificar estado del módulo');
-                  }
-                }}
-              >
-                <Activity className="h-4 w-4 mr-2" />
-                Estado del Módulo
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold flex items-center">
-                <MapPin className="h-5 w-5 mr-2 text-secondary" />
-                Análisis por Ubicación
-              </h3>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {locations.slice(0, 2).map((location) => (
-                <Button 
-                  key={location.id}
-                  className="w-full justify-start" 
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      const locationDashboard = await fetchLocationCostDashboard(location.id);
-                      console.log(`Dashboard for ${location.name}:`, locationDashboard);
-                      alert(`Dashboard de ${location.name} obtenido - revisar consola`);
-                    } catch (error) {
-                      console.error(`Error fetching dashboard for location ${location.id}:`, error);
-                      alert(`Error al obtener dashboard de ${location.name}`);
-                    }
-                  }}
-                >
-                  <Building className="h-4 w-4 mr-2" />
-                  Dashboard {location.name}
-                </Button>
-              ))}
-              {locations.length === 0 && (
-                <p className="text-sm text-gray-500 text-center">No hay ubicaciones disponibles</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Costs Table */}
-        <Card>
-          <CardContent className="p-0">
-            {costs.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Frecuencia</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {costs.map((cost) => (
-                      <tr key={cost.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <p className="font-medium">{cost.description}</p>
-                          <p className="text-sm text-gray-500">por {cost.created_by_name}</p>
-                          <p className="text-xs text-gray-400">ID: {cost.id}</p>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge variant="secondary">{capitalize(cost.cost_type)}</Badge>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap font-semibold">
-                          {formatCurrency(parseFloat(cost.amount))}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {cost.location_name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {capitalize(cost.frequency)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge variant={cost.is_active ? 'success' : 'error'}>
-                            {cost.is_active ? 'Activo' : 'Inactivo'}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                          <div className="flex space-x-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={async () => {
-                                try {
-                                  const details = await fetchCostConfiguration(cost.id);
-                                  console.log('Cost details:', details);
-                                  alert('Detalles del costo - revisar consola');
-                                } catch (error) {
-                                  console.error('Error fetching cost details:', error);
-                                  alert('Error al obtener detalles');
-                                }
-                              }}
-                              title="Ver detalles"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                // TODO: Implementar modal de edición
-                                alert('Modal de edición pendiente de implementar');
-                              }}
-                              title="Editar costo"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            {cost.is_active ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-warning hover:text-warning-foreground hover:bg-warning"
-                                onClick={() => handleDeactivateCost(cost.id)}
-                                title="Desactivar costo"
-                              >
-                                <ArrowDown className="h-4 w-4" />
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-success hover:text-success-foreground hover:bg-success"
-                                onClick={() => {
-                                  // Reactivar - implementar si es necesario
-                                  alert('Función de reactivación pendiente');
-                                }}
-                                title="Reactivar costo"
-                              >
-                                <ArrowUp className="h-4 w-4" />
-                              </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-destructive hover:text-destructive-foreground hover:bg-destructive"
-                              onClick={() => handleDeleteCost(cost.id)}
-                              title="Eliminar costo"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+        {/* Estado por Ubicaciones */}
+        {operationalData && (() => {
+          // Aplicar filtro por ubicación si está seleccionado
+          let filteredLocations = operationalData.locations_status;
+          
+          if (costFilters.location) {
+            const selectedLocation = locations.find(loc => loc.id.toString() === costFilters.location);
+            if (selectedLocation) {
+              filteredLocations = filteredLocations.filter(location => location.location_name === selectedLocation.name);
+            }
+          }
+          
+          return filteredLocations.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-semibold text-foreground">
+                  Estado de Costos por Ubicación
+                  {costFilters.location && (
+                    <span className="ml-2 text-sm font-normal text-muted-foreground">
+                      (Filtrado: {filteredLocations.length} de {operationalData.locations_status.length})
+                    </span>
+                  )}
+                </h3>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {filteredLocations.map((location) => (
+                    <div key={location.location_id} className={`p-4 rounded-lg border-l-4 bg-card text-foreground border-border ${
+                      location.status === 'ok' ? 'border-success' :
+                      location.status === 'attention' ? 'border-warning' :
+                      'border-error'
+                    }`}>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-lg text-foreground">{location.location_name}</h4>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Costos Mensuales</p>
+                              <p className="font-semibold text-foreground">{formatCurrency(parseFloat(location.monthly_costs))}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Monto Vencido</p>
+                              <p className="font-semibold text-error">{formatCurrency(parseFloat(location.overdue_amount))}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Cuentas Vencidas</p>
+                              <p className="font-semibold text-foreground">{location.overdue_count}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Próximos Pagos</p>
+                              <p className="font-semibold text-foreground">{location.upcoming_count}</p>
+                            </div>
                           </div>
-                        </td>
+                        </div>
+                        <Badge variant={
+                          location.status === 'ok' ? 'success' :
+                          location.status === 'attention' ? 'warning' : 'error'
+                        }>
+                          {location.status === 'ok' ? 'OK' :
+                           location.status === 'attention' ? 'Atención' : 'Crítico'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent>
+                <EmptyState
+                  title="No hay ubicaciones"
+                  description="No se encontraron ubicaciones con los filtros aplicados"
+                  icon={<Building className="h-12 w-12 text-gray-400" />}
+                />
+              </CardContent>
+            </Card>
+          );
+        })()}
+
+        {/* Pagos Próximos */}
+        {operationalData && (() => {
+          // Aplicar filtros a los pagos próximos
+          let filteredUpcoming = operationalData.upcoming_week;
+          
+          // Filtro por tipo de costo
+          if (costFilters.category) {
+            filteredUpcoming = filteredUpcoming.filter(payment => payment.cost_type === costFilters.category);
+          }
+          
+          // Filtro por ubicación
+          if (costFilters.location) {
+            const selectedLocation = locations.find(loc => loc.id.toString() === costFilters.location);
+            if (selectedLocation) {
+              filteredUpcoming = filteredUpcoming.filter(payment => payment.location_name === selectedLocation.name);
+            }
+          }
+          
+          return filteredUpcoming.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-semibold flex items-center text-foreground">
+                  <Calendar className="h-5 w-5 mr-2 text-primary" />
+                  Pagos Próximos (Esta Semana)
+                  {(costFilters.category || costFilters.location) && (
+                    <span className="ml-2 text-sm font-normal text-muted-foreground">
+                      (Filtrados: {filteredUpcoming.length} de {operationalData.upcoming_week.length})
+                    </span>
+                  )}
+                </h3>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {filteredUpcoming.map((payment, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-card text-foreground border border-border rounded-lg">
+                      <div>
+                        <p className="font-medium text-foreground">{payment.location_name}</p>
+                        <p className="text-sm text-muted-foreground">{capitalize(payment.cost_type)}</p>
+                        <p className="text-xs text-muted-foreground">Vence: {formatDate(payment.due_date)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-primary">{formatCurrency(parseFloat(payment.amount))}</p>
+                        <p className="text-sm text-primary">
+                          {payment.days_until_due === 0 ? 'Hoy' : 
+                           payment.days_until_due === 1 ? 'Mañana' : 
+                           `En ${payment.days_until_due} días`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : null;
+        })()}
+
+        {/* Alertas Críticas */}
+        {operationalData && (() => {
+          // Aplicar filtros a las alertas críticas
+          let filteredAlerts = operationalData.critical_alerts;
+          
+          // Filtro por tipo de costo
+          if (costFilters.category) {
+            filteredAlerts = filteredAlerts.filter(alert => alert.cost_type === costFilters.category);
+          }
+          
+          // Filtro por ubicación
+          if (costFilters.location) {
+            const selectedLocation = locations.find(loc => loc.id.toString() === costFilters.location);
+            if (selectedLocation) {
+              filteredAlerts = filteredAlerts.filter(alert => alert.location_name === selectedLocation.name);
+            }
+          }
+          
+          return filteredAlerts.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-semibold flex items-center text-foreground">
+                  <AlertCircle className="h-5 w-5 mr-2 text-error" />
+                  Alertas Críticas - Pagos Vencidos
+                  {(costFilters.category || costFilters.location) && (
+                    <span className="ml-2 text-sm font-normal text-muted-foreground">
+                      (Filtradas: {filteredAlerts.length} de {operationalData.critical_alerts.length})
+                    </span>
+                  )}
+                </h3>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
+                    <thead className="bg-popover text-popover-foreground">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Ubicación</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Tipo de Costo</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Monto</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Días Vencido</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Fecha Vencimiento</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Prioridad</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
+                    </thead>
+                    <tbody>
+                      {filteredAlerts.map((alert, index) => (
+                        <tr key={index} className={
+                          alert.priority === 'high' ? 'bg-error/10' : 
+                          alert.priority === 'medium' ? 'bg-warning/10' : 'bg-muted/10'
+                        }>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <p className="font-medium text-foreground">{alert.location_name}</p>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge className="bg-accent text-accent-foreground border border-border">{capitalize(alert.cost_type)}</Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap font-semibold text-error">
+                            {formatCurrency(parseFloat(alert.amount))}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap font-bold text-error">
+                            {alert.days_overdue} días
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                            {formatDate(alert.due_date)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge variant={
+                              alert.priority === 'high' ? 'error' :
+                              alert.priority === 'medium' ? 'warning' : 'secondary'
+                            }>
+                              {alert.priority === 'high' ? 'Alta' :
+                               alert.priority === 'medium' ? 'Media' : 'Baja'}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent>
+                <EmptyState
+                  title="No hay alertas críticas"
+                  description={
+                    (costFilters.category || costFilters.location) 
+                      ? "No se encontraron alertas con los filtros aplicados"
+                      : "No hay alertas críticas en este momento"
+                  }
+                  icon={<AlertCircle className="h-12 w-12 text-gray-400" />}
+                />
+              </CardContent>
+            </Card>
+          );
+        })()}
+
+        {/* Estado sin datos */}
+        {!operationalData && (
+          <Card>
+            <CardContent>
               <EmptyState
-                title="No hay costos registrados"
-                description="No se encontraron costos con los filtros aplicados"
+                title="Cargando información de costos"
+                description="Esperando datos del dashboard operacional"
                 icon={<DollarSign className="h-12 w-12 text-gray-400" />}
               />
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   };
@@ -1470,17 +1568,6 @@ export const AdminDashboard: React.FC = () => {
       <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <h2 className="text-xl font-semibold text-foreground">Gestión de Inventario</h2>
-          <Button onClick={async () => {
-            try {
-              const history = await fetchVideoProcessingHistory();
-              console.log('Video processing history:', history);
-            } catch (error) {
-              console.error('Error fetching video history:', error);
-            }
-          }}>
-            <Video className="h-4 w-4 mr-2" />
-            Ver Historial
-          </Button>
         </div>
         
         <Card>
@@ -1511,12 +1598,33 @@ export const AdminDashboard: React.FC = () => {
                   onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_model: e.target.value }))}
                 />
                 
-                <Input 
-                  placeholder="Cantidad Estimada" 
-                  type="number"
-                  value={videoInventoryForm.estimated_quantity}
-                  onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, estimated_quantity: parseInt(e.target.value) || 0 }))}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Precio Unitario * <span className="text-xs text-muted-foreground">(Precio por unidad individual)</span>
+                  </label>
+                  <Input 
+                    placeholder="Ejemplo: 45000" 
+                    type="number"
+                    value={videoInventoryForm.unit_price}
+                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, unit_price: parseFloat(e.target.value) || 0 }))}
+                    min="0"
+                    step="1000"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Precio por Caja <span className="text-xs text-muted-foreground">(Opcional - Precio mayorista)</span>
+                  </label>
+                  <Input 
+                    placeholder="Ejemplo: 540000" 
+                    type="number"
+                    value={videoInventoryForm.box_price}
+                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, box_price: parseFloat(e.target.value) || 0 }))}
+                    min="0"
+                    step="1000"
+                  />
+                </div>
                 
                 {/* Campos para tallas y cantidades */}
                 <label className="block text-sm font-medium text-foreground mb-1">Tallas y cantidades</label>
@@ -1585,8 +1693,25 @@ export const AdminDashboard: React.FC = () => {
                   <label className="block text-sm font-medium text-foreground mb-2">
                     Tomar Foto del Inventario
                   </label>
-                  {/* TODO: Implementar captura de fotos */}
-                  <p className="text-sm text-gray-500">Función de foto en desarrollo</p>
+                  <FullScreenPhotoCapture
+                    onPhotoTaken={async (url, blob) => {
+                      console.log("Foto tomada:", url, blob);
+                      
+                      if (blob) {
+                        const imageFile = new File([blob], 'reference-image.jpg', { type: 'image/jpeg' });
+                        console.log("Imagen creada:", imageFile.name, imageFile.size, "bytes", imageFile.type);
+                        
+                        setVideoInventoryForm(prev => ({ 
+                          ...prev, 
+                          reference_image: imageFile 
+                        }));
+                        
+                        console.log("Imagen guardada en el estado del formulario");
+                      } else {
+                        console.warn("No se pudo obtener el blob de la foto");
+                      }
+                    }}
+                  />
               </div>
 
               <div className="space-y-4">
@@ -1596,44 +1721,119 @@ export const AdminDashboard: React.FC = () => {
                   </label>
                   <FullScreenCameraCapture
                     onVideoRecorded={async (url, blob) => {
-                      console.log("Video listo para subir:", url, blob);
+                      console.log("Video grabado:", url, blob);
                       
-                      if (videoInventoryForm.warehouse_location_id === 0) {
-                        alert('Por favor selecciona una bodega');
-                        return;
-                      }
-                      
-                      if (videoInventoryForm.estimated_quantity === 0) {
-                        alert('Por favor ingresa la cantidad estimada');
-                        return;
-                      }
-
-                      if (!blob) {
-                        alert('Error: No se pudo capturar el video');
-                        return;
-                      }
-
-                      try {
+                      if (blob) {
                         const videoFile = new File([blob], 'inventory-video.mp4', { type: 'video/mp4' });
-                        await handleVideoInventoryEntry({
-                          ...videoInventoryForm,
-                          video_file: videoFile
-                        });
-                        
-                        // Reset form
-                        setVideoInventoryForm({
-                          warehouse_location_id: 0,
-                          estimated_quantity: 0,
-                          product_brand: '',
-                          product_model: '',
-                          notes: '',
-                          sizes: [{ size: '', quantity: '' }]
-                        });
-                      } catch (error) {
-                        console.error('Error processing video:', error);
+                        setVideoInventoryForm(prev => ({ 
+                          ...prev, 
+                          video_file: videoFile 
+                        }));
                       }
                     }}
                   />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Submit Button */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex flex-col space-y-4">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  Enviar Inventario
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Asegúrate de haber completado todos los campos requeridos y grabado el video antes de enviar.
+                </p>
+              </div>
+              
+              <Button 
+                onClick={async () => {
+                  // Validaciones completas
+                  if (videoInventoryForm.warehouse_location_id === 0) {
+                    alert('❌ Por favor selecciona una bodega');
+                    return;
+                  }
+                  
+                  if (videoInventoryForm.unit_price <= 0) {
+                    alert('❌ Por favor ingresa un precio unitario válido');
+                    return;
+                  }
+
+                  const validSizes = videoInventoryForm.sizes.filter(s => s.size.trim() && s.quantity.trim() && parseInt(s.quantity) > 0);
+                  if (validSizes.length === 0) {
+                    alert('❌ Por favor ingresa al menos una talla con cantidad válida');
+                    return;
+                  }
+
+                  if (!videoInventoryForm.video_file) {
+                    alert('❌ Por favor graba un video del producto antes de enviar');
+                    return;
+                  }
+
+                  try {
+                    console.log('=== ANTES DE ENVIAR ===');
+                    console.log('Estado del formulario:', {
+                      warehouse_location_id: videoInventoryForm.warehouse_location_id,
+                      unit_price: videoInventoryForm.unit_price,
+                      product_brand: videoInventoryForm.product_brand,
+                      product_model: videoInventoryForm.product_model,
+                      box_price: videoInventoryForm.box_price,
+                      notes: videoInventoryForm.notes,
+                      sizes: videoInventoryForm.sizes,
+                      video_file: videoInventoryForm.video_file ? `File(${videoInventoryForm.video_file.size} bytes)` : 'null',
+                      reference_image: videoInventoryForm.reference_image ? `File(${videoInventoryForm.reference_image.size} bytes)` : 'null'
+                    });
+                    console.log('=======================');
+                    
+                    await handleVideoInventoryEntry(videoInventoryForm);
+                    
+                    // Reset form después del envío exitoso
+                    setVideoInventoryForm({
+                      warehouse_location_id: 0,
+                      product_brand: '',
+                      product_model: '',
+                      unit_price: 0,
+                      box_price: 0,
+                      notes: '',
+                      sizes: [{ size: '', quantity: '' }],
+                      reference_image: null,
+                      video_file: null
+                    });
+                  } catch (error) {
+                    console.error('Error processing inventory:', error);
+                  }
+                }}
+                className="w-full bg-success hover:bg-success/90 text-white py-4 text-lg font-semibold"
+                disabled={!videoInventoryForm.video_file || videoInventoryForm.warehouse_location_id === 0 || videoInventoryForm.unit_price <= 0}
+              >
+                {!videoInventoryForm.video_file ? '📹 Graba un video primero' :
+                 videoInventoryForm.warehouse_location_id === 0 ? '🏢 Selecciona una bodega' :
+                 videoInventoryForm.unit_price <= 0 ? '💰 Ingresa el precio' :
+                 '🚀 Registrar Inventario'}
+              </Button>
+              
+              {/* Indicadores de estado */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div className={`flex items-center space-x-2 ${videoInventoryForm.warehouse_location_id > 0 ? 'text-success' : 'text-muted-foreground'}`}>
+                  <div className={`w-3 h-3 rounded-full ${videoInventoryForm.warehouse_location_id > 0 ? 'bg-success' : 'bg-muted'}`}></div>
+                  <span>Bodega</span>
+                </div>
+                <div className={`flex items-center space-x-2 ${videoInventoryForm.unit_price > 0 ? 'text-success' : 'text-muted-foreground'}`}>
+                  <div className={`w-3 h-3 rounded-full ${videoInventoryForm.unit_price > 0 ? 'bg-success' : 'bg-muted'}`}></div>
+                  <span>Precio</span>
+                </div>
+                <div className={`flex items-center space-x-2 ${videoInventoryForm.sizes.some(s => s.size.trim() && s.quantity.trim()) ? 'text-success' : 'text-muted-foreground'}`}>
+                  <div className={`w-3 h-3 rounded-full ${videoInventoryForm.sizes.some(s => s.size.trim() && s.quantity.trim()) ? 'bg-success' : 'bg-muted'}`}></div>
+                  <span>Tallas</span>
+                </div>
+                <div className={`flex items-center space-x-2 ${videoInventoryForm.video_file ? 'text-success' : 'text-muted-foreground'}`}>
+                  <div className={`w-3 h-3 rounded-full ${videoInventoryForm.video_file ? 'bg-success' : 'bg-muted'}`}></div>
+                  <span>Video</span>
                 </div>
               </div>
             </div>

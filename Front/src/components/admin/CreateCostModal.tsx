@@ -77,6 +77,10 @@ export const CreateCostModal: React.FC<CreateCostModalProps> = ({
       newErrors.frequency = 'La frecuencia es requerida';
     }
 
+    if (!formData.location_id) {
+      newErrors.location_id = 'La ubicación es requerida';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -215,20 +219,23 @@ export const CreateCostModal: React.FC<CreateCostModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Ubicación (Opcional)
+              Ubicación <span className="text-destructive">*</span>
             </label>
             <select
               value={formData.location_id}
               onChange={(e) => handleInputChange('location_id', e.target.value)}
-              className="w-full px-3 py-2 border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground ${
+                errors.location_id ? 'border-destructive' : 'border-border'
+              }`}
             >
-              <option value="">Todas las ubicaciones</option>
+              <option value="">Seleccionar ubicación</option>
               {locations.map((location) => (
                 <option key={location.id} value={location.id}>
                   {location.name} ({location.type})
                 </option>
               ))}
             </select>
+            {errors.location_id && <p className="mt-1 text-sm text-destructive">{errors.location_id}</p>}
           </div>
 
           <Input
