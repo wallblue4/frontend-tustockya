@@ -1606,7 +1606,7 @@ Detalle técnico: ${error.message}`;
                     placeholder="Ejemplo: 45000" 
                     type="number"
                     value={videoInventoryForm.unit_price}
-                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, unit_price: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, unit_price: parseFloat(e.target.value) }))}
                     min="0"
                     step="1000"
                   />
@@ -1620,7 +1620,7 @@ Detalle técnico: ${error.message}`;
                     placeholder="Ejemplo: 540000" 
                     type="number"
                     value={videoInventoryForm.box_price}
-                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, box_price: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, box_price: parseFloat(e.target.value)}))}
                     min="0"
                     step="1000"
                   />
