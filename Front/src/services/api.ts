@@ -292,20 +292,20 @@ export const authAPI = {
       method: 'POST',
       body: JSON.stringify(credentials),
       }),
-  getCurrentUser: () => apiRequest('/api/v1/auth/me'),                   
-};
-*/
-  
-  export const authAPI = {
-    login: (credentials: { email: string; password: string }) => 
-    apiRequest('/api/v1/auth/auth/login-json', {
-    method: 'POST',
-    body: JSON.stringify({
-      email: credentials.email,
-      password: credentials.password
-    }),
+      getCurrentUser: () => apiRequest('/api/v1/auth/me'),                   
+      };
+      
+      */
+export const authAPI = {
+  login: (credentials: { email: string; password: string }) => 
+  apiRequest('/api/v1/auth/auth/login-json', {
+  method: 'POST',
+  body: JSON.stringify({
+    email: credentials.email,
+    password: credentials.password
   }),
-  getCurrentUser: () => apiRequest('/api/v1/auth/auth/me'),
+}),
+getCurrentUser: () => apiRequest('/api/v1/auth/auth/me'),
 };
 
 export const vendorAPI = {
