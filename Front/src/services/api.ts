@@ -1,7 +1,7 @@
 //api.ts
 
-//const API_BASE_URL = 'https://tustockya-backend.onrender.com';
-const API_BASE_URL = 'https://tustockya-api.onrender.com';
+const API_BASE_URL = 'https://tustockya-backend.onrender.com';
+//const API_BASE_URL = 'https://tustockya-api.onrender.com';
 
 // Get token from localStorage
 const getAuthToken = () => {
@@ -285,7 +285,6 @@ export interface ScanResponse {
 // Auth API - CORREGIDO para coincidir con backend
 
 // ESTE ES EL LOGUEO PARA LOS 3 ROLES (CORREDOR, SELLER, BODEGUERO)
-/*
 export const authAPI = {
   login: (credentials: { email: string; password: string }) => 
     apiRequest('/api/v1/auth/login', {
@@ -295,18 +294,19 @@ export const authAPI = {
       getCurrentUser: () => apiRequest('/api/v1/auth/me'),                   
       };
       
-*/
-export const authAPI = {
-  login: (credentials: { email: string; password: string }) => 
-    apiRequest('/api/v1/auth/auth/login-json', {
-      method: 'POST',
-      body: JSON.stringify({
-        email: credentials.email,
-        password: credentials.password
+/*
+      export const authAPI = {
+        login: (credentials: { email: string; password: string }) => 
+        apiRequest('/api/v1/auth/auth/login-json', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: credentials.email,
+          password: credentials.password
+        }),
       }),
-}),
-getCurrentUser: () => apiRequest('/api/v1/auth/auth/me'),
-};
+      getCurrentUser: () => apiRequest('/api/v1/auth/auth/me'),
+    };
+*/
     
 export const vendorAPI = {
   // Dashboard

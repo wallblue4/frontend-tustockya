@@ -1696,16 +1696,16 @@ Detalle técnico: ${error.message}`;
                   <FullScreenPhotoCapture
                     onPhotoTaken={async (url, blob) => {
                       console.log("Foto tomada:", url, blob);
-                      
                       if (blob) {
-                        const imageFile = new File([blob], 'reference-image.jpg', { type: 'image/jpeg' });
+                        // Usa el tipo real del blob si está disponible, si no, usa 'image/*'
+                        const fileType = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/*';
+                        const ext = fileType.split('/')[1] || 'jpg';
+                        const imageFile = new File([blob], `reference-image.${ext}`, { type: fileType });
                         console.log("Imagen creada:", imageFile.name, imageFile.size, "bytes", imageFile.type);
-                        
                         setVideoInventoryForm(prev => ({ 
                           ...prev, 
                           reference_image: imageFile 
                         }));
-                        
                         console.log("Imagen guardada en el estado del formulario");
                       } else {
                         console.warn("No se pudo obtener el blob de la foto");
@@ -1722,9 +1722,11 @@ Detalle técnico: ${error.message}`;
                   <FullScreenCameraCapture
                     onVideoRecorded={async (url, blob) => {
                       console.log("Video grabado:", url, blob);
-                      
                       if (blob) {
-                        const videoFile = new File([blob], 'inventory-video.mp4', { type: 'video/mp4' });
+                        // Usa el tipo real del blob si está disponible, si no, usa 'video/*'
+                        const fileType = blob.type && blob.type.startsWith('video/') ? blob.type : 'video/*';
+                        const ext = fileType.split('/')[1] || 'mp4';
+                        const videoFile = new File([blob], `inventory-video.${ext}`, { type: fileType });
                         setVideoInventoryForm(prev => ({ 
                           ...prev, 
                           video_file: videoFile 
