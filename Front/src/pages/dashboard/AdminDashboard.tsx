@@ -9,7 +9,6 @@ import {
   Users, 
   DollarSign, 
   TrendingUp, 
-  TrendingDown, 
   BarChart3, 
   Bell, 
   AlertCircle, 
@@ -17,9 +16,7 @@ import {
   FileText, 
   MapPin, 
   Package,
-  Package2,
   Search,
-  Filter,
   Plus,
   Edit,
   Trash2,
@@ -27,15 +24,11 @@ import {
   Store,
   Warehouse,
   ShoppingBag,
-  Upload,
   Video,
-  FileImage,
   Calendar,
-  Target,
   PieChart,
   Activity,
   Building,
-  Box,
   Truck,
   ArrowUp,
   ArrowDown,
@@ -49,24 +42,30 @@ import {
   // Dashboard & Metrics
   fetchAdminDashboard,
   fetchDashboardMetrics,
-  fetchAdminStatistics,
   
   // Users Management (5 endpoints)
   createUser,
   fetchManagedUsers,
   fetchAvailableLocationsForUsers,
   updateUser,
-  assignUserToLocation,
   
   // Locations Management (2 endpoints)
   fetchManagedLocations,
   fetchLocationStatistics,
   
-  // Costs Management (1 endpoint)
+  // Costs Management (14 endpoints)
+  createCostConfiguration,
   fetchCostConfigurations,
+  fetchOperationalDashboard,
+  fetchCostConfiguration,
+  deleteCostConfiguration,
+  deactivateCostConfiguration,
+  fetchLocationCostDashboard,
+  fetchOverdueAlerts,
+  fetchUpcomingPayments,
+  fetchCostsModuleHealth,
   
   // Wholesale Sales (1 endpoint)
-  processWholesaleSale,
   
   // Reports (1 endpoint)
   generateSalesReports,
@@ -85,39 +84,22 @@ import {
   fetchUsersPerformance,
   
   // Product Assignments (2 endpoints)
-  assignProductModelToWarehouses,
   fetchProductAssignments,
   
   // Video Inventory (4 endpoints)
   processVideoInventoryEntry,
   fetchVideoProcessingHistory,
-  fetchVideoProcessingDetails,
-  fetchVideoJobStatus,
-  
-  // Admin Assignments (5 endpoints)
-  assignAdminToLocation,
-  fetchAdminAssignments,
-  assignAdminToMultipleLocations,
-  removeAdminAssignment,
-  fetchMyAssignedLocations,
-  
-  // Utilities (4 endpoints)
-  canManageLocation,
-  fetchAvailableAdministrators,
-  fetchUnassignedLocations,
-  testMicroserviceConnection,
   
   // System (4 endpoints)
   fetchAdminModuleHealth,
   fetchSystemOverview,
-  initializeAdditionalTables,
   
-  // Diagnostics (1 endpoint)
-  fetchJobLogs
+  // Utilities (4 endpoints)
+  testMicroserviceConnection
 } from '../../services/adminAPI';
 
 import { formatCurrency, formatDate, capitalize } from '../../utils/formatters';
-import { LoadingSkeleton, TableSkeleton, CardSkeleton } from '../../components/admin/LoadingSkeleton';
+import { LoadingSkeleton } from '../../components/admin/LoadingSkeleton';
 import { ErrorState, EmptyState } from '../../components/admin/ErrorState';
 import { CreateUserModal } from '../../components/admin/CreateUserModal';
 import { EditUserModal } from '../../components/admin/EditUserModal';
@@ -217,6 +199,7 @@ export const AdminDashboard: React.FC = () => {
   // Estado para tallas y cantidades
   const [videoInventoryForm, setVideoInventoryForm] = useState({
     warehouse_location_id: 0,
+    estimated_quantity: 0,
     product_brand: '',
     product_model: '',
     notes: '',
@@ -233,7 +216,7 @@ export const AdminDashboard: React.FC = () => {
   const [costs, setCosts] = useState<Cost[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [availableLocations, setAvailableLocations] = useState<Location[]>([]);
-  const [wholesaleOrders, setWholesaleOrders] = useState<WholesaleOrder[]>([]);
+  const [wholesaleOrders] = useState<WholesaleOrder[]>([]);
   const [notifications, setNotifications] = useState<Notifications>({
     discounts: [],
     returns: [],
@@ -244,7 +227,6 @@ export const AdminDashboard: React.FC = () => {
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [showCreateCostModal, setShowCreateCostModal] = useState(false);
-  const [showCreateWholesaleModal, setShowCreateWholesaleModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   // Filter states
@@ -304,17 +286,13 @@ export const AdminDashboard: React.FC = () => {
 
   const loadDashboardData = async () => {
     try {
-      const [dashboardResponse, metricsResponse, statisticsResponse] = await Promise.all([
+      const [dashboardResponse, metricsResponse] = await Promise.all([
         fetchAdminDashboard().catch(err => {
           console.warn('Dashboard endpoint failed:', err);
           return null;
         }),
         fetchDashboardMetrics().catch(err => {
           console.warn('Metrics endpoint failed:', err);
-          return null;
-        }),
-        fetchAdminStatistics().catch(err => {
-          console.warn('Statistics endpoint failed:', err);
           return null;
         })
       ]);
@@ -339,7 +317,7 @@ export const AdminDashboard: React.FC = () => {
     try {
       const params: any = {};
       
-      if (userFilters.role && userFilters.role !== '') {
+      if (userFilters.role) {
         params.role = userFilters.role;
       }
       
@@ -368,11 +346,11 @@ export const AdminDashboard: React.FC = () => {
         params.location_id = parseInt(costFilters.location);
       }
       
-      if (costFilters.category && costFilters.category !== '') {
+      if (costFilters.category) {
         params.cost_type = costFilters.category;
       }
 
-      const response = await fetchCostConfigurations(params);
+      const response = await fetchOperationalDashboard(params);
       // Handle array response directly or nested in response object
       setCosts(Array.isArray(response) ? response : response.costs || response.data || []);
     } catch (error) {
@@ -460,26 +438,6 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleCreateWholesaleOrder = async (orderData: any) => {
-    try {
-      await processWholesaleSale({
-        customer_name: orderData.customerName,
-        customer_document: orderData.customerDocument,
-        customer_phone: orderData.customerPhone,
-        location_id: orderData.locationId,
-        items: orderData.items,
-        discount_percentage: orderData.discountPercentage,
-        payment_method: orderData.paymentMethod,
-        notes: orderData.notes
-      });
-      
-      alert('Orden mayorista creada exitosamente');
-      setShowCreateWholesaleModal(false);
-    } catch (error: any) {
-      console.error('Error creating wholesale order:', error);
-      alert('Error al crear orden mayorista: ' + (error.message || 'Error desconocido'));
-    }
-  };
 
   const handleApproveDiscount = async (discountId: number, approved: boolean, notes?: string) => {
     try {
@@ -515,6 +473,85 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleCreateCost = async (costData: any) => {
+    try {
+      // Mapear los datos del modal al formato que espera la API
+      const apiData = {
+        location_id: costData.location_id || 1, // Default location if none selected
+        cost_type: mapCostTypeToAPI(costData.category),
+        amount: parseFloat(costData.amount.toString()),
+        frequency: mapFrequencyToAPI(costData.frequency),
+        description: costData.description,
+        start_date: new Date().toISOString().split('T')[0], // Default to today
+        end_date: costData.due_date || undefined
+      };
+
+      await createCostConfiguration(apiData);
+      await loadCosts();
+      setShowCreateCostModal(false);
+      alert('Costo registrado exitosamente');
+    } catch (error: any) {
+      console.error('Error creating cost:', error);
+      alert('Error al registrar costo: ' + (error.message || 'Error desconocido'));
+    }
+  };
+
+
+  const handleDeleteCost = async (costId: number, forceDelete = false) => {
+    try {
+      const confirmation = window.confirm('¿Estás seguro de que deseas eliminar este costo?');
+      if (!confirmation) return;
+
+      await deleteCostConfiguration(costId, forceDelete);
+      await loadCosts();
+      alert('Costo eliminado exitosamente');
+    } catch (error: any) {
+      console.error('Error deleting cost:', error);
+      alert('Error al eliminar costo: ' + (error.message || 'Error desconocido'));
+    }
+  };
+
+  const handleDeactivateCost = async (costId: number, endDate?: string) => {
+    try {
+      await deactivateCostConfiguration(costId, endDate);
+      await loadCosts();
+      alert('Costo desactivado exitosamente');
+    } catch (error: any) {
+      console.error('Error deactivating cost:', error);
+      alert('Error al desactivar costo: ' + (error.message || 'Error desconocido'));
+    }
+  };
+
+  // Helper functions para mapear datos del modal a la API
+  const mapCostTypeToAPI = (category: string): 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros' => {
+    const mapping: Record<string, typeof mapCostTypeToAPI extends (x: any) => infer R ? R : never> = {
+      'Arriendo': 'arriendo',
+      'Servicios Públicos': 'servicios',
+      'Internet': 'servicios',
+      'Seguros': 'otros',
+      'Nómina': 'nomina',
+      'Otros Fijos': 'otros',
+      'Mercancía': 'mercancia',
+      'Transporte': 'transporte',
+      'Publicidad': 'otros',
+      'Mantenimiento': 'otros',
+      'Suministros': 'otros',
+      'Otros Variables': 'otros'
+    };
+    return mapping[category] || 'otros';
+  };
+
+  const mapFrequencyToAPI = (frequency: string): 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual' => {
+    const mapping: Record<string, typeof mapFrequencyToAPI extends (x: any) => infer R ? R : never> = {
+      'diario': 'daily',
+      'semanal': 'weekly', 
+      'mensual': 'monthly',
+      'trimestral': 'quarterly',
+      'anual': 'annual'
+    };
+    return mapping[frequency] || 'monthly';
+  };
+
   const handleVideoInventoryEntry = async (videoData: {
     warehouse_location_id: number;
     estimated_quantity: number;
@@ -548,23 +585,23 @@ export const AdminDashboard: React.FC = () => {
         {/* Key Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard
-            title={<span className="text-foreground">Ventas Hoy</span>}
-            value={<span className="text-primary font-bold">{metricsData?.total_sales_today ? formatCurrency(parseFloat(metricsData.total_sales_today)) : formatCurrency(0)}</span>}
+            title="Ventas Hoy"
+            value={metricsData?.total_sales_today ? formatCurrency(parseFloat(metricsData.total_sales_today)) : formatCurrency(0)}
             icon={<DollarSign className="h-6 w-6" />}
           />
           <StatsCard
-            title={<span className="text-foreground">Ventas del Mes</span>}
-            value={<span className="text-primary font-bold">{metricsData?.total_sales_month ? formatCurrency(parseFloat(metricsData.total_sales_month)) : formatCurrency(0)}</span>}
+            title="Ventas del Mes"
+            value={metricsData?.total_sales_month ? formatCurrency(parseFloat(metricsData.total_sales_month)) : formatCurrency(0)}
             icon={<TrendingUp className="h-6 w-6" />}
           />
           <StatsCard
-            title={<span className="text-foreground">Usuarios Activos</span>}
-            value={<span className="text-primary font-bold">{metricsData?.active_users?.toString() || '0'}</span>}
+            title="Usuarios Activos"
+            value={metricsData?.active_users?.toString() || '0'}
             icon={<Users className="h-6 w-6" />}
           />
           <StatsCard
-            title={<span className="text-foreground">Transferencias Pendientes</span>}
-            value={<span className="text-primary font-bold">{metricsData?.pending_transfers?.toString() || '0'}</span>}
+            title="Transferencias Pendientes"
+            value={metricsData?.pending_transfers?.toString() || '0'}
             icon={<Truck className="h-6 w-6" />}
           />
         </div>
@@ -894,7 +931,7 @@ export const AdminDashboard: React.FC = () => {
         </Card>
 
         {/* Costs Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4 text-center">
               <DollarSign className="h-8 w-8 text-primary mx-auto mb-2" />
@@ -923,6 +960,140 @@ export const AdminDashboard: React.FC = () => {
               <p className="text-sm text-gray-600">Promedio</p>
             </CardContent>
           </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <CheckCircle className="h-8 w-8 text-success mx-auto mb-2" />
+              <p className="text-2xl font-bold">{costs.filter(c => c.is_active).length}</p>
+              <p className="text-sm text-gray-600">Activos</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Advanced Cost Metrics */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold flex items-center">
+                <AlertCircle className="h-5 w-5 mr-2 text-warning" />
+                Alertas y Notificaciones
+              </h3>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const overdueAlerts = await fetchOverdueAlerts();
+                    console.log('Overdue alerts:', overdueAlerts);
+                    alert('Alertas vencidas obtenidas - revisar consola');
+                  } catch (error) {
+                    console.error('Error fetching overdue alerts:', error);
+                    alert('Error al obtener alertas vencidas');
+                  }
+                }}
+              >
+                <AlertCircle className="h-4 w-4 mr-2" />
+                Ver Alertas Vencidas
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const upcomingPayments = await fetchUpcomingPayments(7);
+                    console.log('Upcoming payments:', upcomingPayments);
+                    alert('Pagos próximos obtenidos - revisar consola');
+                  } catch (error) {
+                    console.error('Error fetching upcoming payments:', error);
+                    alert('Error al obtener pagos próximos');
+                  }
+                }}
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Pagos Próximos (7 días)
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold flex items-center">
+                <BarChart3 className="h-5 w-5 mr-2 text-primary" />
+                Dashboard Operativo
+              </h3>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const operationalDashboard = await fetchOperationalDashboard();
+                    console.log('Operational dashboard:', operationalDashboard);
+                    alert('Dashboard operativo obtenido - revisar consola');
+                  } catch (error) {
+                    console.error('Error fetching operational dashboard:', error);
+                    alert('Error al obtener dashboard operativo');
+                  }
+                }}
+              >
+                <PieChart className="h-4 w-4 mr-2" />
+                Ver Dashboard Operativo
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const health = await fetchCostsModuleHealth();
+                    console.log('Costs module health:', health);
+                    alert('Estado del módulo de costos - revisar consola');
+                  } catch (error) {
+                    console.error('Error checking costs module health:', error);
+                    alert('Error al verificar estado del módulo');
+                  }
+                }}
+              >
+                <Activity className="h-4 w-4 mr-2" />
+                Estado del Módulo
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold flex items-center">
+                <MapPin className="h-5 w-5 mr-2 text-secondary" />
+                Análisis por Ubicación
+              </h3>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {locations.slice(0, 2).map((location) => (
+                <Button 
+                  key={location.id}
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const locationDashboard = await fetchLocationCostDashboard(location.id);
+                      console.log(`Dashboard for ${location.name}:`, locationDashboard);
+                      alert(`Dashboard de ${location.name} obtenido - revisar consola`);
+                    } catch (error) {
+                      console.error(`Error fetching dashboard for location ${location.id}:`, error);
+                      alert(`Error al obtener dashboard de ${location.name}`);
+                    }
+                  }}
+                >
+                  <Building className="h-4 w-4 mr-2" />
+                  Dashboard {location.name}
+                </Button>
+              ))}
+              {locations.length === 0 && (
+                <p className="text-sm text-gray-500 text-center">No hay ubicaciones disponibles</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Costs Table */}
@@ -939,6 +1110,7 @@ export const AdminDashboard: React.FC = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Frecuencia</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -947,6 +1119,7 @@ export const AdminDashboard: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <p className="font-medium">{cost.description}</p>
                           <p className="text-sm text-gray-500">por {cost.created_by_name}</p>
+                          <p className="text-xs text-gray-400">ID: {cost.id}</p>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <Badge variant="secondary">{capitalize(cost.cost_type)}</Badge>
@@ -964,6 +1137,71 @@ export const AdminDashboard: React.FC = () => {
                           <Badge variant={cost.is_active ? 'success' : 'error'}>
                             {cost.is_active ? 'Activo' : 'Inactivo'}
                           </Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                          <div className="flex space-x-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                try {
+                                  const details = await fetchCostConfiguration(cost.id);
+                                  console.log('Cost details:', details);
+                                  alert('Detalles del costo - revisar consola');
+                                } catch (error) {
+                                  console.error('Error fetching cost details:', error);
+                                  alert('Error al obtener detalles');
+                                }
+                              }}
+                              title="Ver detalles"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                // TODO: Implementar modal de edición
+                                alert('Modal de edición pendiente de implementar');
+                              }}
+                              title="Editar costo"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            {cost.is_active ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-warning hover:text-warning-foreground hover:bg-warning"
+                                onClick={() => handleDeactivateCost(cost.id)}
+                                title="Desactivar costo"
+                              >
+                                <ArrowDown className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-success hover:text-success-foreground hover:bg-success"
+                                onClick={() => {
+                                  // Reactivar - implementar si es necesario
+                                  alert('Función de reactivación pendiente');
+                                }}
+                                title="Reactivar costo"
+                              >
+                                <ArrowUp className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-destructive hover:text-destructive-foreground hover:bg-destructive"
+                              onClick={() => handleDeleteCost(cost.id)}
+                              title="Eliminar costo"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1273,6 +1511,13 @@ export const AdminDashboard: React.FC = () => {
                   onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_model: e.target.value }))}
                 />
                 
+                <Input 
+                  placeholder="Cantidad Estimada" 
+                  type="number"
+                  value={videoInventoryForm.estimated_quantity}
+                  onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, estimated_quantity: parseInt(e.target.value) || 0 }))}
+                />
+                
                 {/* Campos para tallas y cantidades */}
                 <label className="block text-sm font-medium text-foreground mb-1">Tallas y cantidades</label>
                 {videoInventoryForm.sizes.map((entry, idx) => (
@@ -1340,14 +1585,8 @@ export const AdminDashboard: React.FC = () => {
                   <label className="block text-sm font-medium text-foreground mb-2">
                     Tomar Foto del Inventario
                   </label>
-                  <FullScreenCameraCapture
-                    mode="photo"
-                    onPhotoCaptured={async (url, blob) => {
-                      // Guardar la foto en el estado
-                      setVideoInventoryForm(prev => ({ ...prev, inventory_photo: blob }));
-                      console.log("Foto lista para subir:", url, blob);
-                    }}
-                  />
+                  {/* TODO: Implementar captura de fotos */}
+                  <p className="text-sm text-gray-500">Función de foto en desarrollo</p>
               </div>
 
               <div className="space-y-4">
@@ -1356,7 +1595,6 @@ export const AdminDashboard: React.FC = () => {
                     Grabar Video del Inventario
                   </label>
                   <FullScreenCameraCapture
-                    mode="video"
                     onVideoRecorded={async (url, blob) => {
                       console.log("Video listo para subir:", url, blob);
                       
@@ -1367,6 +1605,11 @@ export const AdminDashboard: React.FC = () => {
                       
                       if (videoInventoryForm.estimated_quantity === 0) {
                         alert('Por favor ingresa la cantidad estimada');
+                        return;
+                      }
+
+                      if (!blob) {
+                        alert('Error: No se pudo capturar el video');
                         return;
                       }
 
@@ -1383,8 +1626,8 @@ export const AdminDashboard: React.FC = () => {
                           estimated_quantity: 0,
                           product_brand: '',
                           product_model: '',
-                          expected_sizes: '',
-                          notes: ''
+                          notes: '',
+                          sizes: [{ size: '', quantity: '' }]
                         });
                       } catch (error) {
                         console.error('Error processing video:', error);
@@ -1419,7 +1662,7 @@ export const AdminDashboard: React.FC = () => {
       <div className="space-y-6 p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <h2 className="text-2xl font-bold">Ventas al Por Mayor</h2>
-          <Button onClick={() => setShowCreateWholesaleModal(true)}>
+          <Button onClick={() => alert('Función pendiente de implementar')}>
             <Plus className="h-4 w-4 mr-2" />
             Nueva Orden Mayorista
           </Button>
@@ -1860,9 +2103,7 @@ export const AdminDashboard: React.FC = () => {
     return (
       <DashboardLayout title="Panel de Administración">
         <ErrorState 
-          title="Error al cargar datos"
-          description={error}
-          icon={<AlertCircle className="h-12 w-12 text-error" />}
+          message={error}
         />
       </DashboardLayout>
     );
@@ -1971,10 +2212,7 @@ export const AdminDashboard: React.FC = () => {
         {showCreateCostModal && (
           <CreateCostModal 
             onClose={() => setShowCreateCostModal(false)}
-            onSubmit={(costData) => {
-              console.log('Creating cost:', costData);
-              setShowCreateCostModal(false);
-            }}
+            onSubmit={handleCreateCost}
             locations={locations}
           />
         )}

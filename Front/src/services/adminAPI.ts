@@ -111,6 +111,42 @@ interface AdminLocationAssignmentBulk {
   notes?: string;
 }
 
+// ========== INTERFACES DE COSTOS ==========
+
+interface CostConfigurationCreate {
+  location_id: number;
+  cost_type: 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros';
+  amount: number | string;
+  frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual';
+  description: string;
+  start_date: string;
+  end_date?: string;
+}
+
+interface CostConfigurationUpdate {
+  amount?: number | string;
+  frequency?: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual';
+  description?: string;
+  is_active?: boolean;
+  end_date?: string;
+}
+
+interface UpdateAmountRequest {
+  new_amount: number | string;
+  effective_date: string;
+  reason?: string;
+}
+
+interface CostPaymentCreate {
+  cost_configuration_id: number;
+  due_date: string;
+  payment_amount: number | string;
+  payment_date: string;
+  payment_method: string;
+  payment_reference?: string;
+  notes?: string;
+}
+
 // ========== 1. GESTIÓN DE USUARIOS (5 endpoints) ==========
 
 // POST /api/v1/admin/admin/users
@@ -210,9 +246,19 @@ export const fetchLocationStatistics = async (locationId: number, startDate: str
   return handleResponse(response);
 };
 
-// ========== 3. GESTIÓN DE COSTOS (1 endpoint) ==========
+// ========== 3. GESTIÓN DE COSTOS (14 endpoints) ==========
 
-// GET /api/v1/admin/admin/costs
+// POST /api/v1/admin/admin/costs - Crear configuración de costo
+export const createCostConfiguration = async (costData: CostConfigurationCreate) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(costData),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/costs - Obtener configuraciones
 export const fetchCostConfigurations = async (params?: {
   location_id?: number;
   cost_type?: 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros';
@@ -222,6 +268,130 @@ export const fetchCostConfigurations = async (params?: {
   if (params?.cost_type) searchParams.append('cost_type', params.cost_type);
 
   const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs?${searchParams.toString()}`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/costs/operational-dashboard - Dashboard operativo
+export const fetchOperationalDashboard = async () => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs/operational-dashboard`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/costs/{cost_id} - Obtener configuración específica
+export const fetchCostConfiguration = async (costId: number) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs/${costId}`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// PUT /api/v1/admin/admin/costs/{cost_id} - Actualizar configuración
+export const updateCostConfiguration = async (costId: number, costData: CostConfigurationUpdate) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs/${costId}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(costData),
+  });
+  return handleResponse(response);
+};
+
+// DELETE /api/v1/admin/admin/costs/{cost_id} - Eliminar configuración
+export const deleteCostConfiguration = async (costId: number, forceDelete?: boolean) => {
+  const searchParams = new URLSearchParams();
+  if (forceDelete !== undefined) searchParams.append('force_delete', forceDelete.toString());
+
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs/${costId}?${searchParams.toString()}`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// PATCH /api/v1/admin/admin/costs/{cost_id}/update-amount - Actualizar monto
+export const updateCostAmount = async (costId: number, updateData: UpdateAmountRequest) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs/${costId}/update-amount`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify(updateData),
+  });
+  return handleResponse(response);
+};
+
+// PATCH /api/v1/admin/admin/costs/{cost_id}/deactivate - Desactivar configuración
+export const deactivateCostConfiguration = async (costId: number, endDate?: string) => {
+  const searchParams = new URLSearchParams();
+  if (endDate) searchParams.append('end_date', endDate);
+
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs/${costId}/deactivate?${searchParams.toString()}`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// POST /api/v1/admin/admin/costs/payments - Registrar pago
+export const createCostPayment = async (paymentData: CostPaymentCreate) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs/payments`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(paymentData),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/costs/locations/{location_id}/dashboard - Dashboard por ubicación
+export const fetchLocationCostDashboard = async (locationId: number) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs/locations/${locationId}/dashboard`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/costs/{cost_id}/deletion-analysis - Análisis de eliminación
+export const fetchCostDeletionAnalysis = async (costId: number) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs/${costId}/deletion-analysis`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/costs/alerts/overdue - Alertas vencidas
+export const fetchOverdueAlerts = async (locationId?: number) => {
+  const searchParams = new URLSearchParams();
+  if (locationId) searchParams.append('location_id', locationId.toString());
+
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs/alerts/overdue?${searchParams.toString()}`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/costs/upcoming-payments - Pagos próximos
+export const fetchUpcomingPayments = async (daysAhead: number = 7, locationId?: number) => {
+  const searchParams = new URLSearchParams();
+  searchParams.append('days_ahead', daysAhead.toString());
+  if (locationId) searchParams.append('location_id', locationId.toString());
+
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs/upcoming-payments?${searchParams.toString()}`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/costs/health - Estado del módulo
+export const fetchCostsModuleHealth = async () => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs/health`, {
     method: 'GET',
     headers: getHeaders(),
   });
