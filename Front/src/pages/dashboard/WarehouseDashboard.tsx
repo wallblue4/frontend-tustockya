@@ -118,33 +118,7 @@ const warehouseAPIUpdated = {
       });
       return await handleResponse(response);
     } catch (error) {
-      console.warn('⚠️ Backend no disponible, usando mock data');
-      return {
-        success: true,
-        accepted_requests: [
-          {
-            id: 17,
-            status: 'courier_assigned',
-            status_description: 'Corredor asignado',
-            brand: 'Puma',
-            model: 'RS-X',
-            size: '9',
-            quantity: 1,
-            purpose: 'cliente',
-            sneaker_reference_code: 'PM-RSX-001',
-            requester_first_name: 'Carlos',
-            requester_last_name: 'López',
-            courier_first_name: 'Ana',
-            courier_last_name: 'Martínez',
-            estimated_pickup_time: '15',
-            preparation_time: 15,
-            ready_for_pickup: true,
-            notes: 'Producto empacado y listo',
-            product_color: 'Blanco/Azul',
-            product_price: '299000'
-          }
-        ]
-      };
+      console.warn('⚠️ Backend no disponible');
     }
   },
 
@@ -1173,7 +1147,7 @@ export const WarehouseDashboard: React.FC = () => {
               ) : (
                 <div className="space-y-4 md:space-y-6">
                   {acceptedRequests.map((request) => (
-                    <div key={request.id} className="border rounded-lg bg-white">
+                    <div key={request.id} className="border border-border rounded-lg bg-card">
                       {/* MOBILE VIEW */}
                       <div className="md:hidden p-4">
                         <div className="flex items-start space-x-3 mb-3">
@@ -1181,12 +1155,12 @@ export const WarehouseDashboard: React.FC = () => {
                             <img
                               src={request.product_image || `https://via.placeholder.com/200x260/e5e7eb/6b7280?text=${encodeURIComponent(request.brand)}`}
                               alt={`${request.brand} ${request.model}`}
-                              className="w-32 h-48 object-cover rounded-lg border border-gray-200"
+                              className="w-32 h-48 object-cover rounded-lg border border-border bg-muted"
                             />
                           </div>
                           
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-base mb-1">
+                            <h4 className="font-semibold text-base mb-1 text-foreground">
                               {request.brand} {request.model}
                             </h4>
                             <p className="text-sm text-muted-foreground mb-1">
@@ -1199,19 +1173,16 @@ export const WarehouseDashboard: React.FC = () => {
                               }
                             </p>
                             <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-1">
-                              <MapPin className="h-3 w-3 text-gray-400 mr-1" />
+                              <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
                               <span className="font-medium">Ubicación: {request.source_location_name || 'N/A'}</span>
                             </div>
                           </div>
                           
                           <div className="text-right">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              request.status === 'courier_assigned'
-                                ? 'bg-green-100 text-green-800' 
-                                : request.status === 'accepted'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-blue-100 text-blue-800'
-                            }`}>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium 
+                              ${request.status === 'courier_assigned' ? 'bg-success/10 text-success' : 
+                                request.status === 'accepted' ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'}
+                            `}>
                               {request.status === 'courier_assigned' ? '✅ Corredor asignado' : 
                                request.status === 'accepted' && request.pickup_type=== "corredor"? '🔄 Esperando corredor' : 
                                request.status === 'accepted' && request.pickup_type=== "vendedor"? '🔄 Esperando vendedor' : 
@@ -1221,8 +1192,8 @@ export const WarehouseDashboard: React.FC = () => {
                         </div>
                         
                         {request.courier_first_name && (
-                          <div className="mb-3 p-2 bg-blue-50 rounded-lg">
-                            <p className="text-xs text-blue-600">
+                          <div className="mb-3 p-2 bg-primary/10 rounded-lg">
+                            <p className="text-xs text-primary">
                               <Truck className="h-3 w-3 inline mr-1" />
                               Corredor: <strong>{request.courier_first_name} {request.courier_last_name}</strong>
                               {request.estimated_pickup_time && ` • ETA: ${request.estimated_pickup_time} min`}
@@ -1234,7 +1205,7 @@ export const WarehouseDashboard: React.FC = () => {
                           <Button
                             onClick={() => handleDeliverToCourier(request.id)}
                             disabled={actionLoading === request.id}
-                            className="w-full bg-primary hover:bg-primary/90 text-white text-sm"
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm"
                             size="sm"
                           >
                             {actionLoading === request.id ? (
@@ -1250,7 +1221,7 @@ export const WarehouseDashboard: React.FC = () => {
                           <Button
                             onClick={() => handleDeliverToVendor(request.id)}
                             disabled={actionLoading === request.id}
-                            className="w-full bg-primary hover:bg-primary/90 text-white text-sm"
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm"
                             size="sm"
                           >
                             {actionLoading === request.id ? (
@@ -1271,7 +1242,7 @@ export const WarehouseDashboard: React.FC = () => {
                             <img
                               src={request.product_image || `https://via.placeholder.com/150x100/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
                               alt={`${request.brand} ${request.model}`}
-                              className="w-32 h-24 object-cover rounded-lg border border-gray-200 shadow-sm"
+                              className="w-32 h-24 object-cover rounded-lg border border-border bg-muted shadow-sm"
                               onError={(e) => {
                                 if (!e.currentTarget.dataset.fallback) {
                                   e.currentTarget.dataset.fallback = 'true';
@@ -1280,14 +1251,14 @@ export const WarehouseDashboard: React.FC = () => {
                               }}
                             />
                             {request.product_price && (
-                              <p className="text-xs text-gray-600 mt-1 text-center font-medium">
+                              <p className="text-xs text-muted-foreground mt-1 text-center font-medium">
                                 💰 {formatPrice(request.product_price)}
                               </p>
                             )}
                           </div>
 
                           <div className="flex-1">
-                            <h4 className="font-semibold text-lg mb-2">
+                            <h4 className="font-semibold text-lg mb-2 text-foreground">
                               {request.brand} {request.model} - Talla {request.size}
                             </h4>
                             
@@ -1309,7 +1280,7 @@ export const WarehouseDashboard: React.FC = () => {
                             
                             {request.courier_first_name && (
                               <div className="mb-2">
-                                <p className="text-sm text-blue-600">
+                                <p className="text-sm text-primary">
                                   <Truck className="h-4 w-4 inline mr-1" />
                                   Corredor asignado: <strong>{request.courier_first_name} {request.courier_last_name}</strong>
                                   {request.estimated_pickup_time && ` (ETA: ${request.estimated_pickup_time} min)`}
@@ -1332,13 +1303,10 @@ export const WarehouseDashboard: React.FC = () => {
                           </div>
                           
                           <div className="text-right ml-6">
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                              request.status === 'courier_assigned'
-                                ? 'bg-green-100 text-green-800' 
-                                : request.status === 'accepted'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-blue-100 text-blue-800'
-                            }`}>
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium 
+                              ${request.status === 'courier_assigned' ? 'bg-success/10 text-success' : 
+                                request.status === 'accepted' ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'}
+                            `}>
                               {request.status === 'courier_assigned' ? '✅ Listo para recoger' : 
                                request.status === 'accepted' ? '🔄 Esperando corredor' : 
                                request.status === 'in_transit' ? '🚚 En tránsito' : request.status_description || request.status}
@@ -1347,8 +1315,8 @@ export const WarehouseDashboard: React.FC = () => {
                         </div>
 
                         {request.notes && (
-                          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm text-gray-700">
+                          <div className="mb-4 p-3 bg-muted rounded-lg">
+                            <p className="text-sm text-muted-foreground">
                               <strong>📝 Notas:</strong> {request.notes}
                             </p>
                           </div>
@@ -1359,7 +1327,7 @@ export const WarehouseDashboard: React.FC = () => {
                             <Button
                               onClick={() => handleDeliverToCourier(request.id)}
                               disabled={actionLoading === request.id}
-                              className="w-full bg-primary hover:bg-primary/90 text-white"
+                              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                             >
                               {actionLoading === request.id ? (
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -1392,7 +1360,7 @@ export const WarehouseDashboard: React.FC = () => {
                           
                         )}
                         
-                        <div className="mt-3 pt-3 border-t text-xs text-gray-500">
+                          <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
                           <div className="flex justify-between items-center">
                             <span>ID: {request.id} | Código: {request.sneaker_reference_code}</span>
                             <span>Status: {request.status} | Corredor: {request.courier_first_name ? `${request.courier_first_name} ${request.courier_last_name}` : 'Sin asignar'}</span>

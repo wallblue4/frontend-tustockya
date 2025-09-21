@@ -174,50 +174,84 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     // Si tienes la estructura de locations (de la nueva API), úsala para mapear tallas con ubicación y tipo
     if ((product as any).locations) {
       const allSizes: SizeInfo[] = [];
-      // current_location
-      if ((product as any).locations.current_location) {
+      
+      console.log('Processing product with locations:', (product as any).locations);
+      
+      // current_location - ubicaciones en el local actual del usuario
+      if ((product as any).locations.current_location && Array.isArray((product as any).locations.current_location)) {
         (product as any).locations.current_location.forEach((locObj: any) => {
           const locInfo = locObj.location_info;
           const stockInfo = locObj.stock_info;
-          if (stockInfo && stockInfo.available_sizes) {
+          const productInfo = locObj.product_info;
+          
+          console.log('Processing current location:', locInfo.location_name, stockInfo);
+          
+          if (stockInfo && stockInfo.available_sizes && Array.isArray(stockInfo.available_sizes)) {
             stockInfo.available_sizes.forEach((sz: any) => {
-              allSizes.push({
-                size: sz.size,
-                location: locInfo.location_name,
-                location_name: locInfo.location_name,
-                location_type: locInfo.location_type,
-                storage_type: 'warehouse',
-                quantity: sz.quantity_stock,
-                unit_price: locObj.product_info.unit_price,
-                box_price: locObj.product_info.box_price,
-                total_quantity: sz.quantity_stock + (sz.quantity_exhibition || 0)
-              });
+              // Solo agregar tallas que tienen stock > 0
+              if (sz.quantity_stock > 0) {
+                console.log('Adding CURRENT location size:', {
+                  size: sz.size,
+                  location_name: locInfo.location_name,
+                  location_type: locInfo.location_type,
+                  quantity: sz.quantity_stock
+                });
+                allSizes.push({
+                  size: sz.size,
+                  location: locInfo.location_name,
+                  location_name: locInfo.location_name,
+                  location_number: locInfo.location_id,
+                  location_type: locInfo.location_type,
+                  storage_type: 'warehouse',
+                  quantity: sz.quantity_stock,
+                  unit_price: productInfo.unit_price,
+                  box_price: productInfo.box_price,
+                  total_quantity: sz.quantity_stock + (sz.quantity_exhibition || 0)
+                });
+              }
             });
           }
         });
       }
-      // other_locations
-      if ((product as any).locations.other_locations) {
+      
+      // other_locations - ubicaciones en otros locales/bodegas
+      if ((product as any).locations.other_locations && Array.isArray((product as any).locations.other_locations)) {
         (product as any).locations.other_locations.forEach((locObj: any) => {
           const locInfo = locObj.location_info;
           const stockInfo = locObj.stock_info;
-          if (stockInfo && stockInfo.available_sizes) {
+          const productInfo = locObj.product_info;
+          
+          console.log('Processing other location:', locInfo.location_name, stockInfo);
+          
+          if (stockInfo && stockInfo.available_sizes && Array.isArray(stockInfo.available_sizes)) {
             stockInfo.available_sizes.forEach((sz: any) => {
-              allSizes.push({
-                size: sz.size,
-                location: locInfo.location_name,
-                location_name: locInfo.location_name,
-                location_type: locInfo.location_type,
-                storage_type: 'warehouse',
-                quantity: sz.quantity_stock,
-                unit_price: locObj.product_info.unit_price,
-                box_price: locObj.product_info.box_price,
-                total_quantity: sz.quantity_stock + (sz.quantity_exhibition || 0)
-              });
+              // Solo agregar tallas que tienen stock > 0
+              if (sz.quantity_stock > 0) {
+                console.log('Adding OTHER location size:', {
+                  size: sz.size,
+                  location_name: locInfo.location_name,
+                  location_type: locInfo.location_type,
+                  quantity: sz.quantity_stock
+                });
+                allSizes.push({
+                  size: sz.size,
+                  location: locInfo.location_name,
+                  location_name: locInfo.location_name,
+                  location_number: locInfo.location_id,
+                  location_type: locInfo.location_type,
+                  storage_type: 'warehouse',
+                  quantity: sz.quantity_stock,
+                  unit_price: productInfo.unit_price,
+                  box_price: productInfo.box_price,
+                  total_quantity: sz.quantity_stock + (sz.quantity_exhibition || 0)
+                });
+              }
             });
           }
         });
       }
+      
+      console.log('All sizes processed:', allSizes);
       return allSizes;
     }
 
@@ -285,6 +319,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     return allMatches.map((match: any, idx: number) => {
       const ref = match.reference || {};
       const locations = match.locations || {};
+      
       // Unificar estructura de inventory para el componente
       const inventory: InventoryInfo = {
         local_info: {
@@ -306,6 +341,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         available_sizes: locations.current_location && locations.current_location[0]?.stock_info?.available_sizes?.map((sz: any) => sz.size) || [],
         other_locations: locations.other_locations || []
       };
+      
       // Adaptar availability
       const availability: AvailabilityInfo = {
         in_stock: !!match.availability?.summary?.current_location?.has_stock,
@@ -313,7 +349,9 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         can_request_from_other_locations: !!match.availability?.can_request_transfer,
         recommended_action: match.availability?.recommended_action || ''
       };
-      return {
+      
+      // Crear el objeto ProductOption con la estructura locations preservada
+      const productOption = {
         id: ref.code || `product-${idx}`,
         brand: ref.brand || '',
         model: ref.model || '',
@@ -329,6 +367,11 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         inventory,
         availability,
       };
+      
+      // Preservar la estructura completa de locations para que convertAvailabilityToSizes pueda acceder a ella
+      (productOption as any).locations = locations;
+      
+      return productOption;
     });
   }
 
@@ -616,65 +659,50 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                   className="border rounded-lg p-4 cursor-pointer hover:border-primary hover:shadow-md transition-all"
                   onClick={() => handleProductSelect(option)}
                 >
-                  <div className="flex items-start space-x-4">
+                  <div className="flex items-start gap-6">
                     <ProductImageComponent
                       image={option.image}
                       alt={`${option.brand} ${option.model}`}
+                      className="w-32 h-44 object-cover rounded-lg flex-shrink-0 border border-border shadow"
                     />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-semibold text-lg truncate text-foreground">
-                          {option.description || `${option.brand} ${option.model}`}
-                        </h4>
-                        <div className="flex flex-col items-end space-y-1">
-                          <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
-                            {option.confidence}%
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getConfidenceLevelColor(option.confidence_level)}`}>
-                            {getConfidenceLevelText(option.confidence_level)}
-                          </span>
+                    <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
+                      {/* Título y confianza */}
+                      <div className="flex items-start justify-between">
+                        <h4 className="font-semibold text-lg text-foreground truncate max-w-[16ch]">{option.description || `${option.brand} ${option.model}`}</h4>
+                        <div className="flex flex-col items-end">
+                          <span className={`text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded mb-1`}>{option.confidence?.toFixed(6)}%</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getConfidenceLevelColor(option.confidence_level)}`}>{getConfidenceLevelText(option.confidence_level)}</span>
                         </div>
                       </div>
-                      
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Código: {option.code} | Color: {option.color} | Modelo: {option.model}
-                      </p>
-                      
-                      {/* Stock Status */}
-                      <div className={`p-2 rounded-md border mb-2 ${getAvailabilityColor(option.availability)}`}>
-                        <div className="flex items-center space-x-2">
+                      {/* Info principal */}
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        <div>Código: <span className="font-medium text-foreground">{option.code}</span> | Color: {option.color} | Modelo: {option.model}</div>
+                        <div className="truncate">{option.description}</div>
+                      </div>
+                      {/* Estado de disponibilidad */}
+                      <div className="mt-2">
+                        <div
+                          className={`p-2 rounded-md border text-sm flex items-center gap-2 
+                            ${option.availability.can_sell ? 'bg-success/10 border-success text-success' : 
+                              option.availability.can_request_from_other_locations ? 'bg-warning/10 border-warning text-warning' : 'bg-error/10 border-error text-error'}
+                          `}
+                        >
                           {getAvailabilityIcon(option.availability)}
-                          <span className="text-xs font-medium">
-                            {option.availability.recommended_action}
-                          </span>
-                        </div>
-                        {option.inventory.total_stock > 0 && (
-                          <div className="text-xs mt-1">
-                            Stock total: {option.inventory.total_stock} unidades
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Pricing */}
-                      {option.inventory.pricing.unit_price > 0 && (
-                        <div className="text-sm mb-2">
-                          <span className="font-semibold text-primary">
-                            {formatCurrency(option.inventory.pricing.unit_price)}
-                          </span>
-                          {option.inventory.pricing.box_price > 0 && (
-                            <span className="text-muted-foreground ml-2">
-                              (Caja: {formatCurrency(option.inventory.pricing.box_price)})
-                            </span>
+                          <span className="font-medium text-foreground">{option.availability.recommended_action}</span>
+                          {option.availability.can_sell && (
+                            <span className="ml-2 text-xs text-muted-foreground">Stock total: {option.inventory.total_stock} unidades</span>
                           )}
                         </div>
-                      )}
-
-                      <div className="mt-3 flex items-center justify-between">
+                      </div>
+                      {/* Precios */}
+                      <div className="mt-2 flex items-center gap-4">
+                        <span className="text-primary font-bold text-base">{formatCurrency(option.inventory.pricing.unit_price)}</span>
+                        <span className="text-muted-foreground text-sm">(Caja: {formatCurrency(option.inventory.pricing.box_price)})</span>
+                      </div>
+                      {/* Ranking y acción */}
+                      <div className="mt-2 flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">Ranking: #{option.rank}</span>
-                        <div className="flex items-center text-primary">
-                          <span className="text-sm font-medium">Seleccionar</span>
-                          <ArrowRight className="h-4 w-4 ml-1" />
-                        </div>
+                        <span className="text-primary font-semibold text-sm flex items-center gap-1">Seleccionar <ArrowRight className="h-4 w-4 inline" /></span>
                       </div>
                     </div>
                   </div>
@@ -766,13 +794,13 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                       <button
                         key={sizeInfo.size + '-' + (sizeInfo.location_name || sizeInfo.location)}
                         onClick={() => setSelectedSize(sizeInfo.size)}
-                        disabled={sizeInfo.quantity === 0 && selectedProduct.product.inventory.total_stock === 0}
+                        disabled={false} // Permitir seleccionar todas las tallas para solicitar transferencias
                         className={`p-4 border rounded-lg text-left transition-all ${
                           selectedSize === sizeInfo.size
                             ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
-                            : sizeInfo.quantity > 0 || selectedProduct.product.inventory.total_stock > 0
-                            ? 'border-border hover:border-primary/50 hover:shadow-sm bg-card'
-                            : 'border-border bg-muted/30 cursor-not-allowed opacity-60'
+                            : sizeInfo.quantity > 0
+                            ? 'border-success bg-success/5 hover:border-success/50 hover:shadow-sm'
+                            : 'border-warning bg-warning/5 hover:border-warning/50 hover:shadow-sm'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-2">
@@ -782,11 +810,11 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                           )}
                         </div>
                         <div className="space-y-1 text-sm">
-                          <div className="flex items-center text-muted-foreground gap-2">
+                          <div className="flex items-center text-muted-foreground gap-2 flex-wrap">
                             <MapPin className="h-3 w-3 mr-1" />
-                            <span>{sizeInfo.location_name || sizeInfo.location}</span>
+                            <span className="font-medium">{sizeInfo.location_name || sizeInfo.location}</span>
                             {sizeInfo.location_type && (
-                              <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold ${
+                              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
                                 sizeInfo.location_type === 'local'
                                   ? 'bg-primary/10 text-primary'
                                   : 'bg-secondary/10 text-secondary'
@@ -794,18 +822,33 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                                 {sizeInfo.location_type === 'local' ? 'Local' : 'Bodega'}
                               </span>
                             )}
+                            {sizeInfo.quantity > 0 ? (
+                              <span className="px-2 py-0.5 rounded text-xs font-semibold bg-success/10 text-success">
+                                En stock
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-xs font-semibold bg-warning/10 text-warning">
+                                Transferir
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center text-muted-foreground">
-                            {getStorageTypeIcon(sizeInfo.storage_type)}
-                            <span className="ml-1">{getStorageTypeLabel(sizeInfo.storage_type)}</span>
+                            {sizeInfo.location_type === 'local' ? <Store className="h-4 w-4" /> : <Warehouse className="h-4 w-4" />}
+                            <span className="ml-1">{sizeInfo.location_type === 'local' ? 'Local' : 'Bodega'}</span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className={`font-medium ${
-                              sizeInfo.quantity > 0 || selectedProduct.product.inventory.total_stock > 0 ? 'text-success' : 'text-error'
-                            }`}>
-                              {sizeInfo.quantity > 0 ? `${sizeInfo.quantity} disponibles` : 
-                               selectedProduct.product.inventory.total_stock > 0 ? 'Consultar stock' : 'Sin stock'}
-                            </span>
+                            <div className="flex flex-col">
+                              <span className={`font-medium ${
+                                sizeInfo.quantity > 0 ? 'text-success' : 'text-warning'
+                              }`}>
+                                {sizeInfo.quantity > 0 ? `${sizeInfo.quantity} disponibles` : 'Requiere transferencia'}
+                              </span>
+                              {sizeInfo.quantity === 0 && (
+                                <span className="text-xs text-warning">
+                                  Disponible en {sizeInfo.location_name}
+                                </span>
+                              )}
+                            </div>
                             <span className="font-bold text-primary">
                               {formatCurrency(sizeInfo.unit_price)}
                             </span>
@@ -848,9 +891,8 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                           </div>
                           <div>
                             <span className="text-muted-foreground">Cantidad:</span>
-                            <p className="font-medium text-success">
-                              {sizeInfo.quantity > 0 ? `${sizeInfo.quantity} disponibles` : 
-                               selectedProduct.product.inventory.total_stock > 0 ? 'Consultar disponibilidad' : 'Sin stock'}
+                            <p className={`font-medium ${sizeInfo.quantity > 0 ? 'text-success' : 'text-warning'}`}>
+                              {sizeInfo.quantity > 0 ? `${sizeInfo.quantity} disponibles` : 'Requiere transferencia'}
                             </p>
                           </div>
                           <div>
