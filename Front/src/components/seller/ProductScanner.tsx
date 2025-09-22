@@ -336,9 +336,74 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
           quantity_exhibition: sz.quantity_exhibition,
           location: locations.current_location[0]?.location_info?.location_name || ''
         })),
-        total_stock: locations.current_location && locations.current_location[0]?.stock_info?.total_stock || 0,
-        total_exhibition: locations.current_location && locations.current_location[0]?.stock_info?.total_exhibition || 0,
-        available_sizes: locations.current_location && locations.current_location[0]?.stock_info?.available_sizes?.map((sz: any) => sz.size) || [],
+        total_stock: (() => {
+          // Calcular el stock total sumando current_location + other_locations
+          let totalStock = 0;
+          
+          // Sumar stock de current_location
+          if (locations.current_location && Array.isArray(locations.current_location)) {
+            locations.current_location.forEach((loc: any) => {
+              totalStock += loc.stock_info?.total_stock || 0;
+            });
+          }
+          
+          // Sumar stock de other_locations
+          if (locations.other_locations && Array.isArray(locations.other_locations)) {
+            locations.other_locations.forEach((loc: any) => {
+              totalStock += loc.stock_info?.total_stock || 0;
+            });
+          }
+          
+          return totalStock;
+        })(),
+        total_exhibition: (() => {
+          // Calcular la exhibición total sumando current_location + other_locations
+          let totalExhibition = 0;
+          
+          // Sumar exhibición de current_location
+          if (locations.current_location && Array.isArray(locations.current_location)) {
+            locations.current_location.forEach((loc: any) => {
+              totalExhibition += loc.stock_info?.total_exhibition || 0;
+            });
+          }
+          
+          // Sumar exhibición de other_locations
+          if (locations.other_locations && Array.isArray(locations.other_locations)) {
+            locations.other_locations.forEach((loc: any) => {
+              totalExhibition += loc.stock_info?.total_exhibition || 0;
+            });
+          }
+          
+          return totalExhibition;
+        })(),
+        available_sizes: (() => {
+          // Recopilar todas las tallas disponibles de current_location + other_locations
+          const allSizes = new Set<string>();
+          
+          // Agregar tallas de current_location
+          if (locations.current_location && Array.isArray(locations.current_location)) {
+            locations.current_location.forEach((loc: any) => {
+              if (loc.stock_info?.available_sizes) {
+                loc.stock_info.available_sizes.forEach((sz: any) => {
+                  if (sz.quantity_stock > 0) allSizes.add(sz.size);
+                });
+              }
+            });
+          }
+          
+          // Agregar tallas de other_locations
+          if (locations.other_locations && Array.isArray(locations.other_locations)) {
+            locations.other_locations.forEach((loc: any) => {
+              if (loc.stock_info?.available_sizes) {
+                loc.stock_info.available_sizes.forEach((sz: any) => {
+                  if (sz.quantity_stock > 0) allSizes.add(sz.size);
+                });
+              }
+            });
+          }
+          
+          return Array.from(allSizes);
+        })(),
         other_locations: locations.other_locations || []
       };
       
