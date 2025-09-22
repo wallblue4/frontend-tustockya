@@ -78,15 +78,6 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ data }) => {
       color: 'text-primary',
       bgColor: 'bg-primary/10'
     },
-    {
-      title: 'Items Vendidos',
-      value: salesData.total_count || 0,
-      subtitle: 'pares de tenis',
-      icon: <ShoppingBag className="h-6 w-6" />,
-      color: 'text-secondary',
-      bgColor: 'bg-secondary/10'
-    },
-    
   ];
 
   const pendingActions = [

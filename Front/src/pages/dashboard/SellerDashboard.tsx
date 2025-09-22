@@ -495,7 +495,7 @@ export const SellerDashboard: React.FC = () => {
               onClick={handleOpenCamera}     
             >
               <Camera className="h-6 w-6" />
-              <span className="text-sm">Escanear</span>
+              <span className="text-sm">Vender Producto</span>
             </Button>
             
             <Button 
