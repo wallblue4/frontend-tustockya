@@ -483,19 +483,19 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
   // Función para obtener el nombre del corredor
   const getCourierName = (transfer: PendingTransfer): string => {
-    return transfer.status_info.courier_info?.name || 'Sin asignar';
+    return transfer.status_info?.courier_info?.name || 'Sin asignar';
   };
 
   // La próxima acción para transferencias pendientes
   const getNextAction = (transfer: PendingTransfer): string => {
-    if (transfer.status_info.action_required === 'confirm_reception') {
+    if (transfer.status_info?.action_required === 'confirm_reception') {
       return '🔥 REQUIERE CONFIRMACIÓN DE RECEPCIÓN';
     }
-    return transfer.status_info.next_step || 'En proceso...';
+    return transfer.status_info?.next_step || 'En proceso...';
   };
 
   const getStatusColor = (transfer: PendingTransfer) => {
-    switch (transfer.status_info.urgency) {
+    switch (transfer.status_info?.urgency) {
       case 'high':
         return 'bg-red-100 text-red-800';
       case 'medium':
@@ -523,7 +523,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   };
 
   const getStatusText = (transfer: PendingTransfer): string => {
-    return transfer.status_info.title;
+    return transfer.status_info?.title || 'Estado desconocido';
   };
 
   if (loading) {
@@ -725,7 +725,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             ) : (
               <div className="space-y-3 md:space-y-4">
                 {pendingTransfers
-                  .sort((a, b) => b.status_info.progress_percentage - a.status_info.progress_percentage)
+                  .sort((a, b) => (b.status_info?.progress_percentage || 0) - (a.status_info?.progress_percentage || 0))
                   .map((transfer) => (
                   <div key={transfer.id} className="border rounded-lg p-3 md:p-4">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
@@ -743,7 +743,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                             {getStatusIcon(transfer)}
                             <span>{getStatusText(transfer)}</span>
                           </span>
-                          {transfer.status_info.urgency === 'high' && (
+                          {transfer.status_info?.urgency === 'high' && (
                             <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
                               🔥 URGENTE
                             </span>
@@ -766,10 +766,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         <div className="w-20 bg-muted/30 rounded-full h-2 mb-2">
                           <div 
                             className="bg-primary h-2 rounded-full" 
-                            style={{ width: `${transfer.status_info.progress_percentage}%` }}
+                            style={{ width: `${transfer.status_info?.progress_percentage || 0}%` }}
                           ></div>
                         </div>
-                        <p className="text-xs text-muted-foreground">{transfer.status_info.progress_percentage}%</p>
+                        <p className="text-xs text-muted-foreground">{transfer.status_info?.progress_percentage || 0}%</p>
                         
                         {/* Botones de acción */}
                         <div className="flex flex-col space-y-2 mt-3">
@@ -796,7 +796,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                             </>
                           )}
                           
-                          {transfer.status_info.can_cancel && (
+                          {transfer.status_info?.can_cancel && (
                             <Button
                               onClick={() => handleCancelTransfer(transfer.id)}
                               className="bg-red-600 hover:bg-red-700 text-sm w-full"
@@ -816,7 +816,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                       <p className="text-xs md:text-sm">
                         <strong>Desde:</strong> {transfer.location_info?.from.name} → <strong>Hacia:</strong> {transfer.location_info?.to.name}
                       </p>
-                      {transfer.status_info.courier_info && (
+                      {transfer.status_info?.courier_info && (
                         <p className="text-xs md:text-sm mt-1">
                           <strong>Corredor:</strong> {transfer.status_info.courier_info.name}
                         </p>
