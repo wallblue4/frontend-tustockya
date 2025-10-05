@@ -43,11 +43,13 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
   };
 
   try {
+    console.log('API Request:', { url, method: config.method, body: config.body });
     const response = await fetch(url, config);
     const data = await response.json();
     
     if (!response.ok) {
-      throw new Error(data.message || 'API request failed');
+      console.error('API Error Response:', { status: response.status, data });
+      throw new Error(data.message || JSON.stringify(data) || 'API request failed');
     }
     
     return data;
@@ -113,12 +115,13 @@ interface SaleConfirmation {
   confirmation_notes?: string; // Backend expects confirmation_notes, not notes
 }
 
-interface ExpenseData {
-  concept: string;
-  amount: number;
-  receipt_image?: string;
-  notes?: string;
-}
+// ExpenseData interface - Ahora usando FormData directamente
+// interface ExpenseData {
+//   concept: string;
+//   amount: number;
+//   receipt_image?: File; // Ahora sería File en lugar de string
+//   notes?: string;
+// }
 
 interface TransferData {
   source_location_id: number;
@@ -367,11 +370,20 @@ export const vendorAPI = {
       }),
     }),
   
-  // Expenses - CORREGIDO para coincidir con backend
-  createExpense: (expenseData: ExpenseData) => apiRequest('/api/v1/expenses/create', {
-    method: 'POST',
-    body: JSON.stringify(expenseData),
-  }),
+  // Expenses - ACTUALIZADO para usar FormData
+  createExpense: (formData: FormData) => {
+    console.log('API createExpense - FormData recibido:');
+    // Log FormData contents for debugging
+    for (let [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`- ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
+      } else {
+        console.log(`- ${key}: ${value}`);
+      }
+    }
+    
+    return apiFormDataRequest('/api/v1/expenses/create', formData);
+  },
   getTodayExpenses: () => apiRequest('/api/v1/expenses/today'),
   
   // Transfers - CORREGIDO para coincidir con backend

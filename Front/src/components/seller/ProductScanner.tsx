@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { formatCurrency, vendorAPI, convertScanResponseToProductOptions, ScanResponse } from '../../services/api';
+import { formatCurrency, vendorAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Camera, 
@@ -148,8 +148,7 @@ const ProductImageComponent: React.FC<ProductImageProps> = ({
 export const ProductScanner: React.FC<ProductScannerProps> = ({
   onSellProduct,
   onRequestTransfer,
-  capturedImage,
-  scanResult
+  capturedImage
 }) => {
   const { user } = useAuth();
 
@@ -177,77 +176,44 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       
       console.log('Processing product with locations:', (product as any).locations);
       
-      // current_location - ubicaciones en el local actual del usuario
+      // current_location - ubicaciones en el local actual del usuario (estructura simple)
       if ((product as any).locations.current_location && Array.isArray((product as any).locations.current_location)) {
-        (product as any).locations.current_location.forEach((locObj: any) => {
-          const locInfo = locObj.location_info;
-          const stockInfo = locObj.stock_info;
-          const productInfo = locObj.product_info;
+        (product as any).locations.current_location.forEach((sizeObj: any) => {
+          console.log('Processing current location size:', sizeObj);
           
-          console.log('Processing current location:', locInfo.location_name, stockInfo);
-          
-          if (stockInfo && stockInfo.available_sizes && Array.isArray(stockInfo.available_sizes)) {
-            stockInfo.available_sizes.forEach((sz: any) => {
-              // Solo agregar tallas que tienen stock > 0
-              if (sz.quantity_stock > 0) {
-                console.log('Adding CURRENT location size:', {
-                  size: sz.size,
-                  location_name: locInfo.location_name,
-                  location_type: locInfo.location_type,
-                  quantity: sz.quantity_stock
-                });
-                allSizes.push({
-                  size: sz.size,
-                  location: locInfo.location_name,
-                  location_name: locInfo.location_name,
-                  location_number: locInfo.location_id,
-                  location_type: locInfo.location_type,
-                  storage_type: 'warehouse',
-                  quantity: sz.quantity_stock,
-                  unit_price: productInfo.unit_price,
-                  box_price: productInfo.box_price,
-                  total_quantity: sz.quantity_stock + (sz.quantity_exhibition || 0)
-                });
-              }
+          if (sizeObj.quantity > 0) {
+            allSizes.push({
+              size: sizeObj.size,
+              location: sizeObj.location,
+              location_name: sizeObj.location,
+              location_type: 'local' as const,
+              storage_type: 'warehouse' as const,
+              quantity: sizeObj.quantity,
+              unit_price: product.inventory.pricing.unit_price,
+              box_price: product.inventory.pricing.box_price,
+              total_quantity: sizeObj.quantity
             });
           }
         });
       }
       
-      // other_locations - ubicaciones en otros locales/bodegas
+      // other_locations - ubicaciones en otros locales/bodegas (estructura simple)
       if ((product as any).locations.other_locations && Array.isArray((product as any).locations.other_locations)) {
-        (product as any).locations.other_locations.forEach((locObj: any) => {
-          const locInfo = locObj.location_info;
-          const stockInfo = locObj.stock_info;
-          const productInfo = locObj.product_info;
+        (product as any).locations.other_locations.forEach((sizeObj: any) => {
+          console.log('Processing other location size:', sizeObj);
           
-          console.log('Processing other location:', locInfo.location_name, stockInfo);
-          
-          if (stockInfo && stockInfo.available_sizes && Array.isArray(stockInfo.available_sizes)) {
-            stockInfo.available_sizes.forEach((sz: any) => {
-              // Solo agregar tallas que tienen stock > 0
-              if (sz.quantity_stock > 0) {
-                console.log('Adding OTHER location size:', {
-                  size: sz.size,
-                  location_name: locInfo.location_name,
-                  location_type: locInfo.location_type,
-                  quantity: sz.quantity_stock
-                });
-                allSizes.push({
-                  size: sz.size,
-                  location: locInfo.location_name,
-                  location_name: locInfo.location_name,
-                  location_number: locInfo.location_id,
-                  location_type: locInfo.location_type,
-                  storage_type: 'warehouse',
-                  quantity: sz.quantity_stock,
-                  unit_price: productInfo.unit_price,
-                  box_price: productInfo.box_price,
-                  total_quantity: sz.quantity_stock + (sz.quantity_exhibition || 0)
-                });
-              }
-            });
-          }
+          // Agregar todas las tallas de other_locations, incluso si quantity es 0, para permitir transferencias
+          allSizes.push({
+            size: sizeObj.size,
+            location: sizeObj.location,
+            location_name: sizeObj.location,
+            location_type: 'bodega' as const,
+            storage_type: 'warehouse' as const,
+            quantity: sizeObj.quantity || 0,
+            unit_price: product.inventory.pricing.unit_price,
+            box_price: product.inventory.pricing.box_price,
+            total_quantity: sizeObj.quantity || 0
+          });
         });
       }
       
@@ -320,90 +286,77 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       const ref = match.reference || {};
       const locations = match.locations || {};
       
+      // Calcular stock total de la nueva estructura simple
+      const calculateTotalStock = () => {
+        let total = 0;
+        
+        // Sumar current_location
+        if (locations.current_location && Array.isArray(locations.current_location)) {
+          locations.current_location.forEach((sizeObj: any) => {
+            total += sizeObj.quantity || 0;
+          });
+        }
+        
+        // Sumar other_locations
+        if (locations.other_locations && Array.isArray(locations.other_locations)) {
+          locations.other_locations.forEach((sizeObj: any) => {
+            total += sizeObj.quantity || 0;
+          });
+        }
+        
+        return total;
+      };
+
+      // Obtener todas las tallas disponibles
+      const getAvailableSizes = () => {
+        const allSizes = new Set<string>();
+        
+        // Agregar tallas de current_location
+        if (locations.current_location && Array.isArray(locations.current_location)) {
+          locations.current_location.forEach((sizeObj: any) => {
+            if (sizeObj.quantity > 0) {
+              allSizes.add(sizeObj.size);
+            }
+          });
+        }
+        
+        // Agregar tallas de other_locations
+        if (locations.other_locations && Array.isArray(locations.other_locations)) {
+          locations.other_locations.forEach((sizeObj: any) => {
+            allSizes.add(sizeObj.size); // Agregar todas las tallas para transferencias
+          });
+        }
+        
+        return Array.from(allSizes);
+      };
+
+      // Crear stock_by_size para current_location
+      const createStockBySize = () => {
+        if (locations.current_location && Array.isArray(locations.current_location)) {
+          return locations.current_location.map((sizeObj: any) => ({
+            size: sizeObj.size,
+            quantity_stock: sizeObj.quantity || 0,
+            quantity_exhibition: 0, // La nueva API no diferencia exhibition
+            location: sizeObj.location
+          }));
+        }
+        return [];
+      };
+      
       // Unificar estructura de inventory para el componente
       const inventory: InventoryInfo = {
         local_info: {
-          location_number: locations.current_location && locations.current_location[0]?.location_info?.location_id || 0,
-          location_name: locations.current_location && locations.current_location[0]?.location_info?.location_name || '',
+          location_number: 0, // La nueva API no proporciona esto directamente
+          location_name: locations.current_location?.[0]?.location || '',
         },
         pricing: {
           unit_price: match.pricing?.unit_price || 0,
           box_price: match.pricing?.box_price || 0,
         },
-        stock_by_size: (locations.current_location && locations.current_location[0]?.stock_info?.available_sizes || []).map((sz: any) => ({
-          size: sz.size,
-          quantity_stock: sz.quantity_stock,
-          quantity_exhibition: sz.quantity_exhibition,
-          location: locations.current_location[0]?.location_info?.location_name || ''
-        })),
-        total_stock: (() => {
-          // Calcular el stock total sumando current_location + other_locations
-          let totalStock = 0;
-          
-          // Sumar stock de current_location
-          if (locations.current_location && Array.isArray(locations.current_location)) {
-            locations.current_location.forEach((loc: any) => {
-              totalStock += loc.stock_info?.total_stock || 0;
-            });
-          }
-          
-          // Sumar stock de other_locations
-          if (locations.other_locations && Array.isArray(locations.other_locations)) {
-            locations.other_locations.forEach((loc: any) => {
-              totalStock += loc.stock_info?.total_stock || 0;
-            });
-          }
-          
-          return totalStock;
-        })(),
-        total_exhibition: (() => {
-          // Calcular la exhibición total sumando current_location + other_locations
-          let totalExhibition = 0;
-          
-          // Sumar exhibición de current_location
-          if (locations.current_location && Array.isArray(locations.current_location)) {
-            locations.current_location.forEach((loc: any) => {
-              totalExhibition += loc.stock_info?.total_exhibition || 0;
-            });
-          }
-          
-          // Sumar exhibición de other_locations
-          if (locations.other_locations && Array.isArray(locations.other_locations)) {
-            locations.other_locations.forEach((loc: any) => {
-              totalExhibition += loc.stock_info?.total_exhibition || 0;
-            });
-          }
-          
-          return totalExhibition;
-        })(),
-        available_sizes: (() => {
-          // Recopilar todas las tallas disponibles de current_location + other_locations
-          const allSizes = new Set<string>();
-          
-          // Agregar tallas de current_location
-          if (locations.current_location && Array.isArray(locations.current_location)) {
-            locations.current_location.forEach((loc: any) => {
-              if (loc.stock_info?.available_sizes) {
-                loc.stock_info.available_sizes.forEach((sz: any) => {
-                  if (sz.quantity_stock > 0) allSizes.add(sz.size);
-                });
-              }
-            });
-          }
-          
-          // Agregar tallas de other_locations
-          if (locations.other_locations && Array.isArray(locations.other_locations)) {
-            locations.other_locations.forEach((loc: any) => {
-              if (loc.stock_info?.available_sizes) {
-                loc.stock_info.available_sizes.forEach((sz: any) => {
-                  if (sz.quantity_stock > 0) allSizes.add(sz.size);
-                });
-              }
-            });
-          }
-          
-          return Array.from(allSizes);
-        })(),
+        stock_by_size: createStockBySize(),
+        total_stock: calculateTotalStock(),
+        total_exhibition: 0, // La nueva API no diferencia exhibition
+        available_sizes: getAvailableSizes(),
         other_locations: locations.other_locations || []
       };
       
@@ -423,7 +376,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         code: ref.code || '',
         description: ref.description || '',
         color: ref.color || '',
-        image: ref.photo || match.product_info?.image_url || undefined,
+        image: ref.photo || match.image_path || undefined,
         confidence: match.confidence_percentage || Math.round((match.similarity_score || 0) * 100),
         rank: match.rank || idx + 1,
         similarity_score: match.similarity_score || 0,
@@ -537,22 +490,24 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       // Buscar la talla seleccionada
       const sizeInfo = selectedProduct.sizes.find(s => s.size === selectedSize);
 
-      // Buscar el location_id correcto en other_locations para la talla seleccionada
+      // Para la nueva estructura, buscar en other_locations directamente
       let sourceLocationId: number | undefined = undefined;
-      if (selectedProduct.product.inventory.other_locations && Array.isArray(selectedProduct.product.inventory.other_locations)) {
-        for (const loc of selectedProduct.product.inventory.other_locations) {
-          if (loc.stock_info && Array.isArray(loc.stock_info.available_sizes)) {
-            const foundSize = loc.stock_info.available_sizes.find((sz: any) => sz.size === selectedSize);
-            if (foundSize && loc.location_info && typeof loc.location_info.location_id === 'number') {
-              sourceLocationId = loc.location_info.location_id;
-              break;
-            }
-          }
+      
+      // Buscar en la estructura locations preservada
+      const locations = (selectedProduct.product as any).locations;
+      if (locations && locations.other_locations && Array.isArray(locations.other_locations)) {
+        const foundLocation = locations.other_locations.find((loc: any) => 
+          loc.size === selectedSize && loc.quantity > 0
+        );
+        if (foundLocation) {
+          // Como la nueva API no proporciona location_id, usar un valor por defecto o extraer del nombre
+          sourceLocationId = 1; // Valor por defecto, debería ser configurado según la lógica de negocio
         }
       }
-      // Fallback: si no se encuentra, usar el location_number anterior
+      
+      // Fallback: usar location_number de sizeInfo si está disponible
       if (!sourceLocationId) {
-        sourceLocationId = sizeInfo?.location_number ?? selectedProduct.product.inventory.local_info.location_number;
+        sourceLocationId = sizeInfo?.location_number ?? 1;
       }
 
       const transferData = {
@@ -580,9 +535,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     return type === 'warehouse' ? 'Bodega' : 'Exhibición';
   };
 
-  const getStorageTypeIcon = (type: 'warehouse' | 'display') => {
-    return type === 'warehouse' ? <Warehouse className="h-4 w-4" /> : <Store className="h-4 w-4" />;
-  };
 
   const getConfidenceLevelColor = (level: string) => {
     switch (level) {

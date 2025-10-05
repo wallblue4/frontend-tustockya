@@ -5,7 +5,6 @@ import { Input } from '../ui/Input';
 import { vendorAPI, formatCurrency } from '../../services/api';
 import { 
   Receipt, 
-  Upload, 
   CheckCircle,
   Plus,
   DollarSign
@@ -18,20 +17,7 @@ export const ExpensesForm: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Convert file to base64
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const result = reader.result as string;
-        // Remove the data:image/...;base64, prefix
-        const base64 = result.split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = error => reject(error);
-    });
-  };
+  // Ya no necesitamos convertir a base64, enviaremos el archivo directamente
 
   const handleReceiptUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -46,23 +32,26 @@ export const ExpensesForm: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      // Convert receipt to base64 if exists
-      let receipt_image = null;
+      // Prepare expense data using FormData
+      const formData = new FormData();
+      formData.append('concept', concept);
+      formData.append('amount', amount.toString());
+      
       if (receiptFile) {
-        receipt_image = await fileToBase64(receiptFile);
+        formData.append('receipt_image', receiptFile);
+      }
+      
+      if (notes) {
+        formData.append('notes', notes);
       }
 
-      // Prepare expense data according to API structure
-      const expenseData = {
-        concept,
-        amount,
-        ...(receipt_image && { receipt_image }),
-        ...(notes && { notes })
-      };
+      console.log('Enviando datos de gasto con FormData:');
+      console.log('- concept:', concept);
+      console.log('- amount:', amount);
+      console.log('- receipt_image:', receiptFile ? `${receiptFile.name} (${receiptFile.size} bytes)` : 'No file');
+      console.log('- notes:', notes || 'No notes');
 
-      console.log('Enviando datos de gasto:', expenseData);
-
-      const response = await vendorAPI.createExpense(expenseData);
+      const response = await vendorAPI.createExpense(formData);
       
       console.log('Respuesta de la API:', response);
       
