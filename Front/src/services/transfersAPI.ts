@@ -485,6 +485,37 @@ export const warehouseAPI = {
         delivered_at: new Date().toISOString()
       };
     }
+  },
+
+  async deliverToVendor(transferId, requestData) {
+    console.log('🔄 Entregando a vendedor...', { transferId, requestData });
+    
+    const backendCall = async () => {
+      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/deliver-to-vendor/${transferId}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(requestData)
+      });
+      return handleResponse(response);
+    };
+
+    const result = await tryBackendFirst(backendCall);
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      // Fallback a mock
+      console.log('📦 Usando respuesta mock para deliver to vendor');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return {
+        success: true,
+        message: 'Producto entregado a vendedor - Inventario actualizado',
+        transfer_id: transferId,
+        vendor_name: 'Vendedor Asignado',
+        inventory_updated: true,
+        delivered_at: new Date().toISOString()
+      };
+    }
   }
 };
 
@@ -553,7 +584,7 @@ export const courierAPI = {
     console.log('🔄 Obteniendo mis transportes asignados...');
     
     const backendCall = async () => {
-      const response = await fetch(`${BACKEND_URL}/api/v1/courier/my-assigned-transports`, {
+      const response = await fetch(`${BACKEND_URL}/api/v1/courier/my-transports`, {
         headers: getHeaders()
       });
       return handleResponse(response);

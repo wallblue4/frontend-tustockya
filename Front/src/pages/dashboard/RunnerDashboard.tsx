@@ -421,11 +421,11 @@ export const RunnerDashboard: React.FC = () => {
           <Button
             onClick={() => handleConfirmPickup(transport.id)}
             disabled={actionLoading === transport.id}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-sm md:text-base"
+            className="w-full bg-primary hover:bg-primary-dark text-primary-foreground text-sm md:text-base"
             size="sm"
           >
             {actionLoading === transport.id ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
             ) : (
               <Package className="h-4 w-4 mr-2" />
             )}
@@ -437,11 +437,11 @@ export const RunnerDashboard: React.FC = () => {
           <Button
             onClick={() => handleConfirmDelivery(transport.id)}
             disabled={actionLoading === transport.id}
-            className="w-full bg-green-600 hover:bg-green-700 text-sm md:text-base"
+            className="w-full bg-success hover:bg-success/90 text-success-foreground text-sm md:text-base"
             size="sm"
           >
             {actionLoading === transport.id ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-success-foreground mr-2"></div>
             ) : (
               <CheckCircle className="h-4 w-4 mr-2" />
             )}
@@ -450,7 +450,7 @@ export const RunnerDashboard: React.FC = () => {
         );
       default:
         return (
-          <div className="w-full text-center text-gray-500 py-2 text-sm">
+          <div className="w-full text-center text-muted-foreground py-2 text-sm">
             Esperando siguiente acción...
           </div>
         );
@@ -652,7 +652,7 @@ export const RunnerDashboard: React.FC = () => {
                     const earnings = calculateEarnings(distance, request.purpose === 'cliente');
                     
                     return (
-                      <div key={request.id} className="border rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-300">
+                      <div key={request.id} className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300">
                         
                         {/* MOBILE COMPACT VIEW */}
                         <div className="md:hidden">
@@ -662,8 +662,8 @@ export const RunnerDashboard: React.FC = () => {
                               <div className="flex items-center space-x-2">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                   request.purpose === 'cliente' 
-                                    ? 'bg-red-100 text-red-800 border border-red-200' 
-                                    : 'bg-blue-100 text-blue-800 border border-blue-200'
+                                    ? 'bg-error/20 text-error border border-error/30' 
+                                    : 'bg-primary/20 text-primary border border-primary/30'
                                 }`}>
                                   {request.request_info.urgency}
                                 </span>
@@ -677,30 +677,33 @@ export const RunnerDashboard: React.FC = () => {
                             <div className="flex space-x-4 mb-4">
                               {/* Imagen vertical */}
                               <div className="flex-shrink-0">
-                                <div className="w-32 h-48 rounded-lg overflow-hidden border border-gray-200">
-                                  <img
-                                    src={request.product_image}
-                                    alt={request.request_info.product_description}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      if (!e.currentTarget.dataset.fallback) {
-                                        e.currentTarget.dataset.fallback = 'true';
-                                        e.currentTarget.src = `https://via.placeholder.com/200x260/f3f4f6/9ca3af?text=${encodeURIComponent(request.request_info.product_description.split(' ')[0])}`;
-                                      }
-                                    }}
-                                  />
+                                <div className="w-32 h-48 rounded-lg overflow-hidden border border-border bg-muted/20">
+                                  {request.product_image ? (
+                                    <img
+                                      src={request.product_image}
+                                      alt={request.request_info.product_description}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                      <div className="text-center">
+                                        <div className="text-2xl mb-1">📦</div>
+                                        <div className="text-xs">Sin imagen</div>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                               
                               {/* Información del producto */}
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-base text-gray-900 mb-2 leading-tight">
+                                <h3 className="font-bold text-base text-card-foreground mb-2 leading-tight">
                                   {request.request_info.product_description}
                                 </h3>
                                 
                                 <div className="space-y-2 mb-3">
-                                  <div className="flex items-center space-x-1 text-sm text-gray-700">
-                                    <User className="h-3 w-3 text-gray-400" />
+                                  <div className="flex items-center space-x-1 text-sm text-card-foreground">
+                                    <User className="h-3 w-3 text-muted-foreground" />
                                     <span className="font-medium truncate">
                                       Solicitante: {request.request_info.requester}
                                     </span>
@@ -712,11 +715,11 @@ export const RunnerDashboard: React.FC = () => {
                                 </div>
                                 
                                 {/* Ganancia estimada compacta */}
-                                <div className="p-2 bg-green-50 rounded border border-green-200 text-center">
-                                  <div className="text-sm font-bold text-green-700">
+                                <div className="p-2 bg-success/10 rounded border border-success/20 text-center">
+                                  <div className="text-sm font-bold text-success">
                                     {formatPrice(earnings)}
                                   </div>
-                                  <div className="text-xs text-green-600">Ganancia estimada</div>
+                                  <div className="text-xs text-success/80">Ganancia estimada</div>
                                 </div>
                               </div>
                             </div>
@@ -735,28 +738,28 @@ export const RunnerDashboard: React.FC = () => {
                             </Button>
                             
                             {expandedCard === request.id && (
-                              <div className="mb-4 pt-4 border-t space-y-3">
+                              <div className="mb-4 pt-4 border-t border-border space-y-3">
                                 <div className="grid grid-cols-1 gap-3">
-                                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                  <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
                                     <div className="flex items-center mb-1">
-                                      <MapPin className="h-4 w-4 text-blue-600 mr-1" />
-                                      <span className="font-medium text-blue-800 text-sm">Recoger</span>
+                                      <MapPin className="h-4 w-4 text-primary mr-1" />
+                                      <span className="font-medium text-primary text-sm">Recoger</span>
                                     </div>
-                                    <p className="text-sm font-medium">{request.request_info.pickup_location}</p>
-                                    <p className="text-xs text-gray-600">{request.request_info.pickup_address}</p>
+                                    <p className="text-sm font-medium text-card-foreground">{request.request_info.pickup_location}</p>
+                                    <p className="text-xs text-muted-foreground">{request.request_info.pickup_address}</p>
                                   </div>
-                                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                                  <div className="p-3 bg-success/10 rounded-lg border border-success/20">
                                     <div className="flex items-center mb-1">
-                                      <Navigation className="h-4 w-4 text-green-600 mr-1" />
-                                      <span className="font-medium text-green-800 text-sm">Entregar</span>
+                                      <Navigation className="h-4 w-4 text-success mr-1" />
+                                      <span className="font-medium text-success text-sm">Entregar</span>
                                     </div>
-                                    <p className="text-sm font-medium">{request.request_info.delivery_location}</p>
-                                    <p className="text-xs text-gray-600">{request.request_info.delivery_address}</p>
+                                    <p className="text-sm font-medium text-card-foreground">{request.request_info.delivery_location}</p>
+                                    <p className="text-xs text-muted-foreground">{request.request_info.delivery_address}</p>
                                   </div>
                                 </div>
                                 
-                                <div className="p-2 bg-gray-50 rounded-lg border">
-                                  <p className="text-xs">
+                                <div className="p-2 bg-muted/20 rounded-lg border border-border">
+                                  <p className="text-xs text-card-foreground">
                                     <strong>📋 Siguiente:</strong> {request.next_step}
                                   </p>
                                 </div>
@@ -766,11 +769,11 @@ export const RunnerDashboard: React.FC = () => {
                             <Button
                               onClick={() => handleAcceptRequest(request.id)}
                               disabled={actionLoading === request.id}
-                              className="w-full bg-success hover:bg-success/90 text-white text-sm"
+                              className="w-full bg-success hover:bg-success/90 text-success-foreground text-sm"
                               size="sm"
                             >
                               {actionLoading === request.id ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-success-foreground mr-2"></div>
                               ) : (
                                 <Truck className="h-4 w-4 mr-2" />
                               )}
@@ -786,8 +789,8 @@ export const RunnerDashboard: React.FC = () => {
                             <div className="flex items-center space-x-3">
                               <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                                 request.purpose === 'cliente' 
-                                  ? 'bg-red-100 text-red-800 border border-red-200' 
-                                  : 'bg-blue-100 text-blue-800 border border-blue-200'
+                                  ? 'bg-error/20 text-error border border-error/30' 
+                                  : 'bg-primary/20 text-primary border border-primary/30'
                               }`}>
                                 {request.request_info.urgency}
                               </span>
@@ -805,44 +808,47 @@ export const RunnerDashboard: React.FC = () => {
                             
                             {/* Imagen del producto vertical */}
                             <div className="flex-shrink-0">
-                              <div className="w-48 h-64 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-                                <img
-                                  src={request.product_image || `https://via.placeholder.com/300x400/e5e7eb/6b7280?text=${encodeURIComponent(request.request_info.product_description)}`}
-                                  alt={request.request_info.product_description}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    if (!e.currentTarget.dataset.fallback) {
-                                      e.currentTarget.dataset.fallback = 'true';
-                                      e.currentTarget.src = `https://via.placeholder.com/300x400/f3f4f6/9ca3af?text=${encodeURIComponent(request.request_info.product_description.split(' ')[0])}`;
-                                    }
-                                  }}
-                                />
+                              <div className="w-48 h-64 rounded-xl overflow-hidden border border-border shadow-sm bg-muted/20">
+                                {request.product_image ? (
+                                  <img
+                                    src={request.product_image}
+                                    alt={request.request_info.product_description}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                    <div className="text-center">
+                                      <div className="text-6xl mb-2">📦</div>
+                                      <div className="text-sm">Sin imagen</div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                               
                               {/* Ganancia estimada debajo de la imagen */}
-                              <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-                                <p className="text-lg font-bold text-green-700">
+                              <div className="mt-3 bg-success/10 border border-success/20 rounded-lg p-3 text-center">
+                                <p className="text-lg font-bold text-success">
                                   {formatPrice(earnings)}
                                 </p>
-                                <p className="text-xs text-green-600">Ganancia estimada</p>
+                                <p className="text-xs text-success/80">Ganancia estimada</p>
                               </div>
                             </div>
                             
                             {/* Información del producto */}
                             <div className="flex-1 space-y-6">
                               <div>
-                                <h3 className="text-3xl font-bold text-gray-900 mb-3 leading-tight">
+                                <h3 className="text-3xl font-bold text-card-foreground mb-3 leading-tight">
                                   {request.request_info.product_description}
                                 </h3>
                                 
                                 {/* Cliente */}
-                                <div className="p-4 bg-gray-50 rounded-lg mb-6">
+                                <div className="p-4 bg-muted/20 rounded-lg mb-6">
                                   <div className="flex items-center space-x-3">
-                                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                                      <User className="h-6 w-6 text-white" />
+                                    <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
+                                      <User className="h-6 w-6 text-primary-foreground" />
                                     </div>
                                     <div>
-                                      <div className="font-semibold text-gray-900 text-lg">
+                                      <div className="font-semibold text-card-foreground text-lg">
                                         Solicitante: {request.request_info.requester}
                                       </div>
                                       <div className="text-sm text-muted-foreground">Cliente</div>
@@ -852,45 +858,45 @@ export const RunnerDashboard: React.FC = () => {
 
                                 {/* Ruta de entrega */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                  <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
                                     <div className="flex items-center mb-2">
-                                      <MapPin className="h-5 w-5 text-blue-600 mr-2" />
-                                      <h4 className="font-semibold text-blue-800">Punto de Recolección</h4>
+                                      <MapPin className="h-5 w-5 text-primary mr-2" />
+                                      <h4 className="font-semibold text-primary">Punto de Recolección</h4>
                                     </div>
-                                    <p className="font-medium">{request.request_info.pickup_location}</p>
-                                    <p className="text-sm text-gray-600">{request.request_info.pickup_address}</p>
-                                    <p className="text-xs text-blue-600 mt-1">
+                                    <p className="font-medium text-card-foreground">{request.request_info.pickup_location}</p>
+                                    <p className="text-sm text-muted-foreground">{request.request_info.pickup_address}</p>
+                                    <p className="text-xs text-primary mt-1">
                                       📞 Contacto: {request.request_info.warehouse_keeper}
                                     </p>
                                   </div>
                                   
-                                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                                  <div className="p-4 bg-success/10 rounded-lg border border-success/20">
                                     <div className="flex items-center mb-2">
-                                      <Navigation className="h-5 w-5 text-green-600 mr-2" />
-                                      <h4 className="font-semibold text-green-800">Punto de Entrega</h4>
+                                      <Navigation className="h-5 w-5 text-success mr-2" />
+                                      <h4 className="font-semibold text-success">Punto de Entrega</h4>
                                     </div>
-                                    <p className="font-medium">{request.request_info.delivery_location}</p>
-                                    <p className="text-sm text-gray-600">{request.request_info.delivery_address}</p>
-                                    <p className="text-xs text-green-600 mt-1">
+                                    <p className="font-medium text-card-foreground">{request.request_info.delivery_location}</p>
+                                    <p className="text-sm text-muted-foreground">{request.request_info.delivery_address}</p>
+                                    <p className="text-xs text-success mt-1">
                                       📍 Distancia: ~{distance} km
                                     </p>
                                   </div>
                                 </div>
 
-                                <div className="p-4 bg-gray-50 rounded-lg border mb-6">
-                                  <p className="text-sm">
+                                <div className="p-4 bg-muted/20 rounded-lg border border-border mb-6">
+                                  <p className="text-sm text-card-foreground">
                                     <strong>📋 Siguiente paso:</strong> {request.next_step}
                                   </p>
-                                  <p className="text-xs text-gray-600 mt-1">{request.status_description}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">{request.status_description}</p>
                                 </div>
 
                                 <Button
                                   onClick={() => handleAcceptRequest(request.id)}
                                   disabled={actionLoading === request.id}
-                                  className="w-full bg-success hover:bg-success/90 text-white py-3"
+                                  className="w-full bg-success hover:bg-success/90 text-success-foreground py-3"
                                 >
                                   {actionLoading === request.id ? (
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-success-foreground mr-2"></div>
                                   ) : (
                                     <Truck className="h-4 w-4 mr-2" />
                                   )}
@@ -927,7 +933,7 @@ export const RunnerDashboard: React.FC = () => {
               ) : (
                 <div className="space-y-4 md:space-y-6">
                   {assignedTransports.map((transport) => (
-                    <div key={transport.id} className="border rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-300">
+                    <div key={transport.id} className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300">
                       
                       {/* MOBILE VIEW */}
                       <div className="md:hidden">
@@ -935,9 +941,9 @@ export const RunnerDashboard: React.FC = () => {
                           {/* Header con estado */}
                           <div className="flex items-center justify-between mb-4">
                             <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              transport.status === 'courier_assigned' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
-                              transport.status === 'in_transit' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                              'bg-green-100 text-green-800 border border-green-200'
+                              transport.status === 'courier_assigned' ? 'bg-warning/20 text-warning border border-warning/30' :
+                              transport.status === 'in_transit' ? 'bg-primary/20 text-primary border border-primary/30' :
+                              'bg-success/20 text-success border border-success/30'
                             }`}>
                               {transport.action_description}
                             </span>
@@ -948,30 +954,37 @@ export const RunnerDashboard: React.FC = () => {
                           
                           {/* Imagen más grande para mobile */}
                           <div className="mb-4">
-                            <div className=" bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
-                              <img
-                                src={transport.product_image}
-                                alt={`${transport.brand} ${transport.model}`}
-                                className="w-32 h-48 object-cover rounded-lg border border-gray-200"
-                              />
+                            <div className="bg-gradient-to-br from-muted/20 to-muted/40 rounded-lg flex items-center justify-center p-4">
+                              {transport.product_image ? (
+                                <img
+                                  src={transport.product_image}
+                                  alt={`${transport.brand} ${transport.model}`}
+                                  className="w-32 h-48 object-cover rounded-lg border border-border"
+                                />
+                              ) : (
+                                <div className="text-muted-foreground text-center">
+                                  <div className="text-4xl mb-2">📦</div>
+                                  <div className="text-sm">Imagen no disponible</div>
+                                </div>
+                              )}
                             </div>
                           </div>
                           
                           {/* Información del producto */}
                           <div className="mb-4">
-                            <h3 className="font-bold text-lg text-gray-900 mb-2 leading-tight">
+                            <h3 className="font-bold text-lg text-card-foreground mb-2 leading-tight">
                               {transport.brand} {transport.model}
                             </h3>
                             <div className="flex items-center space-x-3 mb-3">
-                              <span className="text-sm font-medium text-blue-600">
+                              <span className="text-sm font-medium text-primary">
                                 Talla {transport.size}
                               </span>
                               <span className="text-sm text-muted-foreground">
                                 Cantidad: {transport.quantity}
                               </span>
                             </div>
-                            <div className="flex items-center space-x-1 text-sm text-gray-700">
-                              <User className="h-4 w-4 text-gray-400" />
+                            <div className="flex items-center space-x-1 text-sm text-card-foreground">
+                              <User className="h-4 w-4 text-muted-foreground" />
                               <span className="font-medium">
                                 Solicitante: {transport.requester_first_name} {transport.requester_last_name}
                               </span>
@@ -979,21 +992,21 @@ export const RunnerDashboard: React.FC = () => {
                           </div>
                           
                           {/* Ruta */}
-                          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                          <div className="mb-4 p-3 bg-muted/20 rounded-lg">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-2 flex-1 min-w-0">
                                 <div className="flex items-center space-x-1">
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                  <span className="text-xs font-medium text-gray-900 truncate">
+                                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                  <span className="text-xs font-medium text-card-foreground truncate">
                                     {transport.source_location_name}
                                   </span>
                                 </div>
-                                <div className="flex-1 border-t border-dashed border-gray-300 mx-2"></div>
+                                <div className="flex-1 border-t border-dashed border-border mx-2"></div>
                                 <div className="flex items-center space-x-1">
-                                  <span className="text-xs font-medium text-gray-900 truncate">
+                                  <span className="text-xs font-medium text-card-foreground truncate">
                                     {transport.destination_location_name}
                                   </span>
-                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                  <div className="w-2 h-2 bg-success rounded-full"></div>
                                 </div>
                               </div>
                             </div>
@@ -1001,10 +1014,10 @@ export const RunnerDashboard: React.FC = () => {
                           
                           {/* Tiempo estimado */}
                           {transport.estimated_pickup_time && (
-                            <div className="mb-4 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                            <div className="mb-4 p-2 bg-warning/10 rounded-lg border border-warning/20">
                               <p className="text-xs flex items-center">
-                                <Clock className="h-3 w-3 text-yellow-600 mr-1" />
-                                <span className="font-medium">ETA: {transport.estimated_pickup_time} minutos</span>
+                                <Clock className="h-3 w-3 text-warning mr-1" />
+                                <span className="font-medium text-warning">ETA: {transport.estimated_pickup_time} minutos</span>
                               </p>
                             </div>
                           )}
@@ -1018,9 +1031,9 @@ export const RunnerDashboard: React.FC = () => {
                         {/* Header con estado */}
                         <div className="flex items-center justify-between mb-6">
                           <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-                            transport.status === 'courier_assigned' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
-                            transport.status === 'in_transit' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                            'bg-green-100 text-green-800 border border-green-200'
+                            transport.status === 'courier_assigned' ? 'bg-warning/20 text-warning border border-warning/30' :
+                            transport.status === 'in_transit' ? 'bg-primary/20 text-primary border border-primary/30' :
+                            'bg-success/20 text-success border border-success/30'
                           }`}>
                             {transport.action_description}
                           </span>
@@ -1034,47 +1047,54 @@ export const RunnerDashboard: React.FC = () => {
                           
                           {/* Imagen del producto - más grande */}
                           <div className="lg:col-span-1">
-                            <div className="w-full h-80 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center shadow-inner">
-                              {/* Aquí irá la imagen del endpoint cuando esté disponible */}
-                              <div className="text-gray-400 text-center">
-                                <div className="text-8xl mb-4">📦</div>
-                                <div className="text-lg">Imagen del producto</div>
-                              </div>
+                            <div className="w-full h-80 bg-gradient-to-br from-muted/20 to-muted/40 rounded-xl flex items-center justify-center shadow-inner p-6">
+                              {transport.product_image ? (
+                                <img
+                                  src={transport.product_image}
+                                  alt={`${transport.brand} ${transport.model}`}
+                                  className="w-full h-full object-cover rounded-lg border border-border"
+                                />
+                              ) : (
+                                <div className="text-muted-foreground text-center">
+                                  <div className="text-8xl mb-4">📦</div>
+                                  <div className="text-lg">Imagen no disponible</div>
+                                </div>
+                              )}
                             </div>
                           </div>
                           
                           {/* Información del producto y cliente - ajustado para 2 columnas */}
                           <div className="lg:col-span-2 space-y-6">
                             <div>
-                              <h3 className="text-3xl font-bold text-gray-900 mb-3 leading-tight">
+                              <h3 className="text-3xl font-bold text-card-foreground mb-3 leading-tight">
                                 {transport.brand} {transport.model}
                               </h3>
                               
                               <div className="grid grid-cols-3 gap-4 mb-6">
-                                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                                  <div className="text-xl font-bold text-blue-600">
+                                <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/20">
+                                  <div className="text-xl font-bold text-primary">
                                     {transport.size}
                                   </div>
-                                  <div className="text-sm text-blue-600 font-medium">Talla</div>
+                                  <div className="text-sm text-primary font-medium">Talla</div>
                                 </div>
-                                <div className="text-center p-4 bg-green-50 rounded-lg">
-                                  <div className="text-xl font-bold text-green-600">{transport.quantity}</div>
-                                  <div className="text-sm text-green-600 font-medium">Cantidad</div>
+                                <div className="text-center p-4 bg-success/10 rounded-lg border border-success/20">
+                                  <div className="text-xl font-bold text-success">{transport.quantity}</div>
+                                  <div className="text-sm text-success font-medium">Cantidad</div>
                                 </div>
-                                <div className="text-center p-4 bg-purple-50 rounded-lg">
-                                  <div className="text-xl font-bold text-purple-600">👤</div>
-                                  <div className="text-sm text-purple-600 font-medium">Cliente</div>
+                                <div className="text-center p-4 bg-accent/10 rounded-lg border border-accent/20">
+                                  <div className="text-xl font-bold text-accent">👤</div>
+                                  <div className="text-sm text-accent font-medium">Cliente</div>
                                 </div>
                               </div>
                               
                               {/* Cliente */}
-                              <div className="p-4 bg-gray-50 rounded-lg mb-6">
+                              <div className="p-4 bg-muted/20 rounded-lg mb-6">
                                 <div className="flex items-center space-x-3">
-                                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                                    <User className="h-6 w-6 text-white" />
+                                  <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
+                                    <User className="h-6 w-6 text-primary-foreground" />
                                   </div>
                                   <div>
-                                    <div className="font-semibold text-gray-900 text-lg">
+                                    <div className="font-semibold text-card-foreground text-lg">
                                       Solicitante: {transport.requester_first_name} {transport.requester_last_name}
                                     </div>
                                     <div className="text-sm text-muted-foreground">Cliente</div>
@@ -1083,27 +1103,27 @@ export const RunnerDashboard: React.FC = () => {
                               </div>
                               
                               {/* Ruta visual */}
-                              <div className="p-4 bg-gray-50 rounded-lg mb-6">
-                                <h4 className="font-semibold text-gray-900 mb-4">Ruta de Entrega</h4>
+                              <div className="p-4 bg-muted/20 rounded-lg mb-6">
+                                <h4 className="font-semibold text-card-foreground mb-4">Ruta de Entrega</h4>
                                 
                                 <div className="space-y-4">
                                   <div className="flex items-center space-x-4">
-                                    <div className="w-4 h-4 bg-blue-500 rounded-full flex-shrink-0"></div>
+                                    <div className="w-4 h-4 bg-primary rounded-full flex-shrink-0"></div>
                                     <div className="flex-1 min-w-0">
                                       <div className="text-sm text-muted-foreground">DESDE</div>
-                                      <div className="font-medium text-gray-900">
+                                      <div className="font-medium text-card-foreground">
                                         {transport.source_location_name}
                                       </div>
                                     </div>
                                   </div>
                                   
-                                  <div className="ml-2 border-l-2 border-dashed border-gray-300 h-8"></div>
+                                  <div className="ml-2 border-l-2 border-dashed border-border h-8"></div>
                                   
                                   <div className="flex items-center space-x-4">
-                                    <div className="w-4 h-4 bg-green-500 rounded-full flex-shrink-0"></div>
+                                    <div className="w-4 h-4 bg-success rounded-full flex-shrink-0"></div>
                                     <div className="flex-1 min-w-0">
                                       <div className="text-sm text-muted-foreground">HACIA</div>
-                                      <div className="font-medium text-gray-900">
+                                      <div className="font-medium text-card-foreground">
                                         {transport.destination_location_name}
                                       </div>
                                     </div>
@@ -1113,10 +1133,10 @@ export const RunnerDashboard: React.FC = () => {
                               
                               {/* Tiempo estimado */}
                               {transport.estimated_pickup_time && (
-                                <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200 mb-4">
+                                <div className="p-3 bg-warning/10 rounded-lg border border-warning/20 mb-4">
                                   <div className="flex items-center justify-center space-x-2">
-                                    <Clock className="h-5 w-5 text-yellow-600" />
-                                    <span className="text-sm font-medium text-yellow-800">
+                                    <Clock className="h-5 w-5 text-warning" />
+                                    <span className="text-sm font-medium text-warning">
                                       ETA: {transport.estimated_pickup_time} minutos
                                     </span>
                                   </div>

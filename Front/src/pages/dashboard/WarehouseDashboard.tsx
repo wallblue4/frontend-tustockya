@@ -14,8 +14,7 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
-  MapPin,
-  DollarSign
+  MapPin
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
@@ -26,162 +25,9 @@ import { Input } from '../../components/ui/Input';
 import { TransferNotifications } from '../../components/notifications/TransferNotifications';
 import { useTransferNotifications } from '../../hooks/useTransferNotifications';
 import { useTransferPolling } from '../../hooks/useTransferPolling';
-import { useAuth } from '../../context/AuthContext';
+import { warehouseAPI } from '../../services/transfersAPI';
 
-// *** SERVICIO API ACTUALIZADO SEGÚN DOCUMENTACIÓN ***
-const BACKEND_URL = 'https://tustockya-backend.onrender.com';
-
-const getHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  };
-};
-
-const handleResponse = async (response: Response) => {
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
-    throw new Error(error.detail || `Error ${response.status}`);
-  }
-  return response.json();
-};
-
-// *** SERVICIO BODEGUERO ACTUALIZADO CON ENDPOINTS EXACTOS ***
-const warehouseAPIUpdated = {
-  // WH001: Ver Solicitudes Pendientes
-  async getPendingRequests() {
-    console.log('🔄 WH001: Obteniendo solicitudes pendientes...');
-    
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/pending-requests`, {
-        headers: getHeaders()
-      });
-      return await handleResponse(response);
-    } catch (error) {
-      console.warn('⚠️ Backend no disponible');
-    }
-  },
-
-  // WH002: Aceptar/Rechazar Solicitud
-  async acceptRequest(requestData: {
-    transfer_request_id: number;
-    accepted: boolean;
-    estimated_preparation_time: number;
-    notes: string;
-  }) {
-    console.log('🔄 WH002: Aceptando/Rechazando solicitud...', requestData);
-    
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/accept-request`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify(requestData)
-      });
-      return await handleResponse(response);
-    } catch (error) {
-      console.warn('⚠️ Backend no disponible, usando mock response');
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simular delay
-      
-      if (requestData.accepted) {
-        return {
-          success: true,
-          message: 'Solicitud aceptada - Disponible para corredores',
-          request_id: requestData.transfer_request_id,
-          status: 'accepted',
-          estimated_preparation_time: requestData.estimated_preparation_time,
-          next_steps: [
-            'Preparar producto para entrega',
-            'Esperar corredor asignado',
-            'Entregar a corredor cuando llegue'
-          ]
-        };
-      } else {
-        return {
-          success: true,
-          message: 'Solicitud rechazada',
-          request_id: requestData.transfer_request_id,
-          status: 'rejected',
-          reason: requestData.notes
-        };
-      }
-    }
-  },
-
-  // WH003: Ver Transferencias en Preparación
-  async getAcceptedRequests() {
-    console.log('🔄 WH003: Obteniendo transferencias en preparación...');
-    
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/accepted-requests`, {
-        headers: getHeaders()
-      });
-      return await handleResponse(response);
-    } catch (error) {
-      console.warn('⚠️ Backend no disponible');
-    }
-  },
-
-  // WH004: Entregar a Corredor
-  async deliverToCourier(requestData: {
-    transfer_request_id: number;
-    delivered: boolean;
-    delivery_notes: string;
-  }) {
-    console.log('🔄 WH004: Entregando a corredor...', requestData);
-    
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/deliver-to-courier`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify(requestData)
-      });
-      return await handleResponse(response);
-    } catch (error) {
-      console.warn('⚠️ Backend no disponible, usando mock response');
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simular delay
-      
-      return {
-        success: true,
-        message: 'Producto entregado a corredor - Inventario actualizado',
-        request_id: requestData.transfer_request_id,
-        courier_name: 'Ana Martínez',
-        inventory_updated: true,
-        delivered_at: new Date().toISOString()
-      };
-    }
-  },
-
-  // WH005: Entregar a Vendedor
-  async deliverToVendor(transferId: number, requestData: {
-    delivered: boolean;
-    delivery_notes: string;
-  }) {
-    console.log('🔄 WH005: Entregando a vendedor...', { transferId, requestData });
-    
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/deliver-to-vendor/${transferId}`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify(requestData)
-      });
-      return await handleResponse(response);
-    } catch (error) {
-      console.warn('⚠️ Backend no disponible, usando mock response');
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simular delay
-      
-      return {
-        success: true,
-        message: 'Producto entregado a vendedor - Inventario actualizado',
-        transfer_id: transferId,
-        vendor_name: 'Vendedor Asignado',
-        inventory_updated: true,
-        delivered_at: new Date().toISOString()
-      };
-    }
-  }
-
-};
+// *** USANDO TRANSFERS API EN LUGAR DE CONFIGURACIÓN LOCAL ***
 
 // *** TIPOS ACTUALIZADOS SEGÚN DOCUMENTACIÓN ***
 interface PendingRequest {
@@ -212,28 +58,28 @@ interface PendingRequest {
 }
 
 interface AcceptedRequest {
-  source_location_name: string;
-  pickup_type: string;
   id: number;
   status: string;
-  status_description?: string;
+  sneaker_reference_code: string;
   brand: string;
   model: string;
   size: string;
   quantity: number;
   purpose: 'cliente' | 'restock';
-  sneaker_reference_code: string;
-  requester_first_name?: string;
-  requester_last_name?: string;
-  courier_first_name?: string;
-  courier_last_name?: string;
-  estimated_pickup_time?: string;
-  preparation_time?: number;
-  ready_for_pickup?: boolean;
-  notes?: string;
-  product_image?: string;
-  product_price?: string;
-  product_color?: string;
+  requester_name: string;
+  courier_name: string;
+  courier_assigned: boolean;
+  location_info: {
+    source: string;
+    destination: string;
+  };
+  product_info: {
+    image_url: string;
+    unit_price: number;
+    description: string;
+  };
+  accepted_at: string;
+  next_action: string;
 }
 
 export const WarehouseDashboard: React.FC = () => {
@@ -307,7 +153,7 @@ export const WarehouseDashboard: React.FC = () => {
   }, [pendingRequests, notifyNewTransferAvailable]);
 
   // POLLING para bodeguero - Cada 15 segundos según documentación
-  const { data: warehouseData, error: pollingError, refetch } = useTransferPolling('bodeguero', {
+  const { error: pollingError } = useTransferPolling('bodeguero', {
     enabled: true,
     interval: 15000, // 15 segundos según documentación
     onUpdate: handlePollingUpdate,
@@ -329,10 +175,10 @@ export const WarehouseDashboard: React.FC = () => {
       
       console.log('🔄 Cargando datos iniciales de bodeguero...');
       
-      // Cargar datos en paralelo usando endpoints actualizados
+      // Cargar datos en paralelo usando transfersAPI
       const [pendingResponse, acceptedResponse] = await Promise.all([
-        warehouseAPIUpdated.getPendingRequests(),  // WH001
-        warehouseAPIUpdated.getAcceptedRequests()  // WH003
+        warehouseAPI.getPendingRequests(),  // WH001
+        warehouseAPI.getAcceptedRequests()  // WH003
       ]);
       
       console.log('✅ Datos de solicitudes pendientes:', pendingResponse);
@@ -372,8 +218,8 @@ export const WarehouseDashboard: React.FC = () => {
 
       console.log('📦 Datos de la solicitud:', request);
       
-      // Llamada usando estructura exacta de la documentación WH002
-      const response = await warehouseAPIUpdated.acceptRequest({
+      // Llamada usando transfersAPI
+      const response = await warehouseAPI.acceptRequest({
         transfer_request_id: requestId,
         accepted: true,
         estimated_preparation_time: request.priority === 'high' ? 10 : 15,
@@ -413,8 +259,8 @@ export const WarehouseDashboard: React.FC = () => {
     setActionLoading(requestId);
     
     try {
-      // Llamada usando estructura exacta de la documentación WH002
-      const response = await warehouseAPIUpdated.acceptRequest({
+      // Llamada usando transfersAPI
+      const response = await warehouseAPI.acceptRequest({
         transfer_request_id: requestId,
         accepted: false,
         estimated_preparation_time: 0,
@@ -449,8 +295,8 @@ export const WarehouseDashboard: React.FC = () => {
     setActionLoading(requestId);
     
     try {
-      // Llamada usando estructura exacta de la documentación WH004
-      const response = await warehouseAPIUpdated.deliverToCourier({
+      // Llamada usando transfersAPI
+      const response = await warehouseAPI.deliverToCourier({
         transfer_request_id: requestId,
         delivered: true,
         delivery_notes: 'Producto entregado al corredor en perfecto estado. Caja original sellada.'
@@ -483,8 +329,8 @@ export const WarehouseDashboard: React.FC = () => {
     setActionLoading(requestId);
     
     try {
-      // Llamada usando estructura del endpoint WH005
-      const response = await warehouseAPIUpdated.deliverToVendor(requestId, {
+      // Llamada usando transfersAPI
+      const response = await warehouseAPI.deliverToVendor(requestId, {
         delivered: true,
         delivery_notes: 'Producto entregado al vendedor en perfecto estado. Caja original sellada.'
       });
@@ -1153,7 +999,7 @@ export const WarehouseDashboard: React.FC = () => {
                         <div className="flex items-start space-x-3 mb-3">
                           <div className="flex-shrink-0">
                             <img
-                              src={request.product_image || `https://via.placeholder.com/200x260/e5e7eb/6b7280?text=${encodeURIComponent(request.brand)}`}
+                              src={request.product_info?.image_url}
                               alt={`${request.brand} ${request.model}`}
                               className="w-32 h-48 object-cover rounded-lg border border-border bg-muted"
                             />
@@ -1167,41 +1013,37 @@ export const WarehouseDashboard: React.FC = () => {
                               Talla {request.size} • {request.quantity} unidad{request.quantity > 1 ? 'es' : ''}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              Solicitado por: {request.requester_first_name ? 
-                                `${request.requester_first_name} ${request.requester_last_name}` : 
-                                'Usuario'
-                              }
+                              Solicitado por: {request.requester_name || 'Usuario'}
                             </p>
                             <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-1">
                               <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
-                              <span className="font-medium">Ubicación: {request.source_location_name || 'N/A'}</span>
+                              <span className="font-medium">Origen: {request.location_info?.source || 'N/A'}</span>
+                            </div>
+                            <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-1">
+                              <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
+                              <span className="font-medium">Destino: {request.location_info?.destination || 'N/A'}</span>
                             </div>
                           </div>
                           
                           <div className="text-right">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium 
-                              ${request.status === 'courier_assigned' ? 'bg-success/10 text-success' : 
-                                request.status === 'accepted' ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'}
+                              ${request.courier_assigned ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}
                             `}>
-                              {request.status === 'courier_assigned' ? '✅ Corredor asignado' : 
-                               request.status === 'accepted' && request.pickup_type=== "corredor"? '🔄 Esperando corredor' : 
-                               request.status === 'accepted' && request.pickup_type=== "vendedor"? '🔄 Esperando vendedor' : 
-                               request.status_description || request.status}
+                              {request.courier_assigned ? '✅ Corredor asignado' : '🔄 Esperando corredor'}
                             </span>
                           </div>
                         </div>
                         
-                        {request.courier_first_name && (
+                        {request.courier_assigned && request.courier_name !== 'No asignado' && (
                           <div className="mb-3 p-2 bg-primary/10 rounded-lg">
                             <p className="text-xs text-primary">
                               <Truck className="h-3 w-3 inline mr-1" />
-                              Corredor: <strong>{request.courier_first_name} {request.courier_last_name}</strong>
-                              {request.estimated_pickup_time && ` • ETA: ${request.estimated_pickup_time} min`}
+                              Corredor: <strong>{request.courier_name}</strong>
                             </p>
                           </div>
                         )}
                         
-                        {(request.status === 'courier_assigned' || (request.status === 'accepted' && request.courier_first_name)) && (
+                        {request.courier_assigned && (
                           <Button
                             onClick={() => handleDeliverToCourier(request.id)}
                             disabled={actionLoading === request.id}
@@ -1217,7 +1059,7 @@ export const WarehouseDashboard: React.FC = () => {
                           </Button>
                         )}
 
-                        {(request.status === 'accepted' && request.pickup_type=== "vendedor") && (
+                        {!request.courier_assigned && request.purpose === 'restock' && (
                           <Button
                             onClick={() => handleDeliverToVendor(request.id)}
                             disabled={actionLoading === request.id}
@@ -1240,7 +1082,7 @@ export const WarehouseDashboard: React.FC = () => {
                         <div className="flex items-start mb-4">
                           <div className="flex-shrink-0 mr-4">
                             <img
-                              src={request.product_image || `https://via.placeholder.com/150x100/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
+                              src={request.product_info?.image_url || `https://via.placeholder.com/150x100/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
                               alt={`${request.brand} ${request.model}`}
                               className="w-32 h-24 object-cover rounded-lg border border-border bg-muted shadow-sm"
                               onError={(e) => {
@@ -1250,9 +1092,9 @@ export const WarehouseDashboard: React.FC = () => {
                                 }
                               }}
                             />
-                            {request.product_price && (
+                            {request.product_info?.unit_price && (
                               <p className="text-xs text-muted-foreground mt-1 text-center font-medium">
-                                💰 {formatPrice(request.product_price)}
+                                💰 {formatPrice(request.product_info.unit_price)}
                               </p>
                             )}
                           </div>
@@ -1262,28 +1104,27 @@ export const WarehouseDashboard: React.FC = () => {
                               {request.brand} {request.model} - Talla {request.size}
                             </h4>
                             
-                            {request.product_color && (
-                              <p className="text-sm text-muted-foreground mb-2">
-                                🎨 <strong>Color:</strong> {request.product_color}
-                              </p>
-                            )}
-                            
                             <p className="text-sm text-muted-foreground mb-2">
                               <User className="h-4 w-4 inline mr-1" />
-                              Solicitado por: <strong>
-                                {request.requester_first_name ? 
-                                  `${request.requester_first_name} ${request.requester_last_name}` : 
-                                  'Usuario'
-                                }
-                              </strong>
+                              Solicitado por: <strong>{request.requester_name || 'Usuario'}</strong>
                             </p>
                             
-                            {request.courier_first_name && (
+                            <div className="mb-2">
+                              <p className="text-sm text-muted-foreground">
+                                <MapPin className="h-4 w-4 inline mr-1" />
+                                <strong>Origen:</strong> {request.location_info?.source || 'N/A'}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                <MapPin className="h-4 w-4 inline mr-1" />
+                                <strong>Destino:</strong> {request.location_info?.destination || 'N/A'}
+                              </p>
+                            </div>
+                            
+                            {request.courier_assigned && request.courier_name !== 'No asignado' && (
                               <div className="mb-2">
                                 <p className="text-sm text-primary">
                                   <Truck className="h-4 w-4 inline mr-1" />
-                                  Corredor asignado: <strong>{request.courier_first_name} {request.courier_last_name}</strong>
-                                  {request.estimated_pickup_time && ` (ETA: ${request.estimated_pickup_time} min)`}
+                                  Corredor asignado: <strong>{request.courier_name}</strong>
                                 </p>
                               </div>
                             )}
@@ -1291,7 +1132,7 @@ export const WarehouseDashboard: React.FC = () => {
                             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                               <span>
                                 <Clock className="h-4 w-4 inline mr-1" />
-                                Estado: {request.status_description || request.status}
+                                Estado: {request.next_action || request.status}
                               </span>
                               <span>
                                 📍 Propósito: {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' : '📦 Restock'}
@@ -1304,25 +1145,22 @@ export const WarehouseDashboard: React.FC = () => {
                           
                           <div className="text-right ml-6">
                             <span className={`px-3 py-1 rounded-full text-sm font-medium 
-                              ${request.status === 'courier_assigned' ? 'bg-success/10 text-success' : 
-                                request.status === 'accepted' ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'}
+                              ${request.courier_assigned ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}
                             `}>
-                              {request.status === 'courier_assigned' ? '✅ Listo para recoger' : 
-                               request.status === 'accepted' ? '🔄 Esperando corredor' : 
-                               request.status === 'in_transit' ? '🚚 En tránsito' : request.status_description || request.status}
+                              {request.courier_assigned ? '✅ Listo para recoger' : '🔄 Esperando corredor'}
                             </span>
                           </div>
                         </div>
 
-                        {request.notes && (
+                        {request.product_info?.description && (
                           <div className="mb-4 p-3 bg-muted rounded-lg">
                             <p className="text-sm text-muted-foreground">
-                              <strong>📝 Notas:</strong> {request.notes}
+                              <strong>📝 Descripción:</strong> {request.product_info.description}
                             </p>
                           </div>
                         )}
 
-                        {(request.status === 'courier_assigned' || (request.status === 'accepted' && request.courier_first_name)) && (
+                        {request.courier_assigned && (
                           <div className="mt-4">
                             <Button
                               onClick={() => handleDeliverToCourier(request.id)}
@@ -1339,9 +1177,8 @@ export const WarehouseDashboard: React.FC = () => {
                           </div>
                         )}
 
-                        {(request.status === 'accepted' && request.pickup_type=== "vendedor") && (
+                        {!request.courier_assigned && request.purpose === 'restock' && (
                           <div className='mt-4'>
-
                             <Button
                               onClick={() => handleDeliverToVendor(request.id)}
                               disabled={actionLoading === request.id}
@@ -1355,15 +1192,13 @@ export const WarehouseDashboard: React.FC = () => {
                               )}
                               🚚 Entregar a vendedor 
                             </Button>
-
                           </div>
-                          
                         )}
                         
                           <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
                           <div className="flex justify-between items-center">
                             <span>ID: {request.id} | Código: {request.sneaker_reference_code}</span>
-                            <span>Status: {request.status} | Corredor: {request.courier_first_name ? `${request.courier_first_name} ${request.courier_last_name}` : 'Sin asignar'}</span>
+                            <span>Status: {request.status} | Corredor: {request.courier_name || 'Sin asignar'}</span>
                           </div>
                         </div>
                       </div>
