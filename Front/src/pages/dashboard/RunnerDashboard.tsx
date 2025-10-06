@@ -57,18 +57,25 @@ interface AssignedTransport {
   product_image: string | undefined;
   id: number;
   status: string;
-  action_required: string;
-  action_description: string;
-  source_location_name: string;
-  destination_location_name: string;
+  sneaker_reference_code: string;
   brand: string;
   model: string;
   size: string;
   quantity: number;
+  purpose: 'cliente' | 'restock';
+  courier_accepted_at: string | null;
+  picked_up_at: string | null;
+  delivered_at: string | null;
+  estimated_pickup_time: number | null;
+  courier_notes: string | null;
+  pickup_notes: string | null;
+  // Campos para compatibilidad con la UI actual
+  action_required: string;
+  action_description: string;
+  source_location_name: string;
+  destination_location_name: string;
   requester_first_name: string;
   requester_last_name: string;
-  estimated_pickup_time?: number;
-  courier_accepted_at: string;
 }
 
 interface DeliveryHistoryItem {
@@ -178,7 +185,7 @@ export const RunnerDashboard: React.FC = () => {
       ]);
 
       setAvailableRequests(availableResponse.available_requests || []);
-      setAssignedTransports(assignedResponse.my_transports || []);
+      setAssignedTransports((assignedResponse.my_transports || []).map(transformTransportData));
 
       // Map delivery history from backend response
       const deliveries = (historyResponse.delivery_history || []).map((item: any) => ({
@@ -197,105 +204,6 @@ export const RunnerDashboard: React.FC = () => {
     } catch (err) {
       console.error('Error loading courier data:', err);
       setError('Error conectando con el servidor');
-
-      // Mock data mejorado para desarrollo
-      setAvailableRequests([
-        {
-          id: 15,
-          product_image: undefined,
-          status: 'accepted',
-          action_required: 'accept_transport',
-          status_description: 'Disponible para aceptar transporte',
-          next_step: 'Aceptar esta solicitud de transporte',
-          purpose: 'cliente',
-          hours_since_accepted: 0.5,
-          request_info: {
-            pickup_location: 'Bodega Norte',
-            pickup_address: 'Zona Industrial 202',
-            delivery_location: 'Local Principal',
-            delivery_address: 'Calle Principal 123',
-            product_description: 'Adidas Ultraboost 22 - Talla 9.5',
-            urgency: '🔥 Cliente presente',
-            warehouse_keeper: 'Carlos González',
-            requester: 'Juan Pérez'
-          }
-        },
-        {
-          id: 18,
-          product_image: undefined,
-          status: 'accepted',
-          action_required: 'accept_transport',
-          status_description: 'Disponible para aceptar transporte',
-          next_step: 'Aceptar esta solicitud de transporte',
-          purpose: 'restock',
-          hours_since_accepted: 1.2,
-          request_info: {
-            pickup_location: 'Bodega Sur',
-            pickup_address: 'Zona Industrial 304',
-            delivery_location: 'Local Mall',
-            delivery_address: 'Centro Comercial Norte',
-            product_description: 'Nike Air Force 1 - Talla 10',
-            urgency: '📦 Normal',
-            warehouse_keeper: 'Ana Rodríguez',
-            requester: 'María González'
-          }
-        }
-      ]);
-
-      setAssignedTransports([
-        {
-          id: 19,
-          product_image: undefined,
-          status: 'courier_assigned',
-          action_required: 'ir_a_recoger',
-          action_description: 'Ve al punto de recolección',
-          source_location_name: 'Bodega Central',
-          destination_location_name: 'Local Centro',
-          brand: 'Puma',
-          model: 'RS-X',
-          size: '9',
-          quantity: 1,
-          requester_first_name: 'Carlos',
-          requester_last_name: 'López',
-          estimated_pickup_time: 15,
-          courier_accepted_at: new Date(Date.now() - 300000).toISOString()
-        }
-      ]);
-
-      setDeliveryHistory([
-        {
-          id: 20,
-          status: 'completed',
-          product: 'Nike Air Max 90 - Talla 8.5',
-          delivered_to: 'Laura Martínez',
-          delivered_at: new Date(Date.now() - 7200000).toISOString(),
-          total_time: '28 minutos',
-          delivery_successful: true,
-          distance: '4.1 km',
-          earnings: 15000
-        },
-        {
-          id: 21,
-          status: 'completed',
-          product: 'Adidas Stan Smith - Talla 7',
-          delivered_to: 'Pedro Ramírez',
-          delivered_at: new Date(Date.now() - 14400000).toISOString(),
-          total_time: '22 minutos',
-          delivery_successful: true,
-          distance: '2.8 km',
-          earnings: 12000
-        }
-      ]);
-
-      // Mock stats mejorado
-      setStats({
-        totalDeliveries: 47,
-        todayDeliveries: 3,
-        successRate: 98.5,
-        averageTime: '26 min',
-        totalEarnings: 350000,
-        rating: 4.8
-      });
 
     } finally {
       setLoading(false);
@@ -408,10 +316,53 @@ export const RunnerDashboard: React.FC = () => {
     }
   };
 
+  // Función para transformar datos de la API al formato esperado por la UI
+  const transformTransportData = (apiData: any): AssignedTransport => {
+    // Determinar el estado y acción basado en los datos de la API
+    let action_required = '';
+    let action_description = '';
+    let source_location_name = 'Bodega Central'; // Default values
+    let destination_location_name = 'Local Principal';
+    let requester_first_name = 'Cliente';
+    let requester_last_name = '';
+
+    switch (apiData.status) {
+      case 'completed':
+        action_required = 'completed';
+        action_description = 'Entregado';
+        break;
+      case 'in_transit':
+        action_required = 'entregar';
+        action_description = 'En Tránsito';
+        break;
+      case 'picked_up':
+        action_required = 'entregar';
+        action_description = 'Recolectado';
+        break;
+      default:
+        action_required = 'courrier_assigned';
+        action_description = 'Asignado';
+        break;
+    }
+
+    return {
+      ...apiData,
+      action_required,
+      action_description,
+      source_location_name,
+      destination_location_name,
+      requester_first_name,
+      requester_last_name,
+    };
+  };
+
   // Funciones de filtrado
   const filteredAvailableRequests = availableRequests.filter(request => {
     return purposeFilter === 'all' || request.purpose === purposeFilter;
   });
+
+  // Separar transportes activos de los completados
+  const activeTransports = assignedTransports.filter(transport => transport.status !== 'completed');
 
   // Funciones para obtener acciones según estado
   const getActionButton = (transport: AssignedTransport) => {
@@ -447,6 +398,13 @@ export const RunnerDashboard: React.FC = () => {
             )}
             Confirmar Entrega
           </Button>
+        );
+      case 'completed':
+        return (
+          <div className="w-full text-center text-muted-foreground py-2 text-sm">
+            <CheckCircle className="h-4 w-4 mx-auto mb-1 text-success" />
+            Entregado
+          </div>
         );
       default:
         return (
@@ -531,7 +489,7 @@ export const RunnerDashboard: React.FC = () => {
                 <Truck className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                 <span className="hidden sm:inline">Mis Entregas</span>
                 <span className="sm:hidden">Entregas</span>
-                ({assignedTransports.length})
+                ({activeTransports.length})
               </Button>
               <Button
                 variant={activeTab === 'history' ? 'primary' : 'outline'}
@@ -710,7 +668,7 @@ export const RunnerDashboard: React.FC = () => {
                                   </div>
                                   
                                   <p className="text-xs text-muted-foreground">
-                                    ⏱️ {request.hours_since_accepted.toFixed(1)}h • 📍 {distance} km
+                                    ⏱️ {request.hours_since_accepted ? request.hours_since_accepted.toFixed(1) : '0'}h • 📍 {distance} km
                                   </p>
                                 </div>
                                 
@@ -795,7 +753,7 @@ export const RunnerDashboard: React.FC = () => {
                                 {request.request_info.urgency}
                               </span>
                               <span className="text-sm text-muted-foreground">
-                                ⏱️ Esperando: {request.hours_since_accepted.toFixed(1)} horas
+                                ⏱️ Esperando: {request.hours_since_accepted ? request.hours_since_accepted.toFixed(1) : '0'} horas
                               </span>
                             </div>
                             <div className="text-sm text-muted-foreground">
@@ -924,7 +882,7 @@ export const RunnerDashboard: React.FC = () => {
               </h2>
             </CardHeader>
             <CardContent>
-              {assignedTransports.length === 0 ? (
+              {activeTransports.length === 0 ? (
                 <div className="text-center py-8 md:py-12">
                   <Truck className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
                   <h3 className="text-base md:text-lg font-medium">No tienes entregas asignadas</h3>
@@ -932,7 +890,7 @@ export const RunnerDashboard: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-4 md:space-y-6">
-                  {assignedTransports.map((transport) => (
+                  {activeTransports.map((transport) => (
                     <div key={transport.id} className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300">
                       
                       {/* MOBILE VIEW */}
@@ -1038,7 +996,7 @@ export const RunnerDashboard: React.FC = () => {
                             {transport.action_description}
                           </span>
                           <div className="text-sm text-muted-foreground">
-                            ID #{transport.id} • {new Date(transport.courier_accepted_at).toLocaleDateString()}
+                            ID #{transport.id} • {transport.courier_accepted_at ? new Date(transport.courier_accepted_at).toLocaleDateString() : 'Sin fecha'}
                           </div>
                         </div>
                         

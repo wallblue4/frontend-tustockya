@@ -500,14 +500,23 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
           loc.size === selectedSize && loc.quantity > 0
         );
         if (foundLocation) {
-          // Como la nueva API no proporciona location_id, usar un valor por defecto o extraer del nombre
-          sourceLocationId = 1; // Valor por defecto, debería ser configurado según la lógica de negocio
+          // Ahora la API sí proporciona location_id directamente
+          sourceLocationId = foundLocation.location_id;
+          console.log('Encontrado location_id en la API:', sourceLocationId, 'para ubicación:', foundLocation.location);
         }
       }
       
       // Fallback: usar location_number de sizeInfo si está disponible
       if (!sourceLocationId) {
-        sourceLocationId = sizeInfo?.location_number ?? 1;
+        sourceLocationId = sizeInfo?.location_number;
+        console.log('Usando location_number de sizeInfo como fallback:', sourceLocationId);
+      }
+
+      // Si aún no tenemos source_location_id, mostrar error
+      if (!sourceLocationId) {
+        console.error('No se pudo determinar source_location_id para la transferencia');
+        alert('Error: No se pudo determinar la ubicación de origen para la transferencia');
+        return;
       }
 
       const transferData = {

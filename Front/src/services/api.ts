@@ -191,9 +191,16 @@ interface ScanAvailability {
   can_request_transfer: boolean;
 }
 
+interface ScanLocationItem {
+  location: string;
+  size: string;
+  quantity: number;
+  location_id: number;
+}
+
 interface ScanLocations {
-  current_location: any[];
-  other_locations: any[];
+  current_location: ScanLocationItem[];
+  other_locations: ScanLocationItem[];
   total_locations_found: number;
 }
 

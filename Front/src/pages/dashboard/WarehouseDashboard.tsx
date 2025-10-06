@@ -43,6 +43,7 @@ interface PendingRequest {
   quantity: number;
   purpose: 'cliente' | 'restock';
   priority: 'high' | 'normal';
+  priority_level: 'URGENT' | 'NORMAL';
   requested_at: string;
   time_waiting?: string;
   can_fulfill?: boolean;
@@ -51,6 +52,30 @@ interface PendingRequest {
   product_image?: string;
   product_price?: string;
   product_color?: string;
+  // Nuevos campos de la API
+  requester_info?: {
+    name: string;
+    email: string;
+  };
+  location_info?: {
+    from: {
+      id: number;
+      name: string;
+      address: string;
+    };
+    to: {
+      id: number;
+      name: string;
+      address: string;
+    };
+  };
+  product_info?: {
+    image: string;
+    unit_price: number;
+    box_price: number;
+    stock_available: number;
+    description: string;
+  };
   stock_info?: {
     can_fulfill: boolean;
     available_stock: number;
@@ -59,27 +84,28 @@ interface PendingRequest {
 
 interface AcceptedRequest {
   id: number;
-  status: string;
+  status: 'accepted' | 'in_transit';
   sneaker_reference_code: string;
   brand: string;
   model: string;
   size: string;
   quantity: number;
   purpose: 'cliente' | 'restock';
-  requester_name: string;
-  courier_name: string;
-  courier_assigned: boolean;
-  location_info: {
+  accepted_at: string;
+  courier_id: number | null;
+  // Campos opcionales que pueden no estar en la respuesta
+  requester_name?: string;
+  courier_name?: string;
+  courier_assigned?: boolean;
+  location_info?: {
     source: string;
     destination: string;
   };
-  product_info: {
+  product_info?: {
     image_url: string;
     unit_price: number;
     description: string;
   };
-  accepted_at: string;
-  next_action: string;
 }
 
 export const WarehouseDashboard: React.FC = () => {
@@ -589,15 +615,6 @@ export const WarehouseDashboard: React.FC = () => {
                 
                 {/* Controles de filtros - RESPONSIVE */}
                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
-                  <div className="relative">
-                    <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <Input
-                      placeholder="Buscar solicitudes..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 w-full sm:w-48 md:w-64 text-sm"
-                    />
-                  </div>
                   
                   <Button
                     variant="outline"
@@ -662,8 +679,8 @@ export const WarehouseDashboard: React.FC = () => {
                           {/* Header con etiquetas de prioridad */}
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center space-x-2">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(request.priority)}`}>
-                                {request.priority === 'high' ? '🔥 URGENTE' : '📦 Normal'}
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(request.priority_level)}`}>
+                                {request.priority_level === 'URGENT' ? '🔥 URGENTE' : '📦 Normal'}
                               </span>
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
                                 {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' : '📦 Restock'}
@@ -680,7 +697,7 @@ export const WarehouseDashboard: React.FC = () => {
                             <div className="flex-shrink-0">
                               <div className="w-32 h-48 rounded-lg overflow-hidden border border-gray-200">
                                 <img
-                                  src={request.product_image || `https://via.placeholder.com/200x260/e5e7eb/6b7280?text=${encodeURIComponent(request.brand)}`}
+                                  src={request.product_info?.image}
                                   alt={`${request.brand} ${request.model}`}
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
@@ -710,33 +727,34 @@ export const WarehouseDashboard: React.FC = () => {
                                 <div className="flex items-center space-x-1 text-sm text-gray-700">
                                   <User className="h-3 w-3 text-gray-400" />
                                   <span className="font-medium truncate">
-                                    Solicitante: {request.requester_first_name ? 
-                                      `${request.requester_first_name} ${request.requester_last_name}` : 
-                                      request.requester_name || 'Usuario'
-                                    }
+                                    Solicitante: {request.requester_info?.name || 'Usuario'}
                                   </span>
                                 </div>
                                 <div className="flex items-center space-x-1 text-xs text-gray-500">
                                   <MapPin className="h-3 w-3 text-gray-400 mr-1" />
-                                  <span className="font-medium">Ubicacion: {request.source_location_name || 'N/A'}</span>
+                                  <span className="font-medium">De: {request.location_info?.from?.name || 'N/A'}</span>
+                                </div>
+                                <div className="flex items-center space-x-1 text-xs text-gray-500">
+                                  <MapPin className="h-3 w-3 text-gray-400 mr-1" />
+                                  <span className="font-medium">A: {request.location_info?.to?.name || 'N/A'}</span>
                                 </div>
                               </div>
                               
                               {/* Estado de disponibilidad compacto */}
                               <div className={`p-2 rounded text-center ${
-                                (request.can_fulfill ?? request.stock_info?.can_fulfill) 
+                                ((request.product_info?.stock_available ?? 0) > 0) 
                                   ? 'bg-green-50 text-green-700 border border-green-200' 
                                   : 'bg-red-50 text-red-700 border border-red-200'
                               }`}>
                                 <div className="text-xs font-medium">
-                                  {(request.can_fulfill ?? request.stock_info?.can_fulfill) ? '✅ Disponible' : '❌ Sin stock'}
+                                  {((request.product_info?.stock_available ?? 0) > 0) ? '✅ Disponible' : '❌ Sin stock'}
                                 </div>
                                 <div className="text-xs text-gray-600">
-                                  Stock: {request.available_stock ?? request.stock_info?.available_stock ?? 0}
+                                  Stock: {request.product_info?.stock_available ?? 0}
                                 </div>
-                                {request.product_price && (
+                                {request.product_info?.unit_price && (
                                   <div className="text-xs font-medium text-green-600 mt-1">
-                                    {formatPrice(request.product_price)}
+                                    {formatPrice(request.product_info.unit_price)}
                                   </div>
                                 )}
                               </div>
@@ -784,7 +802,7 @@ export const WarehouseDashboard: React.FC = () => {
                           <div className="flex space-x-2">
                             <Button 
                               onClick={() => handleAcceptRequest(request.id)}
-                              disabled={!(request.can_fulfill ?? request.stock_info?.can_fulfill) || actionLoading === request.id}
+                              disabled={!((request.product_info?.stock_available ?? 0) > 0) || actionLoading === request.id}
                               className="flex-1 bg-success hover:bg-success/90 disabled:opacity-50 text-sm"
                               size="sm"
                             >
@@ -795,16 +813,6 @@ export const WarehouseDashboard: React.FC = () => {
                               )}
                               ✅ Aceptar
                             </Button>
-                            <Button 
-                              onClick={() => handleRejectRequest(request.id)}
-                              disabled={actionLoading === request.id}
-                              variant="outline" 
-                              className="flex-1 text-error hover:bg-error/10 border-error text-sm"
-                              size="sm"
-                            >
-                              <X className="h-4 w-4 mr-2" />
-                              ❌ Rechazar
-                            </Button>
                           </div>
                         </div>
                       </div>
@@ -814,8 +822,8 @@ export const WarehouseDashboard: React.FC = () => {
                         {/* Header con etiquetas */}
                         <div className="flex items-center justify-between mb-6">
                           <div className="flex items-center space-x-3">
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(request.priority)}`}>
-                              {request.priority === 'high' ? '🔥 URGENTE' : '📦 Normal'}
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(request.priority_level)}`}>
+                              {request.priority_level === 'URGENT' ? '🔥 URGENTE' : '📦 Normal'}
                             </span>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
                               {request.purpose === 'cliente' ? '🏃‍♂️ Cliente Presente' : '📦 Restock'}
@@ -836,7 +844,7 @@ export const WarehouseDashboard: React.FC = () => {
                           <div className="flex-shrink-0">
                             <div className="w-48 h-64 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
                               <img
-                                src={request.product_image || `https://via.placeholder.com/300x400/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
+                                src={request.product_info?.image || `https://via.placeholder.com/300x400/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
                                 alt={`${request.brand} ${request.model}`}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
@@ -847,9 +855,9 @@ export const WarehouseDashboard: React.FC = () => {
                                 }}
                               />
                             </div>
-                            {request.product_price && (
+                            {request.product_info?.unit_price && (
                               <p className="text-center mt-3 font-medium text-green-600 text-lg">
-                                💰 {formatPrice(request.product_price)}
+                                💰 {formatPrice(request.product_info.unit_price)}
                               </p>
                             )}
                           </div>
@@ -914,20 +922,20 @@ export const WarehouseDashboard: React.FC = () => {
                               
                               {/* Estado de disponibilidad */}
                               <div className={`p-4 rounded-lg border-2 mb-6 ${
-                                (request.can_fulfill ?? request.stock_info?.can_fulfill) 
+                                ((request.product_info?.stock_available ?? 0) > 0) 
                                   ? 'bg-green-50 border-green-200' 
                                   : 'bg-red-50 border-red-200'
                               }`}>
                                 <div className="flex justify-between items-center">
                                   <span className={`text-lg font-medium ${
-                                    (request.can_fulfill ?? request.stock_info?.can_fulfill) 
+                                    ((request.product_info?.stock_available ?? 0) > 0) 
                                       ? 'text-green-700' 
                                       : 'text-red-700'
                                   }`}>
-                                    {(request.can_fulfill ?? request.stock_info?.can_fulfill) ? '✅ Disponible' : '❌ No disponible'}
+                                    {((request.product_info?.stock_available ?? 0) > 0) ? '✅ Disponible' : '❌ No disponible'}
                                   </span>
                                   <span className="text-sm text-gray-600">
-                                    Stock disponible: {request.available_stock ?? request.stock_info?.available_stock ?? 0} unidades
+                                    Stock disponible: {request.product_info?.stock_available ?? 0} unidades
                                   </span>
                                 </div>
                               </div>
@@ -943,7 +951,7 @@ export const WarehouseDashboard: React.FC = () => {
                               <div className="flex space-x-3">
                                 <Button 
                                   onClick={() => handleAcceptRequest(request.id)}
-                                  disabled={!(request.can_fulfill ?? request.stock_info?.can_fulfill) || actionLoading === request.id}
+                                  disabled={!((request.product_info?.stock_available ?? 0) > 0) || actionLoading === request.id}
                                   className="flex-1 bg-success hover:bg-success/90 disabled:opacity-50"
                                 >
                                   {actionLoading === request.id ? (
@@ -951,16 +959,7 @@ export const WarehouseDashboard: React.FC = () => {
                                   ) : (
                                     <Send className="h-4 w-4 mr-2" />
                                   )}
-                                  ✅ Aceptar y Preparar (WH002)
-                                </Button>
-                                <Button 
-                                  onClick={() => handleRejectRequest(request.id)}
-                                  disabled={actionLoading === request.id}
-                                  variant="outline" 
-                                  className="flex-1 text-error hover:bg-error/10 border-error"
-                                >
-                                  <X className="h-4 w-4 mr-2" />
-                                  ❌ Rechazar (WH002)
+                                  ✅ Aceptar y Preparar
                                 </Button>
                               </div>
                             </div>
@@ -996,19 +995,34 @@ export const WarehouseDashboard: React.FC = () => {
                     <div key={request.id} className="border border-border rounded-lg bg-card">
                       {/* MOBILE VIEW */}
                       <div className="md:hidden p-4">
+                        {/* Status tag at the top */}
+                        <div className="flex justify-between items-center mb-3">
+                          <h4 className="font-semibold text-base text-foreground">
+                            {request.brand} {request.model}
+                          </h4>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium 
+                            ${request.courier_id ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}
+                          `}>
+                            {request.courier_id ? '✅ Corredor asignado' : '🔄 Esperando corredor'}
+                          </span>
+                        </div>
+
                         <div className="flex items-start space-x-3 mb-3">
                           <div className="flex-shrink-0">
                             <img
-                              src={request.product_info?.image_url}
+                              src={request.product_info?.image_url || `https://via.placeholder.com/200x300/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
                               alt={`${request.brand} ${request.model}`}
                               className="w-32 h-48 object-cover rounded-lg border border-border bg-muted"
+                              onError={(e) => {
+                                if (!e.currentTarget.dataset.fallback) {
+                                  e.currentTarget.dataset.fallback = 'true';
+                                  e.currentTarget.src = `https://via.placeholder.com/200x300/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
+                                }
+                              }}
                             />
                           </div>
                           
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-base mb-1 text-foreground">
-                              {request.brand} {request.model}
-                            </h4>
                             <p className="text-sm text-muted-foreground mb-1">
                               Talla {request.size} • {request.quantity} unidad{request.quantity > 1 ? 'es' : ''}
                             </p>
@@ -1024,26 +1038,18 @@ export const WarehouseDashboard: React.FC = () => {
                               <span className="font-medium">Destino: {request.location_info?.destination || 'N/A'}</span>
                             </div>
                           </div>
-                          
-                          <div className="text-right">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium 
-                              ${request.courier_assigned ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}
-                            `}>
-                              {request.courier_assigned ? '✅ Corredor asignado' : '🔄 Esperando corredor'}
-                            </span>
-                          </div>
                         </div>
                         
-                        {request.courier_assigned && request.courier_name !== 'No asignado' && (
+                        {request.courier_id && (
                           <div className="mb-3 p-2 bg-primary/10 rounded-lg">
                             <p className="text-xs text-primary">
                               <Truck className="h-3 w-3 inline mr-1" />
-                              Corredor: <strong>{request.courier_name}</strong>
+                              Corredor ID: <strong>{request.courier_id}</strong>
                             </p>
                           </div>
                         )}
                         
-                        {request.courier_assigned && (
+                        {request.courier_id && (
                           <Button
                             onClick={() => handleDeliverToCourier(request.id)}
                             disabled={actionLoading === request.id}
@@ -1059,7 +1065,7 @@ export const WarehouseDashboard: React.FC = () => {
                           </Button>
                         )}
 
-                        {!request.courier_assigned && request.purpose === 'restock' && (
+                        {!request.courier_id && request.purpose === 'restock' && (
                           <Button
                             onClick={() => handleDeliverToVendor(request.id)}
                             disabled={actionLoading === request.id}
@@ -1079,16 +1085,28 @@ export const WarehouseDashboard: React.FC = () => {
 
                       {/* DESKTOP VIEW */}
                       <div className="hidden md:block p-6">
+                        {/* Status tag at the top for desktop */}
+                        <div className="flex justify-between items-center mb-4">
+                          <h4 className="font-semibold text-lg text-foreground">
+                            {request.brand} {request.model} - Talla {request.size}
+                          </h4>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium 
+                            ${request.courier_id ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}
+                          `}>
+                            {request.courier_id ? '✅ Corredor asignado' : '🔄 Esperando corredor'}
+                          </span>
+                        </div>
+
                         <div className="flex items-start mb-4">
                           <div className="flex-shrink-0 mr-4">
                             <img
-                              src={request.product_info?.image_url || `https://via.placeholder.com/150x100/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
+                              src={request.product_info?.image_url || `https://via.placeholder.com/200x300/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
                               alt={`${request.brand} ${request.model}`}
-                              className="w-32 h-24 object-cover rounded-lg border border-border bg-muted shadow-sm"
+                              className="w-32 h-48 object-cover rounded-lg border border-border bg-muted shadow-sm"
                               onError={(e) => {
                                 if (!e.currentTarget.dataset.fallback) {
                                   e.currentTarget.dataset.fallback = 'true';
-                                  e.currentTarget.src = `https://via.placeholder.com/150x100/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
+                                  e.currentTarget.src = `https://via.placeholder.com/200x300/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
                                 }
                               }}
                             />
@@ -1100,9 +1118,6 @@ export const WarehouseDashboard: React.FC = () => {
                           </div>
 
                           <div className="flex-1">
-                            <h4 className="font-semibold text-lg mb-2 text-foreground">
-                              {request.brand} {request.model} - Talla {request.size}
-                            </h4>
                             
                             <p className="text-sm text-muted-foreground mb-2">
                               <User className="h-4 w-4 inline mr-1" />
@@ -1120,11 +1135,11 @@ export const WarehouseDashboard: React.FC = () => {
                               </p>
                             </div>
                             
-                            {request.courier_assigned && request.courier_name !== 'No asignado' && (
+                            {request.courier_id && (
                               <div className="mb-2">
                                 <p className="text-sm text-primary">
                                   <Truck className="h-4 w-4 inline mr-1" />
-                                  Corredor asignado: <strong>{request.courier_name}</strong>
+                                  Corredor ID: <strong>{request.courier_id}</strong>
                                 </p>
                               </div>
                             )}
@@ -1132,7 +1147,7 @@ export const WarehouseDashboard: React.FC = () => {
                             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                               <span>
                                 <Clock className="h-4 w-4 inline mr-1" />
-                                Estado: {request.next_action || request.status}
+                                Estado: {request.status}
                               </span>
                               <span>
                                 📍 Propósito: {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' : '📦 Restock'}
@@ -1141,14 +1156,6 @@ export const WarehouseDashboard: React.FC = () => {
                                 📦 Cantidad: {request.quantity}
                               </span>
                             </div>
-                          </div>
-                          
-                          <div className="text-right ml-6">
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium 
-                              ${request.courier_assigned ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}
-                            `}>
-                              {request.courier_assigned ? '✅ Listo para recoger' : '🔄 Esperando corredor'}
-                            </span>
                           </div>
                         </div>
 
@@ -1160,7 +1167,7 @@ export const WarehouseDashboard: React.FC = () => {
                           </div>
                         )}
 
-                        {request.courier_assigned && (
+                        {request.courier_id && (
                           <div className="mt-4">
                             <Button
                               onClick={() => handleDeliverToCourier(request.id)}
@@ -1177,7 +1184,7 @@ export const WarehouseDashboard: React.FC = () => {
                           </div>
                         )}
 
-                        {!request.courier_assigned && request.purpose === 'restock' && (
+                        {!request.courier_id && request.purpose === 'restock' && (
                           <div className='mt-4'>
                             <Button
                               onClick={() => handleDeliverToVendor(request.id)}

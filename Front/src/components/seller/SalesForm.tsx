@@ -223,21 +223,69 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
 
       const response = await vendorAPI.createSale(saleData);
       
-      console.log('Respuesta de la API:', response);
+      console.log('Respuesta completa de la API:', response);
+      console.log('Estructura de la respuesta:', JSON.stringify(response, null, 2));
       
       // Show success message with all the details from the response
       let successMessage = `¡Venta registrada exitosamente!\n\n`;
-      successMessage += `ID de Venta: ${response.sale_id}\n`;
-      successMessage += `Total: ${formatCurrency(response.sale_details.total_amount)}\n`;
-      successMessage += `Estado: ${response.status_info.status}\n`;
-      successMessage += `Fecha: ${new Date(response.sale_timestamp).toLocaleString('es-CO')}\n`;
       
-      if (response.receipt_info.has_receipt) {
-        successMessage += `\nComprobante guardado: ${response.receipt_info.stored_in}`;
+      // Safe access to response properties with fallbacks
+      if (response.sale_id) {
+        successMessage += `ID de Venta: ${response.sale_id}\n`;
       }
       
-      if (response.seller_info) {
+      // Try different possible structures for total amount
+      let responseTotalAmount = null;
+      if (response.sale_details?.total_amount) {
+        responseTotalAmount = response.sale_details.total_amount;
+      } else if (response.total_amount) {
+        responseTotalAmount = response.total_amount;
+      } else if (response.amount) {
+        responseTotalAmount = response.amount;
+      }
+      
+      if (responseTotalAmount !== null) {
+        successMessage += `Total: ${formatCurrency(responseTotalAmount)}\n`;
+      }
+      
+      // Try different possible structures for status
+      let status = null;
+      if (response.status_info?.status) {
+        status = response.status_info.status;
+      } else if (response.status) {
+        status = response.status;
+      }
+      
+      if (status) {
+        successMessage += `Estado: ${status}\n`;
+      }
+      
+      // Try different possible structures for timestamp
+      let timestamp = null;
+      if (response.sale_timestamp) {
+        timestamp = response.sale_timestamp;
+      } else if (response.timestamp) {
+        timestamp = response.timestamp;
+      } else if (response.created_at) {
+        timestamp = response.created_at;
+      }
+      
+      if (timestamp) {
+        successMessage += `Fecha: ${new Date(timestamp).toLocaleString('es-CO')}\n`;
+      }
+      
+      // Try different possible structures for receipt info
+      if (response.receipt_info?.has_receipt && response.receipt_info?.stored_in) {
+        successMessage += `\nComprobante guardado: ${response.receipt_info.stored_in}`;
+      } else if (response.receipt_info) {
+        successMessage += `\nComprobante: ${response.receipt_info}`;
+      }
+      
+      // Try different possible structures for seller info
+      if (response.seller_info?.seller_name) {
         successMessage += `\nVendedor: ${response.seller_info.seller_name}`;
+      } else if (response.seller_info) {
+        successMessage += `\nVendedor: ${response.seller_info}`;
       }
       
       alert(successMessage);
