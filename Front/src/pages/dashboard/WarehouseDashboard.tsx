@@ -365,22 +365,25 @@ export const WarehouseDashboard: React.FC = () => {
        console.log('📦 Datos de la solicitud:', request);
        console.log('🚚 Courier ID:', request.courier_info.id);
        
-       // Llamada usando transfersAPI con la estructura correcta
-       const response = await warehouseAPI.deliverToCourier({
-         transfer_request_id: requestId,
-         courier_id: request.courier_info.id,
-         delivery_notes: 'Producto entregado al corredor en perfecto estado. Caja original sellada.'
-       });
+      // Llamada usando transfersAPI con la estructura correcta
+      const response = await warehouseAPI.deliverToCourier({
+        transfer_request_id: requestId,
+        courier_id: request.courier_info.id,
+        delivery_notes: 'Producto entregado al corredor en perfecto estado. Caja original sellada.'
+      });
        
-       console.log('✅ WH004 Response:', response);
-       
-       addNotification(
-         'success',
-         '🚚 Entregado al Corredor',
-         `Transferencia #${requestId} entregada exitosamente al corredor ${request.courier_info.name || request.courier_info.id}`
-       );
-       
-       await loadInitialData();
+      console.log('✅ WH004 Response:', response);
+      console.log('📊 Status devuelto por el endpoint:', response.status);
+      
+      addNotification(
+        'success',
+        '🚚 Entregado al Corredor',
+        `Transferencia #${requestId} entregada exitosamente al corredor ${request.courier_info.name || request.courier_info.id}`
+      );
+      
+      console.log('🔄 Recargando datos después de entrega...');
+      await loadInitialData();
+      console.log('✅ Datos recargados');
        
      } catch (err) {
        console.error('❌ Error en WH004:', err);
@@ -1115,15 +1118,24 @@ export const WarehouseDashboard: React.FC = () => {
               </h2>
             </CardHeader>
             <CardContent>
-              {acceptedRequests.length === 0 ? (
-                <div className="text-center py-8 md:py-12">
-                  <CheckCircle className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
-                  <h3 className="text-base md:text-lg font-medium">No hay transferencias en preparación</h3>
-                  <p className="text-muted-foreground text-sm">Las solicitudes aceptadas aparecerán aquí para ser entregadas a corredores.</p>
-                </div>
-              ) : (
-                <div className="space-y-4 md:space-y-6">
-                  {acceptedRequests.map((request) => (
+              {(() => {
+                // Filtrar transferencias que están en preparación:
+                // 1. Status "courier_assigned" (para entregar a corredor)
+                // 2. Status "accepted" con pickup_type "vendedor" (para entregar a vendedor)
+                const preparationRequests = acceptedRequests.filter(request => 
+                  request.status === 'courier_assigned' ||
+                  (request.status === 'accepted' && request.pickup_type === 'vendedor')
+                );
+                
+                return preparationRequests.length === 0 ? (
+                  <div className="text-center py-8 md:py-12">
+                    <CheckCircle className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
+                    <h3 className="text-base md:text-lg font-medium">No hay transferencias en preparación</h3>
+                    <p className="text-muted-foreground text-sm">Las solicitudes aceptadas aparecerán aquí para ser entregadas a corredores.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 md:space-y-6">
+                    {preparationRequests.map((request) => (
                     <div key={request.id} className="border border-border rounded-lg bg-card">
                       {/* MOBILE VIEW */}
                       <div className="md:hidden p-4">
@@ -1136,8 +1148,12 @@ export const WarehouseDashboard: React.FC = () => {
                              ${request.status === 'courier_assigned' ? 'bg-success/10 text-success' : 
                                request.status === 'in_transit' ? 'bg-blue-100 text-blue-800' : 'bg-warning/10 text-warning'}
                            `}>
-                             {request.status === 'courier_assigned' ? '✅ Corredor asignado' : 
-                              request.status === 'in_transit' ? '🚚 En tránsito' : '🔄 Esperando corredor'}
+                             {request.pickup_type === 'corredor' ? (
+                               request.status === 'courier_assigned' ? '✅ Corredor asignado' : 
+                               request.status === 'in_transit' ? '🚚 En tránsito' : '🔄 Esperando corredor'
+                             ) : (
+                               request.status === 'accepted' ? '⏳ Esperando vendedor' : '✅ Listo para entrega'
+                             )}
                            </span>
                         </div>
 
@@ -1174,7 +1190,8 @@ export const WarehouseDashboard: React.FC = () => {
                           </div>
                         </div>
                         
-                         {request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
+                         {/* Información específica según pickup_type */}
+                         {request.pickup_type === 'corredor' && request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
                            <div className="mb-3 p-2 bg-primary/10 rounded-lg">
                              <p className="text-xs text-primary">
                                <Truck className="h-3 w-3 inline mr-1" />
@@ -1182,8 +1199,21 @@ export const WarehouseDashboard: React.FC = () => {
                              </p>
                            </div>
                          )}
+
+                         {request.pickup_type === 'vendedor' && request.status === 'accepted' && (
+                           <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                             <p className="text-xs text-yellow-800">
+                               <User className="h-3 w-3 inline mr-1" />
+                               <strong>Esperando al vendedor:</strong> {request.requester_info?.name || request.requester_name || 'Usuario'}
+                             </p>
+                             <p className="text-xs text-yellow-700 mt-1">
+                               El vendedor debe venir a recoger el producto personalmente
+                             </p>
+                           </div>
+                         )}
                          
-                         {request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
+                         {/* Botones de entrega según pickup_type */}
+                         {request.pickup_type === 'corredor' && request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
                           <Button
                             onClick={() => handleDeliverToCourier(request.id)}
                             disabled={actionLoading === request.id}
@@ -1199,19 +1229,19 @@ export const WarehouseDashboard: React.FC = () => {
                           </Button>
                          )}
 
-                         {!request.courier_info?.assigned && request.purpose === 'restock' && (
+                         {request.pickup_type === 'vendedor' && request.status === 'accepted' && (
                            <Button
                              onClick={() => handleDeliverToVendor(request.id)}
                              disabled={actionLoading === request.id}
-                             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm"
+                             className="w-full bg-green-600 hover:bg-green-700 text-white text-sm"
                              size="sm"
                            >
                              {actionLoading === request.id ? (
                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                              ) : (
-                               <Send className="h-4 w-4 mr-2" />
+                               <User className="h-4 w-4 mr-2" />
                              )}
-                             🚚 Entregar a vendedor 
+                             👤 Entregar a Vendedor 
                            </Button>
                          )}
 
@@ -1228,8 +1258,12 @@ export const WarehouseDashboard: React.FC = () => {
                              ${request.status === 'courier_assigned' ? 'bg-success/10 text-success' : 
                                request.status === 'in_transit' ? 'bg-blue-100 text-blue-800' : 'bg-warning/10 text-warning'}
                            `}>
-                             {request.status === 'courier_assigned' ? '✅ Corredor asignado' : 
-                              request.status === 'in_transit' ? '🚚 En tránsito' : '🔄 Esperando corredor'}
+                             {request.pickup_type === 'corredor' ? (
+                               request.status === 'courier_assigned' ? '✅ Corredor asignado' : 
+                               request.status === 'in_transit' ? '🚚 En tránsito' : '🔄 Esperando corredor'
+                             ) : (
+                               request.status === 'accepted' ? '⏳ Esperando vendedor' : '✅ Listo para entrega'
+                             )}
                            </span>
                         </div>
 
@@ -1318,7 +1352,30 @@ export const WarehouseDashboard: React.FC = () => {
                           </div>
                         )}
 
-                         {request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
+                         {/* Información específica según pickup_type - Desktop */}
+                         {request.pickup_type === 'corredor' && request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
+                           <div className="mb-4 p-3 bg-primary/10 rounded-lg">
+                             <p className="text-sm text-primary">
+                               <Truck className="h-4 w-4 inline mr-1" />
+                               <strong>Corredor asignado:</strong> {request.courier_info.name || `ID: ${request.courier_info.id}`}
+                             </p>
+                           </div>
+                         )}
+
+                         {request.pickup_type === 'vendedor' && request.status === 'accepted' && (
+                           <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                             <p className="text-sm text-yellow-800">
+                               <User className="h-4 w-4 inline mr-1" />
+                               <strong>Esperando al vendedor:</strong> {request.requester_info?.name || request.requester_name || 'Usuario'}
+                             </p>
+                             <p className="text-sm text-yellow-700 mt-1">
+                               El vendedor debe venir a recoger el producto personalmente
+                             </p>
+                           </div>
+                         )}
+
+                         {/* Botones de entrega según pickup_type - Desktop */}
+                         {request.pickup_type === 'corredor' && request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
                            <div className="mt-4">
                              <Button
                                onClick={() => handleDeliverToCourier(request.id)}
@@ -1335,20 +1392,19 @@ export const WarehouseDashboard: React.FC = () => {
                            </div>
                          )}
 
-                         {!request.courier_info?.assigned && request.purpose === 'restock' && (
+                         {request.pickup_type === 'vendedor' && request.status === 'accepted' && (
                            <div className='mt-4'>
                              <Button
                                onClick={() => handleDeliverToVendor(request.id)}
                                disabled={actionLoading === request.id}
-                               className="w-full bg-primary hover:bg-primary/90 text-white text-sm"
-                               size="sm"
+                               className="w-full bg-green-600 hover:bg-green-700 text-white"
                              >
                                {actionLoading === request.id ? (
                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                                ) : (
-                                 <Send className="h-4 w-4 mr-2" />
+                                 <User className="h-4 w-4 mr-2" />
                                )}
-                               🚚 Entregar a vendedor 
+                               👤 Entregar a Vendedor (WH005)
                              </Button>
                            </div>
                          )}
@@ -1361,9 +1417,10 @@ export const WarehouseDashboard: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         )}

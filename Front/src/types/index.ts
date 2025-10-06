@@ -177,7 +177,7 @@ export interface MyTransportsResponse {
 // Tipos para el endpoint pending-transfers
 export interface PendingTransferItem {
   id: number;
-  status: 'pending' | 'in_transit';
+  status: 'pending' | 'accepted' | 'courier_assigned' | 'in_transit' | 'delivered' | 'completed';
   sneaker_reference_code: string;
   brand: string;
   model: string;
@@ -187,6 +187,7 @@ export interface PendingTransferItem {
   priority: 'high' | 'normal';
   requested_at: string;
   time_elapsed: string;
+  pickup_type: 'corredor' | 'vendedor';
   next_action: string;
   product_image: string;
   courier_name: string | null;

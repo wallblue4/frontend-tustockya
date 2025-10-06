@@ -314,66 +314,37 @@ export const RunnerDashboard: React.FC = () => {
   });
 
   // Separar transportes activos de los completados
-  // Todos los transportes están activos ya que 'delivered' espera confirmación del vendedor
-  // No hay status 'completed' en el sistema actual
-  const activeTransports = assignedTransports;
+  // Filtrar transportes que no estén en status "delivered"
+  const activeTransports = assignedTransports.filter(transport => transport.status !== 'delivered');
   const completedTransports: AssignedTransport[] = []; // No hay transportes completados en el sistema actual
 
   // Funciones para obtener acciones según estado
   const getActionButton = (transport: AssignedTransport) => {
-    const { action } = getActionRequired(transport);
-    
-    switch (action) {
-      case 'confirm_pickup':
-        return (
-          <Button
-            onClick={() => handleConfirmPickup(transport.id)}
-            disabled={actionLoading === transport.id}
-            className="w-full bg-primary hover:bg-primary-dark text-primary-foreground text-sm md:text-base"
-            size="sm"
-          >
-            {actionLoading === transport.id ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
-            ) : (
-              <Package className="h-4 w-4 mr-2" />
-            )}
-            Confirmar Recolección
-          </Button>
-        );
-      case 'confirm_delivery':
-        return (
-          <Button
-            onClick={() => handleConfirmDelivery(transport.id)}
-            disabled={actionLoading === transport.id}
-            className="w-full bg-success hover:bg-success/90 text-success-foreground text-sm md:text-base"
-            size="sm"
-          >
-            {actionLoading === transport.id ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-success-foreground mr-2"></div>
-            ) : (
-              <CheckCircle className="h-4 w-4 mr-2" />
-            )}
-            Confirmar Entrega
-          </Button>
-        );
-      case 'delivered':
-        return (
-          <div className="w-full text-center py-2 text-sm">
-            <div className="flex items-center justify-center space-x-2 mb-1">
-              <CheckCircle className="h-4 w-4 text-success" />
-              <Clock className="h-4 w-4 text-warning" />
-            </div>
-            <div className="text-success font-medium">Entregado</div>
-            <div className="text-xs text-muted-foreground">Esperando confirmación del vendedor</div>
-          </div>
-        );
-      default:
-        return (
-          <div className="w-full text-center text-muted-foreground py-2 text-sm">
-            Esperando siguiente acción...
-          </div>
-        );
+    // Mostrar botón cuando el status sea "in_transit"
+    if (transport.status === 'in_transit') {
+      return (
+        <Button
+          onClick={() => handleConfirmDelivery(transport.id)}
+          disabled={actionLoading === transport.id}
+          className="w-full bg-success hover:bg-success/90 text-success-foreground text-sm md:text-base"
+          size="sm"
+        >
+          {actionLoading === transport.id ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-success-foreground mr-2"></div>
+          ) : (
+            <CheckCircle className="h-4 w-4 mr-2" />
+          )}
+          Confirmar Entrega
+        </Button>
+      );
     }
+    
+    // Para todos los otros status, no mostrar botón
+    return (
+      <div className="w-full text-center text-muted-foreground py-2 text-sm">
+        Esperando siguiente acción...
+      </div>
+    );
   };
 
   const formatDistance = (pickup: string, delivery: string) => {

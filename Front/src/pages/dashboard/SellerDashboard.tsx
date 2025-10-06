@@ -570,10 +570,10 @@ export const SellerDashboard: React.FC = () => {
                   {transfersSummary && (
                     <button
                       onClick={handleTransfersClick}
-                      className="bg-purple-50 p-3 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer group"
+                      className="bg-purple-50 p-3 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer group text-center"
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <div className="text-center">
                           <p className="text-2xl font-bold text-purple-600">
                             {transfersSummary.total_pending || 0}
                           </p>

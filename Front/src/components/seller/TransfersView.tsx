@@ -15,8 +15,7 @@ import {
   ChevronDown,
   ChevronUp,
   XCircle,
-  History,
-  RotateCcw
+  History
 } from 'lucide-react';
 
 interface TransfersViewProps {
@@ -376,6 +375,88 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     return transfer.next_action || 'En proceso...';
   };
 
+  // Función para calcular porcentaje de avance según status y pickup_type
+  const getProgressPercentage = (transfer: PendingTransferItem): number => {
+    if (transfer.pickup_type === 'corredor') {
+      // Flujo completo para corredor: pending -> accepted -> courier_assigned -> in_transit -> delivered -> completed
+      switch (transfer.status) {
+        case 'pending':
+          return 16; // 1/6 = 16.67%
+        case 'accepted':
+          return 33; // 2/6 = 33.33%
+        case 'courier_assigned':
+          return 50; // 3/6 = 50%
+        case 'in_transit':
+          return 67; // 4/6 = 66.67%
+        case 'delivered':
+          return 83; // 5/6 = 83.33%
+        case 'completed':
+          return 100; // 6/6 = 100%
+        default:
+          return 0;
+      }
+    } else if (transfer.pickup_type === 'vendedor') {
+      // Flujo simplificado para vendedor: pending -> accepted -> delivered -> completed
+      switch (transfer.status) {
+        case 'pending':
+          return 25; // 1/4 = 25%
+        case 'accepted':
+          return 50; // 2/4 = 50%
+        case 'delivered':
+          return 75; // 3/4 = 75%
+        case 'completed':
+          return 100; // 4/4 = 100%
+        default:
+          return 0;
+      }
+    }
+    return 0;
+  };
+
+  // Función para obtener el mensaje de estado según pickup_type
+  const getStatusMessage = (transfer: PendingTransferItem): string => {
+    if (transfer.pickup_type === 'corredor') {
+      switch (transfer.status) {
+        case 'pending':
+          return 'Esperando aprobación del bodeguero';
+        case 'accepted':
+          return 'Esperando asignación de corredor';
+        case 'courier_assigned':
+          return 'Corredor asignado, esperando recolección';
+        case 'in_transit':
+          return 'Producto en tránsito hacia tu local';
+        case 'delivered':
+          return 'Producto entregado, esperando tu confirmación';
+        case 'completed':
+          return 'Transferencia completada';
+        default:
+          return 'Estado desconocido';
+      }
+    } else if (transfer.pickup_type === 'vendedor') {
+      switch (transfer.status) {
+        case 'pending':
+          return 'Esperando aprobación del bodeguero';
+        case 'accepted':
+          return 'Debes ir a recoger el producto a la bodega';
+        case 'delivered':
+          return 'Producto entregado, confirma la recepción';
+        case 'completed':
+          return 'Transferencia completada';
+        default:
+          return 'Estado desconocido';
+      }
+    }
+    return 'Estado desconocido';
+  };
+
+  // Función para obtener el color del progreso
+  const getProgressColor = (percentage: number): string => {
+    if (percentage < 30) return 'bg-red-500';
+    if (percentage < 60) return 'bg-yellow-500';
+    if (percentage < 90) return 'bg-blue-500';
+    return 'bg-green-500';
+  };
+
   const getStatusColor = (transfer: PendingTransferItem) => {
     switch (transfer.priority) {
       case 'high':
@@ -391,22 +472,23 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     switch (transfer.status) {
       case 'pending':
         return <Clock className="h-4 w-4" />;
+      case 'accepted':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'courier_assigned':
+        return <Truck className="h-4 w-4" />;
       case 'in_transit':
         return <Truck className="h-4 w-4" />;
+      case 'delivered':
+        return <Package className="h-4 w-4" />;
+      case 'completed':
+        return <CheckCircle className="h-4 w-4" />;
       default:
         return <Package className="h-4 w-4" />;
     }
   };
 
   const getStatusText = (transfer: PendingTransferItem): string => {
-    switch (transfer.status) {
-      case 'pending':
-        return 'Pendiente';
-      case 'in_transit':
-        return 'En Tránsito';
-      default:
-        return 'Estado desconocido';
-    }
+    return getStatusMessage(transfer);
   };
 
   if (loading) {
@@ -609,10 +691,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               <div className="space-y-3 md:space-y-4">
                 {pendingTransfers
                   .sort((a, b) => {
-                    // Ordenar por prioridad (high primero) y luego por tiempo transcurrido
-                    if (a.priority === 'high' && b.priority !== 'high') return -1;
-                    if (b.priority === 'high' && a.priority !== 'high') return 1;
-                    return 0;
+                    // Ordenar por porcentaje de avance de mayor a menor
+                    const progressA = getProgressPercentage(a);
+                    const progressB = getProgressPercentage(b);
+                    return progressB - progressA;
                   })
                   .map((transfer) => (
                   <div key={transfer.id} className="border rounded-lg p-3 md:p-4">
@@ -632,16 +714,25 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                             {getStatusIcon(transfer)}
                             <span>{getStatusText(transfer)}</span>
                           </span>
-                          {transfer.priority === 'high' && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              🔥 URGENTE
-                            </span>
-                          )}
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            transfer.purpose === 'cliente' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
+                            transfer.pickup_type === 'corredor' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
                           }`}>
-                            {transfer.purpose === 'cliente' ? 'Cliente' : 'Devolución'}
+                            {transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}
                           </span>
+                        </div>
+
+                        {/* Barra de progreso */}
+                        <div className="mb-3">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-xs font-medium text-muted-foreground">Progreso</span>
+                            <span className="text-xs font-bold text-primary">{getProgressPercentage(transfer)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(getProgressPercentage(transfer))}`}
+                              style={{ width: `${getProgressPercentage(transfer)}%` }}
+                            ></div>
+                          </div>
                         </div>
                         
                         <h4 className="font-semibold text-sm md:text-lg truncate">
@@ -656,44 +747,98 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                       </div>
                       
                       <div className="text-right flex-shrink-0">
-                        <p className="text-xs md:text-sm text-muted-foreground">Tiempo transcurrido</p>
-                        <p className="text-sm font-medium text-muted-foreground mb-2">{transfer.time_elapsed}</p>
                         
                         {/* Botones de acción */}
                         <div className="flex flex-col space-y-2 mt-3">
-                          {transfer.status === 'in_transit' && (
+                          {/* Botones para pickup_type 'corredor' */}
+                          {transfer.pickup_type === 'corredor' && (
                             <>
-                              <Button
-                                onClick={() => handleConfirmAndSell(transfer)}
-                                className="bg-green-600 hover:bg-green-700 text-sm w-full"
-                                size="sm"
-                              >
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Confirmar y Vender
-                              </Button>
+                              {transfer.status === 'delivered' && (
+                                <>
+                                  <Button
+                                    onClick={() => handleConfirmAndSell(transfer)}
+                                    className="bg-green-600 hover:bg-green-700 text-sm w-full"
+                                    size="sm"
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Confirmar Recepción y Vender
+                                  </Button>
+                                  
+                                  <Button
+                                    onClick={() => handleConfirmReception(transfer)}
+                                    className="bg-blue-600 hover:bg-blue-700 text-sm w-full"
+                                    size="sm"
+                                    variant="outline"
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Solo Confirmar Recepción
+                                  </Button>
+                                </>
+                              )}
                               
-                              <Button
-                                onClick={() => handleRequestReturn(transfer)}
-                                className="bg-orange-600 hover:bg-orange-700 text-sm w-full"
-                                size="sm"
-                                variant="outline"
-                              >
-                                <RotateCcw className="h-4 w-4 mr-2" />
-                                Devolver
-                              </Button>
+                              {transfer.status === 'pending' && (
+                                <Button
+                                  onClick={() => handleCancelTransfer(transfer.id)}
+                                  className="bg-red-600 hover:bg-red-700 text-sm w-full"
+                                  size="sm"
+                                  variant="outline"
+                                >
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  Cancelar
+                                </Button>
+                              )}
                             </>
                           )}
-                          
-                          {transfer.status === 'pending' && (
-                            <Button
-                              onClick={() => handleCancelTransfer(transfer.id)}
-                              className="bg-red-600 hover:bg-red-700 text-sm w-full"
-                              size="sm"
-                              variant="outline"
-                            >
-                              <XCircle className="h-4 w-4 mr-2" />
-                              Cancelar
-                            </Button>
+
+                          {/* Botones para pickup_type 'vendedor' */}
+                          {transfer.pickup_type === 'vendedor' && (
+                            <>
+                              {transfer.status === 'accepted' && (
+                                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                  <div className="flex items-center space-x-2">
+                                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                    <span className="text-sm font-medium text-yellow-800">
+                                      Debes ir a recoger el producto a la bodega
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {transfer.status === 'delivered' && (
+                                <>
+                                  <Button
+                                    onClick={() => handleConfirmAndSell(transfer)}
+                                    className="bg-green-600 hover:bg-green-700 text-sm w-full"
+                                    size="sm"
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Confirmar Recepción y Vender
+                                  </Button>
+                                  
+                                  <Button
+                                    onClick={() => handleConfirmReception(transfer)}
+                                    className="bg-blue-600 hover:bg-blue-700 text-sm w-full"
+                                    size="sm"
+                                    variant="outline"
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Solo Confirmar Recepción
+                                  </Button>
+                                </>
+                              )}
+                              
+                              {transfer.status === 'pending' && (
+                                <Button
+                                  onClick={() => handleCancelTransfer(transfer.id)}
+                                  className="bg-red-600 hover:bg-red-700 text-sm w-full"
+                                  size="sm"
+                                  variant="outline"
+                                >
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  Cancelar
+                                </Button>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -702,15 +847,25 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     {/* Información de participantes */}
                     <div className="mt-3 p-2 md:p-3 bg-primary/10 rounded-md">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs md:text-sm">
-                        <div>
-                          <strong>Corredor:</strong> {getCourierName(transfer)}
-                        </div>
-                        <div>
-                          <strong>Bodeguero:</strong> {transfer.warehouse_keeper_name || 'Sin asignar'}
-                        </div>
-                      </div>
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        <strong>Solicitado:</strong> {new Date(transfer.requested_at).toLocaleString()}
+                        {transfer.pickup_type === 'corredor' ? (
+                          <>
+                            <div>
+                              <strong>Corredor:</strong> {getCourierName(transfer)}
+                            </div>
+                            <div>
+                              <strong>Bodeguero:</strong> {transfer.warehouse_keeper_name || 'Sin asignar'}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div>
+                              <strong>Bodeguero:</strong> {transfer.warehouse_keeper_name || 'Sin asignar'}
+                            </div>
+                            <div>
+                              <strong>Tipo:</strong> Recogida por vendedor
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

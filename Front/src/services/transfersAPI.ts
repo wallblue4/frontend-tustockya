@@ -461,7 +461,7 @@ export const warehouseAPI = {
     console.log('🔄 Entregando a corredor...', requestData);
     
     const backendCall = async () => {
-      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/deliver-to-courier/${requestId}`, {
+      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/deliver-to-courier`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(requestData)
@@ -480,7 +480,9 @@ export const warehouseAPI = {
       return {
         success: true,
         message: 'Producto entregado a corredor - Inventario actualizado',
-        request_id: requestData.transfer_request_id,
+        transfer_request_id: requestData.transfer_request_id,
+        courier_id: requestData.courier_id,
+        status: 'in_transit',
         inventory_updated: true,
         delivered_at: new Date().toISOString()
       };
