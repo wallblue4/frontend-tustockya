@@ -461,7 +461,7 @@ export const warehouseAPI = {
     console.log('🔄 Entregando a corredor...', requestData);
     
     const backendCall = async () => {
-      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/deliver-to-courier`, {
+      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/deliver-to-courier/${requestId}`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(requestData)

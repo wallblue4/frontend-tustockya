@@ -3,7 +3,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Package, 
   Send, 
-  X, 
   Clock, 
   User, 
   CheckCircle,
@@ -14,7 +13,8 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
-  MapPin
+  MapPin,
+  Warehouse
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
@@ -26,6 +26,8 @@ import { TransferNotifications } from '../../components/notifications/TransferNo
 import { useTransferNotifications } from '../../hooks/useTransferNotifications';
 import { useTransferPolling } from '../../hooks/useTransferPolling';
 import { warehouseAPI } from '../../services/transfersAPI';
+import { inventoryAPI } from '../../services/inventoryAPI';
+import { InventoryLocation } from '../../types';
 
 // *** USANDO TRANSFERS API EN LUGAR DE CONFIGURACIÓN LOCAL ***
 
@@ -84,22 +86,73 @@ interface PendingRequest {
 
 interface AcceptedRequest {
   id: number;
-  status: 'accepted' | 'in_transit';
+  status: 'accepted' | 'in_transit' | 'courier_assigned';
+  status_info?: {
+    title: string;
+    description: string;
+    action_required: string;
+    next_step: string;
+    progress: number;
+  };
   sneaker_reference_code: string;
   brand: string;
   model: string;
   size: string;
   quantity: number;
+  product_image?: string;
+  product_description?: string;
+  transfer_type?: string;
+  transfer_type_display?: string;
   purpose: 'cliente' | 'restock';
+  priority?: string;
+  pickup_type?: string;
+  pickup_info?: {
+    type: string;
+    type_display: string;
+    who: string;
+    description: string;
+    icon: string;
+    requires_courier: boolean;
+    courier_assigned: boolean;
+  };
   accepted_at: string;
-  courier_id: number | null;
+  courier_accepted_at?: string | null;
+  picked_up_at?: string | null;
+  time_since_accepted?: string;
+  notes?: string | null;
+  warehouse_notes?: string | null;
   // Campos opcionales que pueden no estar en la respuesta
   requester_name?: string;
   courier_name?: string;
   courier_assigned?: boolean;
+  courier_id?: number | null;
+  requester_info?: {
+    id: number;
+    name: string;
+    role: string;
+  };
+  courier_info?: {
+    id: number | null;
+    name: string | null;
+    assigned: boolean;
+  };
   location_info?: {
-    source: string;
-    destination: string;
+    from?: {
+      id: number;
+      name: string;
+    };
+    to?: {
+      id: number;
+      name: string;
+    };
+    source?: {
+      id: number;
+      name: string;
+    };
+    destination?: {
+      id: number;
+      name: string;
+    };
   };
   product_info?: {
     image_url: string;
@@ -110,7 +163,7 @@ interface AcceptedRequest {
 
 export const WarehouseDashboard: React.FC = () => {
   // Estados principales
-  const [activeTab, setActiveTab] = useState<'pending' | 'accepted' | 'stats'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'accepted' | 'inventory' | 'stats'>('pending');
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [acceptedRequests, setAcceptedRequests] = useState<AcceptedRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,7 +175,6 @@ export const WarehouseDashboard: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   // Estados de filtros
-  const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'normal'>('all');
   const [purposeFilter, setPurposeFilter] = useState<'all' | 'cliente' | 'restock'>('all');
 
@@ -134,6 +186,12 @@ export const WarehouseDashboard: React.FC = () => {
     completionRate: 0,
     totalStockValue: 0
   });
+
+  // Estados del inventario
+  const [inventory, setInventory] = useState<InventoryLocation[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<number | 'all'>('all');
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [inventorySearchTerm, setInventorySearchTerm] = useState('');
 
   // HOOKS
   const {
@@ -193,6 +251,13 @@ export const WarehouseDashboard: React.FC = () => {
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  // *** CARGAR INVENTARIO ***
+  useEffect(() => {
+    if (activeTab === 'inventory') {
+      loadInventory();
+    }
+  }, [activeTab]);
 
   const loadInitialData = async () => {
     try {
@@ -279,76 +344,55 @@ export const WarehouseDashboard: React.FC = () => {
     }
   };
 
-  // *** FUNCIÓN CORREGIDA: Rechazar solicitud usando WH002 ***
-  const handleRejectRequest = async (requestId: number) => {
-    console.log('🔄 WH002: Rechazando solicitud:', requestId);
-    setActionLoading(requestId);
-    
-    try {
-      // Llamada usando transfersAPI
-      const response = await warehouseAPI.acceptRequest({
-        transfer_request_id: requestId,
-        accepted: false,
-        estimated_preparation_time: 0,
-        notes: 'Producto no disponible en este momento.'
-      });
-      
-      console.log('✅ WH002 Reject Response:', response);
-      
-      addNotification(
-        'info',
-        '❌ Solicitud Rechazada',
-        `Transferencia #${requestId} ha sido rechazada`
-      );
-      
-      await loadInitialData();
-      
-    } catch (err) {
-      console.error('❌ Error rechazando solicitud:', err);
-      addNotification(
-        'error',
-        '❌ Error al Rechazar',
-        err instanceof Error ? err.message : 'Error desconocido'
-      );
-    } finally {
-      setActionLoading(null);
-    }
-  };
 
-  // *** FUNCIÓN CORREGIDA: Entregar a corredor usando WH004 ***
-  const handleDeliverToCourier = async (requestId: number) => {
-    console.log('🔄 WH004: Entregando a corredor:', requestId);
-    setActionLoading(requestId);
-    
-    try {
-      // Llamada usando transfersAPI
-      const response = await warehouseAPI.deliverToCourier({
-        transfer_request_id: requestId,
-        delivered: true,
-        delivery_notes: 'Producto entregado al corredor en perfecto estado. Caja original sellada.'
-      });
-      
-      console.log('✅ WH004 Response:', response);
-      
-      addNotification(
-        'success',
-        '🚚 Entregado al Corredor',
-        `Transferencia #${requestId} entregada exitosamente`
-      );
-      
-      await loadInitialData();
-      
-    } catch (err) {
-      console.error('❌ Error en WH004:', err);
-      addNotification(
-        'error',
-        '❌ Error en Entrega',
-        err instanceof Error ? err.message : 'Error desconocido'
-      );
-    } finally {
-      setActionLoading(null);
-    }
-  };
+   // *** FUNCIÓN CORREGIDA: Entregar a corredor usando WH004 ***
+   const handleDeliverToCourier = async (requestId: number) => {
+     console.log('🔄 WH004: Entregando a corredor:', requestId);
+     setActionLoading(requestId);
+     
+     try {
+       // Buscar la solicitud para obtener el courier_id
+       const request = acceptedRequests.find(r => r.id === requestId);
+       
+       if (!request) {
+         throw new Error('Solicitud no encontrada');
+       }
+
+       if (!request.courier_info?.id) {
+         throw new Error('No hay corredor asignado para esta solicitud');
+       }
+
+       console.log('📦 Datos de la solicitud:', request);
+       console.log('🚚 Courier ID:', request.courier_info.id);
+       
+       // Llamada usando transfersAPI con la estructura correcta
+       const response = await warehouseAPI.deliverToCourier({
+         transfer_request_id: requestId,
+         courier_id: request.courier_info.id,
+         delivery_notes: 'Producto entregado al corredor en perfecto estado. Caja original sellada.'
+       });
+       
+       console.log('✅ WH004 Response:', response);
+       
+       addNotification(
+         'success',
+         '🚚 Entregado al Corredor',
+         `Transferencia #${requestId} entregada exitosamente al corredor ${request.courier_info.name || request.courier_info.id}`
+       );
+       
+       await loadInitialData();
+       
+     } catch (err) {
+       console.error('❌ Error en WH004:', err);
+       addNotification(
+         'error',
+         '❌ Error en Entrega',
+         err instanceof Error ? err.message : 'Error desconocido'
+       );
+     } finally {
+       setActionLoading(null);
+     }
+   };
 
   const handleDeliverToVendor = async (requestId: number) => {
     console.log('🔄 WH005: Entregando a vendedor:', requestId);
@@ -385,18 +429,10 @@ export const WarehouseDashboard: React.FC = () => {
 
   // Funciones de filtrado
   const filteredPendingRequests = pendingRequests.filter(request => {
-    const matchesSearch = 
-      request.sneaker_reference_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (request.requester_first_name && request.requester_first_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (request.requester_last_name && request.requester_last_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (request.requester_name && request.requester_name.toLowerCase().includes(searchTerm.toLowerCase()));
-    
     const matchesPriority = priorityFilter === 'all' || request.priority === priorityFilter;
     const matchesPurpose = purposeFilter === 'all' || request.purpose === purposeFilter;
     
-    return matchesSearch && matchesPriority && matchesPurpose;
+    return matchesPriority && matchesPurpose;
   });
 
   // *** FUNCIÓN PARA REFRESCAR DATOS MANUALMENTE ***
@@ -410,6 +446,31 @@ export const WarehouseDashboard: React.FC = () => {
       addNotification('error', '❌ Error', 'No se pudieron actualizar los datos');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // *** FUNCIÓN PARA CARGAR INVENTARIO ***
+  const loadInventory = async () => {
+    try {
+      setInventoryLoading(true);
+      console.log('🔄 Cargando inventario...');
+      
+      const response = await inventoryAPI.getAllInventory();
+      console.log('✅ Inventario cargado:', response);
+      
+      setInventory(response.locations || []);
+      
+      // Establecer la primera ubicación como seleccionada por defecto
+      if (response.locations && response.locations.length > 0 && selectedLocation === 'all') {
+        setSelectedLocation(response.locations[0].location_id);
+      }
+      
+    } catch (err) {
+      console.error('❌ Error cargando inventario:', err);
+      addNotification('error', '❌ Error', 'No se pudo cargar el inventario');
+      setInventory([]);
+    } finally {
+      setInventoryLoading(false);
     }
   };
 
@@ -449,6 +510,67 @@ export const WarehouseDashboard: React.FC = () => {
   const toggleCardExpansion = (cardId: number) => {
     setExpandedCard(expandedCard === cardId ? null : cardId);
   };
+
+  // Funciones de utilidad para inventario
+  const getFilteredInventory = () => {
+    let filteredLocations = inventory;
+
+    // Filtrar por ubicación seleccionada
+    if (selectedLocation !== 'all') {
+      filteredLocations = inventory.filter(location => location.location_id === selectedLocation);
+    }
+
+    // Filtrar productos por término de búsqueda (incluye TODOS los campos disponibles)
+    if (inventorySearchTerm) {
+      const searchTerm = inventorySearchTerm.toLowerCase();
+      filteredLocations = filteredLocations.map(location => ({
+        ...location,
+        products: location.products.filter(product =>
+          product.description.toLowerCase().includes(searchTerm) ||
+          product.brand.toLowerCase().includes(searchTerm) ||
+          product.model.toLowerCase().includes(searchTerm) ||
+          product.reference_code.toLowerCase().includes(searchTerm) ||
+          (product.color_info && product.color_info.toLowerCase().includes(searchTerm)) ||
+          product.location_name.toLowerCase().includes(searchTerm) ||
+          product.product_id.toString().includes(searchTerm) ||
+          product.unit_price.includes(searchTerm) ||
+          product.box_price.includes(searchTerm) ||
+          // Buscar en las tallas también
+          product.sizes.some(size => size.size.includes(searchTerm))
+        )
+      }));
+    }
+
+    // Filtrar ubicaciones vacías después de aplicar búsqueda
+    return filteredLocations.filter(location => location.products.length > 0);
+  };
+
+  const getTotalInventoryValue = (location: InventoryLocation) => {
+    return location.products.reduce((total, product) => {
+      const unitPrice = parseFloat(product.unit_price);
+      return total + (unitPrice * product.total_quantity);
+    }, 0);
+  };
+
+   const getTotalProducts = (location: InventoryLocation) => {
+     return location.products.reduce((total, product) => total + product.total_quantity, 0);
+   };
+
+   // Helper function para extraer nombres de ubicación de forma segura
+   const getLocationName = (locationObj: any): string => {
+     if (typeof locationObj === 'string') {
+       return locationObj;
+     }
+     if (locationObj && typeof locationObj === 'object') {
+       if (locationObj.name) {
+         return locationObj.name;
+       }
+       if (locationObj.id) {
+         return `Ubicación ${locationObj.id}`;
+       }
+     }
+     return 'N/A';
+   };
 
   if (loading) {
     return (
@@ -549,6 +671,16 @@ export const WarehouseDashboard: React.FC = () => {
                 <span className="hidden sm:inline">Preparación</span>
                 <span className="sm:hidden">Prep.</span>
                 ({acceptedRequests.length})
+              </Button>
+              <Button
+                variant={activeTab === 'inventory' ? 'primary' : 'outline'}
+                onClick={() => setActiveTab('inventory')}
+                size="sm"
+                className="flex-1 md:flex-none text-xs md:text-sm"
+              >
+                <Warehouse className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">Inventario</span>
+                <span className="sm:hidden">Inv.</span>
               </Button>
               <Button
                 variant={activeTab === 'stats' ? 'primary' : 'outline'}
@@ -656,13 +788,13 @@ export const WarehouseDashboard: React.FC = () => {
                 <div className="text-center py-8 md:py-12">
                   <Package className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
                   <h3 className="text-base md:text-lg font-medium">
-                    {searchTerm || priorityFilter !== 'all' || purposeFilter !== 'all' 
+                    {priorityFilter !== 'all' || purposeFilter !== 'all' 
                       ? 'No hay solicitudes que coincidan con los filtros'
                       : 'No hay solicitudes pendientes'
                     }
                   </h3>
                   <p className="text-muted-foreground text-sm">
-                    {searchTerm || priorityFilter !== 'all' || purposeFilter !== 'all'
+                    {priorityFilter !== 'all' || purposeFilter !== 'all'
                       ? 'Prueba ajustando los filtros de búsqueda'
                       : 'Las nuevas solicitudes de transferencia aparecerán aquí automáticamente.'
                     }
@@ -1000,26 +1132,28 @@ export const WarehouseDashboard: React.FC = () => {
                           <h4 className="font-semibold text-base text-foreground">
                             {request.brand} {request.model}
                           </h4>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium 
-                            ${request.courier_id ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}
-                          `}>
-                            {request.courier_id ? '✅ Corredor asignado' : '🔄 Esperando corredor'}
-                          </span>
+                           <span className={`px-2 py-1 rounded-full text-xs font-medium 
+                             ${request.status === 'courier_assigned' ? 'bg-success/10 text-success' : 
+                               request.status === 'in_transit' ? 'bg-blue-100 text-blue-800' : 'bg-warning/10 text-warning'}
+                           `}>
+                             {request.status === 'courier_assigned' ? '✅ Corredor asignado' : 
+                              request.status === 'in_transit' ? '🚚 En tránsito' : '🔄 Esperando corredor'}
+                           </span>
                         </div>
 
                         <div className="flex items-start space-x-3 mb-3">
                           <div className="flex-shrink-0">
-                            <img
-                              src={request.product_info?.image_url || `https://via.placeholder.com/200x300/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
-                              alt={`${request.brand} ${request.model}`}
-                              className="w-32 h-48 object-cover rounded-lg border border-border bg-muted"
-                              onError={(e) => {
-                                if (!e.currentTarget.dataset.fallback) {
-                                  e.currentTarget.dataset.fallback = 'true';
-                                  e.currentTarget.src = `https://via.placeholder.com/200x300/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
-                                }
-                              }}
-                            />
+                             <img
+                               src={request.product_image || request.product_info?.image_url || `https://via.placeholder.com/200x300/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
+                               alt={`${request.brand} ${request.model}`}
+                               className="w-32 h-48 object-cover rounded-lg border border-border bg-muted"
+                               onError={(e) => {
+                                 if (!e.currentTarget.dataset.fallback) {
+                                   e.currentTarget.dataset.fallback = 'true';
+                                   e.currentTarget.src = `https://via.placeholder.com/200x300/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
+                                 }
+                               }}
+                             />
                           </div>
                           
                           <div className="flex-1 min-w-0">
@@ -1027,29 +1161,29 @@ export const WarehouseDashboard: React.FC = () => {
                               Talla {request.size} • {request.quantity} unidad{request.quantity > 1 ? 'es' : ''}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              Solicitado por: {request.requester_name || 'Usuario'}
+                              Solicitado por: {request.requester_info?.name || request.requester_name || 'Usuario'}
                             </p>
-                            <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-1">
-                              <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
-                              <span className="font-medium">Origen: {request.location_info?.source || 'N/A'}</span>
-                            </div>
-                            <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-1">
-                              <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
-                              <span className="font-medium">Destino: {request.location_info?.destination || 'N/A'}</span>
-                            </div>
+                             <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-1">
+                               <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
+                               <span className="font-medium">De: {getLocationName(request.location_info?.from || request.location_info?.source)}</span>
+                             </div>
+                             <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-1">
+                               <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
+                               <span className="font-medium">A: {getLocationName(request.location_info?.to || request.location_info?.destination)}</span>
+                             </div>
                           </div>
                         </div>
                         
-                        {request.courier_id && (
-                          <div className="mb-3 p-2 bg-primary/10 rounded-lg">
-                            <p className="text-xs text-primary">
-                              <Truck className="h-3 w-3 inline mr-1" />
-                              Corredor ID: <strong>{request.courier_id}</strong>
-                            </p>
-                          </div>
-                        )}
-                        
-                        {request.courier_id && (
+                         {request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
+                           <div className="mb-3 p-2 bg-primary/10 rounded-lg">
+                             <p className="text-xs text-primary">
+                               <Truck className="h-3 w-3 inline mr-1" />
+                               Corredor: <strong>{request.courier_info.name || `ID: ${request.courier_info.id}`}</strong>
+                             </p>
+                           </div>
+                         )}
+                         
+                         {request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
                           <Button
                             onClick={() => handleDeliverToCourier(request.id)}
                             disabled={actionLoading === request.id}
@@ -1063,23 +1197,23 @@ export const WarehouseDashboard: React.FC = () => {
                             )}
                             🚚 Entregar a Corredor 
                           </Button>
-                        )}
+                         )}
 
-                        {!request.courier_id && request.purpose === 'restock' && (
-                          <Button
-                            onClick={() => handleDeliverToVendor(request.id)}
-                            disabled={actionLoading === request.id}
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm"
-                            size="sm"
-                          >
-                            {actionLoading === request.id ? (
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            ) : (
-                              <Send className="h-4 w-4 mr-2" />
-                            )}
-                            🚚 Entregar a vendedor 
-                          </Button>
-                        )}
+                         {!request.courier_info?.assigned && request.purpose === 'restock' && (
+                           <Button
+                             onClick={() => handleDeliverToVendor(request.id)}
+                             disabled={actionLoading === request.id}
+                             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm"
+                             size="sm"
+                           >
+                             {actionLoading === request.id ? (
+                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                             ) : (
+                               <Send className="h-4 w-4 mr-2" />
+                             )}
+                             🚚 Entregar a vendedor 
+                           </Button>
+                         )}
 
                       </div>
 
@@ -1090,26 +1224,28 @@ export const WarehouseDashboard: React.FC = () => {
                           <h4 className="font-semibold text-lg text-foreground">
                             {request.brand} {request.model} - Talla {request.size}
                           </h4>
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium 
-                            ${request.courier_id ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}
-                          `}>
-                            {request.courier_id ? '✅ Corredor asignado' : '🔄 Esperando corredor'}
-                          </span>
+                           <span className={`px-3 py-1 rounded-full text-sm font-medium 
+                             ${request.status === 'courier_assigned' ? 'bg-success/10 text-success' : 
+                               request.status === 'in_transit' ? 'bg-blue-100 text-blue-800' : 'bg-warning/10 text-warning'}
+                           `}>
+                             {request.status === 'courier_assigned' ? '✅ Corredor asignado' : 
+                              request.status === 'in_transit' ? '🚚 En tránsito' : '🔄 Esperando corredor'}
+                           </span>
                         </div>
 
                         <div className="flex items-start mb-4">
                           <div className="flex-shrink-0 mr-4">
-                            <img
-                              src={request.product_info?.image_url || `https://via.placeholder.com/200x300/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
-                              alt={`${request.brand} ${request.model}`}
-                              className="w-32 h-48 object-cover rounded-lg border border-border bg-muted shadow-sm"
-                              onError={(e) => {
-                                if (!e.currentTarget.dataset.fallback) {
-                                  e.currentTarget.dataset.fallback = 'true';
-                                  e.currentTarget.src = `https://via.placeholder.com/200x300/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
-                                }
-                              }}
-                            />
+                             <img
+                               src={request.product_image || request.product_info?.image_url || `https://via.placeholder.com/200x300/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
+                               alt={`${request.brand} ${request.model}`}
+                               className="w-32 h-48 object-cover rounded-lg border border-border bg-muted shadow-sm"
+                               onError={(e) => {
+                                 if (!e.currentTarget.dataset.fallback) {
+                                   e.currentTarget.dataset.fallback = 'true';
+                                   e.currentTarget.src = `https://via.placeholder.com/200x300/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
+                                 }
+                               }}
+                             />
                             {request.product_info?.unit_price && (
                               <p className="text-xs text-muted-foreground mt-1 text-center font-medium">
                                 💰 {formatPrice(request.product_info.unit_price)}
@@ -1121,40 +1257,55 @@ export const WarehouseDashboard: React.FC = () => {
                             
                             <p className="text-sm text-muted-foreground mb-2">
                               <User className="h-4 w-4 inline mr-1" />
-                              Solicitado por: <strong>{request.requester_name || 'Usuario'}</strong>
+                              Solicitado por: <strong>{request.requester_info?.name || request.requester_name || 'Usuario'}</strong>
                             </p>
                             
-                            <div className="mb-2">
-                              <p className="text-sm text-muted-foreground">
-                                <MapPin className="h-4 w-4 inline mr-1" />
-                                <strong>Origen:</strong> {request.location_info?.source || 'N/A'}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                <MapPin className="h-4 w-4 inline mr-1" />
-                                <strong>Destino:</strong> {request.location_info?.destination || 'N/A'}
-                              </p>
-                            </div>
+                             <div className="mb-2">
+                               <p className="text-sm text-muted-foreground">
+                                 <MapPin className="h-4 w-4 inline mr-1" />
+                                 <strong>De:</strong> {getLocationName(request.location_info?.from || request.location_info?.source)}
+                               </p>
+                               <p className="text-sm text-muted-foreground">
+                                 <MapPin className="h-4 w-4 inline mr-1" />
+                                 <strong>A:</strong> {getLocationName(request.location_info?.to || request.location_info?.destination)}
+                               </p>
+                             </div>
                             
-                            {request.courier_id && (
-                              <div className="mb-2">
-                                <p className="text-sm text-primary">
-                                  <Truck className="h-4 w-4 inline mr-1" />
-                                  Corredor ID: <strong>{request.courier_id}</strong>
-                                </p>
+                             {request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
+                               <div className="mb-2">
+                                 <p className="text-sm text-primary">
+                                   <Truck className="h-4 w-4 inline mr-1" />
+                                   Corredor: <strong>{request.courier_info.name || `ID: ${request.courier_info.id}`}</strong>
+                                 </p>
+                               </div>
+                             )}
+                            
+                            <div className="space-y-2 text-sm text-muted-foreground">
+                              {request.status_info && (
+                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="font-medium text-blue-800">{request.status_info.title}</span>
+                                    <span className="text-xs text-blue-600">{request.status_info.progress}%</span>
+                                  </div>
+                                  <p className="text-xs text-blue-700 mb-1">{request.status_info.description}</p>
+                                  <p className="text-xs text-blue-600">
+                                    <strong>Siguiente paso:</strong> {request.status_info.next_step}
+                                  </p>
+                                </div>
+                              )}
+                              
+                              <div className="flex items-center space-x-4">
+                                <span>
+                                  <Clock className="h-4 w-4 inline mr-1" />
+                                  Estado: {request.status}
+                                </span>
+                                <span>
+                                  📍 Propósito: {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' : '📦 Restock'}
+                                </span>
+                                <span>
+                                  📦 Cantidad: {request.quantity}
+                                </span>
                               </div>
-                            )}
-                            
-                            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                              <span>
-                                <Clock className="h-4 w-4 inline mr-1" />
-                                Estado: {request.status}
-                              </span>
-                              <span>
-                                📍 Propósito: {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' : '📦 Restock'}
-                              </span>
-                              <span>
-                                📦 Cantidad: {request.quantity}
-                              </span>
                             </div>
                           </div>
                         </div>
@@ -1167,50 +1318,350 @@ export const WarehouseDashboard: React.FC = () => {
                           </div>
                         )}
 
-                        {request.courier_id && (
-                          <div className="mt-4">
-                            <Button
-                              onClick={() => handleDeliverToCourier(request.id)}
-                              disabled={actionLoading === request.id}
-                              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                            >
-                              {actionLoading === request.id ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              ) : (
-                                <Send className="h-4 w-4 mr-2" />
-                              )}
-                              🚚 Entregar a Corredor (WH004)
-                            </Button>
-                          </div>
-                        )}
+                         {request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
+                           <div className="mt-4">
+                             <Button
+                               onClick={() => handleDeliverToCourier(request.id)}
+                               disabled={actionLoading === request.id}
+                               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                             >
+                               {actionLoading === request.id ? (
+                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                               ) : (
+                                 <Send className="h-4 w-4 mr-2" />
+                               )}
+                               🚚 Entregar a Corredor (WH004)
+                             </Button>
+                           </div>
+                         )}
 
-                        {!request.courier_id && request.purpose === 'restock' && (
-                          <div className='mt-4'>
-                            <Button
-                              onClick={() => handleDeliverToVendor(request.id)}
-                              disabled={actionLoading === request.id}
-                              className="w-full bg-primary hover:bg-primary/90 text-white text-sm"
-                              size="sm"
-                            >
-                              {actionLoading === request.id ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              ) : (
-                                <Send className="h-4 w-4 mr-2" />
-                              )}
-                              🚚 Entregar a vendedor 
-                            </Button>
-                          </div>
-                        )}
+                         {!request.courier_info?.assigned && request.purpose === 'restock' && (
+                           <div className='mt-4'>
+                             <Button
+                               onClick={() => handleDeliverToVendor(request.id)}
+                               disabled={actionLoading === request.id}
+                               className="w-full bg-primary hover:bg-primary/90 text-white text-sm"
+                               size="sm"
+                             >
+                               {actionLoading === request.id ? (
+                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                               ) : (
+                                 <Send className="h-4 w-4 mr-2" />
+                               )}
+                               🚚 Entregar a vendedor 
+                             </Button>
+                           </div>
+                         )}
                         
                           <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
                           <div className="flex justify-between items-center">
                             <span>ID: {request.id} | Código: {request.sneaker_reference_code}</span>
-                            <span>Status: {request.status} | Corredor: {request.courier_name || 'Sin asignar'}</span>
+                            <span>Status: {request.status} | Corredor: {request.courier_info?.name || request.courier_name || 'Sin asignar'}</span>
                           </div>
                         </div>
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {activeTab === 'inventory' && (
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-3 md:space-y-0">
+                <h2 className="text-lg md:text-xl font-semibold flex items-center">
+                  <Warehouse className="h-5 w-5 md:h-6 md:w-6 text-primary mr-2" />
+                  Inventario de Bodega
+                </h2>
+                
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+                  <div className="flex space-x-2">
+                    <select
+                      value={selectedLocation}
+                      onChange={(e) => setSelectedLocation(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                      className="px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground"
+                    >
+                      <option value="all">Todas las ubicaciones</option>
+                      {inventory.map((location) => (
+                        <option key={location.location_id} value={location.location_id}>
+                          {location.location_name}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    <Button
+                      variant="outline"
+                      onClick={loadInventory}
+                      disabled={inventoryLoading}
+                      size="sm"
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-2 ${inventoryLoading ? 'animate-spin' : ''}`} />
+                      Actualizar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {inventoryLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                    <p className="text-muted-foreground">Cargando inventario...</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Barra de búsqueda */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      placeholder="Buscar por marca, modelo, descripción, código, color, precio, talla, ID..."
+                      value={inventorySearchTerm}
+                      onChange={(e) => setInventorySearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  {/* Resumen por ubicación */}
+                  {selectedLocation === 'all' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {inventory.map((location) => {
+                        const totalUnits = getTotalProducts(location);
+                        const totalValue = getTotalInventoryValue(location);
+                        const activeProducts = location.products.filter(p => p.is_active === 1).length;
+                        const totalSizes = location.products.reduce((sum, product) => sum + product.sizes.length, 0);
+                        
+                        return (
+                          <Card key={location.location_id} className="border-primary/20">
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <h3 className="font-semibold text-lg">{location.location_name}</h3>
+                                <span className="text-xs text-muted-foreground">ID: {location.location_id}</span>
+                              </div>
+                              <div className="space-y-2">
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-muted-foreground">Productos únicos:</span>
+                                  <span className="font-medium">{location.products.length}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-muted-foreground">Productos activos:</span>
+                                  <span className="font-medium text-green-600">{activeProducts}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-muted-foreground">Total unidades:</span>
+                                  <span className="font-medium">{totalUnits}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-muted-foreground">Total tallas:</span>
+                                  <span className="font-medium">{totalSizes}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-muted-foreground">Valor total:</span>
+                                  <span className="font-medium text-green-600">
+                                    {formatPrice(totalValue)}
+                                  </span>
+                                </div>
+                                <div className="pt-2 border-t">
+                                  <div className="flex justify-between">
+                                    <span className="text-xs text-muted-foreground">Promedio por producto:</span>
+                                    <span className="text-xs font-medium">
+                                      {formatPrice(location.products.length > 0 ? totalValue / location.products.length : 0)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Lista de productos filtrados */}
+                  {getFilteredInventory().length === 0 ? (
+                    <div className="text-center py-8">
+                      <Warehouse className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                      <h3 className="text-lg font-medium">
+                        {inventorySearchTerm ? 'No se encontraron productos' : 'No hay inventario disponible'}
+                      </h3>
+                      <p className="text-muted-foreground text-sm">
+                        {inventorySearchTerm ? 'Prueba con otros términos de búsqueda' : 'El inventario se cargará automáticamente'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {getFilteredInventory().map((location) => (
+                        <div key={location.location_id} className="space-y-4">
+                          {selectedLocation === 'all' && (
+                            <div className="flex items-center space-x-3">
+                              <MapPin className="h-5 w-5 text-primary" />
+                              <h3 className="text-xl font-semibold">{location.location_name}</h3>
+                              <span className="text-sm text-muted-foreground">
+                                ({location.products.length} productos)
+                              </span>
+                            </div>
+                          )}
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {location.products.map((product) => (
+                              <Card key={product.product_id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                                <CardContent className="p-4">
+                                  <div className="space-y-3">
+                                    {/* Header con imagen pequeña y info básica */}
+                                    <div className="flex space-x-3">
+                                      <div className="flex-shrink-0">
+                                        <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
+                                          <img
+                                            src={product.image_url || `https://via.placeholder.com/80x80/e5e7eb/6b7280?text=${encodeURIComponent(product.brand)}`}
+                                            alt={product.description}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                              if (!e.currentTarget.dataset.fallback) {
+                                                e.currentTarget.dataset.fallback = 'true';
+                                                e.currentTarget.src = `https://via.placeholder.com/80x80/f3f4f6/9ca3af?text=${encodeURIComponent(product.brand)}`;
+                                              }
+                                            }}
+                                          />
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-start justify-between mb-1">
+                                          <h4 className="font-semibold text-sm leading-tight">
+                                            {product.brand} {product.model}
+                                          </h4>
+                                          <span className="bg-primary text-primary-foreground px-2 py-1 rounded-full text-xs font-medium">
+                                            {product.total_quantity}
+                                          </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground line-clamp-2 mb-1">
+                                          {product.description}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground font-mono">
+                                          {product.reference_code}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Información detallada */}
+                                    <div className="space-y-2">
+                                      {/* Color */}
+                                      {product.color_info && (
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs text-muted-foreground">Color:</span>
+                                          <span className="text-xs font-medium">{product.color_info}</span>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Precios */}
+                                      <div className="flex justify-between items-center">
+                                        <div>
+                                          <span className="text-xs text-muted-foreground">Precio unitario:</span>
+                                          <div className="text-sm font-bold text-green-600">
+                                            {formatPrice(product.unit_price)}
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                          <span className="text-xs text-muted-foreground">Caja:</span>
+                                          <div className="text-xs text-muted-foreground">
+                                            {formatPrice(product.box_price)}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Estado del producto */}
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs text-muted-foreground">Estado:</span>
+                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                                          product.is_active === 1 
+                                            ? 'bg-green-100 text-green-800' 
+                                            : 'bg-red-100 text-red-800'
+                                        }`}>
+                                          {product.is_active === 1 ? 'Activo' : 'Inactivo'}
+                                        </span>
+                                      </div>
+                                      
+                                      {/* Fechas */}
+                                      <div className="space-y-1 pt-2 border-t">
+                                        <div className="flex justify-between">
+                                          <span className="text-xs text-muted-foreground">Creado:</span>
+                                          <span className="text-xs">
+                                            {new Date(product.created_at).toLocaleDateString('es-CO')}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-xs text-muted-foreground">Actualizado:</span>
+                                          <span className="text-xs">
+                                            {new Date(product.updated_at).toLocaleDateString('es-CO')}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Tallas disponibles */}
+                                      <div className="pt-2 border-t">
+                                        <div className="flex justify-between items-center mb-2">
+                                          <span className="text-xs font-medium">Tallas:</span>
+                                          <span className="text-xs text-muted-foreground">
+                                            {product.sizes.length} disponibles
+                                          </span>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-1">
+                                          {product.sizes.map((size) => (
+                                            <div
+                                              key={size.size}
+                                              className={`p-1 rounded text-center text-xs ${
+                                                size.quantity > 0 
+                                                  ? 'bg-green-50 text-green-800 border border-green-200' 
+                                                  : 'bg-gray-50 text-gray-600 border border-gray-200'
+                                              }`}
+                                            >
+                                              <div className="font-medium">{size.size}</div>
+                                              <div className="text-xs">
+                                                {size.quantity}
+                                                {size.quantity_exhibition > 0 && (
+                                                  <span className="text-orange-600">
+                                                    +{size.quantity_exhibition}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                        {product.sizes.some(s => s.quantity_exhibition > 0) && (
+                                          <div className="text-xs text-orange-600 mt-1 text-center">
+                                            *Naranja = unidades en exhibición
+                                          </div>
+                                        )}
+                                      </div>
+                                      
+                                      {/* Información adicional */}
+                                      <div className="pt-2 border-t">
+                                        <div className="text-xs text-muted-foreground">
+                                          <div className="flex justify-between">
+                                            <span>ID Producto:</span>
+                                            <span className="font-mono">{product.product_id}</span>
+                                          </div>
+                                          {product.video_url && (
+                                            <div className="mt-1">
+                                              <span className="text-blue-600">📹 Tiene video</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

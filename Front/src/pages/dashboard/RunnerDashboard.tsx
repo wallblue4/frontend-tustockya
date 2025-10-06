@@ -9,20 +9,15 @@ import {
   AlertCircle,
   User,
   Navigation,
-  Route,
   Star,
-  DollarSign,
   RefreshCw,
   Filter,
   ChevronDown,
-  ChevronUp,
-  Award,
-  TrendingUp
+  ChevronUp
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
 
 // IMPORTACIONES
 import { TransferNotifications } from '../../components/notifications/TransferNotifications';
@@ -30,6 +25,7 @@ import { useTransferNotifications } from '../../hooks/useTransferNotifications';
 import { useTransferPolling } from '../../hooks/useTransferPolling';
 import { useAuth } from '../../context/AuthContext';
 import { courierAPI } from '../../services/transfersAPI';
+import { AssignedTransport, CourierStats, MyTransportsResponse } from '../../types';
 
 // Tipos actualizados
 interface AvailableRequest {
@@ -53,30 +49,7 @@ interface AvailableRequest {
   };
 }
 
-interface AssignedTransport {
-  product_image: string | undefined;
-  id: number;
-  status: string;
-  sneaker_reference_code: string;
-  brand: string;
-  model: string;
-  size: string;
-  quantity: number;
-  purpose: 'cliente' | 'restock';
-  courier_accepted_at: string | null;
-  picked_up_at: string | null;
-  delivered_at: string | null;
-  estimated_pickup_time: number | null;
-  courier_notes: string | null;
-  pickup_notes: string | null;
-  // Campos para compatibilidad con la UI actual
-  action_required: string;
-  action_description: string;
-  source_location_name: string;
-  destination_location_name: string;
-  requester_first_name: string;
-  requester_last_name: string;
-}
+// Removido - ahora usamos el tipo de types/index.ts
 
 interface DeliveryHistoryItem {
   id: number;
@@ -96,6 +69,7 @@ export const RunnerDashboard: React.FC = () => {
   const [availableRequests, setAvailableRequests] = useState<AvailableRequest[]>([]);
   const [assignedTransports, setAssignedTransports] = useState<AssignedTransport[]>([]);
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistoryItem[]>([]);
+  const [courierStats, setCourierStats] = useState<CourierStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
@@ -107,7 +81,7 @@ export const RunnerDashboard: React.FC = () => {
   // Estados de filtros
   const [purposeFilter, setPurposeFilter] = useState<'all' | 'cliente' | 'restock'>('all');
 
-  // Estados de estadísticas
+  // Estados de estadísticas (mantenido para compatibilidad con polling)
   const [stats, setStats] = useState({
     totalDeliveries: 0,
     todayDeliveries: 0,
@@ -118,7 +92,7 @@ export const RunnerDashboard: React.FC = () => {
   });
 
   // HOOKS
-  const { user } = useAuth();
+  const { } = useAuth();
   const {
     notifications,
     dismissNotification,
@@ -158,7 +132,7 @@ export const RunnerDashboard: React.FC = () => {
   }, [availableRequests, notifyTransportAvailable, deliveryHistory.length]);
 
   // POLLING para corredor
-  const { data: courierData, error: pollingError, refetch } = useTransferPolling('corredor', {
+  const { error: pollingError, refetch } = useTransferPolling('corredor', {
     enabled: true,
     interval: 20000,
     onUpdate: handlePollingUpdate,
@@ -185,7 +159,11 @@ export const RunnerDashboard: React.FC = () => {
       ]);
 
       setAvailableRequests(availableResponse.available_requests || []);
-      setAssignedTransports((assignedResponse.my_transports || []).map(transformTransportData));
+      
+      // Usar la respuesta completa del endpoint my-transports
+      const transportsResponse = assignedResponse as MyTransportsResponse;
+      setAssignedTransports(transportsResponse.my_transports || []);
+      setCourierStats(transportsResponse.courier_stats || null);
 
       // Map delivery history from backend response
       const deliveries = (historyResponse.delivery_history || []).map((item: any) => ({
@@ -316,44 +294,18 @@ export const RunnerDashboard: React.FC = () => {
     }
   };
 
-  // Función para transformar datos de la API al formato esperado por la UI
-  const transformTransportData = (apiData: any): AssignedTransport => {
-    // Determinar el estado y acción basado en los datos de la API
-    let action_required = '';
-    let action_description = '';
-    let source_location_name = 'Bodega Central'; // Default values
-    let destination_location_name = 'Local Principal';
-    let requester_first_name = 'Cliente';
-    let requester_last_name = '';
-
-    switch (apiData.status) {
-      case 'completed':
-        action_required = 'completed';
-        action_description = 'Entregado';
-        break;
+  // Función para obtener la acción requerida basada en el estado
+  const getActionRequired = (transport: AssignedTransport) => {
+    switch (transport.status) {
+      case 'courier_assigned':
+        return { action: 'confirm_pickup', description: 'Asignado - Confirmar Recolección' };
       case 'in_transit':
-        action_required = 'entregar';
-        action_description = 'En Tránsito';
-        break;
-      case 'picked_up':
-        action_required = 'entregar';
-        action_description = 'Recolectado';
-        break;
+        return { action: 'confirm_delivery', description: 'En Tránsito - Confirmar Entrega' };
+      case 'delivered':
+        return { action: 'delivered', description: 'Entregado - Esperando confirmación del vendedor' };
       default:
-        action_required = 'courrier_assigned';
-        action_description = 'Asignado';
-        break;
+        return { action: 'confirm_pickup', description: 'Asignado - Confirmar Recolección' };
     }
-
-    return {
-      ...apiData,
-      action_required,
-      action_description,
-      source_location_name,
-      destination_location_name,
-      requester_first_name,
-      requester_last_name,
-    };
   };
 
   // Funciones de filtrado
@@ -362,12 +314,17 @@ export const RunnerDashboard: React.FC = () => {
   });
 
   // Separar transportes activos de los completados
-  const activeTransports = assignedTransports.filter(transport => transport.status !== 'completed');
+  // Todos los transportes están activos ya que 'delivered' espera confirmación del vendedor
+  // No hay status 'completed' en el sistema actual
+  const activeTransports = assignedTransports;
+  const completedTransports: AssignedTransport[] = []; // No hay transportes completados en el sistema actual
 
   // Funciones para obtener acciones según estado
   const getActionButton = (transport: AssignedTransport) => {
-    switch (transport.action_required) {
-      case 'courrier_assigned':
+    const { action } = getActionRequired(transport);
+    
+    switch (action) {
+      case 'confirm_pickup':
         return (
           <Button
             onClick={() => handleConfirmPickup(transport.id)}
@@ -383,7 +340,7 @@ export const RunnerDashboard: React.FC = () => {
             Confirmar Recolección
           </Button>
         );
-      case 'entregar':
+      case 'confirm_delivery':
         return (
           <Button
             onClick={() => handleConfirmDelivery(transport.id)}
@@ -399,11 +356,15 @@ export const RunnerDashboard: React.FC = () => {
             Confirmar Entrega
           </Button>
         );
-      case 'completed':
+      case 'delivered':
         return (
-          <div className="w-full text-center text-muted-foreground py-2 text-sm">
-            <CheckCircle className="h-4 w-4 mx-auto mb-1 text-success" />
-            Entregado
+          <div className="w-full text-center py-2 text-sm">
+            <div className="flex items-center justify-center space-x-2 mb-1">
+              <CheckCircle className="h-4 w-4 text-success" />
+              <Clock className="h-4 w-4 text-warning" />
+            </div>
+            <div className="text-success font-medium">Entregado</div>
+            <div className="text-xs text-muted-foreground">Esperando confirmación del vendedor</div>
           </div>
         );
       default:
@@ -876,10 +837,24 @@ export const RunnerDashboard: React.FC = () => {
         {activeTab === 'assigned' && (
           <Card>
             <CardHeader>
-              <h2 className="text-lg md:text-xl font-semibold flex items-center">
-                <Truck className="h-5 w-5 md:h-6 md:w-6 text-primary mr-2" />
-                Mis Entregas Asignadas
-              </h2>
+              <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-3 md:space-y-0">
+                <h2 className="text-lg md:text-xl font-semibold flex items-center">
+                  <Truck className="h-5 w-5 md:h-6 md:w-6 text-primary mr-2" />
+                  Mis Entregas Asignadas
+                </h2>
+                {courierStats && (
+                  <div className="flex items-center space-x-4 text-sm">
+                    <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 bg-primary rounded-full"></div>
+                      <span className="text-muted-foreground">En progreso: {courierStats.in_progress}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 bg-success rounded-full"></div>
+                      <span className="text-muted-foreground">Completadas: {courierStats.completed}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {activeTransports.length === 0 ? (
@@ -890,7 +865,9 @@ export const RunnerDashboard: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-4 md:space-y-6">
-                  {activeTransports.map((transport) => (
+                  {activeTransports.map((transport) => {
+                    const { description } = getActionRequired(transport);
+                    return (
                     <div key={transport.id} className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300">
                       
                       {/* MOBILE VIEW */}
@@ -898,13 +875,21 @@ export const RunnerDashboard: React.FC = () => {
                         <div className="p-4">
                           {/* Header con estado */}
                           <div className="flex items-center justify-between mb-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              transport.status === 'courier_assigned' ? 'bg-warning/20 text-warning border border-warning/30' :
-                              transport.status === 'in_transit' ? 'bg-primary/20 text-primary border border-primary/30' :
-                              'bg-success/20 text-success border border-success/30'
-                            }`}>
-                              {transport.action_description}
-                            </span>
+                            <div className="flex items-center space-x-2">
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                transport.status === 'courier_assigned' ? 'bg-warning/20 text-warning border border-warning/30' :
+                                transport.status === 'in_transit' ? 'bg-primary/20 text-primary border border-primary/30' :
+                                transport.status === 'delivered' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+                                'bg-success/20 text-success border border-success/30'
+                              }`}>
+                                {description}
+                              </span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                transport.purpose === 'cliente' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
+                              }`}>
+                                {transport.purpose === 'cliente' ? 'Cliente' : 'Devolución'}
+                              </span>
+                            </div>
                             <div className="text-xs text-muted-foreground">
                               ID #{transport.id}
                             </div>
@@ -940,46 +925,42 @@ export const RunnerDashboard: React.FC = () => {
                               <span className="text-sm text-muted-foreground">
                                 Cantidad: {transport.quantity}
                               </span>
-                            </div>
-                            <div className="flex items-center space-x-1 text-sm text-card-foreground">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">
-                                Solicitante: {transport.requester_first_name} {transport.requester_last_name}
+                              <span className="text-xs text-muted-foreground">
+                                Ref: {transport.sneaker_reference_code}
                               </span>
                             </div>
                           </div>
                           
                           {/* Ruta */}
                           <div className="mb-4 p-3 bg-muted/20 rounded-lg">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2 flex-1 min-w-0">
-                                <div className="flex items-center space-x-1">
-                                  <div className="w-2 h-2 bg-primary rounded-full"></div>
-                                  <span className="text-xs font-medium text-card-foreground truncate">
-                                    {transport.source_location_name}
-                                  </span>
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs text-muted-foreground">DESDE</div>
+                                  <div className="text-sm font-medium text-card-foreground truncate">
+                                    {transport.source_location.name}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground truncate">
+                                    {transport.source_location.address}
+                                  </div>
                                 </div>
-                                <div className="flex-1 border-t border-dashed border-border mx-2"></div>
-                                <div className="flex items-center space-x-1">
-                                  <span className="text-xs font-medium text-card-foreground truncate">
-                                    {transport.destination_location_name}
-                                  </span>
-                                  <div className="w-2 h-2 bg-success rounded-full"></div>
+                              </div>
+                              <div className="ml-2 border-l-2 border-dashed border-border h-4"></div>
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-success rounded-full"></div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs text-muted-foreground">HACIA</div>
+                                  <div className="text-sm font-medium text-card-foreground truncate">
+                                    {transport.destination_location.name}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground truncate">
+                                    {transport.destination_location.address}
+                                  </div>
                                 </div>
                               </div>
                             </div>
                           </div>
-                          
-                          {/* Tiempo estimado */}
-                          {transport.estimated_pickup_time && (
-                            <div className="mb-4 p-2 bg-warning/10 rounded-lg border border-warning/20">
-                              <p className="text-xs flex items-center">
-                                <Clock className="h-3 w-3 text-warning mr-1" />
-                                <span className="font-medium text-warning">ETA: {transport.estimated_pickup_time} minutos</span>
-                              </p>
-                            </div>
-                          )}
-                          
                           {getActionButton(transport)}
                         </div>
                       </div>
@@ -988,13 +969,21 @@ export const RunnerDashboard: React.FC = () => {
                       <div className="hidden md:block p-6">
                         {/* Header con estado */}
                         <div className="flex items-center justify-between mb-6">
-                          <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-                            transport.status === 'courier_assigned' ? 'bg-warning/20 text-warning border border-warning/30' :
-                            transport.status === 'in_transit' ? 'bg-primary/20 text-primary border border-primary/30' :
-                            'bg-success/20 text-success border border-success/30'
-                          }`}>
-                            {transport.action_description}
-                          </span>
+                          <div className="flex items-center space-x-3">
+                            <span className={`px-4 py-2 rounded-full text-sm font-medium ${
+                              transport.status === 'courier_assigned' ? 'bg-warning/20 text-warning border border-warning/30' :
+                              transport.status === 'in_transit' ? 'bg-primary/20 text-primary border border-primary/30' :
+                              transport.status === 'delivered' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+                              'bg-success/20 text-success border border-success/30'
+                            }`}>
+                              {description}
+                            </span>
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                              transport.purpose === 'cliente' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {transport.purpose === 'cliente' ? 'Cliente' : 'Devolución'}
+                            </span>
+                          </div>
                           <div className="text-sm text-muted-foreground">
                             ID #{transport.id} • {transport.courier_accepted_at ? new Date(transport.courier_accepted_at).toLocaleDateString() : 'Sin fecha'}
                           </div>
@@ -1028,7 +1017,7 @@ export const RunnerDashboard: React.FC = () => {
                                 {transport.brand} {transport.model}
                               </h3>
                               
-                              <div className="grid grid-cols-3 gap-4 mb-6">
+                              <div className="grid grid-cols-4 gap-4 mb-6">
                                 <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/20">
                                   <div className="text-xl font-bold text-primary">
                                     {transport.size}
@@ -1040,22 +1029,28 @@ export const RunnerDashboard: React.FC = () => {
                                   <div className="text-sm text-success font-medium">Cantidad</div>
                                 </div>
                                 <div className="text-center p-4 bg-accent/10 rounded-lg border border-accent/20">
-                                  <div className="text-xl font-bold text-accent">👤</div>
-                                  <div className="text-sm text-accent font-medium">Cliente</div>
+                                  <div className="text-xl font-bold text-accent">📦</div>
+                                  <div className="text-sm text-accent font-medium">{transport.purpose === 'cliente' ? 'Cliente' : 'Devolución'}</div>
+                                </div>
+                                <div className="text-center p-4 bg-warning/10 rounded-lg border border-warning/20">
+                                  <div className="text-lg font-bold text-warning">{transport.sneaker_reference_code}</div>
+                                  <div className="text-sm text-warning font-medium">Referencia</div>
                                 </div>
                               </div>
                               
-                              {/* Cliente */}
+                              {/* Información de propósito */}
                               <div className="p-4 bg-muted/20 rounded-lg mb-6">
                                 <div className="flex items-center space-x-3">
                                   <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
-                                    <User className="h-6 w-6 text-primary-foreground" />
+                                    <Package className="h-6 w-6 text-primary-foreground" />
                                   </div>
                                   <div>
                                     <div className="font-semibold text-card-foreground text-lg">
-                                      Solicitante: {transport.requester_first_name} {transport.requester_last_name}
+                                      {transport.purpose === 'cliente' ? 'Entrega a Cliente' : 'Devolución a Bodega'}
                                     </div>
-                                    <div className="text-sm text-muted-foreground">Cliente</div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {transport.purpose === 'cliente' ? 'Producto para cliente final' : 'Producto devuelto a inventario'}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -1070,8 +1065,16 @@ export const RunnerDashboard: React.FC = () => {
                                     <div className="flex-1 min-w-0">
                                       <div className="text-sm text-muted-foreground">DESDE</div>
                                       <div className="font-medium text-card-foreground">
-                                        {transport.source_location_name}
+                                        {transport.source_location.name}
                                       </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {transport.source_location.address}
+                                      </div>
+                                      {transport.source_location.phone && (
+                                        <div className="text-xs text-primary">
+                                          📞 {transport.source_location.phone}
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                   
@@ -1082,8 +1085,16 @@ export const RunnerDashboard: React.FC = () => {
                                     <div className="flex-1 min-w-0">
                                       <div className="text-sm text-muted-foreground">HACIA</div>
                                       <div className="font-medium text-card-foreground">
-                                        {transport.destination_location_name}
+                                        {transport.destination_location.name}
                                       </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {transport.destination_location.address}
+                                      </div>
+                                      {transport.destination_location.phone && (
+                                        <div className="text-xs text-success">
+                                          📞 {transport.destination_location.phone}
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
@@ -1100,6 +1111,75 @@ export const RunnerDashboard: React.FC = () => {
                                   </div>
                                 </div>
                               )}
+
+                              {/* Notas del corredor */}
+                              {transport.courier_notes && (
+                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 mb-4">
+                                  <div className="flex items-start space-x-2">
+                                    <div className="text-blue-600">💬</div>
+                                    <div>
+                                      <div className="text-sm font-medium text-blue-800 mb-1">Notas del Corredor</div>
+                                      <div className="text-sm text-blue-700">{transport.courier_notes}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Notas de recolección */}
+                              {transport.pickup_notes && (
+                                <div className="p-3 bg-green-50 rounded-lg border border-green-200 mb-4">
+                                  <div className="flex items-start space-x-2">
+                                    <div className="text-green-600">📝</div>
+                                    <div>
+                                      <div className="text-sm font-medium text-green-800 mb-1">Notas de Recolección</div>
+                                      <div className="text-sm text-green-700">{transport.pickup_notes}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Nota especial para entregas pendientes de confirmación */}
+                              {transport.status === 'delivered' && (
+                                <div className="p-3 bg-orange-50 rounded-lg border border-orange-200 mb-4">
+                                  <div className="flex items-start space-x-2">
+                                    <div className="text-orange-600">⏳</div>
+                                    <div>
+                                      <div className="text-sm font-medium text-orange-800 mb-1">Esperando Confirmación</div>
+                                      <div className="text-sm text-orange-700">
+                                        El producto fue entregado al vendedor. Estamos esperando que confirme la recepción para completar la transferencia.
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Timestamps */}
+                              <div className="p-3 bg-muted/20 rounded-lg border border-border mb-4">
+                                <div className="text-sm font-medium text-card-foreground mb-2">Historial de Estados</div>
+                                <div className="space-y-1 text-xs text-muted-foreground">
+                                  {transport.courier_accepted_at && (
+                                    <div className="flex items-center space-x-2">
+                                      <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                      <span>✅ Aceptado: {new Date(transport.courier_accepted_at).toLocaleString()}</span>
+                                    </div>
+                                  )}
+                                  {transport.picked_up_at && (
+                                    <div className="flex items-center space-x-2">
+                                      <div className="w-2 h-2 bg-warning rounded-full"></div>
+                                      <span>📦 Recolectado: {new Date(transport.picked_up_at).toLocaleString()}</span>
+                                    </div>
+                                  )}
+                                  {transport.delivered_at && (
+                                    <div className="flex items-center space-x-2">
+                                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                      <span>🎯 Entregado: {new Date(transport.delivered_at).toLocaleString()}</span>
+                                      {transport.status === 'delivered' && (
+                                        <span className="text-orange-600 text-xs">(Esperando confirmación)</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                               
                               {/* Botón de acción */}
                               {getActionButton(transport)}
@@ -1108,7 +1188,8 @@ export const RunnerDashboard: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -1239,75 +1320,95 @@ export const RunnerDashboard: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
             <Card>
               <CardHeader>
-                <h3 className="text-base md:text-lg font-semibold">📊 Estadísticas Generales</h3>
+                <h3 className="text-base md:text-lg font-semibold">📊 Estadísticas del Corredor</h3>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 md:space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm md:text-base">Total entregas realizadas:</span>
-                    <span className="font-bold text-primary">{stats.totalDeliveries}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm md:text-base">Entregas completadas hoy:</span>
-                    <span className="font-bold text-blue-600">{stats.todayDeliveries}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm md:text-base">Tasa de éxito:</span>
-                    <span className="font-bold text-green-600">{stats.successRate}%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm md:text-base">Tiempo promedio:</span>
-                    <span className="font-bold text-orange-600">{stats.averageTime}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm md:text-base">Ganancias totales:</span>
-                    <span className="font-bold text-green-600">{formatPrice(stats.totalEarnings)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm md:text-base">Calificación promedio:</span>
-                    <span className="font-bold text-yellow-600">⭐ {stats.rating}</span>
-                  </div>
+                  {courierStats ? (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm md:text-base">Total transportes:</span>
+                        <span className="font-bold text-primary">{courierStats.total_transports}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm md:text-base">En progreso:</span>
+                        <span className="font-bold text-blue-600">{courierStats.in_progress}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm md:text-base">Completadas:</span>
+                        <span className="font-bold text-green-600">{courierStats.completed}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm md:text-base">Tasa de finalización:</span>
+                        <span className="font-bold text-orange-600">{courierStats.completion_rate}%</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-4">
+                      <div className="text-muted-foreground">Cargando estadísticas...</div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <h3 className="text-base md:text-lg font-semibold">📈 Rendimiento Semanal</h3>
+                <h3 className="text-base md:text-lg font-semibold">📈 Resumen de Entregas</h3>
               </CardHeader>
               <CardContent>
-                <div className="flex justify-between items-end h-32 mb-4">
-                  {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day, index) => {
-                    const deliveries = [8, 12, 6, 15, 11, 4, 2][index];
-                    
-                    return (
-                      <div key={day} className="flex flex-col items-center">
-                        <div className="flex flex-col justify-end h-24 mb-2">
-                          <div 
-                            className="bg-blue-500 rounded-t w-full flex items-end justify-center text-xs text-white font-medium"
-                            style={{ height: `${(deliveries / 15) * 100}%`, minHeight: '20px', width: '24px' }}
-                          >
-                            {deliveries > 0 && deliveries}
-                          </div>
-                        </div>
-                        <p className="text-xs mt-1 text-gray-600">{day}</p>
+                <div className="space-y-4">
+                  {/* Resumen por estado */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-card-foreground">Estado Actual</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                        <div className="text-2xl font-bold text-primary">{activeTransports.length}</div>
+                        <div className="text-xs text-primary font-medium">En Progreso</div>
                       </div>
-                    );
-                  })}
-                </div>
-                <div className="grid grid-cols-3 gap-2 md:gap-4 text-center text-xs md:text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Promedio diario</p>
-                    <p className="font-bold">8.3 entregas</p>
+                      <div className="p-3 bg-success/10 rounded-lg border border-success/20">
+                        <div className="text-2xl font-bold text-success">{completedTransports.length}</div>
+                        <div className="text-xs text-success font-medium">Completadas</div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">Mejor día</p>
-                    <p className="font-bold text-green-600">Jueves (15)</p>
+
+                  {/* Resumen por propósito */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-card-foreground">Por Tipo</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="text-lg font-bold text-blue-600">
+                          {assignedTransports.filter(t => t.purpose === 'cliente').length}
+                        </div>
+                        <div className="text-xs text-blue-600 font-medium">Cliente</div>
+                      </div>
+                      <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                        <div className="text-lg font-bold text-orange-600">
+                          {assignedTransports.filter(t => t.purpose === 'return').length}
+                        </div>
+                        <div className="text-xs text-orange-600 font-medium">Devolución</div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">Total semanal</p>
-                    <p className="font-bold">58 entregas</p>
-                  </div>
+
+                  {/* Información adicional */}
+                  {courierStats && (
+                    <div className="p-3 bg-muted/20 rounded-lg border border-border">
+                      <div className="text-sm font-medium text-card-foreground mb-2">Rendimiento</div>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex-1 bg-muted rounded-full h-2">
+                          <div 
+                            className="bg-success h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${courierStats.completion_rate}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs text-muted-foreground font-medium">
+                          {courierStats.completion_rate}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
