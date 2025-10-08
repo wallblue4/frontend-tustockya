@@ -226,6 +226,22 @@ export const AdminDashboard: React.FC = () => {
     reference_image: null as File | null,
     video_file: null as File | null
   });
+  
+  // Estados para preview de archivos capturados
+  const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
+  const [capturedVideoUrl, setCapturedVideoUrl] = useState<string | null>(null);
+  
+  // Limpiar URLs de blob al desmontar el componente para evitar memory leaks
+  React.useEffect(() => {
+    return () => {
+      if (capturedPhotoUrl) {
+        URL.revokeObjectURL(capturedPhotoUrl);
+      }
+      if (capturedVideoUrl) {
+        URL.revokeObjectURL(capturedVideoUrl);
+      }
+    };
+  }, [capturedPhotoUrl, capturedVideoUrl]);
   const [currentView, setCurrentView] = useState<AdminView>('dashboard');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -711,11 +727,6 @@ Detalle técnico: ${error.message}`;
             value={metricsData?.active_users?.toString() || '0'}
             icon={<Users className="h-6 w-6" />}
           />
-          <StatsCard
-            title="Transferencias Pendientes"
-            value={metricsData?.pending_transfers?.toString() || '0'}
-            icon={<Truck className="h-6 w-6" />}
-          />
         </div>
 
         {/* Quick Actions */}
@@ -795,31 +806,7 @@ Detalle técnico: ${error.message}`;
                   />
                 )}
               </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-semibold">Tareas Pendientes</h3>
-              </CardHeader>
-              <CardContent>
-                {dashboardData.pending_tasks && Object.keys(dashboardData.pending_tasks).length > 0 ? (
-                  <div className="space-y-3">
-                    {Object.entries(dashboardData.pending_tasks).map(([task, count]) => (
-                      <div key={task} className="flex items-center justify-between">
-                        <span className="capitalize">{task.replace('_', ' ')}</span>
-                        <Badge variant="warning">{count as number}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyState 
-                    title="No hay tareas pendientes"
-                    description="Todas las tareas están al día"
-                    icon={<CheckCircle className="h-12 w-12 text-success" />}
-                  />
-                )}
-              </CardContent>
-            </Card>
+            </Card> 
           </div>
         )}
 
@@ -1696,7 +1683,10 @@ Detalle técnico: ${error.message}`;
                   <FullScreenPhotoCapture
                     onPhotoTaken={async (url, blob) => {
                       console.log("Foto tomada:", url, blob);
-                      if (blob) {
+                      if (blob && url) {
+                        // Almacenar la URL para preview
+                        setCapturedPhotoUrl(url);
+                        
                         // Usa el tipo real del blob si está disponible, si no, usa 'image/*'
                         const fileType = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/*';
                         const ext = fileType.split('/')[1] || 'jpg';
@@ -1712,6 +1702,40 @@ Detalle técnico: ${error.message}`;
                       }
                     }}
                   />
+                  
+                  {/* Preview de la foto capturada */}
+                  {capturedPhotoUrl && (
+                    <div className="mt-4 p-4 border rounded-lg bg-card">
+                      <h4 className="text-sm font-medium text-foreground mb-2">📸 Foto Capturada</h4>
+                      <div className="flex items-center space-x-4">
+                        <img 
+                          src={capturedPhotoUrl} 
+                          alt="Foto del inventario"
+                          className="w-32 h-32 object-cover rounded-lg border shadow-sm"
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Foto de referencia del producto
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              // Limpiar URL de blob antes de eliminar
+                              if (capturedPhotoUrl) {
+                                URL.revokeObjectURL(capturedPhotoUrl);
+                              }
+                              setCapturedPhotoUrl(null);
+                              setVideoInventoryForm(prev => ({ ...prev, reference_image: null }));
+                            }}
+                            className="text-destructive hover:text-destructive/80"
+                          >
+                            🗑️ Eliminar foto
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
               </div>
 
               <div className="space-y-4">
@@ -1722,7 +1746,10 @@ Detalle técnico: ${error.message}`;
                   <FullScreenCameraCapture
                     onVideoRecorded={async (url, blob) => {
                       console.log("Video grabado:", url, blob);
-                      if (blob) {
+                      if (blob && url) {
+                        // Almacenar la URL para preview
+                        setCapturedVideoUrl(url);
+                        
                         // Usa el tipo real del blob si está disponible, si no, usa 'video/*'
                         const fileType = blob.type && blob.type.startsWith('video/') ? blob.type : 'video/*';
                         const ext = fileType.split('/')[1] || 'mp4';
@@ -1734,6 +1761,41 @@ Detalle técnico: ${error.message}`;
                       }
                     }}
                   />
+                  
+                  {/* Preview del video grabado */}
+                  {capturedVideoUrl && (
+                    <div className="mt-4 p-4 border rounded-lg bg-card">
+                      <h4 className="text-sm font-medium text-foreground mb-2">📹 Video Grabado</h4>
+                      <div className="space-y-3">
+                        <video 
+                          src={capturedVideoUrl} 
+                          controls 
+                          className="w-full max-w-md rounded-lg border shadow-sm"
+                          preload="metadata"
+                        />
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-muted-foreground">
+                            Video del inventario del producto
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              // Limpiar URL de blob antes de eliminar
+                              if (capturedVideoUrl) {
+                                URL.revokeObjectURL(capturedVideoUrl);
+                              }
+                              setCapturedVideoUrl(null);
+                              setVideoInventoryForm(prev => ({ ...prev, video_file: null }));
+                            }}
+                            className="text-destructive hover:text-destructive/80"
+                          >
+                            🗑️ Eliminar video
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1806,6 +1868,16 @@ Detalle técnico: ${error.message}`;
                       reference_image: null,
                       video_file: null
                     });
+                    
+                    // Limpiar las URLs de preview y liberar memoria
+                    if (capturedPhotoUrl) {
+                      URL.revokeObjectURL(capturedPhotoUrl);
+                    }
+                    if (capturedVideoUrl) {
+                      URL.revokeObjectURL(capturedVideoUrl);
+                    }
+                    setCapturedPhotoUrl(null);
+                    setCapturedVideoUrl(null);
                   } catch (error) {
                     console.error('Error processing inventory:', error);
                   }
@@ -1839,20 +1911,6 @@ Detalle técnico: ${error.message}`;
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Processing History */}
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold">Historial de Procesamiento</h3>
-          </CardHeader>
-          <CardContent>
-            <EmptyState
-              title="Sin historial de videos"
-              description="No hay videos de inventario procesados aún"
-              icon={<Video className="h-12 w-12 text-gray-400" />}
-            />
           </CardContent>
         </Card>
       </div>

@@ -371,10 +371,112 @@ export const vendorAPI = {
       console.error('❌ Error al solicitar devolución:', error);
       throw error;
     }
+  },
+
+  // *** NUEVA FUNCIÓN - Crear devolución (PASO 1) ***
+  async createReturn(returnData) {
+    console.log('🔄 Creando devolución...', returnData);
+    
+    const backendCall = async () => {
+      const response = await fetch(`${BACKEND_URL}/api/v1/transfers/create-return`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(returnData)
+      });
+      return handleResponse(response);
+    };
+
+    const result = await tryBackendFirst(backendCall);
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      // Fallback a mock según especificación
+      console.log('📦 Usando respuesta mock para createReturn');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      return {
+        success: true,
+        message: returnData.pickup_type === 'corredor' 
+          ? 'Devolución creada - Un corredor recogerá el producto'
+          : 'Devolución creada - Llevarás el producto tú mismo',
+        return_id: Math.floor(Math.random() * 1000) + 135,
+        original_transfer_id: returnData.original_transfer_id,
+        status: 'pending',
+        pickup_type: returnData.pickup_type,
+        estimated_return_time: returnData.pickup_type === 'corredor' ? '2-3 horas' : '1-2 horas (depende de tu disponibilidad)',
+        workflow_steps: returnData.pickup_type === 'corredor' ? [
+          "1. 📋 Bodeguero aceptará la solicitud",
+          "2. 🚚 Corredor recogerá el producto en tu local",
+          "3. 🚚 Corredor entregará en bodega",
+          "4. 🔍 Bodeguero confirmará recepción y restaurará inventario"
+        ] : [
+          "1. 📋 Bodeguero aceptará la solicitud",
+          "2. 🚶 TÚ deberás llevar el producto a bodega personalmente",
+          "3. 🏪 Bodeguero confirmará que recibió el producto",
+          "4. 🔍 Bodeguero verificará condición y restaurará inventario"
+        ],
+        next_action: returnData.pickup_type === 'corredor' 
+          ? 'Esperar que bodeguero acepte, luego corredor coordinará recogida'
+          : 'Esperar que bodeguero acepte, luego ir a bodega con el producto'
+      };
+    }
+  },
+
+  // *** NUEVA FUNCIÓN - Entregar devolución a bodega (PASO 3 - Vendedor) ***
+  async deliverReturnToWarehouse(returnId, deliveryNotes) {
+    console.log('🔄 Entregando devolución a bodega...', { returnId, deliveryNotes });
+    
+    const backendCall = async () => {
+      const response = await fetch(`${BACKEND_URL}/api/v1/vendor/deliver-return-to-warehouse/${returnId}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ delivery_notes: deliveryNotes })
+      });
+      return handleResponse(response);
+    };
+
+    const result = await tryBackendFirst(backendCall);
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      // Fallback a mock según especificación
+      console.log('📦 Usando respuesta mock para deliver return to warehouse');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      return {
+        success: true,
+        message: 'Entrega confirmada - Esperando que bodeguero valide recepción',
+        return_id: returnId,
+        original_transfer_id: 131,
+        status: 'delivered',
+        delivered_at: new Date().toISOString(),
+        pickup_type: 'vendedor',
+        warehouse_location: 'Bodega Principal',
+        product_info: {
+          reference_code: 'NK-AF1-001',
+          brand: 'Nike',
+          model: 'Air Force 1',
+          size: '9.0',
+          quantity: 1
+        },
+        vendor_info: {
+          vendor_id: 23,
+          delivery_notes: deliveryNotes
+        },
+        next_step: 'Bodeguero debe confirmar recepción y restaurar inventario (BG010)',
+        pending_action: {
+          who: 'Bodeguero',
+          what: 'Verificar producto y confirmar recepción',
+          endpoint: 'POST /warehouse/confirm-return-reception/' + returnId
+        }
+      };
+    }
   }
 };
 
-// ========== BODEGUERO APIs (SIN CAMBIOS) ==========  
+// ========== BODEGUERO APIs (ACTUALIZADAS) ==========  
 export const warehouseAPI = {
   async getPendingRequests() {
     console.log('🔄 Obteniendo solicitudes pendientes de bodega...');
@@ -518,10 +620,95 @@ export const warehouseAPI = {
         delivered_at: new Date().toISOString()
       };
     }
+  },
+
+  // *** NUEVA FUNCIÓN - Aceptar devolución (PASO 2) ***
+  async acceptReturn(returnData) {
+    console.log('🔄 Aceptando devolución...', returnData);
+    
+    const backendCall = async () => {
+      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/accept-request`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          transfer_request_id: returnData.transfer_request_id,
+          accepted: returnData.accepted,
+          estimated_preparation_time: returnData.estimated_preparation_time || 15,
+          warehouse_notes: returnData.warehouse_notes || 'Return aceptado'
+        })
+      });
+      return handleResponse(response);
+    };
+
+    const result = await tryBackendFirst(backendCall);
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      // Fallback a mock según especificación
+      console.log('📦 Usando respuesta mock para accept return');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      return {
+        success: true,
+        message: 'Solicitud aceptada - Disponible para corredores',
+        request_id: returnData.transfer_request_id,
+        status: 'accepted',
+        warehouse_location: 'Bodega Principal',
+        next_step: 'Esperando asignación de corredor'
+      };
+    }
+  },
+
+  // *** NUEVA FUNCIÓN - Confirmar recepción de devolución (PASO 6) ***
+  async confirmReturnReception(returnId, confirmationData) {
+    console.log('🔄 Confirmando recepción de devolución...', { returnId, confirmationData });
+    
+    const backendCall = async () => {
+      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/confirm-return-reception/${returnId}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(confirmationData)
+      });
+      return handleResponse(response);
+    };
+
+    const result = await tryBackendFirst(backendCall);
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      // Fallback a mock según especificación
+      console.log('📦 Usando respuesta mock para confirm return reception');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      return {
+        success: true,
+        message: 'Devolución recibida - Inventario restaurado automáticamente',
+        return_id: returnId,
+        original_transfer_id: 131,
+        received_quantity: confirmationData.received_quantity,
+        product_condition: confirmationData.product_condition,
+        inventory_restored: confirmationData.return_to_inventory,
+        warehouse_location: 'Bodega Principal',
+        inventory_change: {
+          product_id: 161,
+          product_size_id: 524,
+          product_reference: 'NK-AF1-001',
+          product_name: 'Nike Air Force 1',
+          size: '9.0',
+          quantity_returned: confirmationData.received_quantity,
+          quantity_before: 5,
+          quantity_after: 5 + confirmationData.received_quantity,
+          location: 'Bodega Principal',
+          change_type: 'return_reception'
+        }
+      };
+    }
   }
 };
 
-// ========== CORREDOR APIs (SIN CAMBIOS) ==========
+// ========== CORREDOR APIs (ACTUALIZADAS) ==========
 export const courierAPI = {
   async getAvailableRequests() {
     console.log('🔄 Obteniendo entregas disponibles...');
@@ -692,6 +879,113 @@ export const courierAPI = {
       return {
         success: true,
         recent_deliveries: []
+      };
+    }
+  },
+
+  // *** NUEVA FUNCIÓN - Aceptar transporte de devolución (PASO 3) ***
+  async acceptReturnTransport(returnId, estimatedTime, notes) {
+    console.log('🔄 Aceptando transporte de devolución...', { returnId, estimatedTime });
+    
+    const backendCall = async () => {
+      const response = await fetch(`${BACKEND_URL}/api/v1/courier/accept-request/${returnId}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          estimated_pickup_time: estimatedTime,
+          notes
+        })
+      });
+      return handleResponse(response);
+    };
+
+    const result = await tryBackendFirst(backendCall);
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      // Fallback a mock según especificación
+      console.log('📦 Usando respuesta mock para accept return transport');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      return {
+        success: true,
+        message: 'Return asignado exitosamente',
+        request_id: returnId,
+        status: 'courier_assigned',
+        pickup_location: 'Local Centro',
+        delivery_location: 'Bodega Principal',
+        estimated_pickup_time: estimatedTime
+      };
+    }
+  },
+
+  // *** NUEVA FUNCIÓN - Confirmar recolección de devolución (PASO 4) ***
+  async confirmReturnPickup(returnId, pickupNotes) {
+    console.log('🔄 Confirmando recolección de devolución...', { returnId });
+    
+    const backendCall = async () => {
+      const response = await fetch(`${BACKEND_URL}/api/v1/courier/confirm-pickup/${returnId}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ pickup_notes: pickupNotes })
+      });
+      return handleResponse(response);
+    };
+
+    const result = await tryBackendFirst(backendCall);
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      // Fallback a mock según especificación
+      console.log('📦 Usando respuesta mock para confirm return pickup');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      return {
+        success: true,
+        message: 'Recolección confirmada - En tránsito a bodega',
+        request_id: returnId,
+        status: 'in_transit',
+        picked_up_at: new Date().toISOString(),
+        destination: 'Bodega Principal'
+      };
+    }
+  },
+
+  // *** NUEVA FUNCIÓN - Confirmar entrega de devolución (PASO 5) ***
+  async confirmReturnDelivery(returnId, successful, notes) {
+    console.log('🔄 Confirmando entrega de devolución...', { returnId, successful });
+    
+    const backendCall = async () => {
+      const params = new URLSearchParams({
+        delivery_successful: successful.toString(),
+        notes: notes || ''
+      });
+      
+      const response = await fetch(`${BACKEND_URL}/api/v1/courier/confirm-delivery/${returnId}?${params}`, {
+        method: 'POST',
+        headers: getHeaders()
+      });
+      return handleResponse(response);
+    };
+
+    const result = await tryBackendFirst(backendCall);
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      // Fallback a mock según especificación
+      console.log('📦 Usando respuesta mock para confirm return delivery');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      return {
+        success: true,
+        message: 'Entrega confirmada - Esperando confirmación de recepción',
+        request_id: returnId,
+        status: 'delivered',
+        delivered_at: new Date().toISOString(),
+        next_step: 'Bodeguero debe confirmar recepción (BG010)'
       };
     }
   }

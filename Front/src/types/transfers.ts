@@ -51,9 +51,13 @@ export interface TransferRequest {
     accepted?: any[];
   }
 
-  // Interfaces para devoluciones
+  // Interfaces para devoluciones - ACTUALIZADAS según especificación
   export interface ReturnRequestCreate {
     original_transfer_id: number;
+    reason: 'no_sale' | 'damaged' | 'wrong_product' | 'customer_return' | 'other';
+    quantity_to_return: number;
+    product_condition: 'good' | 'damaged' | 'unusable';
+    pickup_type: 'corredor' | 'vendedor';
     notes?: string;
   }
 
@@ -73,23 +77,100 @@ export interface TransferRequest {
 
   export interface ReturnResponse {
     success: boolean;
-    return_request_id: number;
     message: string;
-    return_timestamp: string;
-    return_details: {
-      original_transfer_id: number;
-      sneaker_info: {
-        reference: string;
-        brand: string;
-        model: string;
-        size: string;
-        quantity: number;
-      };
-      return_from: string;
-      return_to: string;
-      original_purpose: string;
-      notes?: string;
-    };
+    return_id: number;
+    original_transfer_id: number;
+    status: 'pending' | 'accepted' | 'courier_assigned' | 'in_transit' | 'delivered' | 'completed' | 'cancelled';
+    pickup_type: 'corredor' | 'vendedor';
+    estimated_return_time: string;
+    workflow_steps: string[];
+    next_action: string;
+  }
+
+  export interface ReturnAcceptResponse {
+    success: boolean;
+    message: string;
+    request_id: number;
     status: string;
-    workflow: string;
+    warehouse_location: string;
+    next_step: string;
+  }
+
+  export interface ReturnCourierAcceptResponse {
+    success: boolean;
+    message: string;
+    request_id: number;
+    status: string;
+    pickup_location: string;
+    delivery_location: string;
+    estimated_pickup_time: number;
+  }
+
+  export interface ReturnPickupResponse {
+    success: boolean;
+    message: string;
+    request_id: number;
+    status: string;
+    picked_up_at: string;
+    destination: string;
+  }
+
+  export interface ReturnDeliveryResponse {
+    success: boolean;
+    message: string;
+    request_id: number;
+    status: string;
+    delivered_at: string;
+    next_step: string;
+  }
+
+  export interface ReturnReceptionResponse {
+    success: boolean;
+    message: string;
+    return_id: number;
+    original_transfer_id: number;
+    received_quantity: number;
+    product_condition: string;
+    inventory_restored: boolean;
+    warehouse_location: string;
+    inventory_change: {
+      product_id: number;
+      product_size_id: number;
+      product_reference: string;
+      product_name: string;
+      size: string;
+      quantity_returned: number;
+      quantity_before: number;
+      quantity_after: number;
+      location: string;
+      change_type: string;
+    };
+  }
+
+  export interface ReturnVendorDeliveryResponse {
+    success: boolean;
+    message: string;
+    return_id: number;
+    original_transfer_id: number;
+    status: string;
+    delivered_at: string;
+    pickup_type: string;
+    warehouse_location: string;
+    product_info: {
+      reference_code: string;
+      brand: string;
+      model: string;
+      size: string;
+      quantity: number;
+    };
+    vendor_info: {
+      vendor_id: number;
+      delivery_notes: string;
+    };
+    next_step: string;
+    pending_action: {
+      who: string;
+      what: string;
+      endpoint: string;
+    };
   }

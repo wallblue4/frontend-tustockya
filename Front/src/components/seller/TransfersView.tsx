@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { vendorAPI } from '../../services/transfersAPI';
 import { PendingTransferItem, PendingTransfersResponse } from '../../types';
+import { ReturnModal } from './ReturnModal';
 
 import { 
   Package, 
@@ -46,50 +47,22 @@ interface TransfersViewProps {
 // *** INTERFACES ACTUALIZADAS SEGÚN DOCUMENTACIÓN ***
 // Ahora usamos PendingTransferItem del types/index.ts
 
-// Interfaz para transferencia completada (historial)
+// Interfaz para transferencia completada (historial) - Actualizada según respuesta real del API
 interface CompletedTransfer {
   id: number;
   status: 'completed' | 'cancelled';
-  result_info: {
-    result: 'success' | 'cancelled';
-    title: string;
-    description: string;
-    color: 'green' | 'red';
-    icon: string;
-  };
-  product_info: {
-    reference_code: string;
-    brand: string;
-    model: string;
-    size: string;
-    quantity: number;
-    color: string;
-    price: number;
-    total_value: number;
-    image?: string;
-    full_description: string;
-  };
-  time_info: {
-    requested_at: string;
-    completed_at: string;
-    duration: string;
-    duration_hours: number;
-  };
-  locations: {
-    from: string;
-    to: string;
-  };
-  participants: {
-    warehouse_keeper: string;
-    courier: string;
-  };
-  purpose: {
-    type: string;
-    description: string;
-    urgent: boolean;
-  };
-  notes?: string;
-  reception_notes?: string;
+  sneaker_reference_code: string;
+  brand: string;
+  model: string;
+  size: string;
+  quantity: number;
+  purpose: 'cliente' | 'restock';
+  priority: 'high' | 'normal';
+  requested_at: string;
+  completed_at: string;
+  duration: string;
+  next_action: string;
+  product_image?: string; // Campo opcional para la imagen
 }
 
 export const TransfersView: React.FC<TransfersViewProps> = ({ 
@@ -98,11 +71,16 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   onSellProduct 
 }) => {
   // Usar onSellProduct como prop, igual que en ProductScanner
-  const [activeTab, setActiveTab] = useState('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'completed' | 'new'>('pending');
   
   // *** ESTADOS ACTUALIZADOS PARA ENDPOINTS CORRECTOS ***
   const [pendingTransfers, setPendingTransfers] = useState<PendingTransferItem[]>([]);
   const [completedTransfers, setCompletedTransfers] = useState<CompletedTransfer[]>([]);
+  
+  // *** NUEVOS ESTADOS PARA DEVOLUCIONES ***
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [selectedTransferForReturn, setSelectedTransferForReturn] = useState<any>(null);
+  const [isCreatingReturn, setIsCreatingReturn] = useState(false);
   
   // Estados de resumen
   const [urgentCount, setUrgentCount] = useState(0);
@@ -190,14 +168,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         setTotalPending(response.total_pending || 0);
         console.log('✅ Transferencias pendientes cargadas:', response.pending_transfers?.length || 0);
       }
-      
-      // Cargar transferencias completadas (historial)
+
+      // *** CARGAR TRANSFERENCIAS COMPLETADAS ***
       console.log('🔄 Cargando transferencias completadas...');
-      const completedResponse = await vendorAPI.getCompletedTransfers(); // Usa /vendor/completed-transfers
+      const completedResponse = await vendorAPI.getCompletedTransfers();
       
       if (completedResponse.success) {
         setCompletedTransfers(completedResponse.completed_transfers || []);
-        setTodayStats(completedResponse.today_stats);
+        setTodayStats(completedResponse.today_stats || null);
         console.log('✅ Transferencias completadas cargadas:', completedResponse.completed_transfers?.length || 0);
       }
       
@@ -252,33 +230,53 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     }
   };
 
-  // Confirmar recepción y llamar a onSellProduct como en ProductScanner
-  const handleConfirmReception = async (transfer: PendingTransferItem) => {
-    try {
-      await vendorAPI.confirmReception(transfer.id, 1, true, 'Producto recibido correctamente');
-      alert('Recepción confirmada exitosamente');
-      loadTransfersData(); // Recargar datos
+  // *** NUEVA FUNCIÓN - Manejar devolución ***
+  const handleGenerateReturn = (transfer: CompletedTransfer) => {
+    // Convertir CompletedTransfer al formato que espera el modal
+    const transferForReturn: any = {
+      id: transfer.id,
+      sneaker_reference_code: transfer.sneaker_reference_code,
+      brand: transfer.brand,
+      model: transfer.model,
+      size: transfer.size,
+      quantity: transfer.quantity,
+      product_image: transfer.product_image
+    };
+    setSelectedTransferForReturn(transferForReturn);
+    setShowReturnModal(true);
+  };
 
-      // Llamar a onSellProduct del padre, igual que ProductScanner
-      if (typeof onSellProduct === 'function') {
-        onSellProduct({
-          code: transfer.sneaker_reference_code,
-          brand: transfer.brand,
-          model: transfer.model,
-          size: transfer.size,
-          price: 0, // No disponible en el endpoint
-          location: 'Local Actual', // No disponible en el endpoint
-          storage_type: 'display',
-          color: 'N/A', // No disponible en el endpoint
-          image: transfer.product_image
-        });
-      }
+  const handleReturnSubmit = async (returnData: any) => {
+    if (!selectedTransferForReturn) return;
+
+    setIsCreatingReturn(true);
+    try {
+      console.log('🔄 Creando devolución...', returnData);
+      
+      const response = await vendorAPI.createReturn(returnData);
+      
+      console.log('✅ Devolución creada:', response);
+      
+      // Mostrar mensaje de éxito con detalles del flujo
+      alert(`${response.message}\n\nID: ${response.return_id}\nTiempo estimado: ${response.estimated_return_time}\n\nPróxima acción: ${response.next_action}`);
+      
+      // Cerrar modal y recargar datos
+      setShowReturnModal(false);
+      setSelectedTransferForReturn(null);
+      loadTransfersData();
+      
     } catch (err: any) {
-      console.error('Error confirmando recepción:', err);
-      alert('Error confirmando recepción: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+      console.error('❌ Error creando devolución:', err);
+      alert('Error creando devolución: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+    } finally {
+      setIsCreatingReturn(false);
     }
   };
 
+  const handleReturnModalClose = () => {
+    setShowReturnModal(false);
+    setSelectedTransferForReturn(null);
+  };
 
   const handleConfirmAndSell = async (transfer: PendingTransferItem) => {
   try {
@@ -338,30 +336,6 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     }
   };
 
-  // *** NUEVA FUNCIÓN - Solicitar devolución ***
-  const handleRequestReturn = async (transfer: PendingTransferItem) => {
-    if (!confirm(`¿Estás seguro de que quieres solicitar la devolución de ${transfer.brand} ${transfer.model} talla ${transfer.size}?`)) {
-      return;
-    }
-    
-    try {
-      console.log('🔄 Solicitando devolución para transferencia:', transfer.id);
-      
-      const returnData = {
-        original_transfer_id: transfer.id
-      };
-      
-      const response = await vendorAPI.requestReturn(returnData);
-      
-      console.log('✅ Devolución solicitada:', response);
-      alert(`Devolución solicitada exitosamente. ID: ${response.return_request_id}\n\n${response.message}`);
-      
-      loadTransfersData(); // Recargar datos
-    } catch (err: any) {
-      console.error('❌ Error solicitando devolución:', err);
-      alert('Error solicitando devolución: ' + (err instanceof Error ? err.message : 'Error desconocido'));
-    }
-  };
 
   // *** FUNCIONES HELPER ACTUALIZADAS ***
   
@@ -675,6 +649,32 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         </Card>
       )}
 
+      {/* *** BOTONES DE NAVEGACIÓN ENTRE TABS *** */}
+      <Card>
+        <CardContent className="p-2 md:p-4">
+          <div className="flex gap-2 md:gap-4">
+            <Button
+              variant={activeTab === 'pending' ? 'primary' : 'outline'}
+              onClick={() => setActiveTab('pending')}
+              size="sm"
+              className="flex-1 md:flex-none text-xs md:text-sm"
+            >
+              <Clock className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+              Pendientes ({pendingTransfers.length})
+            </Button>
+            <Button
+              variant={activeTab === 'completed' ? 'primary' : 'outline'}
+              onClick={() => setActiveTab('completed')}
+              size="sm"
+              className="flex-1 md:flex-none text-xs md:text-sm"
+            >
+              <CheckCircle className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+              Completadas ({completedTransfers.length})
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Content based on active tab */}
       {activeTab === 'pending' && (
         <Card>
@@ -754,26 +754,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                           {transfer.pickup_type === 'corredor' && (
                             <>
                               {transfer.status === 'delivered' && (
-                                <>
-                                  <Button
-                                    onClick={() => handleConfirmAndSell(transfer)}
-                                    className="bg-green-600 hover:bg-green-700 text-sm w-full"
-                                    size="sm"
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Confirmar Recepción y Vender
-                                  </Button>
-                                  
-                                  <Button
-                                    onClick={() => handleConfirmReception(transfer)}
-                                    className="bg-blue-600 hover:bg-blue-700 text-sm w-full"
-                                    size="sm"
-                                    variant="outline"
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Solo Confirmar Recepción
-                                  </Button>
-                                </>
+                                <Button
+                                  onClick={() => handleConfirmAndSell(transfer)}
+                                  className="bg-green-600 hover:bg-green-700 text-sm w-full"
+                                  size="sm"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Confirmar Recepción y Vender
+                                </Button>
                               )}
                               
                               {transfer.status === 'pending' && (
@@ -805,26 +793,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                               )}
                               
                               {transfer.status === 'delivered' && (
-                                <>
-                                  <Button
-                                    onClick={() => handleConfirmAndSell(transfer)}
-                                    className="bg-green-600 hover:bg-green-700 text-sm w-full"
-                                    size="sm"
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Confirmar Recepción y Vender
-                                  </Button>
-                                  
-                                  <Button
-                                    onClick={() => handleConfirmReception(transfer)}
-                                    className="bg-blue-600 hover:bg-blue-700 text-sm w-full"
-                                    size="sm"
-                                    variant="outline"
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Solo Confirmar Recepción
-                                  </Button>
-                                </>
+                                <Button
+                                  onClick={() => handleConfirmAndSell(transfer)}
+                                  className="bg-green-600 hover:bg-green-700 text-sm w-full"
+                                  size="sm"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Confirmar Recepción y Vender
+                                </Button>
                               )}
                               
                               {transfer.status === 'pending' && (
@@ -879,71 +855,96 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       {activeTab === 'completed' && (
         <Card>
           <CardHeader>
-            <h3 className="text-base md:text-lg font-semibold">Historial de Transferencias del Día</h3>
+            <h3 className="text-base md:text-lg font-semibold">Transferencias Completadas</h3>
             {todayStats && (
-              <div className="text-sm text-gray-600">
-                {todayStats.completed} completadas • {todayStats.cancelled} canceladas • {todayStats.success_rate}% éxito
+              <div className="flex space-x-4 mt-2 text-sm text-muted-foreground">
+                <span>Total: {todayStats.total_transfers}</span>
+                <span>Completadas: {todayStats.completed}</span>
+                <span>Éxito: {todayStats.success_rate?.toFixed(1)}%</span>
+                <span>Promedio: {todayStats.average_duration}</span>
               </div>
             )}
           </CardHeader>
           <CardContent>
             {completedTransfers.length === 0 ? (
               <div className="text-center py-8 md:py-12">
-                <History className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
+                <CheckCircle className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground text-sm md:text-base">No hay transferencias completadas hoy</p>
               </div>
             ) : (
               <div className="space-y-3 md:space-y-4">
                 {completedTransfers.map((transfer) => (
-                  <div key={transfer.id} className="border rounded-lg p-3 md:p-4">
+                  <div key={transfer.id} className="border rounded-lg p-3 md:p-4 bg-card">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${
-                            transfer.result_info.result === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        {/* Imagen del producto */}
+                        <div className="mb-4">
+                          <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                            {transfer.product_image && (
+                              <img
+                                src={transfer.product_image}
+                                className="w-32 h-48 object-cover rounded-lg border border-gray-200"
+                                alt={`${transfer.brand} ${transfer.model}`}
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Estado */}
+                        <div className="flex items-center space-x-2 mb-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            transfer.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}>
-                            <span>{transfer.result_info.icon}</span>
-                            <span>{transfer.result_info.title}</span>
+                            {transfer.status === 'completed' ? '✅ Completada' : '❌ Cancelada'}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            transfer.priority === 'high' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {transfer.priority === 'high' ? '🔥 Urgente' : '📦 Normal'}
                           </span>
                         </div>
-                        
-                        <h4 className="font-semibold text-sm md:text-lg truncate">
-                          {transfer.product_info.brand} {transfer.product_info.model}
+
+                        {/* Información del producto */}
+                        <h4 className="font-semibold text-sm md:text-lg truncate mb-2">
+                          {transfer.brand} {transfer.model}
                         </h4>
-                        <p className="text-xs md:text-sm text-muted-foreground truncate">
-                          Código: {transfer.product_info.reference_code} | Talla: {transfer.product_info.size}
+                        <p className="text-xs md:text-sm text-muted-foreground truncate mb-2">
+                          Código: {transfer.sneaker_reference_code} | Talla: {transfer.size} | Cantidad: {transfer.quantity}
                         </p>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          {transfer.result_info.description}
-                        </p>
-                      </div>
-                      
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-xs md:text-sm text-muted-foreground">Duración</p>
-                        <p className="font-medium text-sm md:text-base">{transfer.time_info.duration}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {transfer.time_info.requested_at} - {transfer.time_info.completed_at}
-                        </p>
-                        {transfer.result_info.result === 'success' && (
-                          <p className="text-xs font-medium text-success mt-1">
-                            ${transfer.product_info.total_value.toFixed(2)}
-                          </p>
+
+                        {/* Propósito */}
+                        <div className="text-xs md:text-sm mb-3">
+                          <span className="text-muted-foreground">Propósito:</span>
+                          <span className="font-medium ml-1">
+                            {transfer.purpose === 'cliente' ? '🏃‍♂️ Cliente' : '📦 Restock'}
+                          </span>
+                        </div>
+
+                        {/* Fechas */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-muted-foreground mb-3">
+                          <div>
+                            <strong>Solicitado:</strong> {new Date(transfer.requested_at).toLocaleString()}
+                          </div>
+                          <div>
+                            <strong>Completado:</strong> {new Date(transfer.completed_at).toLocaleString()}
+                          </div>
+                          <div>
+                            <strong>Duración:</strong> {transfer.duration}
+                          </div>
+                        </div>
+
+                        {/* Botón de devolución - SOLO para transferencias completadas */}
+                        {transfer.status === 'completed' && (
+                          <Button
+                            onClick={() => handleGenerateReturn(transfer)}
+                            className="bg-orange-600 hover:bg-orange-700 text-sm w-full"
+                            size="sm"
+                          >
+                            <Package className="h-4 w-4 mr-2" />
+                            Generar Devolución
+                          </Button>
                         )}
                       </div>
-                    </div>
-
-                    <div className="mt-3 p-2 md:p-3 bg-muted/20 rounded-md">
-                      <p className="text-xs md:text-sm">
-                        <strong>Ruta:</strong> {transfer.locations.from} → {transfer.locations.to}
-                      </p>
-                      <p className="text-xs md:text-sm mt-1">
-                        <strong>Participantes:</strong> {transfer.participants.warehouse_keeper} (Bodeguero) • {transfer.participants.courier} (Corredor)
-                      </p>
-                      {transfer.notes && (
-                        <p className="text-xs md:text-sm mt-1">
-                          <strong>Notas:</strong> {transfer.notes}
-                        </p>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -1105,6 +1106,16 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             </form>
           </CardContent>
         </Card>
+      )}
+
+      {/* *** NUEVO MODAL DE DEVOLUCIÓN *** */}
+      {showReturnModal && selectedTransferForReturn && (
+        <ReturnModal
+          transfer={selectedTransferForReturn}
+          onClose={handleReturnModalClose}
+          onSubmit={handleReturnSubmit}
+          isSubmitting={isCreatingReturn}
+        />
       )}
     </div>
   );

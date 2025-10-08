@@ -43,7 +43,7 @@ interface PendingRequest {
   model: string;
   size: string;
   quantity: number;
-  purpose: 'cliente' | 'restock';
+  purpose: 'cliente' | 'restock' | 'return';
   priority: 'high' | 'normal';
   priority_level: 'URGENT' | 'NORMAL';
   requested_at: string;
@@ -86,7 +86,7 @@ interface PendingRequest {
 
 interface AcceptedRequest {
   id: number;
-  status: 'accepted' | 'in_transit' | 'courier_assigned';
+  status: 'accepted' | 'in_transit' | 'courier_assigned' | 'delivered';
   status_info?: {
     title: string;
     description: string;
@@ -103,7 +103,7 @@ interface AcceptedRequest {
   product_description?: string;
   transfer_type?: string;
   transfer_type_display?: string;
-  purpose: 'cliente' | 'restock';
+  purpose: 'cliente' | 'restock' | 'return';
   priority?: string;
   pickup_type?: string;
   pickup_info?: {
@@ -163,12 +163,15 @@ interface AcceptedRequest {
 
 export const WarehouseDashboard: React.FC = () => {
   // Estados principales
-  const [activeTab, setActiveTab] = useState<'pending' | 'accepted' | 'inventory' | 'stats'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'accepted' | 'inventory' | 'stats' | 'returns'>('pending');
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [acceptedRequests, setAcceptedRequests] = useState<AcceptedRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+
+  // *** NUEVOS ESTADOS PARA DEVOLUCIONES ***
+  const [pendingReturns, setPendingReturns] = useState<any[]>([]);
 
   // Estados de UI responsivo
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
@@ -277,6 +280,13 @@ export const WarehouseDashboard: React.FC = () => {
       
       setPendingRequests(pendingResponse.pending_requests || []);
       setAcceptedRequests(acceptedResponse.accepted_requests || []);
+      
+      // *** FILTRAR DEVOLUCIONES DE LAS ACCEPTED_REQUESTS ***
+      const returns = (acceptedResponse.accepted_requests || []).filter(
+        (req: AcceptedRequest) => req.purpose === 'return' && req.status === 'delivered'
+      );
+      setPendingReturns(returns);
+      console.log('✅ Devoluciones pendientes filtradas:', returns.length);
       
       // Actualizar estadísticas
       setStats({
@@ -572,8 +582,27 @@ export const WarehouseDashboard: React.FC = () => {
          return `Ubicación ${locationObj.id}`;
        }
      }
-     return 'N/A';
-   };
+    return 'N/A';
+  };
+
+  // *** NUEVA FUNCIÓN PARA DEVOLUCIONES ***
+  const handleConfirmReturnReception = async (returnId: number) => {
+    try {
+      const response = await warehouseAPI.confirmReturnReception(returnId, {
+        received_quantity: 1,
+        product_condition: 'good',
+        return_to_inventory: true,
+        quality_check_passed: true,
+        notes: 'Producto verificado - en perfecto estado'
+      });
+      
+      alert(`${response.message}\n\nInventario restaurado: +${response.received_quantity} unidad(es)`);
+      loadInitialData();
+    } catch (err: any) {
+      console.error('Error confirmando recepción:', err);
+      alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+    }
+  };
 
   if (loading) {
     return (
@@ -694,6 +723,17 @@ export const WarehouseDashboard: React.FC = () => {
                 <CheckCircle className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                 <span className="hidden sm:inline">Estadísticas</span>
                 <span className="sm:hidden">Stats</span>
+              </Button>
+              <Button
+                variant={activeTab === 'returns' ? 'primary' : 'outline'}
+                onClick={() => setActiveTab('returns')}
+                size="sm"
+                className="flex-1 md:flex-none text-xs md:text-sm"
+              >
+                <Package className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">Devoluciones</span>
+                <span className="sm:hidden">Returns</span>
+                ({pendingReturns.length})
               </Button>
               <div className="flex-grow hidden md:block"></div>
               <Button
@@ -1245,6 +1285,23 @@ export const WarehouseDashboard: React.FC = () => {
                            </Button>
                          )}
 
+                         {/* *** NUEVO: Botón para confirmar recepción de devoluciones - Mobile *** */}
+                         {request.purpose === 'return' && request.status === 'delivered' && (
+                           <Button
+                             onClick={() => handleConfirmReturnReception(request.id)}
+                             disabled={actionLoading === request.id}
+                             className="w-full bg-success hover:bg-success/90 text-success-foreground text-sm mt-2"
+                             size="sm"
+                           >
+                             {actionLoading === request.id ? (
+                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                             ) : (
+                               <CheckCircle className="h-4 w-4 mr-2" />
+                             )}
+                             ✅ Confirmar Recepción
+                           </Button>
+                         )}
+
                       </div>
 
                       {/* DESKTOP VIEW */}
@@ -1405,6 +1462,24 @@ export const WarehouseDashboard: React.FC = () => {
                                  <User className="h-4 w-4 mr-2" />
                                )}
                                👤 Entregar a Vendedor (WH005)
+                             </Button>
+                           </div>
+                         )}
+
+                         {/* *** NUEVO: Botón para confirmar recepción de devoluciones *** */}
+                         {request.purpose === 'return' && request.status === 'delivered' && (
+                           <div className='mt-4'>
+                             <Button
+                               onClick={() => handleConfirmReturnReception(request.id)}
+                               disabled={actionLoading === request.id}
+                               className="w-full bg-success hover:bg-success/90 text-success-foreground"
+                             >
+                               {actionLoading === request.id ? (
+                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                               ) : (
+                                 <CheckCircle className="h-4 w-4 mr-2" />
+                               )}
+                               ✅ Confirmar Recepción de Devolución
                              </Button>
                            </div>
                          )}
@@ -1843,6 +1918,146 @@ export const WarehouseDashboard: React.FC = () => {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {activeTab === 'returns' && (
+          <Card>
+            <CardHeader>
+              <h2 className="text-lg md:text-xl font-semibold flex items-center">
+                <Package className="h-5 w-5 md:h-6 md:w-6 text-primary mr-2" />
+                Devoluciones Pendientes
+              </h2>
+            </CardHeader>
+            <CardContent>
+              {pendingReturns.length === 0 ? (
+                <div className="text-center py-8 md:py-12">
+                  <Package className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
+                  <h3 className="text-base md:text-lg font-medium">No hay devoluciones pendientes</h3>
+                  <p className="text-muted-foreground text-sm">Las devoluciones aparecerán aquí cuando sean solicitadas.</p>
+                </div>
+              ) : (
+                <div className="space-y-4 md:space-y-6">
+                  {pendingReturns.map((returnItem) => (
+                    <div key={returnItem.id} className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300">
+                      <div className="p-4 md:p-6">
+                        {/* Header con estado */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-2">
+                            <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
+                              🔄 Devolución #{returnItem.id}
+                            </span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              returnItem.pickup_type === 'corredor' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                            }`}>
+                              {returnItem.pickup_type === 'corredor' ? '🚚 Con Corredor' : '👤 Con Vendedor'}
+                            </span>
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              ✅ {returnItem.status_info?.title || 'Entregado'}
+                            </span>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(returnItem.requested_at).toLocaleDateString()}
+                          </div>
+                        </div>
+
+                        {/* Información del producto */}
+                        <div className="flex items-center space-x-4 mb-4">
+                          {returnItem.product_image && (
+                            <img 
+                              src={returnItem.product_image} 
+                              alt={`${returnItem.brand} ${returnItem.model}`}
+                              className="w-16 h-16 object-cover rounded-lg border border-border"
+                            />
+                          )}
+                          <div>
+                            <h3 className="font-bold text-lg text-card-foreground">
+                              {returnItem.brand} {returnItem.model}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              Talla {returnItem.size} • Cantidad: {returnItem.quantity} • Ref: {returnItem.sneaker_reference_code}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              <strong>Tipo:</strong> {returnItem.transfer_type_display || 'Devolución'}
+                            </p>
+                            {returnItem.requester_info && (
+                              <p className="text-sm text-muted-foreground">
+                                <strong>Solicitado por:</strong> {returnItem.requester_info.name}
+                              </p>
+                            )}
+                            {returnItem.courier_info && (
+                              <p className="text-sm text-muted-foreground">
+                                <strong>Corredor:</strong> {returnItem.courier_info.name || 'No asignado'}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Información de ubicaciones */}
+                        {returnItem.location_info && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                              <div className="text-sm font-medium text-primary mb-1">📍 Desde (Vendedor)</div>
+                              <div className="text-sm font-medium text-card-foreground">
+                                {returnItem.location_info.source?.name || returnItem.location_info.from?.name || 'N/A'}
+                              </div>
+                            </div>
+                            <div className="p-3 bg-success/10 rounded-lg border border-success/20">
+                              <div className="text-sm font-medium text-success mb-1">🏪 Hacia (Bodega)</div>
+                              <div className="text-sm font-medium text-card-foreground">
+                                {returnItem.location_info.destination?.name || returnItem.location_info.to?.name || 'N/A'}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Timeline de la devolución */}
+                        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <h4 className="text-sm font-medium text-blue-800 mb-2">📋 Timeline</h4>
+                          <div className="space-y-1 text-xs text-blue-700">
+                            {returnItem.requested_at && (
+                              <div>✅ Solicitado: {new Date(returnItem.requested_at).toLocaleString()}</div>
+                            )}
+                            {returnItem.accepted_at && (
+                              <div>✅ Aceptado: {new Date(returnItem.accepted_at).toLocaleString()}</div>
+                            )}
+                            {returnItem.courier_accepted_at && (
+                              <div>🚚 Corredor asignado: {new Date(returnItem.courier_accepted_at).toLocaleString()}</div>
+                            )}
+                            {returnItem.picked_up_at && (
+                              <div>📦 Recogido: {new Date(returnItem.picked_up_at).toLocaleString()}</div>
+                            )}
+                            <div className="pt-1 border-t border-blue-300">
+                              <strong>⏱️ Tiempo desde aceptación:</strong> {returnItem.time_since_accepted || 'N/A'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Botones de acción */}
+                        <div className="flex space-x-3">
+                          {/* Solo mostrar botón de confirmar recepción cuando está delivered */}
+                          {returnItem.status === 'delivered' && (
+                            <Button
+                              onClick={() => handleConfirmReturnReception(returnItem.id)}
+                              disabled={actionLoading === returnItem.id}
+                              className="w-full bg-success hover:bg-success/90 text-success-foreground text-sm"
+                              size="sm"
+                            >
+                              {actionLoading === returnItem.id ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              ) : (
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                              )}
+                              ✅ Confirmar Recepción 
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
       </div>
     </DashboardLayout>

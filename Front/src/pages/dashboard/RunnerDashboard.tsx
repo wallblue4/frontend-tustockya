@@ -35,8 +35,9 @@ interface AvailableRequest {
   action_required: string;
   status_description: string;
   next_step: string;
-  purpose: 'cliente' | 'restock';
+  purpose: 'cliente' | 'restock' | 'return';
   hours_since_accepted: number;
+  notes?: string;
   request_info: {
     pickup_location: string;
     pickup_address: string;
@@ -197,18 +198,32 @@ export const RunnerDashboard: React.FC = () => {
       const request = availableRequests.find(r => r.id === requestId);
       const estimatedTime = request?.purpose === 'cliente' ? 15 : 20;
       
-      const response = await courierAPI.acceptRequest(
-        requestId, 
-        estimatedTime, 
-        `En camino al punto de recolección. ETA: ${estimatedTime} minutos.`
-      );
+      // Detectar si es una devolución
+      const isReturn = request?.request_info?.product_description?.includes('devolución') || 
+                      request?.notes?.includes('return') ||
+                      request?.purpose === 'return';
+      
+      let response;
+      if (isReturn) {
+        response = await courierAPI.acceptReturnTransport(
+          requestId, 
+          estimatedTime, 
+          `En camino al punto de recolección para devolución. ETA: ${estimatedTime} minutos.`
+        );
+      } else {
+        response = await courierAPI.acceptRequest(
+          requestId, 
+          estimatedTime, 
+          `En camino al punto de recolección. ETA: ${estimatedTime} minutos.`
+        );
+      }
       
       console.log('✅ Entrega aceptada:', response);
       
       addNotification(
         'success',
         '🚚 Entrega Aceptada',
-        `Transferencia #${requestId} aceptada. Dirígete al punto de recolección.`,
+        `${isReturn ? 'Devolución' : 'Transferencia'} #${requestId} aceptada. ${response.message}`,
         {
           label: 'Ver Mis Entregas',
           onClick: () => setActiveTab('assigned')
@@ -234,15 +249,28 @@ export const RunnerDashboard: React.FC = () => {
     setActionLoading(requestId);
     
     try {
-      await courierAPI.confirmPickup(
-        requestId, 
-        'Producto recogido en perfecto estado. En camino al destino.'
-      );
+      // Detectar si es una devolución
+      const transport = assignedTransports.find(t => t.id === requestId);
+      const isReturn = transport?.courier_notes?.includes('return') || 
+                      transport?.purpose === 'return';
+      
+      let response;
+      if (isReturn) {
+        response = await courierAPI.confirmReturnPickup(
+          requestId, 
+          'Producto de devolución recogido del vendedor - return en buen estado'
+        );
+      } else {
+        response = await courierAPI.confirmPickup(
+          requestId, 
+          'Producto recogido en perfecto estado. En camino al destino.'
+        );
+      }
       
       addNotification(
         'success',
         '📦 Recolección Confirmada',
-        `Transferencia #${requestId} recogida. En tránsito al destino.`
+        `${isReturn ? 'Devolución' : 'Transferencia'} #${requestId} recogida. ${response.message}`
       );
       
       await refetch();
@@ -264,16 +292,30 @@ export const RunnerDashboard: React.FC = () => {
     setActionLoading(requestId);
     
     try {
-      await courierAPI.confirmDelivery(
-        requestId, 
-        true, 
-        'Entrega exitosa. Producto entregado en perfecto estado.'
-      );
+      // Detectar si es una devolución
+      const transport = assignedTransports.find(t => t.id === requestId);
+      const isReturn = transport?.courier_notes?.includes('return') || 
+                      transport?.purpose === 'return';
+      
+      let response;
+      if (isReturn) {
+        response = await courierAPI.confirmReturnDelivery(
+          requestId, 
+          true, 
+          'Producto devuelto entregado en bodega exitosamente'
+        );
+      } else {
+        response = await courierAPI.confirmDelivery(
+          requestId, 
+          true, 
+          'Entrega exitosa. Producto entregado en perfecto estado.'
+        );
+      }
       
       addNotification(
         'success',
         '✅ Entrega Completada',
-        `Transferencia #${requestId} entregada exitosamente.`,
+        `${isReturn ? 'Devolución' : 'Transferencia'} #${requestId} entregada exitosamente. ${response.message}`,
         {
           label: 'Ver Historial',
           onClick: () => setActiveTab('history')
@@ -296,15 +338,29 @@ export const RunnerDashboard: React.FC = () => {
 
   // Función para obtener la acción requerida basada en el estado
   const getActionRequired = (transport: AssignedTransport) => {
+    const isReturn = transport.purpose === 'return';
+    
     switch (transport.status) {
       case 'courier_assigned':
-        return { action: 'confirm_pickup', description: 'Asignado - Confirmar Recolección' };
+        return { 
+          action: 'confirm_pickup', 
+          description: isReturn ? '🔄 Devolución - Recibir de Vendedor' : 'Asignado - Confirmar Recolección' 
+        };
       case 'in_transit':
-        return { action: 'confirm_delivery', description: 'En Tránsito - Confirmar Entrega' };
+        return { 
+          action: 'confirm_delivery', 
+          description: isReturn ? '🔄 Devolución - Entregar a Bodeguero' : 'En Tránsito - Confirmar Entrega' 
+        };
       case 'delivered':
-        return { action: 'delivered', description: 'Entregado - Esperando confirmación del vendedor' };
+        return { 
+          action: 'delivered', 
+          description: isReturn ? 'Devolución Entregada - Esperando confirmación del bodeguero' : 'Entregado - Esperando confirmación del vendedor' 
+        };
       default:
-        return { action: 'confirm_pickup', description: 'Asignado - Confirmar Recolección' };
+        return { 
+          action: 'confirm_pickup', 
+          description: isReturn ? '🔄 Devolución - Recibir de Vendedor' : 'Asignado - Confirmar Recolección' 
+        };
     }
   };
 
@@ -320,6 +376,50 @@ export const RunnerDashboard: React.FC = () => {
 
   // Funciones para obtener acciones según estado
   const getActionButton = (transport: AssignedTransport) => {
+    const isReturn = transport.purpose === 'return';
+    
+    // *** CASO ESPECIAL: DEVOLUCIONES ***
+    if (isReturn) {
+      // PASO 1: Si está "courier_assigned", mostrar "Recibir de Vendedor"
+      if (transport.status === 'courier_assigned') {
+        return (
+          <Button
+            onClick={() => handleConfirmPickup(transport.id)}
+            disabled={actionLoading === transport.id}
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white text-sm md:text-base"
+            size="sm"
+          >
+            {actionLoading === transport.id ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+            ) : (
+              <CheckCircle className="h-4 w-4 mr-2" />
+            )}
+            📦 Recibir de Vendedor
+          </Button>
+        );
+      }
+      
+      // PASO 2: Si está "in_transit", mostrar "Entregar a Bodeguero"
+      if (transport.status === 'in_transit') {
+        return (
+          <Button
+            onClick={() => handleConfirmDelivery(transport.id)}
+            disabled={actionLoading === transport.id}
+            className="w-full bg-success hover:bg-success/90 text-success-foreground text-sm md:text-base"
+            size="sm"
+          >
+            {actionLoading === transport.id ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-success-foreground mr-2"></div>
+            ) : (
+              <CheckCircle className="h-4 w-4 mr-2" />
+            )}
+            🏪 Entregar a Bodeguero
+          </Button>
+        );
+      }
+    }
+    
+    // *** CASO NORMAL: TRANSFERENCIAS REGULARES ***
     // Mostrar botón cuando el status sea "in_transit"
     if (transport.status === 'in_transit') {
       return (
@@ -856,9 +956,11 @@ export const RunnerDashboard: React.FC = () => {
                                 {description}
                               </span>
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                transport.purpose === 'cliente' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
+                                transport.purpose === 'cliente' ? 'bg-blue-100 text-blue-800' : 
+                                transport.purpose === 'return' ? 'bg-orange-100 text-orange-800' : 'bg-purple-100 text-purple-800'
                               }`}>
-                                {transport.purpose === 'cliente' ? 'Cliente' : 'Devolución'}
+                                {transport.purpose === 'cliente' ? 'Cliente' : 
+                                 transport.purpose === 'return' ? '🔄 Devolución' : 'Restock'}
                               </span>
                             </div>
                             <div className="text-xs text-muted-foreground">
@@ -950,9 +1052,11 @@ export const RunnerDashboard: React.FC = () => {
                               {description}
                             </span>
                             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                              transport.purpose === 'cliente' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
+                              transport.purpose === 'cliente' ? 'bg-blue-100 text-blue-800' : 
+                              transport.purpose === 'return' ? 'bg-orange-100 text-orange-800' : 'bg-purple-100 text-purple-800'
                             }`}>
-                              {transport.purpose === 'cliente' ? 'Cliente' : 'Devolución'}
+                              {transport.purpose === 'cliente' ? 'Cliente' : 
+                               transport.purpose === 'return' ? '🔄 Devolución' : 'Restock'}
                             </span>
                           </div>
                           <div className="text-sm text-muted-foreground">
@@ -1000,8 +1104,13 @@ export const RunnerDashboard: React.FC = () => {
                                   <div className="text-sm text-success font-medium">Cantidad</div>
                                 </div>
                                 <div className="text-center p-4 bg-accent/10 rounded-lg border border-accent/20">
-                                  <div className="text-xl font-bold text-accent">📦</div>
-                                  <div className="text-sm text-accent font-medium">{transport.purpose === 'cliente' ? 'Cliente' : 'Devolución'}</div>
+                                  <div className="text-xl font-bold text-accent">
+                                    {transport.purpose === 'cliente' ? '👤' : transport.purpose === 'return' ? '🔄' : '📦'}
+                                  </div>
+                                  <div className="text-sm text-accent font-medium">
+                                    {transport.purpose === 'cliente' ? 'Cliente' : 
+                                     transport.purpose === 'return' ? 'Devolución' : 'Restock'}
+                                  </div>
                                 </div>
                                 <div className="text-center p-4 bg-warning/10 rounded-lg border border-warning/20">
                                   <div className="text-lg font-bold text-warning">{transport.sneaker_reference_code}</div>
@@ -1017,10 +1126,12 @@ export const RunnerDashboard: React.FC = () => {
                                   </div>
                                   <div>
                                     <div className="font-semibold text-card-foreground text-lg">
-                                      {transport.purpose === 'cliente' ? 'Entrega a Cliente' : 'Devolución a Bodega'}
+                                      {transport.purpose === 'cliente' ? 'Entrega a Cliente' : 
+                                       transport.purpose === 'return' ? '🔄 Devolución a Bodega' : 'Restock'}
                                     </div>
                                     <div className="text-sm text-muted-foreground">
-                                      {transport.purpose === 'cliente' ? 'Producto para cliente final' : 'Producto devuelto a inventario'}
+                                      {transport.purpose === 'cliente' ? 'Producto para cliente final' : 
+                                       transport.purpose === 'return' ? 'Producto devuelto - retornar a inventario' : 'Producto para restock'}
                                     </div>
                                   </div>
                                 </div>
