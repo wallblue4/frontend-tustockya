@@ -18,6 +18,7 @@ const mapApiRoleToUserRole = (apiRole: string): UserRole => {
   const roleMapping: { [key: string]: UserRole } = {
     'administrador': 'administrador',
     'superuser': 'superuser',
+    'superadmin': 'superuser',  // Backend usa 'superadmin', mapeamos a 'superuser'
     'bodeguero': 'bodeguero',
     'seller': 'seller',
     'corredor': 'corredor',
