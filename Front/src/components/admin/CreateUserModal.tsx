@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, User, Mail, Lock, MapPin } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, User, Mail, Lock } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 
@@ -71,8 +71,16 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
     setIsSubmitting(true);
     try {
+      // Mapear roles en español a los valores que espera el backend en inglés
+      const roleMapping: Record<string, string> = {
+        'vendedor': 'seller',
+        'bodeguero': 'bodeguero',
+        'corredor': 'corredor'
+      };
+
       await onSubmit({
         ...formData,
+        role: roleMapping[formData.role] || formData.role, // Mapear el rol
         location_id: formData.location_id ? parseInt(formData.location_id) : undefined
       });
     } catch (error) {

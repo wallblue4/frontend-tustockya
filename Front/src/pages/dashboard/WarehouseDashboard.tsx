@@ -1163,7 +1163,7 @@ export const WarehouseDashboard: React.FC = () => {
                 // 1. Status "courier_assigned" (para entregar a corredor)
                 // 2. Status "accepted" con pickup_type "vendedor" (para entregar a vendedor)
                 const preparationRequests = acceptedRequests.filter(request => 
-                  request.status === 'courier_assigned' ||
+                  request.status === 'courier_assigned' ||'accepted'||
                   (request.status === 'accepted' && request.pickup_type === 'vendedor')
                 );
                 
@@ -1181,9 +1181,16 @@ export const WarehouseDashboard: React.FC = () => {
                       <div className="md:hidden p-4">
                         {/* Status tag at the top */}
                         <div className="flex justify-between items-center mb-3">
-                          <h4 className="font-semibold text-base text-foreground">
-                            {request.brand} {request.model}
-                          </h4>
+                          <div className="flex items-center space-x-2">
+                            <h4 className="font-semibold text-base text-foreground">
+                              {request.brand} {request.model}
+                            </h4>
+                            {request.purpose === 'return' && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                🔄 Devolución
+                              </span>
+                            )}
+                          </div>
                            <span className={`px-2 py-1 rounded-full text-xs font-medium 
                              ${request.status === 'courier_assigned' ? 'bg-success/10 text-success' : 
                                request.status === 'in_transit' ? 'bg-blue-100 text-blue-800' : 'bg-warning/10 text-warning'}
@@ -1192,7 +1199,9 @@ export const WarehouseDashboard: React.FC = () => {
                                request.status === 'courier_assigned' ? '✅ Corredor asignado' : 
                                request.status === 'in_transit' ? '🚚 En tránsito' : '🔄 Esperando corredor'
                              ) : (
-                               request.status === 'accepted' ? '⏳ Esperando vendedor' : '✅ Listo para entrega'
+                               request.status === 'accepted' ? (
+                                 request.purpose === 'return' ? '⏳ Esperando que vendedor entregue' : '⏳ Esperando vendedor'
+                               ) : '✅ Listo para entrega'
                              )}
                            </span>
                         </div>
@@ -1241,13 +1250,35 @@ export const WarehouseDashboard: React.FC = () => {
                          )}
 
                          {request.pickup_type === 'vendedor' && request.status === 'accepted' && (
-                           <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                             <p className="text-xs text-yellow-800">
+                           <div className={`mb-3 p-2 rounded-lg border ${
+                             request.purpose === 'return' ? 'bg-orange-50 border-orange-200' : 'bg-yellow-50 border-yellow-200'
+                           }`}>
+                             <p className={`text-xs font-medium ${
+                               request.purpose === 'return' ? 'text-orange-800' : 'text-yellow-800'
+                             }`}>
                                <User className="h-3 w-3 inline mr-1" />
                                <strong>Esperando al vendedor:</strong> {request.requester_info?.name || request.requester_name || 'Usuario'}
                              </p>
-                             <p className="text-xs text-yellow-700 mt-1">
-                               El vendedor debe venir a recoger el producto personalmente
+                             <p className={`text-xs mt-1 ${
+                               request.purpose === 'return' ? 'text-orange-700' : 'text-yellow-700'
+                             }`}>
+                               {request.purpose === 'return' 
+                                 ? '🔄 El vendedor debe traer el producto para devolución'
+                                 : 'El vendedor debe venir a recoger el producto personalmente'
+                               }
+                             </p>
+                           </div>
+                         )}
+                         
+                         {/* NUEVO: Devolución entregada por vendedor - esperando confirmación */}
+                         {request.pickup_type === 'vendedor' && request.status === 'delivered' && request.purpose === 'return' && (
+                           <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                             <p className="text-xs text-green-800 font-medium">
+                               <CheckCircle className="h-3 w-3 inline mr-1" />
+                               <strong>Devolución entregada por vendedor</strong>
+                             </p>
+                             <p className="text-xs text-green-700 mt-1">
+                               🔍 Debes verificar el producto y confirmar la recepción para restaurar el inventario
                              </p>
                            </div>
                          )}
@@ -1269,7 +1300,8 @@ export const WarehouseDashboard: React.FC = () => {
                           </Button>
                          )}
 
-                         {request.pickup_type === 'vendedor' && request.status === 'accepted' && (
+                         {/* Botón para transferencia normal con vendedor - status accepted */}
+                         {request.pickup_type === 'vendedor' && request.status === 'accepted' && request.purpose !== 'return' && (
                            <Button
                              onClick={() => handleDeliverToVendor(request.id)}
                              disabled={actionLoading === request.id}
@@ -1286,7 +1318,24 @@ export const WarehouseDashboard: React.FC = () => {
                          )}
 
                          {/* *** NUEVO: Botón para confirmar recepción de devoluciones - Mobile *** */}
-                         {request.purpose === 'return' && request.status === 'delivered' && (
+                         {request.pickup_type === 'vendedor' && request.purpose === 'return' && request.status === 'delivered' && (
+                           <Button
+                             onClick={() => handleConfirmReturnReception(request.id)}
+                             disabled={actionLoading === request.id}
+                             className="w-full bg-success hover:bg-success/90 text-success-foreground text-sm"
+                             size="sm"
+                           >
+                             {actionLoading === request.id ? (
+                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                             ) : (
+                               <CheckCircle className="h-4 w-4 mr-2" />
+                             )}
+                             ✅ Confirmar Recepción de Devolución
+                           </Button>
+                         )}
+                         
+                         {/* Botón para devoluciones por corredor */}
+                         {request.purpose === 'return' && request.pickup_type === 'corredor' && request.status === 'delivered' && (
                            <Button
                              onClick={() => handleConfirmReturnReception(request.id)}
                              disabled={actionLoading === request.id}
@@ -1308,9 +1357,16 @@ export const WarehouseDashboard: React.FC = () => {
                       <div className="hidden md:block p-6">
                         {/* Status tag at the top for desktop */}
                         <div className="flex justify-between items-center mb-4">
-                          <h4 className="font-semibold text-lg text-foreground">
-                            {request.brand} {request.model} - Talla {request.size}
-                          </h4>
+                          <div className="flex items-center space-x-2">
+                            <h4 className="font-semibold text-lg text-foreground">
+                              {request.brand} {request.model} - Talla {request.size}
+                            </h4>
+                            {request.purpose === 'return' && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                🔄 Devolución
+                              </span>
+                            )}
+                          </div>
                            <span className={`px-3 py-1 rounded-full text-sm font-medium 
                              ${request.status === 'courier_assigned' ? 'bg-success/10 text-success' : 
                                request.status === 'in_transit' ? 'bg-blue-100 text-blue-800' : 'bg-warning/10 text-warning'}
@@ -1319,7 +1375,9 @@ export const WarehouseDashboard: React.FC = () => {
                                request.status === 'courier_assigned' ? '✅ Corredor asignado' : 
                                request.status === 'in_transit' ? '🚚 En tránsito' : '🔄 Esperando corredor'
                              ) : (
-                               request.status === 'accepted' ? '⏳ Esperando vendedor' : '✅ Listo para entrega'
+                               request.status === 'accepted' ? (
+                                 request.purpose === 'return' ? '⏳ Esperando que vendedor entregue' : '⏳ Esperando vendedor'
+                               ) : '✅ Listo para entrega'
                              )}
                            </span>
                         </div>
@@ -1420,13 +1478,35 @@ export const WarehouseDashboard: React.FC = () => {
                          )}
 
                          {request.pickup_type === 'vendedor' && request.status === 'accepted' && (
-                           <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                             <p className="text-sm text-yellow-800">
+                           <div className={`mb-4 p-3 rounded-lg border ${
+                             request.purpose === 'return' ? 'bg-orange-50 border-orange-200' : 'bg-yellow-50 border-yellow-200'
+                           }`}>
+                             <p className={`text-sm font-medium ${
+                               request.purpose === 'return' ? 'text-orange-800' : 'text-yellow-800'
+                             }`}>
                                <User className="h-4 w-4 inline mr-1" />
                                <strong>Esperando al vendedor:</strong> {request.requester_info?.name || request.requester_name || 'Usuario'}
                              </p>
-                             <p className="text-sm text-yellow-700 mt-1">
-                               El vendedor debe venir a recoger el producto personalmente
+                             <p className={`text-sm mt-1 ${
+                               request.purpose === 'return' ? 'text-orange-700' : 'text-yellow-700'
+                             }`}>
+                               {request.purpose === 'return' 
+                                 ? '🔄 El vendedor debe traer el producto para devolución'
+                                 : 'El vendedor debe venir a recoger el producto personalmente'
+                               }
+                             </p>
+                           </div>
+                         )}
+                         
+                         {/* NUEVO: Devolución entregada por vendedor - esperando confirmación - Desktop */}
+                         {request.pickup_type === 'vendedor' && request.status === 'delivered' && request.purpose === 'return' && (
+                           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                             <p className="text-sm text-green-800 font-medium">
+                               <CheckCircle className="h-4 w-4 inline mr-1" />
+                               <strong>Devolución entregada por vendedor</strong>
+                             </p>
+                             <p className="text-sm text-green-700 mt-1">
+                               🔍 Debes verificar el producto y confirmar la recepción para restaurar el inventario
                              </p>
                            </div>
                          )}
@@ -1449,7 +1529,8 @@ export const WarehouseDashboard: React.FC = () => {
                            </div>
                          )}
 
-                         {request.pickup_type === 'vendedor' && request.status === 'accepted' && (
+                         {/* Botón para transferencia normal con vendedor - status accepted - Desktop */}
+                         {request.pickup_type === 'vendedor' && request.status === 'accepted' && request.purpose !== 'return' && (
                            <div className='mt-4'>
                              <Button
                                onClick={() => handleDeliverToVendor(request.id)}
@@ -1466,8 +1547,26 @@ export const WarehouseDashboard: React.FC = () => {
                            </div>
                          )}
 
-                         {/* *** NUEVO: Botón para confirmar recepción de devoluciones *** */}
-                         {request.purpose === 'return' && request.status === 'delivered' && (
+                         {/* *** NUEVO: Botón para confirmar recepción de devoluciones - Desktop *** */}
+                         {request.pickup_type === 'vendedor' && request.purpose === 'return' && request.status === 'delivered' && (
+                           <div className='mt-4'>
+                             <Button
+                               onClick={() => handleConfirmReturnReception(request.id)}
+                               disabled={actionLoading === request.id}
+                               className="w-full bg-success hover:bg-success/90 text-success-foreground"
+                             >
+                               {actionLoading === request.id ? (
+                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                               ) : (
+                                 <CheckCircle className="h-4 w-4 mr-2" />
+                               )}
+                               ✅ Confirmar Recepción de Devolución
+                             </Button>
+                           </div>
+                         )}
+                         
+                         {/* Botón para devoluciones por corredor */}
+                         {request.purpose === 'return' && request.pickup_type === 'corredor' && request.status === 'delivered' && (
                            <div className='mt-4'>
                              <Button
                                onClick={() => handleConfirmReturnReception(request.id)}

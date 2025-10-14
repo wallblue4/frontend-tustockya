@@ -94,6 +94,19 @@ import {
   testMicroserviceConnection
 } from '../../services/adminAPI';
 
+// Import Mayoreo API functions
+import {
+  crearProductoMayoreo,
+  listarProductosMayoreo,
+  actualizarProductoMayoreo,
+  eliminarProductoMayoreo,
+  registrarVentaMayoreo,
+  listarVentasMayoreo,
+  obtenerVentasProductoMayoreo,
+  obtenerEstadisticasMayoreo,
+  checkMayoreoHealth
+} from '../../services/adminMayoreoAPI';
+
 import { formatCurrency, formatDate, capitalize } from '../../utils/formatters';
 import { LoadingSkeleton } from '../../components/admin/LoadingSkeleton';
 import { ErrorState, EmptyState } from '../../components/admin/ErrorState';
@@ -163,6 +176,45 @@ interface WholesaleOrder {
   processed_by_name: string;
   items_count: number;
   notes: string | null;
+}
+
+interface ProductoMayoreo {
+  id: number;
+  user_id: number;
+  company_id: number;
+  modelo: string;
+  foto?: string;
+  tallas?: string;
+  cantidad_cajas_disponibles: number;
+  pares_por_caja: number;
+  precio: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface VentaMayoreo {
+  id: number;
+  mayoreo_id: number;
+  user_id: number;
+  company_id: number;
+  cantidad_cajas_vendidas: number;
+  precio_unitario_venta: number;
+  total_venta: number;
+  fecha_venta: string;
+  notas?: string;
+  created_at: string;
+  mayoreo_producto?: ProductoMayoreo;
+}
+
+interface EstadisticasMayoreo {
+  success: boolean;
+  message: string;
+  total_productos: number;
+  total_cajas_disponibles: number;
+  valor_total_inventario: number;
+  total_ventas: number;
+  valor_total_ventas: number;
 }
 
 interface MetricsData {
@@ -260,10 +312,20 @@ export const AdminDashboard: React.FC = () => {
     inventory: []
   });
 
+  // Mayoreo states
+  const [productosMayoreo, setProductosMayoreo] = useState<ProductoMayoreo[]>([]);
+  const [ventasMayoreo, setVentasMayoreo] = useState<VentaMayoreo[]>([]);
+  const [estadisticasMayoreo, setEstadisticasMayoreo] = useState<EstadisticasMayoreo | null>(null);
+  const [selectedProductoMayoreo, setSelectedProductoMayoreo] = useState<ProductoMayoreo | null>(null);
+
   // Modal states
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [showCreateCostModal, setShowCreateCostModal] = useState(false);
+  const [showCreateProductoMayoreoModal, setShowCreateProductoMayoreoModal] = useState(false);
+  const [showEditProductoMayoreoModal, setShowEditProductoMayoreoModal] = useState(false);
+  const [showRegistrarVentaMayoreoModal, setShowRegistrarVentaMayoreoModal] = useState(false);
+  const [showVentasProductoModal, setShowVentasProductoModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   // Filter states
@@ -293,6 +355,8 @@ export const AdminDashboard: React.FC = () => {
       loadCosts();
     } else if (currentView === 'notifications') {
       loadNotifications();
+    } else if (currentView === 'wholesale') {
+      loadMayoreoData();
     }
   }, [currentView]);
 
@@ -696,6 +760,131 @@ Detalle técnico: ${error.message}`;
       }
       
       alert(errorMessage);
+    }
+  };
+
+  // ========== MAYOREO FUNCTIONS ==========
+
+  const loadMayoreoData = async () => {
+    try {
+      setLoading(true);
+      const [productos, ventas, estadisticas] = await Promise.all([
+        listarProductosMayoreo().catch(err => {
+          console.warn('Error loading productos mayoreo:', err);
+          return { data: [] };
+        }),
+        listarVentasMayoreo().catch(err => {
+          console.warn('Error loading ventas mayoreo:', err);
+          return { data: [] };
+        }),
+        obtenerEstadisticasMayoreo().catch(err => {
+          console.warn('Error loading estadisticas mayoreo:', err);
+          return null;
+        })
+      ]);
+
+      setProductosMayoreo(Array.isArray(productos) ? productos : productos.data || []);
+      setVentasMayoreo(Array.isArray(ventas) ? ventas : ventas.data || []);
+      setEstadisticasMayoreo(estadisticas);
+    } catch (error) {
+      console.error('Error loading mayoreo data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateProductoMayoreo = async (productoData: {
+    modelo: string;
+    cantidad_cajas_disponibles: number;
+    pares_por_caja: number;
+    precio: number;
+    foto?: File | null;
+    tallas?: string;
+  }) => {
+    try {
+      await crearProductoMayoreo(productoData);
+      await loadMayoreoData();
+      setShowCreateProductoMayoreoModal(false);
+      alert('✅ Producto de mayoreo creado exitosamente');
+    } catch (error: any) {
+      console.error('Error creating producto mayoreo:', error);
+      alert('❌ Error al crear producto: ' + (error.message || 'Error desconocido'));
+    }
+  };
+
+  const handleUpdateProductoMayoreo = async (mayoreoId: number, productoData: {
+    modelo?: string;
+    cantidad_cajas_disponibles?: number;
+    pares_por_caja?: number;
+    precio?: number;
+    foto?: File | null;
+    tallas?: string;
+    is_active?: boolean;
+  }) => {
+    try {
+      await actualizarProductoMayoreo(mayoreoId, productoData);
+      await loadMayoreoData();
+      setShowEditProductoMayoreoModal(false);
+      setSelectedProductoMayoreo(null);
+      alert('✅ Producto actualizado exitosamente');
+    } catch (error: any) {
+      console.error('Error updating producto mayoreo:', error);
+      alert('❌ Error al actualizar producto: ' + (error.message || 'Error desconocido'));
+    }
+  };
+
+  const handleDeleteProductoMayoreo = async (mayoreoId: number) => {
+    try {
+      const confirmation = window.confirm('¿Estás seguro de que deseas eliminar este producto de mayoreo?');
+      if (!confirmation) return;
+
+      await eliminarProductoMayoreo(mayoreoId);
+      await loadMayoreoData();
+      alert('✅ Producto eliminado exitosamente');
+    } catch (error: any) {
+      console.error('Error deleting producto mayoreo:', error);
+      alert('❌ Error al eliminar producto: ' + (error.message || 'Error desconocido'));
+    }
+  };
+
+  const handleRegistrarVentaMayoreo = async (ventaData: {
+    mayoreo_id: number;
+    cantidad_cajas_vendidas: number;
+    precio_unitario_venta: number;
+    notas?: string;
+  }) => {
+    try {
+      const response = await registrarVentaMayoreo(ventaData);
+      await loadMayoreoData();
+      setShowRegistrarVentaMayoreoModal(false);
+      setSelectedProductoMayoreo(null);
+      
+      alert(`✅ Venta registrada exitosamente!
+
+📦 Cajas vendidas: ${response.cantidad_cajas_vendidas}
+💰 Precio unitario: ${formatCurrency(response.precio_unitario_venta)}
+💵 Total venta: ${formatCurrency(response.total_venta)}
+📅 Fecha: ${formatDate(response.fecha_venta)}`);
+    } catch (error: any) {
+      console.error('Error registrando venta mayoreo:', error);
+      alert('❌ Error al registrar venta: ' + (error.message || 'Error desconocido'));
+    }
+  };
+
+  const handleVerVentasProducto = async (mayoreoId: number) => {
+    try {
+      const response = await obtenerVentasProductoMayoreo(mayoreoId);
+      const ventas = Array.isArray(response) ? response : response.data || [];
+      
+      if (ventas.length === 0) {
+        alert('ℹ️ Este producto no tiene ventas registradas');
+      } else {
+        setVentasMayoreo(ventas);
+        setShowVentasProductoModal(true);
+      }
+    } catch (error: any) {
+      console.error('Error obteniendo ventas del producto:', error);
+      alert('❌ Error al obtener ventas: ' + (error.message || 'Error desconocido'));
     }
   };
 
@@ -1562,198 +1751,244 @@ Detalle técnico: ${error.message}`;
             <h3 className="text-lg font-semibold">Registrar Inventario</h3>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Columna 1: Datos del Producto */}
               <div className="space-y-4">
-                
-                <Select
-                  value={videoInventoryForm.warehouse_location_id.toString()}
-                  onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, warehouse_location_id: parseInt(e.target.value) }))}
-                  options={[
-                    { value: '0', label: 'Seleccionar Bodega' },
-                    ...locations.filter(l => l.type === 'bodega').map(location => ({ value: location.id.toString(), label: location.name }))
-                  ]}
-                />
-                
-                <Input 
-                  placeholder="Marca (Opcional)" 
-                  value={videoInventoryForm.product_brand}
-                  onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_brand: e.target.value }))}
-                />
-                <Input 
-                  placeholder="Modelo (Opcional)" 
-                  value={videoInventoryForm.product_model}
-                  onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_model: e.target.value }))}
-                />
+                <h4 className="font-semibold text-foreground mb-3">Datos del Producto</h4>
                 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
-                    Precio Unitario * <span className="text-xs text-muted-foreground">(Precio por unidad individual)</span>
+                    Bodega <span className="text-error">*</span>
+                  </label>
+                  <Select
+                    value={videoInventoryForm.warehouse_location_id.toString()}
+                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, warehouse_location_id: parseInt(e.target.value) }))}
+                    options={[
+                      { value: '0', label: 'Seleccionar Bodega' },
+                      ...locations.filter(l => l.type === 'bodega').map(location => ({ value: location.id.toString(), label: location.name }))
+                    ]}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Ubicación donde se registra el inventario</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Marca (Opcional)
                   </label>
                   <Input 
-                    placeholder="Ejemplo: 45000" 
+                    placeholder="Ej: Nike, Adidas" 
+                    value={videoInventoryForm.product_brand}
+                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_brand: e.target.value }))}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Marca del producto</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Modelo (Opcional)
+                  </label>
+                  <Input 
+                    placeholder="Ej: Air Max 90" 
+                    value={videoInventoryForm.product_model}
+                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_model: e.target.value }))}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Modelo del producto</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Precio Unitario <span className="text-error">*</span>
+                  </label>
+                  <Input 
+                    placeholder="Ej: 45000" 
                     type="number"
                     value={videoInventoryForm.unit_price}
                     onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, unit_price: parseFloat(e.target.value) }))}
                     min="0"
                     step="1000"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Precio por unidad individual</p>
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
-                    Precio por Caja <span className="text-xs text-muted-foreground">(Opcional - Precio mayorista)</span>
+                    Precio por Caja (Opcional)
                   </label>
                   <Input 
-                    placeholder="Ejemplo: 540000" 
+                    placeholder="Ej: 540000" 
                     type="number"
                     value={videoInventoryForm.box_price}
                     onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, box_price: parseFloat(e.target.value)}))}
                     min="0"
                     step="1000"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Precio mayorista por caja</p>
                 </div>
                 
-                {/* Campos para tallas y cantidades */}
-                <label className="block text-sm font-medium text-foreground mb-1">Tallas y cantidades</label>
-                {videoInventoryForm.sizes.map((entry, idx) => (
-                  <div key={idx} className="flex items-center gap-2 mb-2">
-                    <Input
-                      placeholder="Talla"
-                      value={entry.size}
-                      onChange={e => {
-                        const newSizes = [...videoInventoryForm.sizes];
-                        newSizes[idx].size = e.target.value;
-                        setVideoInventoryForm(prev => ({ ...prev, sizes: newSizes }));
-                      }}
-                      className="w-1/2"
-                    />
-                    <Input
-                      placeholder="Cantidad"
-                      type="number"
-                      value={entry.quantity}
-                      onChange={e => {
-                        const newSizes = [...videoInventoryForm.sizes];
-                        newSizes[idx].quantity = e.target.value;
-                        setVideoInventoryForm(prev => ({ ...prev, sizes: newSizes }));
-                      }}
-                      className="w-1/2"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="ml-2"
-                      onClick={() => {
-                        setVideoInventoryForm(prev => ({
-                          ...prev,
-                          sizes: [...prev.sizes, { size: '', quantity: '' }]
-                        }));
-                      }}
-                    >
-                      +
-                    </Button>
-                    {videoInventoryForm.sizes.length > 1 && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Tallas y Cantidades <span className="text-error">*</span>
+                  </label>
+                  {videoInventoryForm.sizes.map((entry, idx) => (
+                    <div key={idx} className="flex items-center gap-2 mb-2">
+                      <Input
+                        placeholder="Talla"
+                        value={entry.size}
+                        onChange={e => {
+                          const newSizes = [...videoInventoryForm.sizes];
+                          newSizes[idx].size = e.target.value;
+                          setVideoInventoryForm(prev => ({ ...prev, sizes: newSizes }));
+                        }}
+                        className="w-1/2"
+                      />
+                      <Input
+                        placeholder="Cantidad"
+                        type="number"
+                        value={entry.quantity}
+                        onChange={e => {
+                          const newSizes = [...videoInventoryForm.sizes];
+                          newSizes[idx].quantity = e.target.value;
+                          setVideoInventoryForm(prev => ({ ...prev, sizes: newSizes }));
+                        }}
+                        className="w-1/2"
+                      />
                       <Button
                         size="sm"
-                        variant="ghost"
-                        className="ml-1 text-red-500"
+                        variant="outline"
+                        className="ml-2"
                         onClick={() => {
                           setVideoInventoryForm(prev => ({
                             ...prev,
-                            sizes: prev.sizes.filter((_, i) => i !== idx)
+                            sizes: [...prev.sizes, { size: '', quantity: '' }]
                           }));
                         }}
                       >
-                        -
+                        +
                       </Button>
-                    )}
-                  </div>
-                ))}
-                <textarea
-                  placeholder="Notas adicionales"
-                  className="w-full px-3 py-2 border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent placeholder:text-muted-foreground resize-none min-h-[80px]"
-                  value={videoInventoryForm.notes}
-                  onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, notes: e.target.value }))}
-                />
+                      {videoInventoryForm.sizes.length > 1 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="ml-1 text-red-500"
+                          onClick={() => {
+                            setVideoInventoryForm(prev => ({
+                              ...prev,
+                              sizes: prev.sizes.filter((_, i) => i !== idx)
+                            }));
+                          }}
+                        >
+                          -
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <p className="text-xs text-muted-foreground mt-1">Agrega todas las tallas disponibles</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Notas Adicionales (Opcional)
+                  </label>
+                  <textarea
+                    placeholder="Información adicional sobre el producto..."
+                    className="w-full px-3 py-2 border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent placeholder:text-muted-foreground resize-none min-h-[80px]"
+                    value={videoInventoryForm.notes}
+                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, notes: e.target.value }))}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Observaciones sobre el producto</p>
+                </div>
               </div>
 
-              <div>
+              {/* Columna 2: Foto del Producto */}
+              <div className="space-y-4">
+                <h4 className="font-semibold text-foreground mb-3">Foto del Producto (Opcional)</h4>
+                
+                <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Tomar Foto del Inventario
+                    Capturar Foto de Referencia
                   </label>
                   <FullScreenPhotoCapture
                     onPhotoTaken={async (url, blob) => {
-                      console.log("Foto tomada:", url, blob);
                       if (blob && url) {
-                        // Almacenar la URL para preview
+                        // Limpiar URL anterior si existe
+                        if (capturedPhotoUrl) {
+                          URL.revokeObjectURL(capturedPhotoUrl);
+                        }
+                        
                         setCapturedPhotoUrl(url);
                         
-                        // Usa el tipo real del blob si está disponible, si no, usa 'image/*'
-                        const fileType = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/*';
+                        const fileType = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/jpeg';
                         const ext = fileType.split('/')[1] || 'jpg';
                         const imageFile = new File([blob], `reference-image.${ext}`, { type: fileType });
-                        console.log("Imagen creada:", imageFile.name, imageFile.size, "bytes", imageFile.type);
+                        
                         setVideoInventoryForm(prev => ({ 
                           ...prev, 
                           reference_image: imageFile 
                         }));
-                        console.log("Imagen guardada en el estado del formulario");
-                      } else {
-                        console.warn("No se pudo obtener el blob de la foto");
                       }
                     }}
                   />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Toca el botón para abrir la cámara en pantalla completa
+                  </p>
+                </div>
                   
-                  {/* Preview de la foto capturada */}
-                  {capturedPhotoUrl && (
-                    <div className="mt-4 p-4 border rounded-lg bg-card">
-                      <h4 className="text-sm font-medium text-foreground mb-2">📸 Foto Capturada</h4>
-                      <div className="flex items-center space-x-4">
-                        <img 
-                          src={capturedPhotoUrl} 
-                          alt="Foto del inventario"
-                          className="w-32 h-32 object-cover rounded-lg border shadow-sm"
-                        />
-                        <div className="flex-1">
-                          <p className="text-sm text-muted-foreground mb-2">
-                            Foto de referencia del producto
-                          </p>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              // Limpiar URL de blob antes de eliminar
-                              if (capturedPhotoUrl) {
-                                URL.revokeObjectURL(capturedPhotoUrl);
-                              }
-                              setCapturedPhotoUrl(null);
-                              setVideoInventoryForm(prev => ({ ...prev, reference_image: null }));
-                            }}
-                            className="text-destructive hover:text-destructive/80"
-                          >
-                            🗑️ Eliminar foto
-                          </Button>
-                        </div>
+                {/* Preview de la foto capturada */}
+                {capturedPhotoUrl && (
+                  <div className="border border-border rounded-lg p-4 bg-muted/10">
+                    <h4 className="text-sm font-medium text-foreground mb-2">📸 Foto Capturada</h4>
+                    <div className="space-y-3">
+                      <img 
+                        src={capturedPhotoUrl} 
+                        alt="Foto del inventario"
+                        className="w-full h-64 object-cover rounded-lg border shadow-sm"
+                      />
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">
+                          Foto de referencia del producto
+                        </p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (capturedPhotoUrl) {
+                              URL.revokeObjectURL(capturedPhotoUrl);
+                            }
+                            setCapturedPhotoUrl(null);
+                            setVideoInventoryForm(prev => ({ ...prev, reference_image: null }));
+                          }}
+                          className="text-destructive hover:text-destructive/80"
+                        >
+                          🗑️ Eliminar
+                        </Button>
                       </div>
                     </div>
-                  )}
+                  </div>
+                )}
               </div>
 
+              {/* Columna 3: Video del Producto */}
               <div className="space-y-4">
+                <h4 className="font-semibold text-foreground mb-3">Video del Producto <span className="text-error">*</span></h4>
+                
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
                     Grabar Video del Inventario
                   </label>
                   <FullScreenCameraCapture
                     onVideoRecorded={async (url, blob) => {
-                      console.log("Video grabado:", url, blob);
                       if (blob && url) {
-                        // Almacenar la URL para preview
+                        // Limpiar URL anterior si existe
+                        if (capturedVideoUrl) {
+                          URL.revokeObjectURL(capturedVideoUrl);
+                        }
+                        
                         setCapturedVideoUrl(url);
                         
-                        // Usa el tipo real del blob si está disponible, si no, usa 'video/*'
-                        const fileType = blob.type && blob.type.startsWith('video/') ? blob.type : 'video/*';
-                        const ext = fileType.split('/')[1] || 'mp4';
+                        const fileType = blob.type && blob.type.startsWith('video/') ? blob.type : 'video/webm';
+                        const ext = fileType.split('/')[1] || 'webm';
                         const videoFile = new File([blob], `inventory-video.${ext}`, { type: fileType });
+                        
                         setVideoInventoryForm(prev => ({ 
                           ...prev, 
                           video_file: videoFile 
@@ -1761,42 +1996,44 @@ Detalle técnico: ${error.message}`;
                       }
                     }}
                   />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Toca el botón para abrir la cámara en pantalla completa
+                  </p>
+                </div>
                   
-                  {/* Preview del video grabado */}
-                  {capturedVideoUrl && (
-                    <div className="mt-4 p-4 border rounded-lg bg-card">
-                      <h4 className="text-sm font-medium text-foreground mb-2">📹 Video Grabado</h4>
-                      <div className="space-y-3">
-                        <video 
-                          src={capturedVideoUrl} 
-                          controls 
-                          className="w-full max-w-md rounded-lg border shadow-sm"
-                          preload="metadata"
-                        />
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-muted-foreground">
-                            Video del inventario del producto
-                          </p>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              // Limpiar URL de blob antes de eliminar
-                              if (capturedVideoUrl) {
-                                URL.revokeObjectURL(capturedVideoUrl);
-                              }
-                              setCapturedVideoUrl(null);
-                              setVideoInventoryForm(prev => ({ ...prev, video_file: null }));
-                            }}
-                            className="text-destructive hover:text-destructive/80"
-                          >
-                            🗑️ Eliminar video
-                          </Button>
-                        </div>
+                {/* Preview del video grabado */}
+                {capturedVideoUrl && (
+                  <div className="border border-border rounded-lg p-4 bg-muted/10">
+                    <h4 className="text-sm font-medium text-foreground mb-2">📹 Video Grabado</h4>
+                    <div className="space-y-3">
+                      <video 
+                        src={capturedVideoUrl} 
+                        controls 
+                        className="w-full rounded-lg border shadow-sm"
+                        preload="metadata"
+                      />
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">
+                          Video del inventario del producto
+                        </p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (capturedVideoUrl) {
+                              URL.revokeObjectURL(capturedVideoUrl);
+                            }
+                            setCapturedVideoUrl(null);
+                            setVideoInventoryForm(prev => ({ ...prev, video_file: null }));
+                          }}
+                          className="text-destructive hover:text-destructive/80"
+                        >
+                          🗑️ Eliminar
+                        </Button>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -1919,83 +2156,242 @@ Detalle técnico: ${error.message}`;
 
   const renderWholesaleView = () => {
     return (
-      <div className="space-y-6 p-4 md:p-6">
+      <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <h2 className="text-2xl font-bold">Ventas al Por Mayor</h2>
-          <Button onClick={() => alert('Función pendiente de implementar')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Orden Mayorista
-          </Button>
+          <h2 className="text-2xl font-bold text-foreground">Gestión de Ventas al Por Mayor</h2>
+          <div className="flex gap-2">
+            <Button onClick={() => loadMayoreoData()} size="sm" variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Actualizar
+            </Button>
+            <Button onClick={() => setShowCreateProductoMayoreoModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Producto
+            </Button>
+          </div>
         </div>
 
-        {/* Wholesale Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <ShoppingBag className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold">{wholesaleOrders.length}</p>
-              <p className="text-sm text-gray-600">Órdenes Totales</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <DollarSign className="h-8 w-8 text-success mx-auto mb-2" />
-              <p className="text-2xl font-bold">
-                {formatCurrency(wholesaleOrders.reduce((sum, order) => sum + parseFloat(order.final_amount), 0))}
-              </p>
-              <p className="text-sm text-gray-600">Ventas Totales</p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Estadísticas de Mayoreo */}
+        {estadisticasMayoreo && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <Card>
+              <CardContent className="p-4 text-center">
+                <Package className="h-8 w-8 text-primary mx-auto mb-2" />
+                <p className="text-2xl font-bold">{estadisticasMayoreo.total_productos}</p>
+                <p className="text-sm text-muted-foreground">Productos Activos</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <ShoppingBag className="h-8 w-8 text-secondary mx-auto mb-2" />
+                <p className="text-2xl font-bold">{estadisticasMayoreo.total_cajas_disponibles}</p>
+                <p className="text-sm text-muted-foreground">Cajas Disponibles</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <DollarSign className="h-8 w-8 text-warning mx-auto mb-2" />
+                <p className="text-2xl font-bold">{formatCurrency(estadisticasMayoreo.valor_total_inventario)}</p>
+                <p className="text-sm text-muted-foreground">Valor Inventario</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <TrendingUp className="h-8 w-8 text-success mx-auto mb-2" />
+                <p className="text-2xl font-bold">{estadisticasMayoreo.total_ventas}</p>
+                <p className="text-sm text-muted-foreground">Ventas Realizadas</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <BarChart3 className="h-8 w-8 text-primary mx-auto mb-2" />
+                <p className="text-2xl font-bold">{formatCurrency(estadisticasMayoreo.valor_total_ventas)}</p>
+                <p className="text-sm text-muted-foreground">Total Vendido</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-        {/* Wholesale Orders List */}
+        {/* Lista de Productos de Mayoreo */}
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold">Órdenes Mayoristas</h3>
+            <h3 className="text-lg font-semibold text-foreground">Productos de Mayoreo</h3>
           </CardHeader>
           <CardContent>
-            {wholesaleOrders.length > 0 ? (
-              <div className="space-y-4">
-                {wholesaleOrders.map((order) => (
-                  <div key={order.id} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h4 className="font-semibold text-lg">{order.customer_name}</h4>
-                        <p className="text-sm text-gray-600">Doc: {order.customer_document}</p>
-                        <p className="text-sm text-gray-600">Ubicación: {order.location_name}</p>
-                        <p className="text-sm text-gray-600">Procesado por: {order.processed_by_name}</p>
-                      </div>
-                      
-                      <div className="text-right">
-                        <p className="text-xl font-bold">{formatCurrency(parseFloat(order.final_amount))}</p>
-                        <p className="text-xs text-gray-500">{formatDate(order.sale_date)}</p>
-                      </div>
+            {productosMayoreo.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
+                  <thead className="bg-popover text-popover-foreground">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Modelo</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Tallas</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Cajas Disp.</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Pares/Caja</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Precio</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Estado</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {productosMayoreo.map((producto) => (
+                      <tr key={producto.id} className="border-b border-border last:border-b-0 bg-card hover:bg-muted/10 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {producto.foto && (
+                              <img src={producto.foto} alt={producto.modelo} className="h-10 w-10 rounded-md mr-3 object-cover" />
+                            )}
+                            <div>
+                              <p className="font-medium text-foreground">{producto.modelo}</p>
+                              <p className="text-sm text-muted-foreground">ID: {producto.id}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                          {producto.tallas || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge variant={producto.cantidad_cajas_disponibles > 10 ? 'success' : producto.cantidad_cajas_disponibles > 0 ? 'warning' : 'error'}>
+                            {producto.cantidad_cajas_disponibles} cajas
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                          {producto.pares_por_caja} pares
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap font-semibold text-foreground">
+                          {formatCurrency(producto.precio)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge variant={producto.is_active ? 'success' : 'error'}>
+                            {producto.is_active ? 'Activo' : 'Inactivo'}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedProductoMayoreo(producto);
+                              setShowRegistrarVentaMayoreoModal(true);
+                            }}
+                            disabled={producto.cantidad_cajas_disponibles === 0 || !producto.is_active}
+                          >
+                            <DollarSign className="h-4 w-4 mr-1" />
+                            Vender
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleVerVentasProducto(producto.id)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedProductoMayoreo(producto);
+                              setShowEditProductoMayoreoModal(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <EmptyState
+                title="No hay productos de mayoreo"
+                description="Crea tu primer producto de mayoreo para comenzar"
+                icon={<Package className="h-12 w-12 text-gray-400" />}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Últimas Ventas de Mayoreo */}
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-foreground">Últimas Ventas de Mayoreo</h3>
+          </CardHeader>
+          <CardContent>
+            {ventasMayoreo.length > 0 ? (
+              <div className="space-y-3">
+                {ventasMayoreo.slice(0, 10).map((venta) => (
+                  <div key={venta.id} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card hover:bg-muted/10 transition-colors">
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">
+                        {venta.mayoreo_producto?.modelo || `Producto ID: ${venta.mayoreo_id}`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {venta.cantidad_cajas_vendidas} cajas × {formatCurrency(venta.precio_unitario_venta)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatDate(venta.fecha_venta)}
+                      </p>
+                      {venta.notas && (
+                        <p className="text-xs text-muted-foreground italic mt-1">"{venta.notas}"</p>
+                      )}
                     </div>
-
-                    {order.notes && (
-                      <div className="mb-3">
-                        <p className="text-sm bg-gray-50 p-2 rounded">{order.notes}</p>
-                      </div>
-                    )}
-
-                    <div className="flex justify-end space-x-2">
-                      <Button size="sm" variant="outline">
-                        <Eye className="h-4 w-4 mr-1" />
-                        Ver Detalles
-                      </Button>
+                    <div className="text-right">
+                      <p className="text-xl font-bold text-success">{formatCurrency(venta.total_venta)}</p>
+                      <Badge variant="success" className="mt-1">Completada</Badge>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <EmptyState
-                title="No hay órdenes mayoristas"
-                description="No se encontraron órdenes de venta al por mayor"
+                title="No hay ventas registradas"
+                description="Las ventas de mayoreo aparecerán aquí"
                 icon={<ShoppingBag className="h-12 w-12 text-gray-400" />}
               />
             )}
           </CardContent>
         </Card>
+
+        {/* Modales */}
+        {showCreateProductoMayoreoModal && (
+          <CreateProductoMayoreoModal
+            onClose={() => setShowCreateProductoMayoreoModal(false)}
+            onSubmit={handleCreateProductoMayoreo}
+          />
+        )}
+
+        {showEditProductoMayoreoModal && selectedProductoMayoreo && (
+          <EditProductoMayoreoModal
+            producto={selectedProductoMayoreo}
+            onClose={() => {
+              setShowEditProductoMayoreoModal(false);
+              setSelectedProductoMayoreo(null);
+            }}
+            onSubmit={(data) => handleUpdateProductoMayoreo(selectedProductoMayoreo.id, data)}
+            onDelete={() => handleDeleteProductoMayoreo(selectedProductoMayoreo.id)}
+          />
+        )}
+
+        {showRegistrarVentaMayoreoModal && selectedProductoMayoreo && (
+          <RegistrarVentaMayoreoModal
+            producto={selectedProductoMayoreo}
+            onClose={() => {
+              setShowRegistrarVentaMayoreoModal(false);
+              setSelectedProductoMayoreo(null);
+            }}
+            onSubmit={handleRegistrarVentaMayoreo}
+          />
+        )}
+
+        {showVentasProductoModal && (
+          <VentasProductoModal
+            ventas={ventasMayoreo}
+            onClose={() => {
+              setShowVentasProductoModal(false);
+              loadMayoreoData(); // Reload para actualizar ventas generales
+            }}
+          />
+        )}
       </div>
     );
   };
@@ -2324,6 +2720,541 @@ Detalle técnico: ${error.message}`;
             />
           </CardContent>
         </Card>
+      </div>
+    );
+  };
+
+  // ========== MAYOREO MODALS ==========
+
+  const CreateProductoMayoreoModal: React.FC<{
+    onClose: () => void;
+    onSubmit: (data: any) => void;
+  }> = ({ onClose, onSubmit }) => {
+    const [formData, setFormData] = useState({
+      modelo: '',
+      cantidad_cajas_disponibles: 0,
+      pares_por_caja: 0,
+      precio: 0,
+      foto: null as File | null,
+      tallas: ''
+    });
+    const [fotoPreviewUrl, setFotoPreviewUrl] = useState<string | null>(null);
+
+    // Limpiar URL de preview al desmontar
+    React.useEffect(() => {
+      return () => {
+        if (fotoPreviewUrl) {
+          URL.revokeObjectURL(fotoPreviewUrl);
+        }
+      };
+    }, [fotoPreviewUrl]);
+
+    const handleSubmit = () => {
+      // Validaciones
+      if (!formData.modelo.trim()) {
+        alert('❌ El modelo es obligatorio');
+        return;
+      }
+      if (formData.cantidad_cajas_disponibles < 0) {
+        alert('❌ La cantidad de cajas debe ser mayor o igual a 0');
+        return;
+      }
+      if (formData.pares_por_caja <= 0) {
+        alert('❌ Los pares por caja deben ser mayor a 0');
+        return;
+      }
+      if (formData.precio <= 0) {
+        alert('❌ El precio debe ser mayor a 0');
+        return;
+      }
+
+      onSubmit(formData);
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="bg-card rounded-lg max-w-2xl w-full p-6 my-8">
+          <h3 className="text-xl font-bold text-foreground mb-4">Crear Producto de Mayoreo</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Columna izquierda - Datos del producto */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Modelo del Producto <span className="text-error">*</span>
+                </label>
+                <Input
+                  placeholder="Ej: SS-9012"
+                  value={formData.modelo}
+                  onChange={(e) => setFormData({ ...formData, modelo: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Nombre o código del modelo</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Cantidad de Cajas Disponibles <span className="text-error">*</span>
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="Ej: 50"
+                  value={formData.cantidad_cajas_disponibles}
+                  onChange={(e) => setFormData({ ...formData, cantidad_cajas_disponibles: parseInt(e.target.value) || 0 })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Stock inicial de cajas</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Pares por Caja <span className="text-error">*</span>
+                </label>
+                <Input
+                  type="number"
+                  min="1"
+                  placeholder="Ej: 24"
+                  value={formData.pares_por_caja}
+                  onChange={(e) => setFormData({ ...formData, pares_por_caja: parseInt(e.target.value) || 0 })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Unidades por caja</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Precio por Caja <span className="text-error">*</span>
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Ej: 150000"
+                  value={formData.precio}
+                  onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) || 0 })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Precio de venta por caja</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Distribución de Tallas (Opcional)
+                </label>
+                <Input
+                  placeholder="Ej: 36-39/6666, 40-44/6662"
+                  value={formData.tallas}
+                  onChange={(e) => setFormData({ ...formData, tallas: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Formato: rango/distribución</p>
+              </div>
+            </div>
+
+            {/* Columna derecha - Foto del producto */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Foto del Producto (Opcional)
+                </label>
+                <FullScreenPhotoCapture
+                  hideInternalPreview={true}
+                  onPhotoTaken={async (url, blob) => {
+                    if (blob && url) {
+                      // Limpiar URL anterior si existe
+                      if (fotoPreviewUrl) {
+                        URL.revokeObjectURL(fotoPreviewUrl);
+                      }
+                      
+                      setFotoPreviewUrl(url);
+                      
+                      const fileType = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/jpeg';
+                      const ext = fileType.split('/')[1] || 'jpg';
+                      const fotoFile = new File([blob], `producto-mayoreo.${ext}`, { type: fileType });
+                      
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        foto: fotoFile 
+                      }));
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  Toca el botón para capturar una foto del producto
+                </p>
+              </div>
+
+              {/* Preview de la foto */}
+              {fotoPreviewUrl && (
+                <div className="space-y-2">
+                  <img 
+                    src={fotoPreviewUrl} 
+                    alt="Preview del producto"
+                    className="w-full rounded-lg border shadow-sm object-cover"
+                    style={{ maxHeight: '300px' }}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (fotoPreviewUrl) {
+                        URL.revokeObjectURL(fotoPreviewUrl);
+                      }
+                      setFotoPreviewUrl(null);
+                      setFormData(prev => ({ ...prev, foto: null }));
+                    }}
+                    className="w-full text-destructive hover:text-destructive/80 hover:bg-destructive/10"
+                  >
+                    🗑️ Eliminar foto
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 mt-6 pt-4 border-t border-border">
+            <Button variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button onClick={handleSubmit}>Crear Producto</Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const EditProductoMayoreoModal: React.FC<{
+    producto: ProductoMayoreo;
+    onClose: () => void;
+    onSubmit: (data: any) => void;
+    onDelete: () => void;
+  }> = ({ producto, onClose, onSubmit, onDelete }) => {
+    const [formData, setFormData] = useState({
+      modelo: producto.modelo,
+      cantidad_cajas_disponibles: producto.cantidad_cajas_disponibles,
+      pares_por_caja: producto.pares_por_caja,
+      precio: producto.precio,
+      foto: null as File | null,
+      tallas: producto.tallas || '',
+      is_active: producto.is_active
+    });
+    const [fotoPreviewUrl, setFotoPreviewUrl] = useState<string | null>(producto.foto || null);
+    const [fotoChanged, setFotoChanged] = useState(false);
+
+    // Limpiar URL de preview al desmontar (solo si es blob URL)
+    React.useEffect(() => {
+      return () => {
+        if (fotoPreviewUrl && fotoPreviewUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(fotoPreviewUrl);
+        }
+      };
+    }, [fotoPreviewUrl]);
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="bg-card rounded-lg max-w-2xl w-full p-6 my-8">
+          <h3 className="text-xl font-bold text-foreground mb-4">Editar Producto de Mayoreo</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Columna izquierda - Datos del producto */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Modelo del Producto
+                </label>
+                <Input
+                  placeholder="Modelo"
+                  value={formData.modelo}
+                  onChange={(e) => setFormData({ ...formData, modelo: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Cantidad de Cajas Disponibles
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={formData.cantidad_cajas_disponibles}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({ 
+                      ...formData, 
+                      cantidad_cajas_disponibles: value === '' ? producto.cantidad_cajas_disponibles : parseInt(value) || 0 
+                    });
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Pares por Caja
+                </label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={formData.pares_por_caja}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({ 
+                      ...formData, 
+                      pares_por_caja: value === '' ? producto.pares_por_caja : parseInt(value) || 0 
+                    });
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Precio por Caja
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.precio}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({ 
+                      ...formData, 
+                      precio: value === '' ? producto.precio : parseFloat(value) || 0 
+                    });
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Distribución de Tallas
+                </label>
+                <Input
+                  placeholder="Ej: 36-39/6666, 40-44/6662"
+                  value={formData.tallas}
+                  onChange={(e) => setFormData({ ...formData, tallas: e.target.value })}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2 p-3 bg-muted/20 rounded-lg">
+                <input
+                  type="checkbox"
+                  checked={formData.is_active}
+                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                  className="rounded"
+                />
+                <label className="text-sm font-medium text-foreground">Producto Activo</label>
+              </div>
+            </div>
+
+            {/* Columna derecha - Foto del producto */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Foto del Producto
+                </label>
+                <FullScreenPhotoCapture
+                  hideInternalPreview={true}
+                  onPhotoTaken={async (url, blob) => {
+                    if (blob && url) {
+                      // Limpiar URL anterior si es blob
+                      if (fotoPreviewUrl && fotoPreviewUrl.startsWith('blob:')) {
+                        URL.revokeObjectURL(fotoPreviewUrl);
+                      }
+                      
+                      setFotoPreviewUrl(url);
+                      setFotoChanged(true);
+                      
+                      const fileType = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/jpeg';
+                      const ext = fileType.split('/')[1] || 'jpg';
+                      const fotoFile = new File([blob], `producto-mayoreo-${producto.id}.${ext}`, { type: fileType });
+                      
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        foto: fotoFile 
+                      }));
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  {fotoChanged ? 'Nueva foto capturada' : 'Toca para cambiar la foto'}
+                </p>
+              </div>
+
+              {/* Preview de la foto */}
+              {fotoPreviewUrl && (
+                <div className="space-y-2">
+                  <img 
+                    src={fotoPreviewUrl} 
+                    alt="Preview del producto"
+                    className="w-full rounded-lg border shadow-sm object-cover"
+                    style={{ maxHeight: '300px' }}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (fotoPreviewUrl && fotoPreviewUrl.startsWith('blob:')) {
+                        URL.revokeObjectURL(fotoPreviewUrl);
+                      }
+                      setFotoPreviewUrl(null);
+                      setFotoChanged(true);
+                      setFormData(prev => ({ ...prev, foto: null }));
+                    }}
+                    className="w-full text-destructive hover:text-destructive/80 hover:bg-destructive/10"
+                  >
+                    🗑️ Eliminar foto
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-between mt-6 pt-4 border-t border-border">
+            <Button variant="outline" className="text-error border-error hover:bg-error hover:text-white" onClick={onDelete}>
+              Eliminar Producto
+            </Button>
+            <div className="flex space-x-2">
+              <Button variant="outline" onClick={onClose}>Cancelar</Button>
+              <Button onClick={() => {
+                // Solo enviar campos que han cambiado
+                const changedData: any = {};
+                
+                if (formData.modelo !== producto.modelo) {
+                  changedData.modelo = formData.modelo;
+                }
+                if (formData.cantidad_cajas_disponibles !== producto.cantidad_cajas_disponibles) {
+                  changedData.cantidad_cajas_disponibles = formData.cantidad_cajas_disponibles;
+                }
+                if (formData.pares_por_caja !== producto.pares_por_caja) {
+                  changedData.pares_por_caja = formData.pares_por_caja;
+                }
+                if (formData.precio !== producto.precio) {
+                  changedData.precio = formData.precio;
+                }
+                if (formData.tallas !== (producto.tallas || '')) {
+                  changedData.tallas = formData.tallas;
+                }
+                if (formData.is_active !== producto.is_active) {
+                  changedData.is_active = formData.is_active;
+                }
+                if (formData.foto !== null) {
+                  changedData.foto = formData.foto;
+                }
+                
+                console.log('Datos del formulario antes de enviar:', formData);
+                console.log('Solo campos cambiados:', changedData);
+                onSubmit(changedData);
+              }}>Actualizar</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const RegistrarVentaMayoreoModal: React.FC<{
+    producto: ProductoMayoreo;
+    onClose: () => void;
+    onSubmit: (data: any) => void;
+  }> = ({ producto, onClose, onSubmit }) => {
+    const [formData, setFormData] = useState({
+      mayoreo_id: producto.id,
+      cantidad_cajas_vendidas: 1,
+      precio_unitario_venta: producto.precio,
+      notas: ''
+    });
+
+    const calcularTotal = () => {
+      return formData.cantidad_cajas_vendidas * formData.precio_unitario_venta;
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-card rounded-lg max-w-md w-full p-6">
+          <h3 className="text-xl font-bold text-foreground mb-4">Registrar Venta de Mayoreo</h3>
+          
+          <div className="bg-muted p-4 rounded-lg mb-4">
+            <p className="font-semibold text-foreground">Producto: {producto.modelo}</p>
+            <p className="text-sm text-muted-foreground">Cajas disponibles: {producto.cantidad_cajas_disponibles}</p>
+            <p className="text-sm text-muted-foreground">Precio sugerido: {formatCurrency(producto.precio)}/caja</p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Cantidad de Cajas *</label>
+              <Input
+                type="number"
+                min="1"
+                max={producto.cantidad_cajas_disponibles}
+                value={formData.cantidad_cajas_vendidas}
+                onChange={(e) => setFormData({ ...formData, cantidad_cajas_vendidas: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Precio Unitario de Venta *</label>
+              <Input
+                type="number"
+                value={formData.precio_unitario_venta}
+                onChange={(e) => setFormData({ ...formData, precio_unitario_venta: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Notas (opcional)</label>
+              <textarea
+                className="w-full px-3 py-2 border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                rows={3}
+                value={formData.notas}
+                onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
+                placeholder="Información adicional sobre la venta..."
+              />
+            </div>
+
+            <div className="bg-success/10 p-4 rounded-lg">
+              <p className="text-sm text-muted-foreground">Total de la venta:</p>
+              <p className="text-2xl font-bold text-success">{formatCurrency(calcularTotal())}</p>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 mt-6">
+            <Button variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button onClick={() => onSubmit(formData)}>Registrar Venta</Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const VentasProductoModal: React.FC<{
+    ventas: VentaMayoreo[];
+    onClose: () => void;
+  }> = ({ ventas, onClose }) => {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-card rounded-lg max-w-3xl w-full p-6 max-h-[80vh] overflow-y-auto">
+          <h3 className="text-xl font-bold text-foreground mb-4">Historial de Ventas del Producto</h3>
+          
+          {ventas.length > 0 ? (
+            <div className="space-y-3">
+              {ventas.map((venta) => (
+                <div key={venta.id} className="border border-border rounded-lg p-4 bg-muted/10">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-foreground">Venta #{venta.id}</p>
+                      <p className="text-sm text-muted-foreground">{formatDate(venta.fecha_venta)}</p>
+                      <p className="text-sm text-foreground mt-2">
+                        {venta.cantidad_cajas_vendidas} cajas × {formatCurrency(venta.precio_unitario_venta)}
+                      </p>
+                      {venta.notas && (
+                        <p className="text-xs text-muted-foreground italic mt-1">"{venta.notas}"</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-bold text-success">{formatCurrency(venta.total_venta)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">No hay ventas registradas</p>
+          )}
+
+          <div className="flex justify-end mt-6">
+            <Button onClick={onClose}>Cerrar</Button>
+          </div>
+        </div>
       </div>
     );
   };

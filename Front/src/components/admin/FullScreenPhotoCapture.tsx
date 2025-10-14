@@ -1,12 +1,14 @@
 // FullScreenPhotoCapture.tsx
 import React, { useRef, useState } from "react";
+import ReactDOM from "react-dom";
 import { Button } from "../ui/Button";
 
 interface Props {
   onPhotoTaken?: (photoUrl: string | null, blob?: Blob) => void;
+  hideInternalPreview?: boolean; // Ocultar el preview interno cuando el padre maneja el preview
 }
 
-export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken }) => {
+export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken, hideInternalPreview = false }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -75,7 +77,7 @@ export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken }) => {
           📸 Abrir camara
         </Button>
         
-        {photoUrl && (
+        {!hideInternalPreview && photoUrl && (
           <div className="mt-3">
             <p className="text-sm text-gray-600 mb-2">Foto tomada:</p>
             <img 
@@ -89,8 +91,9 @@ export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken }) => {
     );
   }
 
-  return (
-    <div className="fixed inset-0 z-[9999] bg-black flex flex-col" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}>
+  // Usar React Portal para renderizar fuera del contenedor padre
+  const fullScreenContent = (
+    <div className="fixed inset-0 bg-black flex flex-col" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', zIndex: 999999 }}>
       {/* Canvas oculto para capturar la foto */}
       <canvas ref={canvasRef} style={{ display: 'none' }} />
       
@@ -136,4 +139,6 @@ export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken }) => {
       </div>
     </div>
   );
+
+  return ReactDOM.createPortal(fullScreenContent, document.body);
 };

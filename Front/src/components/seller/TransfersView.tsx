@@ -336,6 +336,29 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     }
   };
 
+  // *** NUEVA FUNCIÓN - Entregar devolución a bodeguero ***
+  const handleDeliverReturnToWarehouse = async (returnId: number) => {
+    if (!confirm('¿Confirmas que entregarás este producto en la bodega?')) {
+      return;
+    }
+    
+    try {
+      console.log('🔄 Entregando devolución a bodega...', returnId);
+      const response = await vendorAPI.deliverReturnToWarehouse(
+        returnId, 
+        'Producto entregado en perfecto estado para devolución'
+      );
+      
+      console.log('✅ Devolución entregada:', response);
+      alert(`${response.message}\n\nEl bodeguero ahora debe confirmar la recepción y verificar el producto.`);
+      
+      loadTransfersData();
+    } catch (err: any) {
+      console.error('❌ Error entregando devolución:', err);
+      alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+    }
+  };
+
 
   // *** FUNCIONES HELPER ACTUALIZADAS ***
   
@@ -719,6 +742,11 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                           }`}>
                             {transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}
                           </span>
+                          {transfer.purpose === 'return' && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                              🔄 Devolución
+                            </span>
+                          )}
                         </div>
 
                         {/* Barra de progreso */}
@@ -781,7 +809,33 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                           {/* Botones para pickup_type 'vendedor' */}
                           {transfer.pickup_type === 'vendedor' && (
                             <>
-                              {transfer.status === 'accepted' && (
+                              {/* CASO 1: Devolución - Status accepted - Debes llevar el producto a bodega */}
+                              {transfer.purpose === 'return' && transfer.status === 'accepted' && (
+                                <>
+                                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg mb-2">
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      <AlertCircle className="h-4 w-4 text-orange-600" />
+                                      <span className="text-sm font-medium text-orange-800">
+                                        🔄 Devolución: Debes llevar el producto a la bodega
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-orange-700 mt-1">
+                                      Lleva el producto personalmente a la bodega para completar la devolución.
+                                    </p>
+                                  </div>
+                                  <Button
+                                    onClick={() => handleDeliverReturnToWarehouse(transfer.id)}
+                                    className="bg-orange-600 hover:bg-orange-700 text-sm w-full"
+                                    size="sm"
+                                  >
+                                    <Package className="h-4 w-4 mr-2" />
+                                    Entregar a Bodeguero
+                                  </Button>
+                                </>
+                              )}
+                              
+                              {/* CASO 2: Transferencia normal - Status accepted - Debes ir a recoger */}
+                              {transfer.purpose !== 'return' && transfer.status === 'accepted' && (
                                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                                   <div className="flex items-center space-x-2">
                                     <AlertCircle className="h-4 w-4 text-yellow-600" />
@@ -792,6 +846,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                 </div>
                               )}
                               
+                              {/* CASO 3: Status delivered - Confirmar recepción */}
                               {transfer.status === 'delivered' && (
                                 <Button
                                   onClick={() => handleConfirmAndSell(transfer)}
@@ -803,6 +858,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                 </Button>
                               )}
                               
+                              {/* CASO 4: Status pending - Cancelar */}
                               {transfer.status === 'pending' && (
                                 <Button
                                   onClick={() => handleCancelTransfer(transfer.id)}

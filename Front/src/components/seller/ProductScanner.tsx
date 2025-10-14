@@ -70,6 +70,7 @@ interface SizeInfo {
   size: string;
   location: string;
   location_number?: number;
+  location_id?: number; // ID de la ubicación para transferencias
   location_name?: string;
   location_type?: 'local' | 'bodega';
   storage_type: 'warehouse' | 'display';
@@ -155,10 +156,25 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
   const [isScanning, setIsScanning] = useState(false);
   const [scanOptions, setScanOptions] = useState<ProductOption[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<SelectedProductDetails | null>(null);
-  const [selectedSize, setSelectedSize] = useState<string>('');
+  const [selectedSize, setSelectedSize] = useState<string>(''); // Ahora guardará "talla-ubicacion" como clave única
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<'processing' | 'options' | 'details'>('processing');
   const [scanInfo, setScanInfo] = useState<any>(null);
+
+  // Función helper para crear una clave única por talla y ubicación
+  const createSizeKey = (size: string, location: string): string => {
+    return `${size}|||${location}`;
+  };
+
+  // Función helper para extraer la talla de la clave única
+  const extractSizeFromKey = (key: string): string => {
+    return key.split('|||')[0];
+  };
+
+  // Función helper para extraer la ubicación de la clave única
+  const extractLocationFromKey = (key: string): string => {
+    return key.split('|||')[1] || '';
+  };
 
   // Effect para procesar imagen automáticamente cuando llega desde la cámara
   useEffect(() => {
@@ -185,6 +201,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
             allSizes.push({
               size: sizeObj.size,
               location: sizeObj.location,
+              location_id: sizeObj.location_id, // Agregar location_id
               location_name: sizeObj.location,
               location_type: 'local' as const,
               storage_type: 'warehouse' as const,
@@ -206,6 +223,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
           allSizes.push({
             size: sizeObj.size,
             location: sizeObj.location,
+            location_id: sizeObj.location_id, // Agregar location_id
             location_name: sizeObj.location,
             location_type: 'bodega' as const,
             storage_type: 'warehouse' as const,
@@ -467,13 +485,21 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
   const handleSell = () => {
     if (selectedProduct && selectedSize && onSellProduct) {
-      const sizeInfo = selectedProduct.sizes.find(s => s.size === selectedSize);
+      // Extraer la talla y ubicación de la clave única
+      const size = extractSizeFromKey(selectedSize);
+      const location = extractLocationFromKey(selectedSize);
+      
+      // Buscar la información exacta de esa talla en esa ubicación
+      const sizeInfo = selectedProduct.sizes.find(
+        s => s.size === size && (s.location_name || s.location) === location
+      );
+      
       if (sizeInfo) {
         const productData = {
           code: selectedProduct.product.code,
           brand: selectedProduct.product.brand,
           model: selectedProduct.product.model,
-          size: selectedSize,
+          size: size,
           price: Math.round(sizeInfo.unit_price),
           location: sizeInfo.location,
           storage_type: sizeInfo.storage_type
@@ -487,30 +513,23 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
   const handleSolicitar = () => {
     if (selectedProduct && selectedSize && onRequestTransfer && user) {
-      // Buscar la talla seleccionada
-      const sizeInfo = selectedProduct.sizes.find(s => s.size === selectedSize);
+      // Extraer la talla y ubicación de la clave única
+      const size = extractSizeFromKey(selectedSize);
+      const location = extractLocationFromKey(selectedSize);
+      
+      // Buscar la información exacta de esa talla en esa ubicación
+      const sizeInfo = selectedProduct.sizes.find(
+        s => s.size === size && (s.location_name || s.location) === location
+      );
 
-      // Para la nueva estructura, buscar en other_locations directamente
-      let sourceLocationId: number | undefined = undefined;
-      
-      // Buscar en la estructura locations preservada
-      const locations = (selectedProduct.product as any).locations;
-      if (locations && locations.other_locations && Array.isArray(locations.other_locations)) {
-        const foundLocation = locations.other_locations.find((loc: any) => 
-          loc.size === selectedSize && loc.quantity > 0
-        );
-        if (foundLocation) {
-          // Ahora la API sí proporciona location_id directamente
-          sourceLocationId = foundLocation.location_id;
-          console.log('Encontrado location_id en la API:', sourceLocationId, 'para ubicación:', foundLocation.location);
-        }
+      if (!sizeInfo) {
+        console.error('No se encontró información de la talla seleccionada');
+        alert('Error: No se encontró información de la talla seleccionada');
+        return;
       }
-      
-      // Fallback: usar location_number de sizeInfo si está disponible
-      if (!sourceLocationId) {
-        sourceLocationId = sizeInfo?.location_number;
-        console.log('Usando location_number de sizeInfo como fallback:', sourceLocationId);
-      }
+
+      // Obtener el source_location_id directamente de sizeInfo (ya lo guardamos ahí)
+      let sourceLocationId = sizeInfo.location_id || sizeInfo.location_number;
 
       // Si aún no tenemos source_location_id, mostrar error
       if (!sourceLocationId) {
@@ -524,7 +543,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         brand: selectedProduct.product.brand,
         model: selectedProduct.product.model,
         color: selectedProduct.product.color,
-        size: selectedSize,
+        size: size,
         product: selectedProduct.product,
         source_location_id: sourceLocationId,
         destination_location_id: user.location_id
@@ -816,25 +835,30 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                 <div>
                   <h5 className="font-medium mb-3 text-foreground">Selecciona una Talla:</h5>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {selectedProduct.sizes.map((sizeInfo) => (
-                      <button
-                        key={sizeInfo.size + '-' + (sizeInfo.location_name || sizeInfo.location)}
-                        onClick={() => setSelectedSize(sizeInfo.size)}
-                        disabled={false} // Permitir seleccionar todas las tallas para solicitar transferencias
-                        className={`p-4 border rounded-lg text-left transition-all ${
-                          selectedSize === sizeInfo.size
-                            ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
-                            : sizeInfo.quantity > 0
-                            ? 'border-success bg-success/5 hover:border-success/50 hover:shadow-sm'
-                            : 'border-warning bg-warning/5 hover:border-warning/50 hover:shadow-sm'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-semibold text-lg text-foreground">Talla {sizeInfo.size}</span>
-                          {selectedSize === sizeInfo.size && (
-                            <Check className="h-5 w-5 text-primary" />
-                          )}
-                        </div>
+                    {selectedProduct.sizes.map((sizeInfo) => {
+                      // Crear clave única para esta talla+ubicación
+                      const sizeKey = createSizeKey(sizeInfo.size, sizeInfo.location_name || sizeInfo.location);
+                      const isSelected = selectedSize === sizeKey;
+                      
+                      return (
+                        <button
+                          key={sizeKey}
+                          onClick={() => setSelectedSize(sizeKey)}
+                          disabled={false} // Permitir seleccionar todas las tallas para solicitar transferencias
+                          className={`p-4 border rounded-lg text-left transition-all ${
+                            isSelected
+                              ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                              : sizeInfo.quantity > 0
+                              ? 'border-success bg-success/5 hover:border-success/50 hover:shadow-sm'
+                              : 'border-warning bg-warning/5 hover:border-warning/50 hover:shadow-sm'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-semibold text-lg text-foreground">Talla {sizeInfo.size}</span>
+                            {isSelected && (
+                              <Check className="h-5 w-5 text-primary" />
+                            )}
+                          </div>
                         <div className="space-y-1 text-sm">
                           <div className="flex items-center text-muted-foreground gap-2 flex-wrap">
                             <MapPin className="h-3 w-3 mr-1" />
@@ -886,7 +910,8 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                           )}
                         </div>
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ) : (
@@ -900,12 +925,19 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
               {selectedSize && (
                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
                   {(() => {
-                    const sizeInfo = selectedProduct.sizes.find(s => s.size === selectedSize);
+                    // Extraer talla y ubicación de la clave única
+                    const size = extractSizeFromKey(selectedSize);
+                    const location = extractLocationFromKey(selectedSize);
+                    
+                    // Buscar la información exacta de esa talla en esa ubicación
+                    const sizeInfo = selectedProduct.sizes.find(
+                      s => s.size === size && (s.location_name || s.location) === location
+                    );
                     if (!sizeInfo) return null;
                     
                     return (
                       <div>
-                        <h6 className="font-medium text-primary mb-3">Talla {selectedSize} Seleccionada</h6>
+                        <h6 className="font-medium text-primary mb-3">Talla {size} Seleccionada</h6>
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
                             <span className="text-muted-foreground">Ubicación:</span>
@@ -948,7 +980,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                       disabled={!selectedProduct.product.availability.can_sell && selectedProduct.product.inventory.total_stock === 0}
                     >
                       <ShoppingBag className="h-4 w-4 mr-2" />
-                      {selectedProduct.product.availability.can_sell ? `Vender Talla ${selectedSize}` : `Vender Talla ${selectedSize}`}
+                      {selectedProduct.product.availability.can_sell ? `Vender Talla ${extractSizeFromKey(selectedSize)}` : `Vender Talla ${extractSizeFromKey(selectedSize)}`}
                     </Button>
                     <Button
                       onClick={handleSolicitar}
