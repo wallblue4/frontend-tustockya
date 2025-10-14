@@ -3,265 +3,246 @@ import {
   DollarSign, 
   TrendingUp, 
   Package, 
-  Users, 
   BarChart2, 
-  Calendar,
   Store,
   Warehouse,
-  ShoppingBag,
   AlertCircle,
   Plus,
   Edit,
-  Trash2,
-  Eye,
-  Filter,
-  Download,
-  Search,
   Building,
-  UserPlus,
-  Settings,
   PieChart,
-  Activity,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Upload,
-  FileImage,
-  Video,
-  MapPin,
   Box,
-  Truck,
   Target,
   TrendingDown,
   ArrowUp,
   ArrowDown,
-  RefreshCw
+  RefreshCw,
+  Loader2,
+  X,
+  Check,
+  Calendar
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { StatsCard } from '../../components/dashboard/StatsCard';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import bossAPI from '../../services/bossAPI';
 
 type BossView = 
   | 'dashboard' 
+  | 'locations'
   | 'inventory' 
-  | 'costs' 
-  | 'assignments' 
-  | 'analytics' 
-  | 'supply'
-  | 'balance';
-
-interface SalesData {
-  daily: {
-    total: number;
-    pairs: number;
-    boxes: number;
-    locations: Array<{
-      name: string;
-      sales: number;
-      pairs: number;
-    }>;
-  };
-  monthly: {
-    total: number;
-    pairs: number;
-    boxes: number;
-    growth: number;
-  };
-}
-
-interface InventoryItem {
-  id: string;
-  reference: string;
-  brand: string;
-  model: string;
-  image?: string;
-  video?: string;
-  sizes: Array<{
-    size: string;
-    quantity: number;
-    location: string;
-    locationType: 'warehouse' | 'store';
-  }>;
-  totalPairs: number;
-}
-
-interface Cost {
-  id: string;
-  type: 'fixed' | 'variable';
-  category: string;
-  description: string;
-  amount: number;
-  location?: string;
-  dueDate?: string;
-  status: 'paid' | 'pending' | 'overdue';
-  frequency: 'monthly' | 'weekly' | 'daily';
-}
-
-interface Assignment {
-  id: string;
-  type: 'admin-locations' | 'warehouse-manager' | 'seller-location' | 'runner-location';
-  userId: string;
-  userName: string;
-  userRole: string;
-  assignedTo: string[];
-  createdAt: string;
-}
+  | 'financial' 
+  | 'sales'
+  | 'analytics';
 
 export const BossDashboard: React.FC = () => {
   const [currentView, setCurrentView] = useState<BossView>('dashboard');
-  const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Mock data - En producción vendría de la API
-  const [salesData, setSalesData] = useState<SalesData>({
-    daily: {
-      total: 4250000,
-      pairs: 28,
-      boxes: 3,
-      locations: [
-        { name: 'Local Centro', sales: 1800000, pairs: 12 },
-        { name: 'Local Norte', sales: 1450000, pairs: 9 },
-        { name: 'Local Sur', sales: 1000000, pairs: 7 }
-      ]
-    },
-    monthly: {
-      total: 89500000,
-      pairs: 587,
-      boxes: 73,
-      growth: 15.3
-    }
+  // Estados para datos del backend
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [inventoryData, setInventoryData] = useState<any>(null);
+  const [financialData, setFinancialData] = useState<any>(null);
+  const [salesReport, setSalesReport] = useState<any>(null);
+
+  // Estados para modales y formularios
+  const [showCreateLocationModal, setShowCreateLocationModal] = useState(false);
+  const [createLocationLoading, setCreateLocationLoading] = useState(false);
+  const [locationFormData, setLocationFormData] = useState({
+    name: '',
+    type: 'local' as 'local' | 'bodega',
+    address: '',
+    phone: '',
+    manager_name: '',
+    capacity: '',
+    notes: ''
   });
 
-  const [inventory, setInventory] = useState<InventoryItem[]>([
-    {
-      id: '1',
-      reference: 'NK-AM90-001',
-      brand: 'Nike',
-      model: 'Air Max 90',
-      image: 'https://images.pexels.com/photos/2385477/pexels-photo-2385477.jpeg?auto=compress&cs=tinysrgb&w=300',
-      sizes: [
-        { size: '8', quantity: 15, location: 'Bodega Principal', locationType: 'warehouse' },
-        { size: '8.5', quantity: 8, location: 'Local Centro', locationType: 'store' },
-        { size: '9', quantity: 12, location: 'Bodega Norte', locationType: 'warehouse' },
-        { size: '9.5', quantity: 5, location: 'Local Norte', locationType: 'store' }
-      ],
-      totalPairs: 40
-    },
-    {
-      id: '2',
-      reference: 'AD-UB22-002',
-      brand: 'Adidas',
-      model: 'Ultraboost 22',
-      image: 'https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=300',
-      sizes: [
-        { size: '7.5', quantity: 20, location: 'Bodega Principal', locationType: 'warehouse' },
-        { size: '8', quantity: 18, location: 'Bodega Principal', locationType: 'warehouse' },
-        { size: '9', quantity: 10, location: 'Local Sur', locationType: 'store' }
-      ],
-      totalPairs: 48
-    }
-  ]);
+  // Estados para selectores de fecha
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [dateRange, setDateRange] = useState({
+    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
 
-  const [costs, setCosts] = useState<Cost[]>([
-    {
-      id: '1',
-      type: 'fixed',
-      category: 'Arriendo',
-      description: 'Arriendo Local Centro',
-      amount: 2500000,
-      location: 'Local Centro',
-      dueDate: '2024-02-28',
-      status: 'pending',
-      frequency: 'monthly'
-    },
-    {
-      id: '2',
-      type: 'variable',
-      category: 'Servicios',
-      description: 'Electricidad Todas las Sedes',
-      amount: 850000,
-      dueDate: '2024-02-15',
-      status: 'paid',
-      frequency: 'monthly'
-    },
-    {
-      id: '3',
-      type: 'variable',
-      category: 'Mercancía',
-      description: 'Compra Nike - Lote Febrero',
-      amount: 25000000,
-      dueDate: '2024-02-20',
-      status: 'overdue',
-      frequency: 'monthly'
-    }
-  ]);
+  // Cargar datos iniciales
+  useEffect(() => {
+    loadInitialData();
+  }, []);
 
-  const [assignments, setAssignments] = useState<Assignment[]>([
-    {
-      id: '1',
-      type: 'admin-locations',
-      userId: 'admin-1',
-      userName: 'Juan Pérez',
-      userRole: 'Administrador',
-      assignedTo: ['Local Centro', 'Local Norte'],
-      createdAt: '2024-01-15'
-    },
-    {
-      id: '2',
-      type: 'warehouse-manager',
-      userId: 'wh-1',
-      userName: 'María García',
-      userRole: 'Bodeguero',
-      assignedTo: ['Bodega Principal', 'Bodega Norte'],
-      createdAt: '2024-01-20'
-    },
-    {
-      id: '3',
-      type: 'seller-location',
-      userId: 'seller-1',
-      userName: 'Carlos López',
-      userRole: 'Vendedor',
-      assignedTo: ['Local Centro'],
-      createdAt: '2024-02-01'
-    }
-  ]);
+  // Recargar datos cuando cambia la vista
+  useEffect(() => {
+    loadViewData(currentView);
+  }, [currentView]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
+  const loadInitialData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Cargar dashboard principal
+      const dashboard = await bossAPI.getDashboard();
+      setDashboardData(dashboard);
+    } catch (err: any) {
+      console.error('Error cargando datos iniciales:', err);
+      setError(err.message || 'Error al cargar datos');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const formatDate = (date: string) => {
-    return new Intl.DateTimeFormat('es-CO', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    }).format(new Date(date));
+  const loadViewData = async (view: BossView) => {
+    try {
+      switch (view) {
+        case 'locations':
+          const locs = await bossAPI.getLocations(false);
+          setLocations(locs);
+          break;
+        case 'inventory':
+          const inv = await bossAPI.getConsolidatedInventory();
+          setInventoryData(inv);
+          break;
+        case 'financial':
+          const today = new Date();
+          const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+          const fin = await bossAPI.getFinancialAnalysis(
+            firstDay.toISOString().split('T')[0],
+            today.toISOString().split('T')[0]
+          );
+          setFinancialData(fin);
+          break;
+        case 'sales':
+          const sales = await bossAPI.getDailySalesReport();
+          setSalesReport(sales);
+          break;
+      }
+    } catch (err: any) {
+      console.error(`Error cargando datos de ${view}:`, err);
+    }
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    // Simular carga de datos
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setRefreshing(false);
+    try {
+      await loadInitialData();
+      await loadViewData(currentView);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  const totalInventoryPairs = inventory.reduce((sum, item) => sum + item.totalPairs, 0);
-  const totalCosts = costs.reduce((sum, cost) => sum + cost.amount, 0);
-  const pendingCosts = costs.filter(cost => cost.status === 'pending' || cost.status === 'overdue');
+  const formatCurrency = (amount: number | string) => {
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+    }).format(numAmount);
+  };
 
-  const renderDashboardView = () => (
+  // Función para crear nueva ubicación
+  const handleCreateLocation = async () => {
+    setCreateLocationLoading(true);
+    try {
+      const dataToSend: any = {
+        name: locationFormData.name,
+        type: locationFormData.type,
+      };
+
+      if (locationFormData.address) dataToSend.address = locationFormData.address;
+      if (locationFormData.phone) dataToSend.phone = locationFormData.phone;
+      if (locationFormData.manager_name) dataToSend.manager_name = locationFormData.manager_name;
+      if (locationFormData.capacity) dataToSend.capacity = parseInt(locationFormData.capacity);
+      if (locationFormData.notes) dataToSend.notes = locationFormData.notes;
+
+      await bossAPI.createLocation(dataToSend);
+      
+      // Recargar ubicaciones
+      const locs = await bossAPI.getLocations(false);
+      setLocations(locs);
+      
+      // Cerrar modal y resetear formulario
+      setShowCreateLocationModal(false);
+      setLocationFormData({
+        name: '',
+        type: 'local',
+        address: '',
+        phone: '',
+        manager_name: '',
+        capacity: '',
+        notes: ''
+      });
+      
+      alert('Ubicación creada exitosamente');
+    } catch (err: any) {
+      console.error('Error creando ubicación:', err);
+      alert('Error al crear ubicación: ' + (err.message || 'Error desconocido'));
+    } finally {
+      setCreateLocationLoading(false);
+    }
+  };
+
+  // Función para cargar reporte de ventas mensual
+  const handleLoadMonthlySales = async () => {
+    try {
+      const report = await bossAPI.getMonthlySalesReport(selectedYear, selectedMonth);
+      setSalesReport(report);
+    } catch (err: any) {
+      console.error('Error cargando reporte mensual:', err);
+    }
+  };
+
+  // Función para cargar análisis financiero mensual
+  const handleLoadMonthlyFinancial = async () => {
+    try {
+      const analysis = await bossAPI.getMonthlyFinancialAnalysis(selectedYear, selectedMonth);
+      setFinancialData(analysis);
+    } catch (err: any) {
+      console.error('Error cargando análisis financiero mensual:', err);
+    }
+  };
+
+  // Función para cargar reporte consolidado con filtros
+  const handleLoadConsolidatedSales = async () => {
+    try {
+      const report = await bossAPI.getSalesConsolidatedReport({
+        start_date: dateRange.start,
+        end_date: dateRange.end
+      });
+      setSalesReport(report);
+    } catch (err: any) {
+      console.error('Error cargando reporte consolidado:', err);
+    }
+  };
+
+  // Vista del Dashboard Principal
+  const renderDashboardView = () => {
+    if (!dashboardData) {
+      return (
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    const kpis = dashboardData.kpis || {};
+    const locations = dashboardData.locations_performance || [];
+    const alerts = dashboardData.alerts || [];
+    const financial = dashboardData.financial_summary || {};
+
+    return (
     <div className="space-y-6 p-4 md:p-6">
-      {/* Header con refresh */}
+        {/* Header */}
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">Panel Ejecutivo</h2>
+          <div>
+            <h2 className="text-2xl font-bold">Panel Ejecutivo - {dashboardData.company_name}</h2>
+            <p className="text-muted-foreground">Bienvenido, {dashboardData.boss_name}</p>
+          </div>
         <Button 
           onClick={handleRefresh} 
           disabled={refreshing}
@@ -273,56 +254,51 @@ export const BossDashboard: React.FC = () => {
         </Button>
       </div>
 
-      {/* Estadísticas principales */}
+        {/* KPIs Principales */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Object.entries(kpis).map(([key, kpi]: [string, any]) => (
         <StatsCard
-          title="Ventas del Día"
-          value={formatCurrency(salesData.daily.total)}
-          change={12.5}
-          period="vs ayer"
-          icon={<DollarSign className="h-6 w-6" />}
-        />
-        <StatsCard
-          title="Ventas del Mes"
-          value={formatCurrency(salesData.monthly.total)}
-          change={salesData.monthly.growth}
-          period="vs mes anterior"
-          icon={<TrendingUp className="h-6 w-6" />}
-        />
-        <StatsCard
-          title="Pares Vendidos Hoy"
-          value={salesData.daily.pairs.toString()}
-          change={8.3}
-          icon={<Package className="h-6 w-6" />}
-        />
-        <StatsCard
-          title="Cajas Vendidas Hoy"
-          value={salesData.daily.boxes.toString()}
-          change={15.2}
-          icon={<Box className="h-6 w-6" />}
-        />
+              key={key}
+              title={kpi.label}
+              value={kpi.value}
+              change={kpi.change_percentage}
+              period={kpi.trend || ''}
+              icon={
+                key.includes('sales') || key.includes('revenue') ? <DollarSign className="h-6 w-6" /> :
+                key.includes('location') ? <Store className="h-6 w-6" /> :
+                key.includes('inventory') ? <Package className="h-6 w-6" /> :
+                key.includes('margin') || key.includes('profit') ? <TrendingUp className="h-6 w-6" /> :
+                <BarChart2 className="h-6 w-6" />
+              }
+            />
+          ))}
       </div>
 
-      {/* Resumen rápido */}
+        {/* Performance por Locales */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Ventas por local */}
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold">Ventas por Local (Hoy)</h3>
+              <h3 className="text-lg font-semibold">Performance por Local</h3>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {salesData.daily.locations.map((location, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                {locations.slice(0, 5).map((location: any) => (
+                  <div key={location.location_id} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
                   <div className="flex items-center space-x-3">
+                      {location.location_type === 'bodega' ? 
+                        <Warehouse className="h-6 w-6 text-primary" /> :
                     <Store className="h-6 w-6 text-primary" />
+                      }
                     <div>
-                      <h4 className="font-medium text-foreground">{location.name}</h4>
-                      <p className="text-sm text-muted-foreground">{location.pairs} pares</p>
+                        <h4 className="font-medium">{location.location_name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {location.active_users} usuarios • {location.pending_transfers} transferencias
+                        </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-foreground">{formatCurrency(location.sales)}</p>
+                      <p className="font-bold">{formatCurrency(location.daily_sales || location.monthly_sales)}</p>
+                      <p className="text-sm text-muted-foreground">Score: {location.efficiency_score}%</p>
                   </div>
                 </div>
               ))}
@@ -330,45 +306,66 @@ export const BossDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Resumen de inventario */}
+          {/* Resumen Financiero */}
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Resumen de Inventario</h3>
-              <Button size="sm" onClick={() => setCurrentView('inventory')}>
-                <Eye className="h-4 w-4 mr-1" />
-                Ver Todo
-              </Button>
-            </div>
+              <h3 className="text-lg font-semibold">Resumen Financiero</h3>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-4 bg-primary/10 rounded-lg">
-                  <Package className="h-8 w-8 text-primary mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-foreground">{totalInventoryPairs}</p>
-                  <p className="text-sm text-muted-foreground">Total Pares</p>
+                    <DollarSign className="h-8 w-8 text-primary mx-auto mb-2" />
+                    <p className="text-2xl font-bold">{formatCurrency(financial.total_revenue || 0)}</p>
+                    <p className="text-sm text-muted-foreground">Ingresos</p>
                 </div>
                 <div className="text-center p-4 bg-secondary/10 rounded-lg">
-                  <Warehouse className="h-8 w-8 text-secondary mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-foreground">{inventory.length}</p>
-                  <p className="text-sm text-muted-foreground">Referencias</p>
+                    <TrendingUp className="h-8 w-8 text-secondary mx-auto mb-2" />
+                    <p className="text-2xl font-bold">{financial.margin_percentage || 0}%</p>
+                    <p className="text-sm text-muted-foreground">Margen</p>
                 </div>
               </div>
-              <div className="space-y-2">
-                {inventory.slice(0, 3).map((item) => (
-                  <div key={item.id} className="flex justify-between items-center text-sm">
-                    <span className="text-foreground">{item.brand} {item.model}</span>
-                    <span className="font-medium text-foreground">{item.totalPairs} pares</span>
+                <div className="p-4 bg-success/10 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Utilidad Neta</span>
+                    <span className="text-xl font-bold text-success">{formatCurrency(financial.net_profit || 0)}</span>
                   </div>
-                ))}
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Acciones rápidas */}
+        {/* Alertas */}
+        {alerts.length > 0 && (
+          <Card className="border-warning bg-warning/5">
+            <CardHeader>
+              <h3 className="text-lg font-semibold flex items-center text-warning">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                Alertas Importantes ({alerts.length})
+              </h3>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {alerts.slice(0, 5).map((alert: any, index: number) => (
+                  <div key={index} className="flex items-start space-x-3 p-3 bg-card rounded-lg border border-border">
+                    <AlertCircle className={`h-5 w-5 mt-0.5 ${
+                      alert.severity === 'error' ? 'text-destructive' :
+                      alert.severity === 'warning' ? 'text-warning' :
+                      'text-primary'
+                    }`} />
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">{alert.message}</p>
+                      <p className="text-sm text-muted-foreground">{alert.type}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Acciones Rápidas */}
       <Card>
         <CardHeader>
           <h3 className="text-lg font-semibold">Acciones Rápidas</h3>
@@ -377,169 +374,104 @@ export const BossDashboard: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
-              onClick={() => setCurrentView('supply')}
+                onClick={() => setCurrentView('locations')}
             >
-              <Upload className="h-5 w-5" />
-              <span>Abastecer</span>
+                <Store className="h-5 w-5" />
+                <span>Locales</span>
             </Button>
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
-              onClick={() => setCurrentView('assignments')}
+                onClick={() => setCurrentView('inventory')}
             >
-              <Users className="h-5 w-5" />
-              <span>Asignaciones</span>
+                <Package className="h-5 w-5" />
+                <span>Inventario</span>
             </Button>
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
-              onClick={() => setCurrentView('costs')}
+                onClick={() => setCurrentView('financial')}
             >
-              <BarChart2 className="h-5 w-5" />
-              <span>Ver Costos</span>
+                <DollarSign className="h-5 w-5" />
+                <span>Finanzas</span>
             </Button>
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
-              onClick={() => setCurrentView('analytics')}
+                onClick={() => setCurrentView('sales')}
             >
-              <PieChart className="h-5 w-5" />
-              <span>Métricas</span>
+                <BarChart2 className="h-5 w-5" />
+                <span>Ventas</span>
             </Button>
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
-              onClick={() => setCurrentView('balance')}
+                onClick={() => setCurrentView('analytics')}
             >
-              <Target className="h-5 w-5" />
-              <span>Balance</span>
+                <PieChart className="h-5 w-5" />
+                <span>Análisis</span>
             </Button>
           </div>
         </CardContent>
       </Card>
-
-      {/* Alertas importantes */}
-      {pendingCosts.length > 0 && (
-        <Card className="border-warning bg-warning/5">
-          <CardHeader>
-            <h3 className="text-lg font-semibold flex items-center text-warning">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              Alertas Importantes
-            </h3>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {pendingCosts.slice(0, 3).map((cost) => (
-                <div key={cost.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
-                  <div>
-                    <p className="font-medium">{cost.description}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {cost.status === 'overdue' ? 'Vencido' : 'Vence'}: {cost.dueDate}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-destructive">{formatCurrency(cost.amount)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
+  };
 
-  const renderInventoryView = () => (
+  // Vista de Locales
+  const renderLocationsView = () => {
+    return (
     <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <h2 className="text-xl font-semibold">Gestión de Inventario</h2>
-        <Button onClick={() => setCurrentView('supply')}>
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Gestión de Locales y Bodegas</h2>
+          <Button onClick={() => setShowCreateLocationModal(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Abastecer Stock
+            Nueva Ubicación
         </Button>
       </div>
 
-      {/* Resumen de inventario */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Package className="h-8 w-8 text-primary mx-auto mb-2" />
-            <p className="text-2xl font-bold">{totalInventoryPairs}</p>
-            <p className="text-sm text-gray-600">Total Pares</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Warehouse className="h-8 w-8 text-secondary mx-auto mb-2" />
-            <p className="text-2xl font-bold">{inventory.filter(item => item.sizes.some(s => s.locationType === 'warehouse')).length}</p>
-            <p className="text-sm text-gray-600">En Bodegas</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Store className="h-8 w-8 text-success mx-auto mb-2" />
-            <p className="text-2xl font-bold">{inventory.filter(item => item.sizes.some(s => s.locationType === 'store')).length}</p>
-            <p className="text-sm text-gray-600">En Exhibición</p>
-          </CardContent>
-        </Card>
+        {loading ? (
+          <div className="flex items-center justify-center h-96">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
-
-      {/* Lista de inventario */}
-      <div className="space-y-4">
-        {inventory.map((item) => (
-          <Card key={item.id}>
-            <CardContent className="p-4">
-              <div className="flex flex-col lg:flex-row space-y-4 lg:space-y-0 lg:space-x-6">
-                {/* Imagen del producto */}
-                <div className="flex-shrink-0">
-                  {item.image ? (
-                    <img 
-                      src={item.image} 
-                      alt={`${item.brand} ${item.model}`}
-                      className="w-full lg:w-32 h-32 object-cover rounded-lg"
-                    />
-                  ) : (
-                    <div className="w-full lg:w-32 h-32 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <Package className="h-8 w-8 text-gray-400" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Información del producto */}
-                <div className="flex-1">
-                  <div className="flex flex-col sm:flex-row justify-between items-start mb-4">
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {locations.map((location: any) => (
+              <Card key={location.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      {location.type === 'bodega' ? 
+                        <Warehouse className="h-8 w-8 text-primary" /> :
+                        <Store className="h-8 w-8 text-success" />
+                      }
                     <div>
-                      <h3 className="text-lg font-semibold">{item.brand} {item.model}</h3>
-                      <p className="text-gray-600">Ref: {item.reference}</p>
-                      <p className="text-sm text-gray-500">Total: {item.totalPairs} pares</p>
+                        <h3 className="font-semibold">{location.name}</h3>
+                        <span className="text-xs px-2 py-1 bg-primary/10 rounded-full">
+                          {location.type}
+                        </span>
                     </div>
-                    <div className="flex space-x-2 mt-2 sm:mt-0">
-                      <Button size="sm" variant="outline">
-                        <Edit className="h-3 w-3 mr-1" />
-                        Editar
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <Eye className="h-3 w-3 mr-1" />
-                        Detalles
-                      </Button>
                     </div>
+                      <Button size="sm" variant="outline">
+                      <Edit className="h-3 w-3" />
+                      </Button>
                   </div>
 
-                  {/* Desglose por tallas */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {item.sizes.map((sizeInfo, index) => (
-                      <div key={index} className="p-3 border rounded-lg">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-medium">Talla {sizeInfo.size}</span>
-                          <span className="text-sm font-bold">{sizeInfo.quantity}</span>
+                  <div className="space-y-2 text-sm">
+                    {location.address && (
+                      <p className="text-muted-foreground">📍 {location.address}</p>
+                    )}
+                    {location.phone && (
+                      <p className="text-muted-foreground">📞 {location.phone}</p>
+                    )}
+                    <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t">
+                      <div className="text-center">
+                        <p className="font-bold">{location.total_users}</p>
+                        <p className="text-xs text-muted-foreground">Usuarios</p>
                         </div>
-                        <div className="text-xs text-gray-600">
-                          <div className="flex items-center">
-                            {sizeInfo.locationType === 'warehouse' ? 
-                              <Warehouse className="h-3 w-3 mr-1" /> : 
-                              <Store className="h-3 w-3 mr-1" />
-                            }
-                            <span>{sizeInfo.location}</span>
+                      <div className="text-center">
+                        <p className="font-bold">{location.total_products}</p>
+                        <p className="text-xs text-muted-foreground">Productos</p>
                           </div>
-                        </div>
-                      </div>
-                    ))}
+                      <div className="text-center">
+                        <p className="font-bold text-xs">{formatCurrency(location.total_inventory_value)}</p>
+                        <p className="text-xs text-muted-foreground">Inventario</p>
                   </div>
                 </div>
               </div>
@@ -547,426 +479,694 @@ export const BossDashboard: React.FC = () => {
           </Card>
         ))}
       </div>
+        )}
     </div>
   );
+  };
 
-  const renderCostsView = () => (
+  // Vista de Inventario
+  const renderInventoryView = () => {
+    if (!inventoryData) {
+      return (
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    const hasInventoryData = inventoryData.total_products > 0 || inventoryData.total_units > 0;
+
+    if (!hasInventoryData) {
+      return (
+        <div className="flex flex-col items-center justify-center h-96 space-y-4 p-4">
+          <Package className="h-16 w-16 text-muted-foreground" />
+          <h3 className="text-lg font-semibold">No hay datos de inventario</h3>
+          <p className="text-muted-foreground text-center">
+            No se encontró inventario disponible en el sistema.
+          </p>
+          <Button onClick={handleRefresh} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualizar Datos
+          </Button>
+        </div>
+      );
+    }
+
+    return (
     <div className="space-y-6 p-4 md:p-6">
-      <h2 className="text-xl font-semibold">Costos Operativos</h2>
+        <h2 className="text-xl font-semibold">Inventario Consolidado</h2>
 
-      {/* Resumen de costos */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Resumen */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
-            <Building className="h-8 w-8 text-primary mx-auto mb-2" />
-            <p className="text-2xl font-bold">{formatCurrency(costs.filter(c => c.type === 'fixed').reduce((sum, c) => sum + c.amount, 0))}</p>
-            <p className="text-sm text-gray-600">Costos Fijos</p>
+              <Store className="h-8 w-8 text-primary mx-auto mb-2" />
+              <p className="text-2xl font-bold">{inventoryData.total_locations}</p>
+              <p className="text-sm text-muted-foreground">Ubicaciones</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <Activity className="h-8 w-8 text-warning mx-auto mb-2" />
-            <p className="text-2xl font-bold">{formatCurrency(costs.filter(c => c.type === 'variable').reduce((sum, c) => sum + c.amount, 0))}</p>
-            <p className="text-sm text-gray-600">Costos Variables</p>
+              <Package className="h-8 w-8 text-secondary mx-auto mb-2" />
+              <p className="text-2xl font-bold">{inventoryData.total_products}</p>
+              <p className="text-sm text-muted-foreground">Productos</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <AlertCircle className="h-8 w-8 text-error mx-auto mb-2" />
-            <p className="text-2xl font-bold">{pendingCosts.length}</p>
-            <p className="text-sm text-gray-600">Pendientes</p>
+              <Box className="h-8 w-8 text-success mx-auto mb-2" />
+              <p className="text-2xl font-bold">{inventoryData.total_units}</p>
+              <p className="text-sm text-muted-foreground">Unidades</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <DollarSign className="h-8 w-8 text-warning mx-auto mb-2" />
+              <p className="text-2xl font-bold">{formatCurrency(inventoryData.total_value)}</p>
+              <p className="text-sm text-muted-foreground">Valor Total</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Lista de costos */}
+        {/* Por Marca */}
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Detalle de Costos - Último Mes</h3>
+            <h3 className="text-lg font-semibold">Inventario por Marca</h3>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {costs.map((cost) => (
-              <div key={cost.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border rounded-lg space-y-2 sm:space-y-0">
-                <div className="flex items-start space-x-4">
-                  <div className={`p-2 rounded-full ${
-                    cost.type === 'fixed' ? 'bg-blue-100' : 'bg-orange-100'
-                  }`}>
-                    {cost.type === 'fixed' ? 
-                      <Building className="h-5 w-5 text-blue-600" /> : 
-                      <Activity className="h-5 w-5 text-orange-600" />
-                    }
+            <div className="space-y-3">
+              {inventoryData.by_brand?.map((brand: any, index: number) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                  <div className="flex-1">
+                    <h4 className="font-medium">{brand.category_name}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {brand.total_units} unidades en {brand.locations_count} locales
+                    </p>
                   </div>
-                  <div>
-                    <h4 className="font-semibold">{cost.description}</h4>
-                    <p className="text-sm text-gray-600">{cost.category}</p>
-                    {cost.location && (
-                      <p className="text-xs text-gray-500">{cost.location}</p>
-                    )}
-                    {cost.dueDate && (
-                      <p className="text-xs text-gray-500">Vence: {formatDate(cost.dueDate)}</p>
-                    )}
-                  </div>
-                </div>
                 <div className="text-right">
-                  <p className="font-bold text-lg">{formatCurrency(cost.amount)}</p>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    cost.status === 'paid' ? 'bg-green-100 text-green-800' :
-                    cost.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {cost.status === 'paid' ? 'Pagado' : 
-                     cost.status === 'pending' ? 'Pendiente' : 'Vencido'}
-                  </span>
+                    <p className="font-bold">{formatCurrency(brand.total_value)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {brand.percentage_of_total ? brand.percentage_of_total.toFixed(1) : '0.0'}%
+                    </p>
                 </div>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
 
-  const renderAssignmentsView = () => (
-    <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <h2 className="text-xl font-semibold">Gestión de Asignaciones</h2>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Asignación
-        </Button>
-      </div>
-
-      {/* Tipos de asignaciones */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="text-center p-4">
-          <Users className="h-8 w-8 text-primary mx-auto mb-2" />
-          <h3 className="font-semibold">Admins a Locales</h3>
-          <p className="text-sm text-gray-600">Asignar administradores</p>
-        </Card>
-        <Card className="text-center p-4">
-          <Warehouse className="h-8 w-8 text-secondary mx-auto mb-2" />
-          <h3 className="font-semibold">Bodegueros</h3>
-          <p className="text-sm text-gray-600">Asignar a bodegas</p>
-        </Card>
-        <Card className="text-center p-4">
-          <Store className="h-8 w-8 text-success mx-auto mb-2" />
-          <h3 className="font-semibold">Vendedores</h3>
-          <p className="text-sm text-gray-600">Asignar a locales</p>
-        </Card>
-        <Card className="text-center p-4">
-          <Truck className="h-8 w-8 text-warning mx-auto mb-2" />
-          <h3 className="font-semibold">Corredores</h3>
-          <p className="text-sm text-gray-600">Asignar a locales</p>
-        </Card>
-      </div>
-
-      {/* Lista de asignaciones actuales */}
+        {/* Por Ubicación */}
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Asignaciones Actuales</h3>
+            <h3 className="text-lg font-semibold">Inventario por Ubicación</h3>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {assignments.map((assignment) => (
-              <div key={assignment.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border rounded-lg space-y-2 sm:space-y-0">
-                <div className="flex items-start space-x-4">
-                  <div className="p-2 bg-primary/10 rounded-full">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
+            <div className="space-y-3">
+              {inventoryData.by_location?.map((location: any) => (
+                <div key={location.location_id} className="p-4 border rounded-lg">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      {location.location_type === 'bodega' ? 
+                        <Warehouse className="h-6 w-6 text-primary" /> :
+                        <Store className="h-6 w-6 text-success" />
+                      }
                   <div>
-                    <h4 className="font-semibold">{assignment.userName}</h4>
-                    <p className="text-sm text-muted-foreground">{assignment.userRole}</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {assignment.assignedTo.map((location, index) => (
-                        <span key={index} className="px-2 py-1 bg-muted/30 rounded-full text-xs text-foreground">
-                          {location}
-                        </span>
-                      ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Creado: {formatDate(assignment.createdAt)}</p>
+                        <h4 className="font-semibold">{location.location_name}</h4>
+                        <p className="text-sm text-muted-foreground">{location.location_type}</p>
                   </div>
                 </div>
-                <div className="flex space-x-2">
-                  <Button size="sm" variant="outline">
-                    <Edit className="h-3 w-3 mr-1" />
-                    Editar
-                  </Button>
-                  <Button size="sm" variant="outline" className="text-error hover:text-error">
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                  </Button>
+                    {location.low_stock_items > 0 && (
+                      <span className="px-2 py-1 bg-warning/20 text-warning text-xs rounded-full">
+                        {location.low_stock_items} stock bajo
+                  </span>
+                    )}
+                    </div>
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-xl font-bold">{location.total_products}</p>
+                      <p className="text-xs text-muted-foreground">Productos</p>
+                  </div>
+                    <div>
+                      <p className="text-xl font-bold">{location.total_units}</p>
+                      <p className="text-xs text-muted-foreground">Unidades</p>
+                </div>
+                    <div>
+                      <p className="text-lg font-bold">{formatCurrency(location.total_value)}</p>
+                      <p className="text-xs text-muted-foreground">Valor</p>
+                    </div>
                 </div>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
 
-  const renderSupplyView = () => (
-    <div className="space-y-6 p-4 md:p-6">
-      <h2 className="text-xl font-semibold">Abastecer Inventario</h2>
-
-      <Card>
+        {/* Alertas de Stock */}
+        {(inventoryData.low_stock_alerts > 0 || inventoryData.out_of_stock_alerts > 0) && (
+          <Card className="border-warning">
         <CardHeader>
-          <h3 className="text-lg font-semibold">Nuevo Stock</h3>
+              <h3 className="text-lg font-semibold flex items-center text-warning">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                Alertas de Inventario
+              </h3>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Información del producto */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-3 bg-warning/10 rounded-lg border border-warning/20">
+                  <p className="text-2xl font-bold text-warning">{inventoryData.low_stock_alerts}</p>
+                  <p className="text-sm text-foreground">Stock Bajo</p>
+                </div>
+                <div className="text-center p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                  <p className="text-2xl font-bold text-destructive">{inventoryData.out_of_stock_alerts}</p>
+                  <p className="text-sm text-foreground">Sin Stock</p>
+              </div>
+                <div className="text-center p-3 bg-primary/10 rounded-lg border border-primary/20">
+                  <p className="text-2xl font-bold text-primary">{inventoryData.overstocked_alerts}</p>
+                  <p className="text-sm text-foreground">Sobre Stock</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+    </div>
+  );
+  };
+
+  // Vista Financiera
+  const renderFinancialView = () => {
+    if (!financialData) {
+      return (
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+      );
+    }
+
+    const hasFinancialData = financialData.total_revenue || financialData.total_costs || 
+                             (financialData.locations_financials && financialData.locations_financials.length > 0);
+
+    if (!hasFinancialData) {
+      return (
+        <div className="flex flex-col items-center justify-center h-96 space-y-4 p-4">
+          <DollarSign className="h-16 w-16 text-muted-foreground" />
+          <h3 className="text-lg font-semibold">No hay datos financieros disponibles</h3>
+          <p className="text-muted-foreground text-center">
+            No se encontraron datos financieros para el período seleccionado.
+          </p>
+          <Button onClick={handleRefresh} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualizar Datos
+            </Button>
+    </div>
+  );
+    }
+
+    return (
+    <div className="space-y-6 p-4 md:p-6">
+        <div className="flex flex-col space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-semibold">Análisis Financiero</h2>
+              <p className="text-muted-foreground">{financialData.analysis_period}</p>
+            </div>
+          </div>
+
+          {/* Filtros de Fecha */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    <Calendar className="h-4 w-4 inline mr-2" />
+                    Rango de Fechas
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      type="date"
+                      value={dateRange.start}
+                      onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                    />
+                    <Input
+                      type="date"
+                      value={dateRange.end}
+                      onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-end space-x-2">
+                  <Button 
+                    onClick={async () => {
+                      const analysis = await bossAPI.getFinancialAnalysis(dateRange.start, dateRange.end);
+                      setFinancialData(analysis);
+                    }} 
+                    className="flex-1"
+                  >
+                    Aplicar Filtro
+                  </Button>
+                  <Button onClick={handleLoadMonthlyFinancial} variant="outline" className="flex-1">
+                    Ver Mes Actual
+        </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+      </div>
+
+        {/* Resumen General */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <TrendingUp className="h-8 w-8 text-success mx-auto mb-2" />
+              <p className="text-2xl font-bold">{formatCurrency(financialData.total_revenue)}</p>
+              <p className="text-sm text-muted-foreground">Ingresos Totales</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+              <TrendingDown className="h-8 w-8 text-destructive mx-auto mb-2" />
+              <p className="text-2xl font-bold">{formatCurrency(financialData.total_costs)}</p>
+              <p className="text-sm text-muted-foreground">Costos Totales</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+              <DollarSign className="h-8 w-8 text-primary mx-auto mb-2" />
+              <p className="text-2xl font-bold">{formatCurrency(financialData.net_profit)}</p>
+              <p className="text-sm text-muted-foreground">Utilidad Neta</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+              <Target className="h-8 w-8 text-secondary mx-auto mb-2" />
+              <p className="text-2xl font-bold">
+                {financialData.overall_margin_percentage ? financialData.overall_margin_percentage.toFixed(1) : '0.0'}%
+              </p>
+              <p className="text-sm text-muted-foreground">Margen</p>
+          </CardContent>
+        </Card>
+      </div>
+
+        {/* Costos por Tipo */}
+      <Card>
+        <CardHeader>
+            <h3 className="text-lg font-semibold">Desglose de Costos</h3>
+        </CardHeader>
+        <CardContent>
+            <div className="space-y-3">
+              {Object.entries(financialData.costs_by_type || {}).map(([type, amount]: [string, any]) => (
+                <div key={type} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <Building className="h-5 w-5 text-primary" />
+                    <span className="font-medium capitalize">{type}</span>
+                  </div>
+                  <span className="font-bold">{formatCurrency(amount)}</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+        {/* Performance por Locales */}
+      <Card>
+        <CardHeader>
+            <h3 className="text-lg font-semibold">Performance Financiero por Local</h3>
+        </CardHeader>
+        <CardContent>
             <div className="space-y-4">
-              <Input label="Referencia" placeholder="Ej: NK-AM90-003" />
-              <Input label="Marca" placeholder="Ej: Nike" />
-              <Input label="Modelo" placeholder="Ej: Air Max 90" />
-              
+              {financialData.locations_financials?.map((location: any) => (
+                <div key={location.location_id} className="p-4 border rounded-lg">
+                  <div className="flex items-start justify-between mb-3">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Imagen del Producto
-                </label>
-                <div className="border-2 border-dashed border-border rounded-lg p-4 text-center bg-card">
-                  <FileImage className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">Subir imagen</p>
-                  <input type="file" accept="image/*" className="hidden" />
+                      <h4 className="font-semibold">{location.location_name}</h4>
+                      <p className="text-sm text-muted-foreground">{location.location_type}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-success">
+                        {location.profit_margin_percentage ? location.profit_margin_percentage.toFixed(1) : '0.0'}%
+                      </p>
+                      <p className="text-xs text-muted-foreground">Margen</p>
                 </div>
               </div>
 
+                  <div className="grid grid-cols-3 gap-3 text-sm">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Video del Producto (Opcional)
-                </label>
-                <div className="border-2 border-dashed border-border rounded-lg p-4 text-center bg-card">
-                  <Video className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">Subir video</p>
-                  <input type="file" accept="video/*" className="hidden" />
+                      <p className="text-muted-foreground">Ventas</p>
+                      <p className="font-semibold">{formatCurrency(location.total_sales)}</p>
                 </div>
+                    <div>
+                      <p className="text-muted-foreground">Costos</p>
+                      <p className="font-semibold">{formatCurrency(location.operational_costs)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Utilidad</p>
+                      <p className="font-semibold text-success">{formatCurrency(location.gross_profit)}</p>
               </div>
             </div>
 
-            {/* Tallas y ubicaciones */}
-            <div className="space-y-4">
-              <h4 className="font-medium text-foreground">Tallas y Ubicaciones</h4>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {['7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5', '11', '11.5', '12'].map((size) => (
-                  <div key={size} className="grid grid-cols-3 gap-2">
-                    <Input placeholder={`Talla ${size}`} value={size} disabled />
-                    <Input placeholder="Cantidad" type="number" min="0" />
-                    <select className="px-3 py-2 border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm">
-                      <option value="">Ubicación</option>
-                      <option value="bodega-principal">Bodega Principal</option>
-                      <option value="bodega-norte">Bodega Norte</option>
-                      <option value="local-centro">Local Centro</option>
-                      <option value="local-norte">Local Norte</option>
-                      <option value="local-sur">Local Sur</option>
-                    </select>
+                  {location.cost_breakdown && (
+                    <div className="mt-3 pt-3 border-t">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Desglose de Costos:</p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {Object.entries(location.cost_breakdown).map(([key, value]: [string, any]) => (
+                          <div key={key} className="flex justify-between">
+                            <span className="text-muted-foreground capitalize">{key}:</span>
+                            <span className="font-medium">{formatCurrency(value)}</span>
                   </div>
                 ))}
               </div>
             </div>
+                  )}
           </div>
-
-          <div className="mt-6 flex justify-end space-x-4">
-            <Button variant="outline" className="text-foreground">Cancelar</Button>
-            <Button>
-              <Package className="h-4 w-4 mr-2" />
-              Agregar al Inventario
-            </Button>
+              ))}
           </div>
         </CardContent>
       </Card>
+
+        {/* Mejor y Peor Performance */}
+        {(financialData.best_performing_location || financialData.worst_performing_location) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {financialData.best_performing_location && (
+              <Card className="border-success">
+                <CardHeader>
+                  <h3 className="text-lg font-semibold flex items-center text-success">
+                    <ArrowUp className="h-5 w-5 mr-2" />
+                    Mejor Performance
+                  </h3>
+                </CardHeader>
+                <CardContent>
+                  <p className="font-semibold">{financialData.best_performing_location.location_name}</p>
+                  <p className="text-2xl font-bold text-success mt-2">
+                    {financialData.best_performing_location.profit_margin}%
+                  </p>
+                  <p className="text-sm text-muted-foreground">Margen de Ganancia</p>
+                </CardContent>
+              </Card>
+            )}
+            
+            {financialData.worst_performing_location && (
+              <Card className="border-warning">
+                <CardHeader>
+                  <h3 className="text-lg font-semibold flex items-center text-warning">
+                    <ArrowDown className="h-5 w-5 mr-2" />
+                    Requiere Atención
+                  </h3>
+                </CardHeader>
+                <CardContent>
+                  <p className="font-semibold">{financialData.worst_performing_location.location_name}</p>
+                  <p className="text-2xl font-bold text-warning mt-2">
+                    {financialData.worst_performing_location.profit_margin}%
+                  </p>
+                  <p className="text-sm text-muted-foreground">Margen de Ganancia</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
     </div>
   );
+  };
 
-  const renderAnalyticsView = () => (
+  // Vista de Ventas
+  const renderSalesView = () => {
+    if (!salesReport) {
+      return (
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    // Verificar si hay datos de ventas
+    const hasData = salesReport.total_sales || salesReport.total_transactions || 
+                    (salesReport.sales_by_location && salesReport.sales_by_location.length > 0);
+
+    if (!hasData) {
+      return (
+        <div className="flex flex-col items-center justify-center h-96 space-y-4 p-4">
+          <BarChart2 className="h-16 w-16 text-muted-foreground" />
+          <h3 className="text-lg font-semibold">No hay datos de ventas disponibles</h3>
+          <p className="text-muted-foreground text-center">
+            No se encontraron datos de ventas para el período seleccionado.
+          </p>
+          <Button onClick={handleRefresh} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualizar Datos
+          </Button>
+        </div>
+      );
+    }
+
+    return (
     <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <h2 className="text-xl font-semibold">Métricas y Balance Histórico</h2>
-        <div className="flex space-x-2">
-          <Button size="sm" variant="outline">Hoy</Button>
-          <Button size="sm" variant="outline">Semana</Button>
-          <Button size="sm" variant="outline">Mes</Button>
+        <div className="flex flex-col space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-semibold">Reporte de Ventas</h2>
+              <p className="text-muted-foreground">{salesReport.report_period || 'Período no especificado'}</p>
         </div>
       </div>
 
-      {/* Métricas principales */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Filtros de Fecha */}
+        <Card>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    <Calendar className="h-4 w-4 inline mr-2" />
+                    Rango de Fechas
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      type="date"
+                      value={dateRange.start}
+                      onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                    />
+                    <Input
+                      type="date"
+                      value={dateRange.end}
+                      onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Mes/Año</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                      className="px-3 py-2 border border-border rounded-md bg-card text-foreground"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {new Date(2000, i).toLocaleDateString('es-CO', { month: 'long' })}
+                        </option>
+                      ))}
+                    </select>
+                    <Input
+                      type="number"
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                      min="2020"
+                      max="2030"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-end space-x-2">
+                  <Button onClick={handleLoadConsolidatedSales} className="flex-1">
+                    Filtrar Rango
+                  </Button>
+                  <Button onClick={handleLoadMonthlySales} variant="outline" className="flex-1">
+                    Filtrar Mes
+                  </Button>
+                </div>
+            </div>
+          </CardContent>
+        </Card>
+        </div>
+
+        {/* Métricas Principales */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
-            <TrendingUp className="h-8 w-8 text-success mx-auto mb-2" />
-            <p className="text-2xl font-bold">{formatCurrency(89500000)}</p>
-            <p className="text-sm text-gray-600">Ventas Totales (Mes)</p>
-            <div className="flex items-center justify-center mt-1">
-              <ArrowUp className="h-3 w-3 text-success mr-1" />
-              <span className="text-xs text-success font-medium">+15.3%</span>
-            </div>
+              <DollarSign className="h-8 w-8 text-primary mx-auto mb-2" />
+              <p className="text-2xl font-bold">{formatCurrency(salesReport.total_sales || 0)}</p>
+              <p className="text-sm text-muted-foreground">Ventas Totales</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <Package className="h-8 w-8 text-primary mx-auto mb-2" />
-            <p className="text-2xl font-bold">587</p>
-            <p className="text-sm text-gray-600">Pares Vendidos (Mes)</p>
-            <div className="flex items-center justify-center mt-1">
-              <ArrowUp className="h-3 w-3 text-success mr-1" />
-              <span className="text-xs text-success font-medium">+8.7%</span>
-            </div>
+              <BarChart2 className="h-8 w-8 text-secondary mx-auto mb-2" />
+              <p className="text-2xl font-bold">{salesReport.total_transactions || 0}</p>
+              <p className="text-sm text-muted-foreground">Transacciones</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <Box className="h-8 w-8 text-secondary mx-auto mb-2" />
-            <p className="text-2xl font-bold">73</p>
-            <p className="text-sm text-gray-600">Cajas Vendidas (Mes)</p>
-            <div className="flex items-center justify-center mt-1">
-              <ArrowUp className="h-3 w-3 text-success mr-1" />
-              <span className="text-xs text-success font-medium">+22.1%</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Target className="h-8 w-8 text-warning mx-auto mb-2" />
-            <p className="text-2xl font-bold">92%</p>
-            <p className="text-sm text-gray-600">Efectividad</p>
-            <div className="flex items-center justify-center mt-1">
-              <ArrowUp className="h-3 w-3 text-success mr-1" />
-              <span className="text-xs text-success font-medium">+3.2%</span>
-            </div>
+              <Target className="h-8 w-8 text-success mx-auto mb-2" />
+              <p className="text-2xl font-bold">{formatCurrency(salesReport.average_ticket || 0)}</p>
+              <p className="text-sm text-muted-foreground">Ticket Promedio</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Gráfico placeholder */}
+        {/* Ventas por Local */}
+        {salesReport.sales_by_location && salesReport.sales_by_location.length > 0 && (
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Tendencia de Ventas - Últimos 30 Días</h3>
+              <h3 className="text-lg font-semibold">Ventas por Local</h3>
         </CardHeader>
         <CardContent>
-          <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg border border-border">
-            <div className="text-center">
-              <BarChart2 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">Gráfico de tendencias aparecerá aquí</p>
+              <div className="space-y-3">
+                {salesReport.sales_by_location.map((location: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                    <div className="flex-1">
+                      <h4 className="font-medium">{location.location_name || 'Sin nombre'}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {location.transactions_count || 0} transacciones • Ticket: {formatCurrency(location.average_ticket || 0)}
+                      </p>
             </div>
+                    <div className="text-right">
+                      <p className="font-bold">{formatCurrency(location.total_sales || 0)}</p>
+                      <p className="text-sm text-success">
+                        {location.percentage_of_total ? location.percentage_of_total.toFixed(1) : '0.0'}%
+                      </p>
+                    </div>
+                  </div>
+                ))}
           </div>
         </CardContent>
       </Card>
+        )}
 
-      {/* Tabla de ventas detalladas */}
+        {/* Top Vendedores */}
+        {salesReport.top_sellers && salesReport.top_sellers.length > 0 && (
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Ventas Detalladas - Hoy</h3>
+              <h3 className="text-lg font-semibold">Top Vendedores</h3>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="py-2 px-4 text-left text-sm font-medium text-muted-foreground">Producto</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-muted-foreground">Talla</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-muted-foreground">Hora</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-muted-foreground">Local</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-muted-foreground">Ubicación</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-muted-foreground">Método</th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-muted-foreground">Monto</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-border">
-                  <td className="py-2 px-4 text-sm text-foreground">Nike Air Max 90</td>
-                  <td className="py-2 px-4 text-sm text-foreground">9.5</td>
-                  <td className="py-2 px-4 text-sm text-foreground">14:30</td>
-                  <td className="py-2 px-4 text-sm text-foreground">Local Centro</td>
-                  <td className="py-2 px-4 text-sm text-foreground">Exhibición</td>
-                  <td className="py-2 px-4 text-sm text-foreground">Tarjeta</td>
-                  <td className="py-2 px-4 text-sm font-medium text-foreground">{formatCurrency(180000)}</td>
-                </tr>
-                <tr className="border-b border-border">
-                  <td className="py-2 px-4 text-sm text-foreground">Adidas Ultraboost</td>
-                  <td className="py-2 px-4 text-sm text-foreground">8</td>
-                  <td className="py-2 px-4 text-sm text-foreground">13:15</td>
-                  <td className="py-2 px-4 text-sm text-foreground">Local Norte</td>
-                  <td className="py-2 px-4 text-sm text-foreground">Bodega</td>
-                  <td className="py-2 px-4 text-sm text-foreground">Efectivo</td>
-                  <td className="py-2 px-4 text-sm font-medium text-foreground">{formatCurrency(220000)}</td>
-                </tr>
-                <tr className="border-b border-border">
-                  <td className="py-2 px-4 text-sm text-foreground">Puma Suede Classic</td>
-                  <td className="py-2 px-4 text-sm text-foreground">10</td>
-                  <td className="py-2 px-4 text-sm text-foreground">12:45</td>
-                  <td className="py-2 px-4 text-sm text-foreground">Local Sur</td>
-                  <td className="py-2 px-4 text-sm text-foreground">Exhibición</td>
-                  <td className="py-2 px-4 text-sm text-foreground">Transferencia</td>
-                  <td className="py-2 px-4 text-sm font-medium text-foreground">{formatCurrency(150000)}</td>
-                </tr>
-              </tbody>
-            </table>
+              <div className="space-y-3">
+                {salesReport.top_sellers.map((seller: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
+                        {index + 1}
+      </div>
+                      <div>
+                        <h4 className="font-medium">{seller.user_name || 'Sin nombre'}</h4>
+                        <p className="text-sm text-muted-foreground">{seller.location_name || 'Sin ubicación'}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold">{formatCurrency(seller.total_sales || 0)}</p>
+                      <p className="text-sm text-muted-foreground">{seller.transactions_count || 0} ventas</p>
+                    </div>
+                  </div>
+                ))}
           </div>
         </CardContent>
       </Card>
+        )}
+
+        {/* Top Productos */}
+        {salesReport.top_products && salesReport.top_products.length > 0 && (
+        <Card>
+        <CardHeader>
+              <h3 className="text-lg font-semibold">Productos Más Vendidos</h3>
+        </CardHeader>
+        <CardContent>
+              <div className="space-y-3">
+                {salesReport.top_products.map((product: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                    <div className="flex-1">
+                      <h4 className="font-medium">{product.brand || 'Sin marca'} {product.model || ''}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Ref: {product.reference_code || 'N/A'} • {product.units_sold || 0} unidades
+                      </p>
+            </div>
+                    <div className="text-right">
+                      <p className="font-bold">{formatCurrency(product.total_revenue || 0)}</p>
+                      <p className="text-sm text-muted-foreground">Precio prom: {formatCurrency(product.average_price || 0)}</p>
+                    </div>
+                  </div>
+                ))}
+          </div>
+          </CardContent>
+        </Card>
+        )}
+
+        {/* Métodos de Pago */}
+        {salesReport.payment_methods_breakdown && (
+      <Card>
+        <CardHeader>
+              <h3 className="text-lg font-semibold">Métodos de Pago</h3>
+        </CardHeader>
+        <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {Object.entries(salesReport.payment_methods_breakdown).map(([method, amount]: [string, any]) => (
+                  <div key={method} className="text-center p-3 bg-muted/20 rounded-lg">
+                    <p className="text-lg font-bold">{formatCurrency(amount)}</p>
+                    <p className="text-sm text-muted-foreground capitalize">{method}</p>
+            </div>
+                ))}
+          </div>
+        </CardContent>
+      </Card>
+        )}
     </div>
   );
+  };
 
-  const renderBalanceView = () => (
-    <div className="space-y-6 p-4 md:p-6">
-      <h2 className="text-xl font-semibold">Balance Histórico</h2>
-
-      {/* Resumen de balance */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  // Vista de Analytics
+  const renderAnalyticsView = () => {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <h2 className="text-xl font-semibold">Análisis y Métricas</h2>
+        
         <Card>
-          <CardContent className="p-4 text-center">
-            <TrendingUp className="h-8 w-8 text-success mx-auto mb-2" />
-            <p className="text-2xl font-bold">{formatCurrency(89500000)}</p>
-            <p className="text-sm text-gray-600">Ingresos Totales</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <TrendingDown className="h-8 w-8 text-error mx-auto mb-2" />
-            <p className="text-2xl font-bold">{formatCurrency(totalCosts)}</p>
-            <p className="text-sm text-gray-600">Costos Totales</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <DollarSign className="h-8 w-8 text-primary mx-auto mb-2" />
-            <p className="text-2xl font-bold">{formatCurrency(89500000 - totalCosts)}</p>
-            <p className="text-sm text-gray-600">Utilidad Neta</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <PieChart className="h-8 w-8 text-secondary mx-auto mb-2" />
-            <p className="text-2xl font-bold">{Math.round(((89500000 - totalCosts) / 89500000) * 100)}%</p>
-            <p className="text-sm text-gray-600">Margen</p>
+          <CardContent className="p-8 text-center">
+            <PieChart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <p className="text-lg text-muted-foreground">
+              Funcionalidades de análisis avanzado disponibles próximamente
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Gráficos, tendencias y análisis predictivo
+            </p>
           </CardContent>
         </Card>
       </div>
-
-      {/* Gráfico de balance */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Balance Mensual</h3>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg border border-border">
-            <div className="text-center">
-              <PieChart className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">Gráfico de balance aparecerá aquí</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+    );
+  };
 
   const renderCurrentView = () => {
+    if (loading && !dashboardData) {
+      return (
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    if (error && !dashboardData) {
+      return (
+        <div className="flex flex-col items-center justify-center h-96 space-y-4">
+          <AlertCircle className="h-16 w-16 text-destructive" />
+          <p className="text-lg font-semibold">Error al cargar datos</p>
+          <p className="text-muted-foreground">{error}</p>
+          <Button onClick={loadInitialData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Reintentar
+          </Button>
+        </div>
+      );
+    }
+
     switch (currentView) {
+      case 'locations': return renderLocationsView();
       case 'inventory': return renderInventoryView();
-      case 'costs': return renderCostsView();
-      case 'assignments': return renderAssignmentsView();
-      case 'supply': return renderSupplyView();
+      case 'financial': return renderFinancialView();
+      case 'sales': return renderSalesView();
       case 'analytics': return renderAnalyticsView();
-      case 'balance': return renderBalanceView();
       default: return renderDashboardView();
     }
   };
@@ -974,12 +1174,11 @@ export const BossDashboard: React.FC = () => {
   return (
     <DashboardLayout title={
       currentView === 'dashboard' ? 'Panel Ejecutivo - BOSS' :
-      currentView === 'inventory' ? 'Gestión de Inventario' :
-      currentView === 'costs' ? 'Costos Operativos' :
-      currentView === 'assignments' ? 'Gestión de Asignaciones' :
-      currentView === 'supply' ? 'Abastecer Inventario' :
-      currentView === 'analytics' ? 'Métricas y Análisis' :
-      'Balance Histórico'
+      currentView === 'locations' ? 'Gestión de Locales' :
+      currentView === 'inventory' ? 'Inventario Consolidado' :
+      currentView === 'financial' ? 'Análisis Financiero' :
+      currentView === 'sales' ? 'Reporte de Ventas' :
+      'Análisis y Métricas'
     }>
       <div className="min-h-screen bg-background">
         {/* Navigation tabs - Solo visible en móvil */}
@@ -987,12 +1186,11 @@ export const BossDashboard: React.FC = () => {
           <div className="flex overflow-x-auto px-4 py-2 space-x-2">
             {[
               { key: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="h-4 w-4" /> },
+              { key: 'locations', label: 'Locales', icon: <Store className="h-4 w-4" /> },
               { key: 'inventory', label: 'Inventario', icon: <Package className="h-4 w-4" /> },
-              { key: 'costs', label: 'Costos', icon: <DollarSign className="h-4 w-4" /> },
-              { key: 'assignments', label: 'Asignaciones', icon: <Users className="h-4 w-4" /> },
-              { key: 'supply', label: 'Abastecer', icon: <Upload className="h-4 w-4" /> },
-              { key: 'analytics', label: 'Métricas', icon: <PieChart className="h-4 w-4" /> },
-              { key: 'balance', label: 'Balance', icon: <Target className="h-4 w-4" /> },
+              { key: 'financial', label: 'Finanzas', icon: <DollarSign className="h-4 w-4" /> },
+              { key: 'sales', label: 'Ventas', icon: <TrendingUp className="h-4 w-4" /> },
+              { key: 'analytics', label: 'Análisis', icon: <PieChart className="h-4 w-4" /> },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -1017,12 +1215,11 @@ export const BossDashboard: React.FC = () => {
               <nav className="space-y-2">
                 {[
                   { key: 'dashboard', label: 'Panel Ejecutivo', icon: <BarChart2 className="h-5 w-5" /> },
-                  { key: 'inventory', label: 'Gestión de Inventario', icon: <Package className="h-5 w-5" /> },
-                  { key: 'costs', label: 'Costos Operativos', icon: <DollarSign className="h-5 w-5" /> },
-                  { key: 'assignments', label: 'Gestión de Asignaciones', icon: <Users className="h-5 w-5" /> },
-                  { key: 'supply', label: 'Abastecer Inventario', icon: <Upload className="h-5 w-5" /> },
-                  { key: 'analytics', label: 'Métricas y Análisis', icon: <PieChart className="h-5 w-5" /> },
-                  { key: 'balance', label: 'Balance Histórico', icon: <Target className="h-5 w-5" /> },
+                  { key: 'locations', label: 'Gestión de Locales', icon: <Store className="h-5 w-5" /> },
+                  { key: 'inventory', label: 'Inventario Consolidado', icon: <Package className="h-5 w-5" /> },
+                  { key: 'financial', label: 'Análisis Financiero', icon: <DollarSign className="h-5 w-5" /> },
+                  { key: 'sales', label: 'Reporte de Ventas', icon: <TrendingUp className="h-5 w-5" /> },
+                  { key: 'analytics', label: 'Análisis y Métricas', icon: <PieChart className="h-5 w-5" /> },
                 ].map((item) => (
                   <button
                     key={item.key}
@@ -1049,6 +1246,144 @@ export const BossDashboard: React.FC = () => {
         <div className="lg:hidden">
           {renderCurrentView()}
         </div>
+
+        {/* Modal para crear ubicación */}
+        {showCreateLocationModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold">Nueva Ubicación</h2>
+                  <button
+                    onClick={() => setShowCreateLocationModal(false)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Nombre */}
+                  <Input
+                    label="Nombre *"
+                    value={locationFormData.name}
+                    onChange={(e) => setLocationFormData({ ...locationFormData, name: e.target.value })}
+                    placeholder="Ej: Local Centro"
+                    required
+                  />
+
+                  {/* Tipo */}
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Tipo de Ubicación *
+                    </label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setLocationFormData({ ...locationFormData, type: 'local' })}
+                        className={`p-4 border-2 rounded-lg flex flex-col items-center space-y-2 ${
+                          locationFormData.type === 'local'
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <Store className="h-8 w-8" />
+                        <span className="font-medium">Local de Venta</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLocationFormData({ ...locationFormData, type: 'bodega' })}
+                        className={`p-4 border-2 rounded-lg flex flex-col items-center space-y-2 ${
+                          locationFormData.type === 'bodega'
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <Warehouse className="h-8 w-8" />
+                        <span className="font-medium">Bodega</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Dirección */}
+                  <Input
+                    label="Dirección"
+                    value={locationFormData.address}
+                    onChange={(e) => setLocationFormData({ ...locationFormData, address: e.target.value })}
+                    placeholder="Ej: Calle 123 #45-67"
+                  />
+
+                  {/* Teléfono */}
+                  <Input
+                    label="Teléfono"
+                    value={locationFormData.phone}
+                    onChange={(e) => setLocationFormData({ ...locationFormData, phone: e.target.value })}
+                    placeholder="Ej: +57 300 1234567"
+                  />
+
+                  {/* Nombre del Encargado */}
+                  <Input
+                    label="Nombre del Encargado"
+                    value={locationFormData.manager_name}
+                    onChange={(e) => setLocationFormData({ ...locationFormData, manager_name: e.target.value })}
+                    placeholder="Ej: Juan Pérez"
+                  />
+
+                  {/* Capacidad (solo para bodegas) */}
+                  {locationFormData.type === 'bodega' && (
+                    <Input
+                      label="Capacidad (unidades)"
+                      type="number"
+                      value={locationFormData.capacity}
+                      onChange={(e) => setLocationFormData({ ...locationFormData, capacity: e.target.value })}
+                      placeholder="Ej: 1000"
+                    />
+                  )}
+
+                  {/* Notas */}
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Notas
+                    </label>
+                    <textarea
+                      value={locationFormData.notes}
+                      onChange={(e) => setLocationFormData({ ...locationFormData, notes: e.target.value })}
+                      placeholder="Información adicional..."
+                      className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowCreateLocationModal(false)}
+                    disabled={createLocationLoading}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleCreateLocation}
+                    disabled={!locationFormData.name || createLocationLoading}
+                  >
+                    {createLocationLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creando...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Crear Ubicación
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

@@ -20,7 +20,8 @@ const mapApiRoleToUserRole = (apiRole: string): UserRole => {
     'superuser': 'superuser',
     'bodeguero': 'bodeguero',
     'seller': 'seller',
-    'corredor': 'corredor'
+    'corredor': 'corredor',
+    'boss': 'boss'
   };
   
   return roleMapping[apiRole] || 'seller'; // fallback a seller si no encuentra el rol

@@ -37,6 +37,10 @@ export const LoginPage: React.FC = () => {
           console.log('➡️ Redirigiendo a admin dashboard');
           navigate('/admin');
           break;
+        case 'boss':
+          console.log('➡️ Redirigiendo a boss dashboard');
+          navigate('/boss');
+          break;
         case 'bodeguero':
           console.log('➡️ Redirigiendo a warehouse dashboard');
           navigate('/warehouse');

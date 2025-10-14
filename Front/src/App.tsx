@@ -7,6 +7,7 @@ import { LoginPage } from './pages/auth/LoginPage';
 // Dashboard Pages
 import { SuperuserDashboard } from './pages/dashboard/SuperuserDashboard';
 import {AdminDashboard} from './pages/dashboard/AdminDashboard';
+import { BossDashboard } from './pages/dashboard/BossDashboard';
 import { WarehouseDashboard } from './pages/dashboard/WarehouseDashboard';
 import { SellerDashboard } from './pages/dashboard/SellerDashboard';
 import { RunnerDashboard } from './pages/dashboard/RunnerDashboard';
@@ -26,7 +27,7 @@ const ProtectedRoute: React.FC<{
  children: React.ReactNode;
  allowedRoles: string[];
 }> = ({ children, allowedRoles }) => {
- const { isAuthenticated, user, hasRole, loading } = useAuth();
+ const { isAuthenticated, hasRole, loading } = useAuth();
  
  if (loading) {
    return <LoadingSpinner />;
@@ -56,6 +57,8 @@ const RootRedirect: React.FC = () => {
         return <Navigate to="/superuser" replace />;
       case 'administrador':
         return <Navigate to="/administrador" replace />;
+      case 'boss':
+        return <Navigate to="/boss" replace />;
       case 'bodeguero':
         return <Navigate to="/warehouse" replace />;
       case 'seller':
@@ -96,22 +99,30 @@ const AppRoutes: React.FC = () => {
          </ProtectedRoute>
        }
      />
-     <Route
-       path="/administrador"
-       element={
-         <ProtectedRoute allowedRoles={['administrador', 'superuser']}>
-           <AdminDashboard />
-         </ProtectedRoute>
-       }
-     />
-     <Route
-       path="/warehouse"
-       element={
-         <ProtectedRoute allowedRoles={['bodeguero', 'admin', 'superuser']}>
-           <WarehouseDashboard />
-         </ProtectedRoute>
-       }
-     />
+    <Route
+      path="/administrador"
+      element={
+        <ProtectedRoute allowedRoles={['administrador', 'superuser']}>
+          <AdminDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/boss"
+      element={
+        <ProtectedRoute allowedRoles={['boss', 'superuser']}>
+          <BossDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/warehouse"
+      element={
+        <ProtectedRoute allowedRoles={['bodeguero', 'admin', 'superuser']}>
+          <WarehouseDashboard />
+        </ProtectedRoute>
+      }
+    />
      <Route
        path="/seller"
        element={
