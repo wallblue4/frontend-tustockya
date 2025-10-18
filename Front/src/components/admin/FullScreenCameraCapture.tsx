@@ -121,6 +121,7 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
           ref={videoRef}
           autoPlay
           playsInline
+          muted
           className="w-full h-full object-cover"
           style={{ maxHeight: "calc(100vh - 160px)" }}
         />

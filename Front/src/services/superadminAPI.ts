@@ -1,6 +1,7 @@
 // src/services/superadminAPI.ts - Superadmin Module API
-//const BACKEND_URL = 'http://localhost:8000';
-const BACKEND_URL = 'https://tustockya-api.onrender.com';
+
+const BACKEND_URL = 'http://localhost:8000';
+//const BACKEND_URL = 'https://tustockya-api.onrender.com';
 
 const getHeaders = () => {
   const token = localStorage.getItem('token');
