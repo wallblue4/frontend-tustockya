@@ -6,9 +6,7 @@ import { vendorAPI, formatCurrency } from '../../services/api';
 import { 
   Plus, 
   Trash2, 
-  CreditCard, 
   DollarSign, 
-  Upload,
   CheckCircle,
   Percent,
   AlertCircle
@@ -302,7 +300,28 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
       
     } catch (error) {
       console.error('Error al registrar la venta:', error);
-      alert('Error al registrar la venta: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+      
+      // Detectar si es un error de stock insuficiente
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      
+      if (errorMessage.includes('Stock insuficiente') || errorMessage.includes('no existe en')) {
+        // Extraer el mensaje de error y formatearlo mejor
+        const detailMatch = errorMessage.match(/Stock insuficiente:\s*(.*)/);
+        const stockDetails = detailMatch ? detailMatch[1] : errorMessage;
+        
+        alert(
+          '❌ ERROR DE INVENTARIO\n\n' +
+          '⚠️ No se puede completar la venta porque:\n\n' +
+          stockDetails + '\n\n' +
+          '💡 Soluciones:\n' +
+          '• Verifica el código de referencia del producto\n' +
+          '• Solicita un traslado desde otra ubicación\n' +
+          '• Verifica el inventario disponible antes de vender'
+        );
+      } else {
+        // Otros tipos de errores
+        alert('❌ Error al registrar la venta:\n\n' + errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }

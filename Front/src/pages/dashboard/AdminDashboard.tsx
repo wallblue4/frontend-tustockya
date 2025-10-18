@@ -1812,21 +1812,6 @@ Detalle técnico: ${error.message}`;
                 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
-                    Precio por Caja (Opcional)
-                  </label>
-                  <Input 
-                    placeholder="Ej: 540000" 
-                    type="number"
-                    value={videoInventoryForm.box_price}
-                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, box_price: parseFloat(e.target.value)}))}
-                    min="0"
-                    step="1000"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Precio mayorista por caja</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
                     Tallas y Cantidades <span className="text-error">*</span>
                   </label>
                   {videoInventoryForm.sizes.map((entry, idx) => (
