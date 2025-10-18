@@ -20,45 +20,6 @@ const handleResponse = async (response: Response) => {
   return response.json();
 };
 
-// Mock data básico para fallbacks
-const mockData = {
-  seller: {
-    pendingTransfers: [
-      {
-        id: 1,
-        status: 'delivered' as const,
-        sneaker_reference_code: 'MOCK-001',
-        brand: 'Mock Brand',
-        model: 'Mock Model',
-        size: '42',
-        quantity: 1,
-        purpose: 'cliente' as const,
-        priority: 'high' as const,
-        requested_at: new Date().toISOString(),
-        time_elapsed: '2h',
-        next_action: 'Confirmar recepción',
-        courier_name: 'Mock Courier'
-      }
-    ],
-    completedTransfers: [
-      {
-        id: 2,
-        status: 'completed' as const,
-        sneaker_reference_code: 'MOCK-002',
-        brand: 'Mock Brand',
-        model: 'Mock Model',
-        size: '41',
-        quantity: 1,
-        purpose: 'restock' as const,
-        priority: 'normal' as const,
-        requested_at: new Date().toISOString(),
-        time_elapsed: '1h',
-        next_action: 'Completado'
-      }
-    ]
-  }
-};
-
 // NUEVA FUNCIÓN: Intentar conectar al backend primero
 const tryBackendFirst = async (apiCall: () => Promise<any>) => {
   try {
@@ -67,7 +28,7 @@ const tryBackendFirst = async (apiCall: () => Promise<any>) => {
     console.log('✅ Backend disponible, usando datos reales');
     return { success: true, data: result };
   } catch (error) {
-    console.warn('⚠️ Backend no disponible, usando modo mock:', (error as Error).message);
+    console.warn('⚠️ Backend no disponible', (error as Error).message);
     return { success: false, error };
   }
 };
