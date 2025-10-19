@@ -82,15 +82,6 @@ export const RunnerDashboard: React.FC = () => {
   // Estados de filtros
   const [purposeFilter, setPurposeFilter] = useState<'all' | 'cliente' | 'restock'>('all');
 
-  // Estados de estadísticas (mantenido para compatibilidad con polling)
-  const [stats, setStats] = useState({
-    totalDeliveries: 0,
-    todayDeliveries: 0,
-    successRate: 0,
-    averageTime: '0 min',
-    totalEarnings: 0,
-    rating: 0
-  });
 
   // HOOKS
   const { } = useAuth();
@@ -124,12 +115,6 @@ export const RunnerDashboard: React.FC = () => {
 
     setAvailableRequests(newAvailable);
     setAssignedTransports(newAssigned);
-
-    setStats(prev => ({
-      ...prev,
-      totalDeliveries: deliveryHistory.length,
-      todayDeliveries: newAssigned.length,
-    }));
   }, [availableRequests, notifyTransportAvailable, deliveryHistory.length]);
 
   // POLLING para corredor
@@ -155,28 +140,31 @@ export const RunnerDashboard: React.FC = () => {
 
       const [availableResponse, assignedResponse, historyResponse] = await Promise.all([
         courierAPI.getAvailableRequests(),
-        courierAPI.getMyAssignedTransports(),
-        courierAPI.getMyDeliveries()
+        courierAPI.getMyDeliveries(), // my-deliveries - entregas pendientes/asignadas
+        courierAPI.getMyAssignedTransports() // my-transports - entregas completadas (historial)
       ]);
 
       setAvailableRequests(availableResponse.available_requests || []);
       
-      // Usar la respuesta completa del endpoint my-transports
-      const transportsResponse = assignedResponse as MyTransportsResponse;
-      setAssignedTransports(transportsResponse.my_transports || []);
-      setCourierStats(transportsResponse.courier_stats || null);
-
-      // Map delivery history from backend response
-      const deliveries = (historyResponse.delivery_history || []).map((item: any) => ({
+      // my-deliveries son las entregas asignadas/pendientes
+      const deliveriesResponse = assignedResponse as any;
+      const pendingTransports = deliveriesResponse.my_transports || deliveriesResponse.recent_deliveries || [];
+      setAssignedTransports(pendingTransports);
+      
+      // my-transports son las entregas completadas (historial)
+      const historyData = historyResponse as MyTransportsResponse;
+      setCourierStats(historyData.courier_stats || null);
+      
+      const deliveries = (historyData.my_transports || []).map((item: any) => ({
         id: item.id,
         status: item.status,
         product: `${item.brand} ${item.model} - Talla ${item.size}`,
-        delivered_to: `${item.requester_first_name} ${item.requester_last_name}`,
+        delivered_to: item.destination_location?.name || 'Destino desconocido',
         delivered_at: item.delivered_at,
         total_time: item.delivered_at && item.picked_up_at ? `${Math.round((new Date(item.delivered_at).getTime() - new Date(item.picked_up_at).getTime()) / 60000)} minutos` : '',
         delivery_successful: item.status === 'completed',
-        distance: undefined, // Optionally calculate if available
-        earnings: undefined // Optionally calculate if available
+        distance: undefined,
+        earnings: undefined
       }));
       setDeliveryHistory(deliveries);
 

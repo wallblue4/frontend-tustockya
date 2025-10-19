@@ -592,8 +592,8 @@ export const SuperuserDashboard: React.FC = () => {
       </div>
 
       {/* Alertas y Notificaciones */}
-      <Card>
-        <CardHeader>
+        <Card>
+          <CardHeader>
           <h2 className="text-xl font-semibold">Alertas y Notificaciones</h2>
         </CardHeader>
         <CardContent>
@@ -761,7 +761,7 @@ export const SuperuserDashboard: React.FC = () => {
               <div className="md:col-span-2 flex gap-2">
                 <Button type="submit" disabled={loading}>
                   {loading ? 'Creando...' : 'Crear Empresa'}
-                </Button>
+              </Button>
                 <Button type="button" variant="outline" onClick={() => setShowCreateCompany(false)}>
                   Cancelar
               </Button>
@@ -910,9 +910,9 @@ export const SuperuserDashboard: React.FC = () => {
                       <span className="hidden sm:inline">Eliminar</span>
                     </Button>
                   </div>
-                </div>
-              ))}
-            </div>
+                  </div>
+                ))}
+              </div>
           ) : (
             <div className="text-center py-12">
               <Building2 className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
@@ -924,8 +924,8 @@ export const SuperuserDashboard: React.FC = () => {
               </p>
             </div>
           )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
         
       {/* Detalles y métricas de empresa seleccionada */}
       {selectedCompany && companyMetrics && (
@@ -1022,9 +1022,9 @@ export const SuperuserDashboard: React.FC = () => {
             <Button onClick={() => setShowChangeSubscription(!showChangeSubscription)}>
               <Plus className="h-4 w-4 mr-2" /> Cambiar Plan
             </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
+            </div>
+          </CardHeader>
+          <CardContent>
           {showChangeSubscription && (
             <form onSubmit={changeSubscription} className="grid grid-cols-2 gap-4 mb-6 p-4 border rounded-lg">
               <Input
@@ -1142,11 +1142,11 @@ export const SuperuserDashboard: React.FC = () => {
   };
 
   const renderInvoicesTab = () => (
-    <div className="space-y-6">
+            <div className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div>
+              <div>
               <h2 className="text-xl font-semibold">Gestión de Facturas</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 {invoices.length} factura{invoices.length !== 1 ? 's' : ''} encontrada{invoices.length !== 1 ? 's' : ''}
@@ -1187,39 +1187,39 @@ export const SuperuserDashboard: React.FC = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <FileText className="h-5 w-5 text-primary" />
-                          <div>
+                    <div>
                             <h3 className="font-semibold text-lg">{invoice.invoice_number}</h3>
                             <p className="text-sm text-muted-foreground">{invoice.company_name}</p>
-                          </div>
+                    </div>
                         </div>
                         
                         {/* Detalles de la factura */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-sm">
-                          <div>
+                    <div>
                             <p className="text-muted-foreground">Período</p>
                             <p className="font-medium">
                               {new Date(invoice.billing_period_start).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
                             </p>
-                          </div>
-                          <div>
+                    </div>
+                    <div>
                             <p className="text-muted-foreground">Monto Total</p>
                             <p className="font-semibold text-lg text-primary">
                               ${invoice.total_amount.toFixed(2)}
                             </p>
-                          </div>
-                          <div>
+                    </div>
+                    <div>
                             <p className="text-muted-foreground">Vencimiento</p>
                             <p className={`font-medium ${isOverdue ? 'text-error' : ''}`}>
                               {formatDate(invoice.due_date)}
                             </p>
-                          </div>
+                    </div>
                           <div>
                             <p className="text-muted-foreground">Estado</p>
                             <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${statusBadge.class}`}>
                               {statusBadge.label}
                             </span>
-                          </div>
-                        </div>
+                  </div>
+                </div>
 
                         {/* Información de pago si existe */}
                         {invoice.paid_at && (
@@ -1229,7 +1229,7 @@ export const SuperuserDashboard: React.FC = () => {
                               {invoice.payment_method && ` • Método: ${invoice.payment_method}`}
                               {invoice.payment_reference && ` • Ref: ${invoice.payment_reference}`}
                             </p>
-                          </div>
+              </div>
                         )}
 
                         {/* Advertencia si está vencida */}
@@ -1258,7 +1258,7 @@ export const SuperuserDashboard: React.FC = () => {
                           >
                             <CheckCircle className="h-4 w-4 mr-2" />
                             Marcar Pagada
-                          </Button>
+                </Button>
                         )}
                         
                         <Button 
@@ -1272,10 +1272,10 @@ export const SuperuserDashboard: React.FC = () => {
                         >
                           <Building2 className="h-4 w-4 mr-2" />
                           Ver Empresa
-                        </Button>
+                </Button>
                       </div>
-                    </div>
-
+              </div>
+              
                     {/* Footer con fechas */}
                     <div className="mt-3 pt-3 border-t text-xs text-muted-foreground flex justify-between">
                       <span>Creada: {formatDate(invoice.created_at)}</span>
@@ -1305,7 +1305,7 @@ export const SuperuserDashboard: React.FC = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
+              <div>
                   <p className="text-sm text-muted-foreground">Total Pendiente</p>
                   <p className="text-2xl font-bold text-warning">
                     ${invoices
@@ -1338,9 +1338,9 @@ export const SuperuserDashboard: React.FC = () => {
                   </p>
                 </div>
                 <CheckCircle className="h-8 w-8 text-success" />
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
           <Card>
             <CardContent className="pt-6">
