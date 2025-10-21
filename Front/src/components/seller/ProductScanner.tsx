@@ -8,7 +8,6 @@ import {
   Loader2, 
   Package, 
   MapPin,
-  ShoppingBag,
   ArrowRight,
   Check,
   Warehouse,
@@ -86,15 +85,6 @@ interface SelectedProductDetails {
 }
 
 interface ProductScannerProps {
-  onSellProduct?: (productData: {
-    code: string;
-    brand: string;
-    model: string;
-    size: string;
-    price: number;
-    location: string;
-    storage_type: string;
-  }) => void;
   onRequestTransfer?: (productData: {
     sneaker_reference_code: string;
     brand: string;
@@ -147,7 +137,6 @@ const ProductImageComponent: React.FC<ProductImageProps> = ({
 };
 
 export const ProductScanner: React.FC<ProductScannerProps> = ({
-  onSellProduct,
   onRequestTransfer,
   capturedImage
 }) => {
@@ -480,34 +469,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       setSelectedSize('');
     } catch (error) {
       setError('Error al cargar detalles del producto');
-    }
-  };
-
-  const handleSell = () => {
-    if (selectedProduct && selectedSize && onSellProduct) {
-      // Extraer la talla y ubicación de la clave única
-      const size = extractSizeFromKey(selectedSize);
-      const location = extractLocationFromKey(selectedSize);
-      
-      // Buscar la información exacta de esa talla en esa ubicación
-      const sizeInfo = selectedProduct.sizes.find(
-        s => s.size === size && (s.location_name || s.location) === location
-      );
-      
-      if (sizeInfo) {
-        const productData = {
-          code: selectedProduct.product.code,
-          brand: selectedProduct.product.brand,
-          model: selectedProduct.product.model,
-          size: size,
-          price: Math.round(sizeInfo.unit_price),
-          location: sizeInfo.location,
-          storage_type: sizeInfo.storage_type
-        };
-        
-        console.log('Enviando datos del producto:', productData);
-        onSellProduct(productData);
-      }
     }
   };
 
@@ -973,24 +934,13 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
               {/* Action Buttons */}
               <div className="flex space-x-4">
                 {selectedSize && (selectedProduct.product.availability.can_sell || selectedProduct.product.inventory.total_stock > 0) ? (
-                  <>
-                    <Button
-                      onClick={handleSell}
-                      className="flex-1"
-                      disabled={!selectedProduct.product.availability.can_sell && selectedProduct.product.inventory.total_stock === 0}
-                    >
-                      <ShoppingBag className="h-4 w-4 mr-2" />
-                      {selectedProduct.product.availability.can_sell ? `Vender Talla ${extractSizeFromKey(selectedSize)}` : `Vender Talla ${extractSizeFromKey(selectedSize)}`}
-                    </Button>
-                    <Button
-                      onClick={handleSolicitar}
-                      variant="outline"
-                      className="px-6"
-                    >
-                      <Package className="h-4 w-4 mr-2" />
-                      Solicitar
-                    </Button>
-                  </>
+                  <Button
+                    onClick={handleSolicitar}
+                    className="w-full"
+                  >
+                    <Package className="h-4 w-4 mr-2" />
+                    Solicitar
+                  </Button>
                 ) : selectedProduct.product.availability.can_request_from_other_locations ? (
                   <>
                     <Button

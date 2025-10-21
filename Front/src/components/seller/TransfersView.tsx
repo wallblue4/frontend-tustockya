@@ -16,7 +16,8 @@ import {
   ChevronDown,
   ChevronUp,
   XCircle,
-  History
+  History,
+  DollarSign
 } from 'lucide-react';
 
 interface TransfersViewProps {
@@ -41,6 +42,7 @@ interface TransfersViewProps {
     storage_type: string;
     color?: string;
     image?: string;
+    transfer_id?: number; // ID de transferencia (siempre presente cuando viene desde TransfersView)
   }) => void;
 }
 
@@ -278,46 +280,54 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     setSelectedTransferForReturn(null);
   };
 
-  const handleConfirmAndSell = async (transfer: PendingTransferItem) => {
+  const handleConfirmReception = async (transfer: PendingTransferItem) => {
   try {
-    // 1. Confirmar recepción primero
+    // Confirmar recepción solamente
     await vendorAPI.confirmReception(transfer.id, 1, true, 'Producto recibido correctamente');
     
-    // 2. Preparar datos para SalesForm (similar a ProductScanner)
+    // Mensaje de éxito
+    alert('✅ Recepción confirmada exitosamente.\n\nEl producto ahora aparecerá en "Transferencias Completadas" donde podrás venderlo o generar una devolución si es necesario.');
+    
+    // Recargar datos para actualizar las listas
+    loadTransfersData();
+    
+  } catch (err: any) {
+    console.error('Error en confirmar recepción:', err);
+    alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+  }
+};
+
+  // Nueva función para vender desde transferencias completadas
+  const handleSellFromCompletedTransfer = (transfer: CompletedTransfer) => {
+    console.log('📦 Transferencia seleccionada para venta:', transfer);
+    console.log('🔑 Transfer ID:', transfer.id);
+    
+    // Preparar datos para SalesForm incluyendo el transfer_id
     const salesData = {
       code: transfer.sneaker_reference_code,
       brand: transfer.brand,
       model: transfer.model,
       size: transfer.size,
-      price: 0, // No disponible en el endpoint
+      price: 0, // No disponible en el endpoint, el vendedor deberá ingresarlo
       location: 'Local Actual', // No disponible en el endpoint
       storage_type: 'display',
       color: 'N/A', // No disponible en el endpoint
-      image: transfer.product_image
+      image: transfer.product_image || undefined,
+      transfer_id: transfer.id // Agregar el ID de la transferencia
     };
     
-    // 3. Llamar callback para abrir SalesForm
+    console.log('📤 Datos que se enviarán a SalesForm:', salesData);
+    console.log('🔑 Transfer ID en salesData:', salesData.transfer_id);
+    
+    // Llamar callback para abrir SalesForm
     if (onSellProduct) {
-      console.log('🚀 Llamando onSellProduct...');
+      console.log('✅ Llamando a onSellProduct con transfer_id:', salesData.transfer_id);
       onSellProduct(salesData);
-      console.log('✅ onSellProduct ejecutado');
-      
-      // 4. Mensaje de éxito
-      alert('Recepción confirmada. Abriendo formulario de venta...');
-      
     } else {
       console.error('❌ onSellProduct no está definido');
       alert('Error: No se puede abrir el formulario de ventas. onSellProduct no está definido.');
-      return;
     }
-
-    loadTransfersData();
-    
-  } catch (err: any) {
-    console.error('Error en confirmar y vender:', err);
-    alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));
-  }
-};
+  };
 
 
   // *** NUEVA FUNCIÓN - Cancelar transferencia ***
@@ -783,12 +793,12 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                             <>
                               {transfer.status === 'delivered' && (
                                 <Button
-                                  onClick={() => handleConfirmAndSell(transfer)}
+                                  onClick={() => handleConfirmReception(transfer)}
                                   className="bg-green-600 hover:bg-green-700 text-sm w-full"
                                   size="sm"
                                 >
                                   <CheckCircle className="h-4 w-4 mr-2" />
-                                  Confirmar Recepción y Vender
+                                  Confirmar Recepción
                                 </Button>
                               )}
                               
@@ -849,12 +859,12 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                               {/* CASO 3: Status delivered - Confirmar recepción */}
                               {transfer.status === 'delivered' && (
                                 <Button
-                                  onClick={() => handleConfirmAndSell(transfer)}
+                                  onClick={() => handleConfirmReception(transfer)}
                                   className="bg-green-600 hover:bg-green-700 text-sm w-full"
                                   size="sm"
                                 >
                                   <CheckCircle className="h-4 w-4 mr-2" />
-                                  Confirmar Recepción y Vender
+                                  Confirmar Recepción
                                 </Button>
                               )}
                               
@@ -989,16 +999,26 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                           </div>
                         </div>
 
-                        {/* Botón de devolución - SOLO para transferencias completadas */}
+                        {/* Botones de acción - SOLO para transferencias completadas */}
                         {transfer.status === 'completed' && (
-                          <Button
-                            onClick={() => handleGenerateReturn(transfer)}
-                            className="bg-orange-600 hover:bg-orange-700 text-sm w-full"
-                            size="sm"
-                          >
-                            <Package className="h-4 w-4 mr-2" />
-                            Generar Devolución
-                          </Button>
+                          <div className="flex flex-col md:flex-row gap-2 mt-3">
+                            <Button
+                              onClick={() => handleGenerateReturn(transfer)}
+                              className="bg-orange-600 hover:bg-orange-700 text-sm flex-1"
+                              size="sm"
+                            >
+                              <Package className="h-4 w-4 mr-2" />
+                              Generar Devolución
+                            </Button>
+                            <Button
+                              onClick={() => handleSellFromCompletedTransfer(transfer)}
+                              className="bg-blue-600 hover:bg-blue-700 text-sm flex-1"
+                              size="sm"
+                            >
+                              <DollarSign className="h-4 w-4 mr-2" />
+                              Vender
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </div>

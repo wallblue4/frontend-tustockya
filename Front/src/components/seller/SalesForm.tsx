@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { vendorAPI, formatCurrency } from '../../services/api';
+import { vendorAPI as apiVendorAPI, formatCurrency } from '../../services/api';
+import { vendorAPI as transferVendorAPI } from '../../services/transfersAPI';
 import { 
   Plus, 
   Trash2, 
@@ -40,6 +41,7 @@ interface SalesFormProps {
     storage_type?: string;
     color?: string;
     image?: string[];
+    transfer_id?: number; // ID de transferencia (requerido para ventas desde transferencias completadas)
   } | null;
 }
 
@@ -54,6 +56,9 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   
+  // Transfer ID - guardado desde prefilledProduct
+  const [transferId, setTransferId] = useState<number | undefined>(undefined);
+  
   // Discount fields
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [discountReason, setDiscountReason] = useState('');
@@ -62,6 +67,12 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
   // Effect to handle prefilled product
   useEffect(() => {
     if (prefilledProduct) {
+      console.log('📦 Datos recibidos en SalesForm:', prefilledProduct);
+      console.log('🔑 Transfer ID recibido:', prefilledProduct.transfer_id);
+      
+      // Guardar el transfer_id
+      setTransferId(prefilledProduct.transfer_id);
+      
       const newItem: SaleItem = {
         id: Date.now().toString(),
         sneaker_reference_code: prefilledProduct.code,
@@ -78,7 +89,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
       
       // Add note about the product source
       if (prefilledProduct.location && prefilledProduct.storage_type) {
-        setNotes(`Producto escaneado - Ubicación: ${prefilledProduct.location} (${prefilledProduct.storage_type === 'warehouse' ? 'Bodega' : 'Exhibición'})`);
+        setNotes(`Venta desde transferencia #${prefilledProduct.transfer_id} - Ubicación: ${prefilledProduct.location} (${prefilledProduct.storage_type === 'warehouse' ? 'Bodega' : 'Exhibición'})`);
       }
     }
   }, [prefilledProduct]);
@@ -153,7 +164,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
 
       console.log('Solicitando descuento:', discountData);
       
-      const response = await vendorAPI.requestDiscount(discountData);
+      const response = await apiVendorAPI.requestDiscount(discountData);
       console.log('Respuesta del descuento:', response);
       
       alert(`Descuento solicitado exitosamente!\nID: ${response.discount_id || 'N/A'}\nMonto: ${formatCurrency(discountAmount)}\nEstado: ${response.status || 'pending'}`);
@@ -190,36 +201,31 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
   const handleSubmit = async () => {
     if (!isValidSale) return;
 
+    // Validar que tengamos el transfer_id
+    if (!transferId) {
+      alert('❌ Error: No se encontró el ID de transferencia. Por favor, intenta nuevamente.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // Prepare sale data according to API structure (now using File directly)
-      const saleData = {
-        items: items.map(item => ({
-          sneaker_reference_code: item.sneaker_reference_code,
-          brand: item.brand,
-          model: item.model,
-          color: item.color || '', // Include color field
-          size: item.size,
-          quantity: item.quantity,
-          unit_price: item.unit_price
-        })),
-        total_amount: totalAmount,
-        payment_methods: paymentMethods.map(pm => ({
+      // Todas las ventas son desde transferencia - usar endpoint sellFromTransfer
+      console.log('🔄 Registrando venta desde transferencia. ID:', transferId);
+      console.log('💰 Total Amount:', totalAmount);
+      console.log('💳 Payment Methods:', paymentMethods);
+      
+      const response = await transferVendorAPI.sellFromTransfer(
+        transferId,
+        totalAmount,
+        paymentMethods.map(pm => ({
           type: pm.type,
           amount: pm.amount,
-          reference: pm.reference || null // Ensure null if empty
+          reference: pm.reference || null
         })),
-        receipt_image: receiptFile, // Now pass File directly, not base64
-        notes: notes || undefined,
-        requires_confirmation: requiresConfirmation
-      };
-
-      console.log('Enviando datos de venta:', {
-        ...saleData,
-        receipt_image: receiptFile ? `File: ${receiptFile.name} (${receiptFile.size} bytes)` : null
-      });
-
-      const response = await vendorAPI.createSale(saleData);
+        notes || ''
+      );
+      
+      console.log('✅ Venta desde transferencia registrada:', response);
       
       console.log('Respuesta completa de la API:', response);
       console.log('Estructura de la respuesta:', JSON.stringify(response, null, 2));
@@ -297,6 +303,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
       setDiscountReason('');
       setRequiresConfirmation(false);
       setShowSummary(false);
+      setTransferId(undefined);
       
     } catch (error) {
       console.error('Error al registrar la venta:', error);
@@ -451,18 +458,20 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
   return (
     <div className="space-y-6">
       {/* Prefilled Product Notice */}
-      {prefilledProduct && (
-        <Card className="border-success bg-success/5">
+      {prefilledProduct && transferId && (
+        <Card className="border-blue-500 bg-blue-50">
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
-              <CheckCircle className="h-5 w-5 text-success" />
+              <CheckCircle className="h-5 w-5 text-blue-600" />
               <div>
-                <p className="text-sm font-medium text-success">Producto Escaneado Agregado</p>
+                <p className="text-sm font-medium text-blue-600">
+                  📦 Venta desde Transferencia #{transferId}
+                </p>
                 <p className="text-sm text-gray-700">
                   {prefilledProduct.brand} {prefilledProduct.model} - Talla {prefilledProduct.size}
                 </p>
                 <p className="text-xs text-gray-600">
-                  Código: {prefilledProduct.code} | Precio: {formatCurrency(prefilledProduct.price)}
+                  Código: {prefilledProduct.code}
                 </p>
                 {prefilledProduct.location && prefilledProduct.storage_type && (
                   <p className="text-xs text-gray-600">

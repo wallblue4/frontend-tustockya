@@ -43,7 +43,8 @@ interface PrefilledProduct {
   location?: string;
   storage_type?: string;
   color?: string;
-  image?: string;
+  image?: string[];
+  transfer_id?: number; // ID de transferencia (requerido solo para ventas desde transferencias)
 }
 
 interface PredictionResult {
@@ -316,8 +317,10 @@ export const SellerDashboard: React.FC = () => {
     storage_type: string;
     color?: string;
     image?: string;
+    transfer_id?: number; // Opcional (requerido solo para ventas desde transferencias)
   }) => {
     console.log('🔍 SellerDashboard - Recibiendo datos para venta:', productData);
+    console.log('🔑 SellerDashboard - Transfer ID recibido:', productData.transfer_id);
   
     // Convertir los datos al formato que espera SalesForm
     const prefilledData: PrefilledProduct = {
@@ -329,10 +332,12 @@ export const SellerDashboard: React.FC = () => {
       location: productData.location,
       storage_type: productData.storage_type,
       color: productData.color,   
-      image: productData.image 
+      image: productData.image ? [productData.image] : undefined, // Convertir string a array
+      transfer_id: productData.transfer_id // ✅ COPIAR EL TRANSFER_ID (puede ser undefined)
     };
 
     console.log('🔍 SellerDashboard - Datos preparados para SalesForm:', prefilledData);
+    console.log('🔑 SellerDashboard - Transfer ID en prefilledData:', prefilledData.transfer_id);
   
     // Establecer los datos prellenados y cambiar a vista de venta
     setPrefilledProduct(prefilledData);
@@ -372,7 +377,6 @@ export const SellerDashboard: React.FC = () => {
               <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Dashboard
             </Button>
             <ProductScanner 
-              onSellProduct={handleSellProduct}
               onRequestTransfer={handleRequestTransfer}
               capturedImage={capturedImage}
               scanResult={scanResult}
