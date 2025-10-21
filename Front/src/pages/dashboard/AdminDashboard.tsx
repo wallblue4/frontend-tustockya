@@ -83,7 +83,7 @@ import {
   fetchProductAssignments,
   
   // Video Inventory (4 endpoints)
-  processVideoInventoryEntry,
+  processVideoInventoryEntryDistributed,
   fetchVideoProcessingHistory,
   
   // System (4 endpoints)
@@ -268,13 +268,18 @@ interface OperationalDashboard {
 export const AdminDashboard: React.FC = () => {
   // Estado para el formulario de inventario por video
   const [videoInventoryForm, setVideoInventoryForm] = useState({
-    warehouse_location_id: 0,
     product_brand: '',
     product_model: '',
     unit_price: 0,
     box_price: 0,
-    notes: '',
-    sizes: [{ size: '', quantity: '' }],
+    sizes_distribution: [
+      {
+        size: '',
+        pairs: [{ location_id: 0, quantity: 0 }],
+        left_feet: [] as Array<{ location_id: number; quantity: number }>,
+        right_feet: [] as Array<{ location_id: number; quantity: number }>
+      }
+    ],
     reference_image: null as File | null,
     video_file: null as File | null
   });
@@ -661,13 +666,16 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleVideoInventoryEntry = async (videoData: {
-    warehouse_location_id: number;
     unit_price: number;
     product_brand?: string;
     product_model?: string;
     box_price?: number;
-    notes?: string;
-    sizes: Array<{ size: string; quantity: string }>;
+    sizes_distribution: Array<{
+      size: string;
+      pairs: Array<{ location_id: number; quantity: number }>;
+      left_feet: Array<{ location_id: number; quantity: number }>;
+      right_feet: Array<{ location_id: number; quantity: number }>;
+    }>;
     video_file: File | null;
     reference_image?: File | null;
   }) => {
@@ -678,57 +686,88 @@ export const AdminDashboard: React.FC = () => {
         return;
       }
 
-      // Validar tallas y cantidades
-      const validSizes = videoData.sizes.filter(s => s.size.trim() && s.quantity.trim() && parseInt(s.quantity) > 0);
+      // Validar y preparar la distribución de tallas
+      const validSizesDistribution = videoData.sizes_distribution.filter(sd => {
+        // Verificar que la talla no esté vacía
+        if (!sd.size.trim()) return false;
+        
+        // Verificar que haya al menos una distribución válida
+        const hasPairs = sd.pairs.some(p => p.location_id > 0 && p.quantity > 0);
+        const hasLeftFeet = sd.left_feet.some(lf => lf.location_id > 0 && lf.quantity > 0);
+        const hasRightFeet = sd.right_feet.some(rf => rf.location_id > 0 && rf.quantity > 0);
+        
+        return hasPairs || (hasLeftFeet && hasRightFeet);
+      });
       
-      if (validSizes.length === 0) {
-        alert('Por favor ingresa al menos una talla con cantidad válida');
+      if (validSizesDistribution.length === 0) {
+        alert('❌ Por favor ingresa al menos una talla con distribución válida');
         return;
       }
 
-      // Convertir tallas a formato JSON requerido
-      const sizeQuantitiesJson = JSON.stringify(
-        validSizes.map(s => ({
-          size: s.size.trim(),
-          quantity: parseInt(s.quantity)
+      // Validar balance de pies izquierdos y derechos por talla
+      for (const sizeDistro of validSizesDistribution) {
+        const totalLeftFeet = sizeDistro.left_feet.reduce((sum, lf) => sum + lf.quantity, 0);
+        const totalRightFeet = sizeDistro.right_feet.reduce((sum, rf) => sum + rf.quantity, 0);
+        
+        if (totalLeftFeet !== totalRightFeet) {
+          alert(`❌ Error en talla ${sizeDistro.size}: El total de pies izquierdos (${totalLeftFeet}) debe ser igual al total de pies derechos (${totalRightFeet})`);
+          return;
+        }
+      }
+
+      // Convertir a formato JSON requerido por el endpoint
+      const sizesDistributionJson = JSON.stringify(
+        validSizesDistribution.map(sd => ({
+          size: sd.size.trim(),
+          pairs: sd.pairs.filter(p => p.location_id > 0 && p.quantity > 0).map(p => ({
+            location_id: p.location_id,
+            quantity: p.quantity
+          })),
+          left_feet: sd.left_feet.filter(lf => lf.location_id > 0 && lf.quantity > 0).map(lf => ({
+            location_id: lf.location_id,
+            quantity: lf.quantity
+          })),
+          right_feet: sd.right_feet.filter(rf => rf.location_id > 0 && rf.quantity > 0).map(rf => ({
+            location_id: rf.location_id,
+            quantity: rf.quantity
+          }))
         }))
       );
 
       const inventoryPayload = {
-        warehouse_location_id: videoData.warehouse_location_id,
-        size_quantities_json: sizeQuantitiesJson,
+        sizes_distribution_json: sizesDistributionJson,
         unit_price: videoData.unit_price,
         video_file: videoData.video_file,
         product_brand: videoData.product_brand || '',
         product_model: videoData.product_model || '',
         box_price: videoData.box_price || 0,
-        notes: videoData.notes || '',
         reference_image: videoData.reference_image && videoData.reference_image instanceof File ? videoData.reference_image : null
       };
 
-      console.log('Enviando datos de inventario:', inventoryPayload);
+      console.log('Enviando datos de inventario con distribución:', inventoryPayload);
+      console.log('JSON de distribución:', sizesDistributionJson);
       
-      const response = await processVideoInventoryEntry(inventoryPayload);
+      const response = await processVideoInventoryEntryDistributed(inventoryPayload);
       
       console.log('Respuesta del servidor:', response);
       
       // Verificar si la respuesta indica éxito
-      if (response && response.success) {
-        const totalQuantity = response.total_quantity || validSizes.reduce((sum, s) => sum + parseInt(s.quantity), 0);
+      if (response && (response.success || response.product_id)) {
+        const distributionSummary = response.distribution_summary || [];
         
-        alert(`¡Inventario registrado exitosamente! 🎉
+        alert(`¡Inventario registrado exitosamente con distribución! 🎉
 
-📦 Producto: ${response.brand || 'N/A'} ${response.model || 'N/A'}
+📦 Producto: ${response.brand || videoData.product_brand || 'N/A'} ${response.model || videoData.product_model || 'N/A'}
 🏷️ Código: ${response.reference_code}
-📍 Bodega: ${response.warehouse_name}
-📊 Cantidad Total: ${totalQuantity} unidades
-💰 Precio Unitario: ${formatCurrency(response.unit_price)}
-🎯 Confianza IA: ${Math.round((response.ai_confidence_score || 0) * 100)}%
+📊 Total de Zapatos: ${response.total_shoes || 0}
+📍 Ubicaciones: ${response.locations_count || distributionSummary.length}
+💰 Precio Unitario: ${formatCurrency(response.unit_price || videoData.unit_price)}
+${response.box_price ? `📦 Precio por Caja: ${formatCurrency(response.box_price)}` : ''}
 
-${response.sizes_created ? `Tallas registradas:
-${response.sizes_created.map((s: any) => `• Talla ${s.size}: ${s.quantity} unidades`).join('\n')}` : ''}
+${distributionSummary.length > 0 ? `Distribución por ubicación:
+${distributionSummary.map((ds: any) => `• ${ds.location_name}: ${ds.total_pairs} pares${ds.total_left_feet ? ` + ${ds.total_left_feet} izq` : ''}${ds.total_right_feet ? ` + ${ds.total_right_feet} der` : ''}`).join('\n')}` : ''}
 
-Procesado en ${response.processing_time_seconds || 0}s`);
+${response.processing_time_seconds ? `Procesado en ${response.processing_time_seconds}s` : ''}`);
       } else {
         throw new Error('La respuesta del servidor no indica éxito');
       }
@@ -755,6 +794,13 @@ Error técnico: ${error.message}`;
 Tu inventario puede haberse procesado correctamente, pero el servidor no puede devolver la respuesta completa.
         
 Detalle técnico: ${error.message}`;
+      } else if (error.message && error.message.includes('balance')) {
+        errorMessage = `⚠️ Error de balance: ${error.message}
+        
+Por favor verifica que:
+• El total de pies izquierdos sea igual al de pies derechos para cada talla
+• Todas las ubicaciones especificadas existan
+• Tengas permisos sobre todas las ubicaciones`;
       } else {
         errorMessage = `❌ Error al procesar inventario: ${error.message || 'Error desconocido'}`;
       }
@@ -1756,20 +1802,6 @@ Detalle técnico: ${error.message}`;
               <div className="space-y-4">
                 <h4 className="font-semibold text-foreground mb-3">Datos del Producto</h4>
                 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Bodega <span className="text-error">*</span>
-                  </label>
-                  <Select
-                    value={videoInventoryForm.warehouse_location_id.toString()}
-                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, warehouse_location_id: parseInt(e.target.value) }))}
-                    options={[
-                      { value: '0', label: 'Seleccionar Bodega' },
-                      ...locations.filter(l => l.type === 'bodega').map(location => ({ value: location.id.toString(), label: location.name }))
-                    ]}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Ubicación donde se registra el inventario</p>
-                </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
@@ -1811,76 +1843,254 @@ Detalle técnico: ${error.message}`;
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Tallas y Cantidades <span className="text-error">*</span>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Distribución de Tallas <span className="text-error">*</span>
                   </label>
-                  {videoInventoryForm.sizes.map((entry, idx) => (
-                    <div key={idx} className="flex items-center gap-2 mb-2">
-                      <Input
-                        placeholder="Talla"
-                        value={entry.size}
-                        onChange={e => {
-                          const newSizes = [...videoInventoryForm.sizes];
-                          newSizes[idx].size = e.target.value;
-                          setVideoInventoryForm(prev => ({ ...prev, sizes: newSizes }));
-                        }}
-                        className="w-1/2"
-                      />
-                      <Input
-                        placeholder="Cantidad"
-                        type="number"
-                        value={entry.quantity}
-                        onChange={e => {
-                          const newSizes = [...videoInventoryForm.sizes];
-                          newSizes[idx].quantity = e.target.value;
-                          setVideoInventoryForm(prev => ({ ...prev, sizes: newSizes }));
-                        }}
-                        className="w-1/2"
-                      />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="ml-2"
-                        onClick={() => {
-                          setVideoInventoryForm(prev => ({
-                            ...prev,
-                            sizes: [...prev.sizes, { size: '', quantity: '' }]
-                          }));
-                        }}
-                      >
-                        +
-                      </Button>
-                      {videoInventoryForm.sizes.length > 1 && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="ml-1 text-red-500"
-                          onClick={() => {
-                            setVideoInventoryForm(prev => ({
-                              ...prev,
-                              sizes: prev.sizes.filter((_, i) => i !== idx)
-                            }));
-                          }}
-                        >
-                          -
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                  <p className="text-xs text-muted-foreground mt-1">Agrega todas las tallas disponibles</p>
-                </div>
+                  <div className="space-y-4 max-h-96 overflow-y-auto p-3 border border-border rounded-md bg-muted/5">
+                    {videoInventoryForm.sizes_distribution.map((sizeDistro, sizeIdx) => (
+                      <div key={sizeIdx} className="border border-border rounded-lg p-4 bg-card space-y-3">
+                        {/* Talla Header */}
+                        <div className="flex items-center gap-2">
+                          <Input
+                            placeholder="Talla (ej: 42)"
+                            value={sizeDistro.size}
+                            onChange={e => {
+                              const newDistro = [...videoInventoryForm.sizes_distribution];
+                              newDistro[sizeIdx].size = e.target.value;
+                              setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                            }}
+                            className="w-32"
+                          />
+                          <div className="flex-1 text-sm text-muted-foreground">
+                            Balance: {sizeDistro.left_feet.reduce((s, lf) => s + lf.quantity, 0)} izq / {sizeDistro.right_feet.reduce((s, rf) => s + rf.quantity, 0)} der
+                            {sizeDistro.left_feet.reduce((s, lf) => s + lf.quantity, 0) !== sizeDistro.right_feet.reduce((s, rf) => s + rf.quantity, 0) && (
+                              <span className="text-error ml-2">⚠️ Desbalanceado</span>
+                            )}
+                          </div>
+                          {videoInventoryForm.sizes_distribution.length > 1 && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setVideoInventoryForm(prev => ({
+                                  ...prev,
+                                  sizes_distribution: prev.sizes_distribution.filter((_, i) => i !== sizeIdx)
+                                }));
+                              }}
+                              className="text-destructive"
+                            >
+                              🗑️
+                            </Button>
+                          )}
+                        </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Notas Adicionales (Opcional)
-                  </label>
-                  <textarea
-                    placeholder="Información adicional sobre el producto..."
-                    className="w-full px-3 py-2 border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent placeholder:text-muted-foreground resize-none min-h-[80px]"
-                    value={videoInventoryForm.notes}
-                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, notes: e.target.value }))}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Observaciones sobre el producto</p>
+                        {/* Pares Completos */}
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-foreground">👟 Pares Completos</label>
+                          {sizeDistro.pairs.map((pair, pairIdx) => (
+                            <div key={pairIdx} className="flex items-center gap-2">
+                              <Select
+                                value={pair.location_id.toString()}
+                                onChange={(e) => {
+                                  const newDistro = [...videoInventoryForm.sizes_distribution];
+                                  newDistro[sizeIdx].pairs[pairIdx].location_id = parseInt(e.target.value);
+                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                }}
+                                options={[
+                                  { value: '0', label: 'Seleccionar ubicación' },
+                                  ...locations.map(loc => ({ value: loc.id.toString(), label: loc.name }))
+                                ]}
+                                className="flex-1"
+                              />
+                              <Input
+                                placeholder="Cant"
+                                type="number"
+                                value={pair.quantity || ''}
+                                onChange={e => {
+                                  const newDistro = [...videoInventoryForm.sizes_distribution];
+                                  newDistro[sizeIdx].pairs[pairIdx].quantity = parseInt(e.target.value) || 0;
+                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                }}
+                                className="w-20"
+                              />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const newDistro = [...videoInventoryForm.sizes_distribution];
+                                  newDistro[sizeIdx].pairs.push({ location_id: 0, quantity: 0 });
+                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                }}
+                              >
+                                +
+                              </Button>
+                              {sizeDistro.pairs.length > 1 && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    const newDistro = [...videoInventoryForm.sizes_distribution];
+                                    newDistro[sizeIdx].pairs = newDistro[sizeIdx].pairs.filter((_, i) => i !== pairIdx);
+                                    setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                  }}
+                                  className="text-destructive"
+                                >
+                                  -
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Pies Izquierdos */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-medium text-foreground">🦶 Izquierdos</label>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const newDistro = [...videoInventoryForm.sizes_distribution];
+                                newDistro[sizeIdx].left_feet.push({ location_id: 0, quantity: 0 });
+                                setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                              }}
+                            >
+                              +
+                            </Button>
+                          </div>
+                          {sizeDistro.left_feet.map((leftFoot, lfIdx) => (
+                            <div key={lfIdx} className="flex items-center gap-2">
+                              <Select
+                                value={leftFoot.location_id.toString()}
+                                onChange={(e) => {
+                                  const newDistro = [...videoInventoryForm.sizes_distribution];
+                                  newDistro[sizeIdx].left_feet[lfIdx].location_id = parseInt(e.target.value);
+                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                }}
+                                options={[
+                                  { value: '0', label: 'Seleccionar ubicación' },
+                                  ...locations.map(loc => ({ value: loc.id.toString(), label: loc.name }))
+                                ]}
+                                className="flex-1"
+                              />
+                              <Input
+                                placeholder="Cant"
+                                type="number"
+                                value={leftFoot.quantity || ''}
+                                onChange={e => {
+                                  const newDistro = [...videoInventoryForm.sizes_distribution];
+                                  newDistro[sizeIdx].left_feet[lfIdx].quantity = parseInt(e.target.value) || 0;
+                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                }}
+                                className="w-20"
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  const newDistro = [...videoInventoryForm.sizes_distribution];
+                                  newDistro[sizeIdx].left_feet = newDistro[sizeIdx].left_feet.filter((_, i) => i !== lfIdx);
+                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                }}
+                                className="text-destructive"
+                              >
+                                -
+                              </Button>
+                            </div>
+                          ))}
+                          {sizeDistro.left_feet.length === 0 && (
+                            <p className="text-xs text-muted-foreground italic">Sin pies izquierdos separados</p>
+                          )}
+                        </div>
+
+                        {/* Pies Derechos */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-medium text-foreground">🦶 Derechos</label>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const newDistro = [...videoInventoryForm.sizes_distribution];
+                                newDistro[sizeIdx].right_feet.push({ location_id: 0, quantity: 0 });
+                                setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                              }}
+                            >
+                              +
+                            </Button>
+                          </div>
+                          {sizeDistro.right_feet.map((rightFoot, rfIdx) => (
+                            <div key={rfIdx} className="flex items-center gap-2">
+                              <Select
+                                value={rightFoot.location_id.toString()}
+                                onChange={(e) => {
+                                  const newDistro = [...videoInventoryForm.sizes_distribution];
+                                  newDistro[sizeIdx].right_feet[rfIdx].location_id = parseInt(e.target.value);
+                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                }}
+                                options={[
+                                  { value: '0', label: 'Seleccionar ubicación' },
+                                  ...locations.map(loc => ({ value: loc.id.toString(), label: loc.name }))
+                                ]}
+                                className="flex-1"
+                              />
+                              <Input
+                                placeholder="Cant"
+                                type="number"
+                                value={rightFoot.quantity || ''}
+                                onChange={e => {
+                                  const newDistro = [...videoInventoryForm.sizes_distribution];
+                                  newDistro[sizeIdx].right_feet[rfIdx].quantity = parseInt(e.target.value) || 0;
+                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                }}
+                                className="w-20"
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  const newDistro = [...videoInventoryForm.sizes_distribution];
+                                  newDistro[sizeIdx].right_feet = newDistro[sizeIdx].right_feet.filter((_, i) => i !== rfIdx);
+                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                }}
+                                className="text-destructive"
+                              >
+                                -
+                              </Button>
+                            </div>
+                          ))}
+                          {sizeDistro.right_feet.length === 0 && (
+                            <p className="text-xs text-muted-foreground italic">Sin pies derechos separados</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Botón para agregar nueva talla */}
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setVideoInventoryForm(prev => ({
+                          ...prev,
+                          sizes_distribution: [
+                            ...prev.sizes_distribution,
+                            {
+                              size: '',
+                              pairs: [{ location_id: 0, quantity: 0 }],
+                              left_feet: [],
+                              right_feet: []
+                            }
+                          ]
+                        }));
+                      }}
+                      className="w-full"
+                    >
+                      + Agregar Talla
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    💡 Puedes distribuir el inventario entre múltiples ubicaciones. Los pies izquierdos y derechos deben estar balanceados.
+                  </p>
                 </div>
               </div>
 
@@ -2040,20 +2250,34 @@ Detalle técnico: ${error.message}`;
               <Button 
                 onClick={async () => {
                   // Validaciones completas
-                  if (videoInventoryForm.warehouse_location_id === 0) {
-                    alert('❌ Por favor selecciona una bodega');
-                    return;
-                  }
-                  
                   if (videoInventoryForm.unit_price <= 0) {
                     alert('❌ Por favor ingresa un precio unitario válido');
                     return;
                   }
 
-                  const validSizes = videoInventoryForm.sizes.filter(s => s.size.trim() && s.quantity.trim() && parseInt(s.quantity) > 0);
-                  if (validSizes.length === 0) {
-                    alert('❌ Por favor ingresa al menos una talla con cantidad válida');
+                  // Validar que haya al menos una distribución de tallas válida
+                  const hasValidDistribution = videoInventoryForm.sizes_distribution.some(sd => {
+                    if (!sd.size.trim()) return false;
+                    const hasPairs = sd.pairs.some(p => p.location_id > 0 && p.quantity > 0);
+                    const hasLeftFeet = sd.left_feet.some(lf => lf.location_id > 0 && lf.quantity > 0);
+                    const hasRightFeet = sd.right_feet.some(rf => rf.location_id > 0 && rf.quantity > 0);
+                    return hasPairs || (hasLeftFeet && hasRightFeet);
+                  });
+
+                  if (!hasValidDistribution) {
+                    alert('❌ Por favor ingresa al menos una talla con distribución válida');
                     return;
+                  }
+
+                  // Validar balance de pies
+                  for (const sd of videoInventoryForm.sizes_distribution) {
+                    if (!sd.size.trim()) continue;
+                    const totalLeft = sd.left_feet.reduce((sum, lf) => sum + lf.quantity, 0);
+                    const totalRight = sd.right_feet.reduce((sum, rf) => sum + rf.quantity, 0);
+                    if (totalLeft !== totalRight) {
+                      alert(`❌ Error en talla ${sd.size}: Pies izquierdos (${totalLeft}) debe ser igual a pies derechos (${totalRight})`);
+                      return;
+                    }
                   }
 
                   if (!videoInventoryForm.video_file) {
@@ -2064,13 +2288,11 @@ Detalle técnico: ${error.message}`;
                   try {
                     console.log('=== ANTES DE ENVIAR ===');
                     console.log('Estado del formulario:', {
-                      warehouse_location_id: videoInventoryForm.warehouse_location_id,
                       unit_price: videoInventoryForm.unit_price,
                       product_brand: videoInventoryForm.product_brand,
                       product_model: videoInventoryForm.product_model,
                       box_price: videoInventoryForm.box_price,
-                      notes: videoInventoryForm.notes,
-                      sizes: videoInventoryForm.sizes,
+                      sizes_distribution: videoInventoryForm.sizes_distribution,
                       video_file: videoInventoryForm.video_file ? `File(${videoInventoryForm.video_file.size} bytes)` : 'null',
                       reference_image: videoInventoryForm.reference_image ? `File(${videoInventoryForm.reference_image.size} bytes)` : 'null'
                     });
@@ -2080,13 +2302,18 @@ Detalle técnico: ${error.message}`;
                     
                     // Reset form después del envío exitoso
                     setVideoInventoryForm({
-                      warehouse_location_id: 0,
                       product_brand: '',
                       product_model: '',
                       unit_price: 0,
                       box_price: 0,
-                      notes: '',
-                      sizes: [{ size: '', quantity: '' }],
+                      sizes_distribution: [
+                        {
+                          size: '',
+                          pairs: [{ location_id: 0, quantity: 0 }],
+                          left_feet: [],
+                          right_feet: []
+                        }
+                      ],
                       reference_image: null,
                       video_file: null
                     });
@@ -2105,27 +2332,22 @@ Detalle técnico: ${error.message}`;
                   }
                 }}
                 className="w-full bg-success hover:bg-success/90 text-white py-4 text-lg font-semibold"
-                disabled={!videoInventoryForm.video_file || videoInventoryForm.warehouse_location_id === 0 || videoInventoryForm.unit_price <= 0}
+                disabled={!videoInventoryForm.video_file || videoInventoryForm.unit_price <= 0}
               >
                 {!videoInventoryForm.video_file ? '📹 Graba un video primero' :
-                 videoInventoryForm.warehouse_location_id === 0 ? '🏢 Selecciona una bodega' :
                  videoInventoryForm.unit_price <= 0 ? '💰 Ingresa el precio' :
-                 '🚀 Registrar Inventario'}
+                 '🚀 Registrar Inventario con Distribución'}
               </Button>
               
               {/* Indicadores de estado */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                <div className={`flex items-center space-x-2 ${videoInventoryForm.warehouse_location_id > 0 ? 'text-success' : 'text-muted-foreground'}`}>
-                  <div className={`w-3 h-3 rounded-full ${videoInventoryForm.warehouse_location_id > 0 ? 'bg-success' : 'bg-muted'}`}></div>
-                  <span>Bodega</span>
-                </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                 <div className={`flex items-center space-x-2 ${videoInventoryForm.unit_price > 0 ? 'text-success' : 'text-muted-foreground'}`}>
                   <div className={`w-3 h-3 rounded-full ${videoInventoryForm.unit_price > 0 ? 'bg-success' : 'bg-muted'}`}></div>
                   <span>Precio</span>
                 </div>
-                <div className={`flex items-center space-x-2 ${videoInventoryForm.sizes.some(s => s.size.trim() && s.quantity.trim()) ? 'text-success' : 'text-muted-foreground'}`}>
-                  <div className={`w-3 h-3 rounded-full ${videoInventoryForm.sizes.some(s => s.size.trim() && s.quantity.trim()) ? 'bg-success' : 'bg-muted'}`}></div>
-                  <span>Tallas</span>
+                <div className={`flex items-center space-x-2 ${videoInventoryForm.sizes_distribution.some(sd => sd.size.trim() && (sd.pairs.some(p => p.location_id > 0 && p.quantity > 0) || (sd.left_feet.length > 0 && sd.right_feet.length > 0))) ? 'text-success' : 'text-muted-foreground'}`}>
+                  <div className={`w-3 h-3 rounded-full ${videoInventoryForm.sizes_distribution.some(sd => sd.size.trim() && (sd.pairs.some(p => p.location_id > 0 && p.quantity > 0) || (sd.left_feet.length > 0 && sd.right_feet.length > 0))) ? 'bg-success' : 'bg-muted'}`}></div>
+                  <span>Distribución</span>
                 </div>
                 <div className={`flex items-center space-x-2 ${videoInventoryForm.video_file ? 'text-success' : 'text-muted-foreground'}`}>
                   <div className={`w-3 h-3 rounded-full ${videoInventoryForm.video_file ? 'bg-success' : 'bg-muted'}`}></div>

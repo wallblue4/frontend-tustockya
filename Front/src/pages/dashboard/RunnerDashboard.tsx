@@ -140,29 +140,30 @@ export const RunnerDashboard: React.FC = () => {
 
       const [availableResponse, assignedResponse, historyResponse] = await Promise.all([
         courierAPI.getAvailableRequests(),
-        courierAPI.getMyDeliveries(), // my-deliveries - entregas pendientes/asignadas
-        courierAPI.getMyAssignedTransports() // my-transports - entregas completadas (historial)
+        courierAPI.getMyAssignedTransports(), // my-transports - entregas asignadas/pendientes
+        courierAPI.getMyDeliveries() // my-deliveries - historial de entregas completadas del día
       ]);
 
       setAvailableRequests(availableResponse.available_requests || []);
       
-      // my-deliveries son las entregas asignadas/pendientes
-      const deliveriesResponse = assignedResponse as any;
-      const pendingTransports = deliveriesResponse.my_transports || deliveriesResponse.recent_deliveries || [];
+      // my-transports son las entregas asignadas/pendientes
+      const transportsData = assignedResponse as MyTransportsResponse;
+      const pendingTransports = transportsData.my_transports || [];
       setAssignedTransports(pendingTransports);
       
-      // my-transports son las entregas completadas (historial)
-      const historyData = historyResponse as MyTransportsResponse;
-      setCourierStats(historyData.courier_stats || null);
+      // Estadísticas del corredor
+      setCourierStats(transportsData.courier_stats || null);
       
-      const deliveries = (historyData.my_transports || []).map((item: any) => ({
+      // my-deliveries son las entregas completadas del día (historial)
+      const deliveriesResponse = historyResponse as any;
+      const deliveries = (deliveriesResponse.recent_deliveries || []).map((item: any) => ({
         id: item.id,
         status: item.status,
         product: `${item.brand} ${item.model} - Talla ${item.size}`,
-        delivered_to: item.destination_location?.name || 'Destino desconocido',
+        delivered_to: 'Destino desconocido', // my-deliveries no incluye location info
         delivered_at: item.delivered_at,
-        total_time: item.delivered_at && item.picked_up_at ? `${Math.round((new Date(item.delivered_at).getTime() - new Date(item.picked_up_at).getTime()) / 60000)} minutos` : '',
-        delivery_successful: item.status === 'completed',
+        total_time: '', // my-deliveries no incluye picked_up_at
+        delivery_successful: item.delivery_successful || item.status === 'completed',
         distance: undefined,
         earnings: undefined
       }));
@@ -1000,10 +1001,10 @@ export const RunnerDashboard: React.FC = () => {
                                 <div className="flex-1 min-w-0">
                                   <div className="text-xs text-muted-foreground">DESDE</div>
                                   <div className="text-sm font-medium text-card-foreground truncate">
-                                    {transport.source_location.name}
+                                    {transport.source_location?.name || 'N/A'}
                                   </div>
                                   <div className="text-xs text-muted-foreground truncate">
-                                    {transport.source_location.address}
+                                    {transport.source_location?.address || 'N/A'}
                                   </div>
                                 </div>
                               </div>
@@ -1013,10 +1014,10 @@ export const RunnerDashboard: React.FC = () => {
                                 <div className="flex-1 min-w-0">
                                   <div className="text-xs text-muted-foreground">HACIA</div>
                                   <div className="text-sm font-medium text-card-foreground truncate">
-                                    {transport.destination_location.name}
+                                    {transport.destination_location?.name || 'N/A'}
                                   </div>
                                   <div className="text-xs text-muted-foreground truncate">
-                                    {transport.destination_location.address}
+                                    {transport.destination_location?.address || 'N/A'}
                                   </div>
                                 </div>
                               </div>
@@ -1135,14 +1136,14 @@ export const RunnerDashboard: React.FC = () => {
                                     <div className="flex-1 min-w-0">
                                       <div className="text-sm text-muted-foreground">DESDE</div>
                                       <div className="font-medium text-card-foreground">
-                                        {transport.source_location.name}
+                                        {transport.source_location?.name || 'N/A'}
                                       </div>
                                       <div className="text-xs text-muted-foreground">
-                                        {transport.source_location.address}
+                                        {transport.source_location?.address || 'N/A'}
                                       </div>
-                                      {transport.source_location.phone && (
+                                      {transport.source_location?.phone && (
                                         <div className="text-xs text-primary">
-                                          📞 {transport.source_location.phone}
+                                          📞 {transport.source_location?.phone}
                                         </div>
                                       )}
                                     </div>
@@ -1155,14 +1156,14 @@ export const RunnerDashboard: React.FC = () => {
                                     <div className="flex-1 min-w-0">
                                       <div className="text-sm text-muted-foreground">HACIA</div>
                                       <div className="font-medium text-card-foreground">
-                                        {transport.destination_location.name}
+                                        {transport.destination_location?.name || 'N/A'}
                                       </div>
                                       <div className="text-xs text-muted-foreground">
-                                        {transport.destination_location.address}
+                                        {transport.destination_location?.address || 'N/A'}
                                       </div>
-                                      {transport.destination_location.phone && (
+                                      {transport.destination_location?.phone && (
                                         <div className="text-xs text-success">
-                                          📞 {transport.destination_location.phone}
+                                          📞 {transport.destination_location?.phone}
                                         </div>
                                       )}
                                     </div>
