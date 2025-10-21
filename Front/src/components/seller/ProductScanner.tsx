@@ -10,8 +10,6 @@ import {
   MapPin,
   ArrowRight,
   Check,
-  Warehouse,
-  Store,
   ArrowLeft,
   AlertCircle,
   CheckCircle,
@@ -77,6 +75,15 @@ interface SizeInfo {
   unit_price: number;
   box_price: number;
   total_quantity: number;
+  // Nuevos campos para pies separados
+  pairs?: number; // Pares completos
+  left_feet?: number; // Pies izquierdos
+  right_feet?: number; // Pies derechos
+  can_sell?: boolean; // Si se puede vender ahora
+  can_form_pair?: boolean; // Si se pueden formar pares
+  missing_foot?: 'left' | 'right' | null; // Qué pie falta para formar par
+  formation_opportunities?: any[]; // Oportunidades de formar pares
+  suggestions?: any[]; // Sugerencias de transferencia
 }
 
 interface SelectedProductDetails {
@@ -175,11 +182,112 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
   // Función para convertir los datos de disponibilidad a formato de tallas
   const convertAvailabilityToSizes = (product: ProductOption): SizeInfo[] => {
-    // Si tienes la estructura de locations (de la nueva API), úsala para mapear tallas con ubicación y tipo
+    // Nueva estructura con sizesData
+    if ((product as any).sizesData) {
+      const allSizes: SizeInfo[] = [];
+      const sizesData = (product as any).sizesData;
+      
+      console.log('Processing product with sizesData:', sizesData);
+      
+      // Procesar cada talla desde detailed_by_size
+      if (sizesData.detailed_by_size) {
+        Object.entries(sizesData.detailed_by_size).forEach(([size, sizeDetails]: [string, any]) => {
+          const localAvail = sizeDetails.local_availability || {};
+          const globalDistro = sizeDetails.global_distribution || {};
+          
+          // Información de pares y pies en el local actual
+          const pairs = localAvail.pairs?.quantity || 0;
+          const leftFeet = localAvail.individual_feet?.left?.quantity || 0;
+          const rightFeet = localAvail.individual_feet?.right?.quantity || 0;
+          const canSell = localAvail.summary?.can_sell_now || false;
+          const canFormPair = localAvail.individual_feet?.can_form_pair || false;
+          const missing = localAvail.individual_feet?.missing || null;
+          
+          // Total disponible para venta (pares completos disponibles)
+          const availableForSale = localAvail.pairs?.quantity_available_sale || 0;
+          
+          console.log(`Processing size ${size}:`, {
+            pairs,
+            leftFeet,
+            rightFeet,
+            canSell,
+            canFormPair,
+            missing
+          });
+          
+          // Agregar entrada para el local actual si hay stock
+          if (pairs > 0 || leftFeet > 0 || rightFeet > 0) {
+            allSizes.push({
+              size,
+              location: localAvail.location_name || '',
+              location_id: localAvail.location_id,
+              location_name: localAvail.location_name,
+              location_type: localAvail.location_type as 'local' | 'bodega',
+              storage_type: 'warehouse' as const,
+              quantity: availableForSale, // Cantidad que se puede vender
+              unit_price: product.inventory.pricing.unit_price,
+              box_price: product.inventory.pricing.box_price,
+              total_quantity: pairs + Math.min(leftFeet, rightFeet),
+              // Campos nuevos
+              pairs,
+              left_feet: leftFeet,
+              right_feet: rightFeet,
+              can_sell: canSell,
+              can_form_pair: canFormPair,
+              missing_foot: missing,
+              formation_opportunities: sizeDetails.formation_opportunities || [],
+              suggestions: sizeDetails.suggestions || []
+            });
+          }
+          
+          // Agregar entradas para otras ubicaciones con stock de esta talla
+          if (globalDistro.by_location && Array.isArray(globalDistro.by_location)) {
+            globalDistro.by_location.forEach((locDistro: any) => {
+              // Saltar si es el local actual (ya lo agregamos arriba)
+              if (locDistro.location_id === localAvail.location_id) return;
+              
+              // Solo agregar si hay stock en esa ubicación
+              const locationPairs = locDistro.pairs || 0;
+              const locationLeftFeet = locDistro.left_feet || 0;
+              const locationRightFeet = locDistro.right_feet || 0;
+              
+              if (locationPairs > 0 || locationLeftFeet > 0 || locationRightFeet > 0) {
+                allSizes.push({
+                  size,
+                  location: locDistro.location_name || '',
+                  location_id: locDistro.location_id,
+                  location_name: locDistro.location_name,
+                  location_type: locDistro.location_type as 'local' | 'bodega',
+                  storage_type: 'warehouse' as const,
+                  quantity: locationPairs, // Solo pares completos se pueden transferir/vender
+                  unit_price: product.inventory.pricing.unit_price,
+                  box_price: product.inventory.pricing.box_price,
+                  total_quantity: locationPairs + Math.min(locationLeftFeet, locationRightFeet),
+                  // Campos nuevos
+                  pairs: locationPairs,
+                  left_feet: locationLeftFeet,
+                  right_feet: locationRightFeet,
+                  can_sell: false, // No está en el local actual
+                  can_form_pair: locationLeftFeet > 0 && locationRightFeet > 0,
+                  missing_foot: null,
+                  formation_opportunities: sizeDetails.formation_opportunities || [],
+                  suggestions: sizeDetails.suggestions || []
+                });
+              }
+            });
+          }
+        });
+      }
+      
+      console.log('All sizes processed with new structure:', allSizes);
+      return allSizes;
+    }
+
+    // Fallback para estructura antigua (locations)
     if ((product as any).locations) {
       const allSizes: SizeInfo[] = [];
       
-      console.log('Processing product with locations:', (product as any).locations);
+      console.log('Processing product with locations (fallback):', (product as any).locations);
       
       // current_location - ubicaciones en el local actual del usuario (estructura simple)
       if ((product as any).locations.current_location && Array.isArray((product as any).locations.current_location)) {
@@ -285,119 +393,113 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
   // Convierte la respuesta de la API a ProductOption[]
   function convertScanResponseToProductOptions(scanResponse: any): ProductOption[] {
-    if (!scanResponse || !scanResponse.results) return [];
-    const { best_match, alternative_matches } = scanResponse.results;
-    const allMatches = [best_match, ...(alternative_matches || [])].filter(Boolean);
+    // La nueva estructura ya no tiene results.best_match, sino que viene directamente
+    if (!scanResponse || !scanResponse.success) return [];
+    
+    // La nueva API devuelve directamente el producto, no múltiples opciones
+    const product = scanResponse.product || {};
+    const sizes = scanResponse.sizes || {};
+    const classification = scanResponse.classification || {};
+    
+    // Calcular stock total de la nueva estructura con pies separados
+    const calculateTotalStock = () => {
+      let totalPairs = 0;
+      let totalLeftFeet = 0;
+      let totalRightFeet = 0;
+      
+      if (sizes.detailed_by_size) {
+        Object.values(sizes.detailed_by_size).forEach((sizeData: any) => {
+          if (sizeData.local_availability) {
+            totalPairs += sizeData.local_availability.pairs?.quantity || 0;
+            totalLeftFeet += sizeData.local_availability.individual_feet?.left?.quantity || 0;
+            totalRightFeet += sizeData.local_availability.individual_feet?.right?.quantity || 0;
+          }
+        });
+      }
+      
+      // Retornar el total de pares equivalentes (pares + pies que pueden formar pares)
+      const formablePairs = Math.min(totalLeftFeet, totalRightFeet);
+      return totalPairs + formablePairs;
+    };
 
-    return allMatches.map((match: any, idx: number) => {
-      const ref = match.reference || {};
-      const locations = match.locations || {};
-      
-      // Calcular stock total de la nueva estructura simple
-      const calculateTotalStock = () => {
-        let total = 0;
-        
-        // Sumar current_location
-        if (locations.current_location && Array.isArray(locations.current_location)) {
-          locations.current_location.forEach((sizeObj: any) => {
-            total += sizeObj.quantity || 0;
-          });
-        }
-        
-        // Sumar other_locations
-        if (locations.other_locations && Array.isArray(locations.other_locations)) {
-          locations.other_locations.forEach((sizeObj: any) => {
-            total += sizeObj.quantity || 0;
-          });
-        }
-        
-        return total;
-      };
+    // Obtener todas las tallas disponibles
+    const getAvailableSizes = () => {
+      return sizes.available_sizes || [];
+    };
 
-      // Obtener todas las tallas disponibles
-      const getAvailableSizes = () => {
-        const allSizes = new Set<string>();
+    // Crear stock_by_size para current_location (adaptado a nueva estructura)
+    const createStockBySize = () => {
+      if (!sizes.detailed_by_size) return [];
+      
+      return Object.entries(sizes.detailed_by_size).map(([size, sizeData]: [string, any]) => {
+        const localAvail = sizeData.local_availability || {};
+        const pairs = localAvail.pairs?.quantity || 0;
+        const leftFeet = localAvail.individual_feet?.left?.quantity || 0;
+        const rightFeet = localAvail.individual_feet?.right?.quantity || 0;
+        const formablePairs = Math.min(leftFeet, rightFeet);
         
-        // Agregar tallas de current_location
-        if (locations.current_location && Array.isArray(locations.current_location)) {
-          locations.current_location.forEach((sizeObj: any) => {
-            if (sizeObj.quantity > 0) {
-              allSizes.add(sizeObj.size);
-            }
-          });
-        }
-        
-        // Agregar tallas de other_locations
-        if (locations.other_locations && Array.isArray(locations.other_locations)) {
-          locations.other_locations.forEach((sizeObj: any) => {
-            allSizes.add(sizeObj.size); // Agregar todas las tallas para transferencias
-          });
-        }
-        
-        return Array.from(allSizes);
-      };
-
-      // Crear stock_by_size para current_location
-      const createStockBySize = () => {
-        if (locations.current_location && Array.isArray(locations.current_location)) {
-          return locations.current_location.map((sizeObj: any) => ({
-            size: sizeObj.size,
-            quantity_stock: sizeObj.quantity || 0,
-            quantity_exhibition: 0, // La nueva API no diferencia exhibition
-            location: sizeObj.location
-          }));
-        }
-        return [];
-      };
-      
-      // Unificar estructura de inventory para el componente
-      const inventory: InventoryInfo = {
-        local_info: {
-          location_number: 0, // La nueva API no proporciona esto directamente
-          location_name: locations.current_location?.[0]?.location || '',
-        },
-        pricing: {
-          unit_price: match.pricing?.unit_price || 0,
-          box_price: match.pricing?.box_price || 0,
-        },
-        stock_by_size: createStockBySize(),
-        total_stock: calculateTotalStock(),
-        total_exhibition: 0, // La nueva API no diferencia exhibition
-        available_sizes: getAvailableSizes(),
-        other_locations: locations.other_locations || []
-      };
-      
-      // Adaptar availability
-      const availability: AvailabilityInfo = {
-        in_stock: !!match.availability?.summary?.current_location?.has_stock,
-        can_sell: !!match.availability?.can_sell_now,
-        can_request_from_other_locations: !!match.availability?.can_request_transfer,
-        recommended_action: match.availability?.recommended_action || ''
-      };
-      
-      // Crear el objeto ProductOption con la estructura locations preservada
-      const productOption = {
-        id: ref.code || `product-${idx}`,
-        brand: ref.brand || '',
-        model: ref.model || '',
-        code: ref.code || '',
-        description: ref.description || '',
-        color: ref.color || '',
-        image: ref.photo || match.image_path || undefined,
-        confidence: match.confidence_percentage || Math.round((match.similarity_score || 0) * 100),
-        rank: match.rank || idx + 1,
-        similarity_score: match.similarity_score || 0,
-        confidence_level: match.confidence_level || '',
-        original_db_id: match.original_db_id || 0,
-        inventory,
-        availability,
-      };
-      
-      // Preservar la estructura completa de locations para que convertAvailabilityToSizes pueda acceder a ella
-      (productOption as any).locations = locations;
-      
-      return productOption;
-    });
+        return {
+          size,
+          quantity_stock: pairs + formablePairs,
+          quantity_exhibition: localAvail.pairs?.quantity_exhibition || 0,
+          location: localAvail.location_name || ''
+        };
+      });
+    };
+    
+    // Unificar estructura de inventory para el componente
+    const inventory: InventoryInfo = {
+      local_info: {
+        location_number: scanResponse.scanned_by?.location_id || 0,
+        location_name: sizes.detailed_by_size && Object.values(sizes.detailed_by_size)[0] 
+          ? (Object.values(sizes.detailed_by_size)[0] as any).local_availability?.location_name || ''
+          : '',
+      },
+      pricing: {
+        unit_price: product.unit_price || 0,
+        box_price: product.box_price || 0,
+      },
+      stock_by_size: createStockBySize(),
+      total_stock: calculateTotalStock(),
+      total_exhibition: 0,
+      available_sizes: getAvailableSizes(),
+      other_locations: [] // Se llenará desde detailed_by_size
+    };
+    
+    // Adaptar availability
+    const availability: AvailabilityInfo = {
+      in_stock: scanResponse.global_summary?.inventory_local?.pairs_available > 0,
+      can_sell: scanResponse.global_summary?.inventory_local?.can_sell_immediately || false,
+      can_request_from_other_locations: scanResponse.global_summary?.total_opportunities > 0,
+      recommended_action: scanResponse.global_summary?.inventory_local?.can_sell_immediately 
+        ? 'Puede vender ahora' 
+        : 'Requiere transferencia o formación de pares'
+    };
+    
+    // Crear el objeto ProductOption con la estructura nueva
+    const productOption = {
+      id: product.reference_code || 'product-1',
+      brand: product.brand || classification.brand_detected || '',
+      model: product.model || classification.model_detected || '',
+      code: product.reference_code || '',
+      description: product.description || `${product.brand} ${product.model}`,
+      color: '', // No viene en la nueva estructura
+      image: product.image_url || undefined,
+      confidence: classification.confidence_percentage || 0,
+      rank: 1,
+      similarity_score: classification.confidence_score || 0,
+      confidence_level: classification.confidence_percentage >= 90 ? 'high' : 'medium',
+      original_db_id: product.product_id || 0,
+      inventory,
+      availability,
+    };
+    
+    // Preservar la estructura completa de sizes para que convertAvailabilityToSizes pueda acceder a ella
+    (productOption as any).sizesData = sizes;
+    (productOption as any).globalSummary = scanResponse.global_summary;
+    (productOption as any).distributionMatrix = scanResponse.distribution_matrix;
+    
+    return [productOption]; // Retornar como array de un elemento
   }
 
   // Función handleScanFromCamera actualizada para usar la nueva API
@@ -519,11 +621,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     setSelectedSize('');
     setCurrentStep('options');
   };
-
-  const getStorageTypeLabel = (type: 'warehouse' | 'display') => {
-    return type === 'warehouse' ? 'Bodega' : 'Exhibición';
-  };
-
 
   const getConfidenceLevelColor = (level: string) => {
     switch (level) {
@@ -809,18 +906,23 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                           className={`p-4 border rounded-lg text-left transition-all ${
                             isSelected
                               ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
-                              : sizeInfo.quantity > 0
+                              : sizeInfo.can_sell
                               ? 'border-success bg-success/5 hover:border-success/50 hover:shadow-sm'
-                              : 'border-warning bg-warning/5 hover:border-warning/50 hover:shadow-sm'
+                              : sizeInfo.can_form_pair
+                              ? 'border-warning bg-warning/5 hover:border-warning/50 hover:shadow-sm'
+                              : 'border-muted bg-muted/5 hover:border-muted/50 hover:shadow-sm'
                           }`}
                         >
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-semibold text-lg text-foreground">Talla {sizeInfo.size}</span>
-                            {isSelected && (
-                              <Check className="h-5 w-5 text-primary" />
-                            )}
+                            <div className="flex items-center gap-1">
+                              {sizeInfo.can_sell && <CheckCircle className="h-5 w-5 text-success" />}
+                              {!sizeInfo.can_sell && sizeInfo.can_form_pair && <AlertCircle className="h-5 w-5 text-warning" />}
+                              {!sizeInfo.can_sell && !sizeInfo.can_form_pair && <XCircle className="h-5 w-5 text-muted" />}
+                              {isSelected && <Check className="h-5 w-5 text-primary ml-1" />}
+                            </div>
                           </div>
-                        <div className="space-y-1 text-sm">
+                        <div className="space-y-2 text-sm">
                           <div className="flex items-center text-muted-foreground gap-2 flex-wrap">
                             <MapPin className="h-3 w-3 mr-1" />
                             <span className="font-medium">{sizeInfo.location_name || sizeInfo.location}</span>
@@ -833,37 +935,73 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                                 {sizeInfo.location_type === 'local' ? 'Local' : 'Bodega'}
                               </span>
                             )}
-                            {sizeInfo.quantity > 0 ? (
-                              <span className="px-2 py-0.5 rounded text-xs font-semibold bg-success/10 text-success">
-                                En stock
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded text-xs font-semibold bg-warning/10 text-warning">
-                                Transferir
-                              </span>
-                            )}
                           </div>
-                          <div className="flex items-center text-muted-foreground">
-                            {sizeInfo.location_type === 'local' ? <Store className="h-4 w-4" /> : <Warehouse className="h-4 w-4" />}
-                            <span className="ml-1">{sizeInfo.location_type === 'local' ? 'Local' : 'Bodega'}</span>
+
+                          {/* Información de pares y pies separados */}
+                          <div className="grid grid-cols-3 gap-2 p-2 bg-muted/10 rounded">
+                            <div className="text-center">
+                              <div className="text-xs text-muted-foreground">👟 Pares</div>
+                              <div className={`font-bold ${(sizeInfo.pairs || 0) > 0 ? 'text-success' : 'text-muted'}`}>
+                                {sizeInfo.pairs || 0}
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs text-muted-foreground">🦶 Izq</div>
+                              <div className={`font-bold ${(sizeInfo.left_feet || 0) > 0 ? 'text-warning' : 'text-muted'}`}>
+                                {sizeInfo.left_feet || 0}
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs text-muted-foreground">🦶 Der</div>
+                              <div className={`font-bold ${(sizeInfo.right_feet || 0) > 0 ? 'text-warning' : 'text-muted'}`}>
+                                {sizeInfo.right_feet || 0}
+                              </div>
+                            </div>
                           </div>
+
+                          {/* Estado de venta */}
                           <div className="flex justify-between items-center">
                             <div className="flex flex-col">
-                              <span className={`font-medium ${
-                                sizeInfo.quantity > 0 ? 'text-success' : 'text-warning'
-                              }`}>
-                                {sizeInfo.quantity > 0 ? `${sizeInfo.quantity} disponibles` : 'Requiere transferencia'}
-                              </span>
-                              {sizeInfo.quantity === 0 && (
-                                <span className="text-xs text-warning">
-                                  Disponible en {sizeInfo.location_name}
+                              {sizeInfo.can_sell ? (
+                                <span className="text-success font-medium flex items-center gap-1">
+                                  <CheckCircle className="h-4 w-4" />
+                                  Disponible venta
                                 </span>
-                              )}
+                              ) : sizeInfo.can_form_pair ? (
+                                <span className="text-warning font-medium flex items-center gap-1">
+                                  <AlertCircle className="h-4 w-4" />
+                                  Formar pares
+                                </span>
+                              ) : sizeInfo.missing_foot ? (
+                                <span className="text-muted-foreground font-medium flex items-center gap-1">
+                                  <XCircle className="h-4 w-4" />
+                                  Falta pie {sizeInfo.missing_foot === 'left' ? 'izq' : 'der'}
+                                </span>
+                              ) : sizeInfo.quantity === 0 ? (
+                                <span className="text-muted font-medium">
+                                  Transferir
+                                </span>
+                              ) : null}
                             </div>
                             <span className="font-bold text-primary">
                               {formatCurrency(sizeInfo.unit_price)}
                             </span>
                           </div>
+
+                          {/* Oportunidades de formación */}
+                          {sizeInfo.formation_opportunities && sizeInfo.formation_opportunities.length > 0 && (
+                            <div className="text-xs text-warning bg-warning/10 p-2 rounded">
+                              💡 {sizeInfo.formation_opportunities[0].action}
+                            </div>
+                          )}
+
+                          {/* Sugerencias de transferencia */}
+                          {sizeInfo.suggestions && sizeInfo.suggestions.length > 0 && !sizeInfo.can_sell && (
+                            <div className="text-xs text-primary bg-primary/10 p-2 rounded">
+                              📦 {sizeInfo.suggestions[0].action}
+                            </div>
+                          )}
+
                           {sizeInfo.box_price > 0 && sizeInfo.box_price !== sizeInfo.unit_price && (
                             <div className="text-xs text-muted-foreground">
                               Precio caja: {formatCurrency(sizeInfo.box_price)}
@@ -897,34 +1035,110 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                     if (!sizeInfo) return null;
                     
                     return (
-                      <div>
-                        <h6 className="font-medium text-primary mb-3">Talla {size} Seleccionada</h6>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Ubicación:</span>
-                            <p className="font-medium text-foreground">{sizeInfo.location}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Almacenamiento:</span>
-                            <p className="font-medium text-foreground">{getStorageTypeLabel(sizeInfo.storage_type)}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Cantidad:</span>
-                            <p className={`font-medium ${sizeInfo.quantity > 0 ? 'text-success' : 'text-warning'}`}>
-                              {sizeInfo.quantity > 0 ? `${sizeInfo.quantity} disponibles` : 'Requiere transferencia'}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Precio unitario:</span>
-                            <p className="font-bold text-lg text-primary">{formatCurrency(sizeInfo.unit_price)}</p>
-                          </div>
-                          {sizeInfo.box_price > 0 && sizeInfo.box_price !== sizeInfo.unit_price && (
-                            <div className="col-span-2">
-                              <span className="text-muted-foreground">Precio por caja:</span>
-                              <p className="font-medium text-primary">{formatCurrency(sizeInfo.box_price)}</p>
+                      <div className="space-y-4">
+                        <div>
+                          <h6 className="font-medium text-primary mb-3 flex items-center gap-2">
+                            Talla {size} Seleccionada
+                            {sizeInfo.can_sell && <CheckCircle className="h-5 w-5 text-success" />}
+                            {!sizeInfo.can_sell && sizeInfo.can_form_pair && <AlertCircle className="h-5 w-5 text-warning" />}
+                          </h6>
+                          
+                          {/* Inventario detallado */}
+                          <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 mb-3">
+                            <div className="text-xs text-muted-foreground mb-2 font-semibold">Inventario Disponible</div>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="text-center p-2 bg-success/10 rounded">
+                                <div className="text-2xl font-bold text-success">{sizeInfo.pairs || 0}</div>
+                                <div className="text-xs text-muted-foreground">👟 Pares completos</div>
+                              </div>
+                              <div className="text-center p-2 bg-warning/10 rounded">
+                                <div className="text-2xl font-bold text-warning">{sizeInfo.left_feet || 0}</div>
+                                <div className="text-xs text-muted-foreground">🦶 Izquierdos</div>
+                              </div>
+                              <div className="text-center p-2 bg-warning/10 rounded">
+                                <div className="text-2xl font-bold text-warning">{sizeInfo.right_feet || 0}</div>
+                                <div className="text-xs text-muted-foreground">🦶 Derechos</div>
+                              </div>
                             </div>
-                          )}
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">Ubicación:</span>
+                              <p className="font-medium text-foreground">{sizeInfo.location}</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Estado:</span>
+                              <p className={`font-medium ${sizeInfo.can_sell ? 'text-success' : 'text-warning'}`}>
+                                {sizeInfo.can_sell ? '✅ Disponible venta' : sizeInfo.can_form_pair ? '⚠️ Puede formar pares' : '❌ Requiere transferencia'}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Precio unitario:</span>
+                              <p className="font-bold text-lg text-primary">{formatCurrency(sizeInfo.unit_price)}</p>
+                            </div>
+                            {sizeInfo.box_price > 0 && sizeInfo.box_price !== sizeInfo.unit_price && (
+                              <div>
+                                <span className="text-muted-foreground">Precio por caja:</span>
+                                <p className="font-medium text-primary">{formatCurrency(sizeInfo.box_price)}</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
+
+                        {/* Oportunidades de formación de pares */}
+                        {sizeInfo.formation_opportunities && sizeInfo.formation_opportunities.length > 0 && (
+                          <div className="border-t border-primary/20 pt-3">
+                            <div className="text-sm font-semibold text-foreground mb-2">💡 Oportunidades de Formación</div>
+                            {sizeInfo.formation_opportunities.map((opp: any, idx: number) => (
+                              <div key={idx} className="bg-warning/10 border border-warning/20 rounded p-3 mb-2">
+                                <div className="flex items-start gap-2">
+                                  <AlertCircle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
+                                  <div className="text-sm">
+                                    <p className="font-medium text-warning">{opp.action}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Prioridad: {opp.priority} • Tiempo estimado: {opp.estimated_time_hours}h
+                                    </p>
+                                    {opp.from_locations && (
+                                      <div className="text-xs text-muted-foreground mt-2">
+                                        {opp.from_locations.map((loc: any, locIdx: number) => (
+                                          <div key={locIdx}>• {loc.quantity} {loc.type === 'left' ? 'izq' : 'der'} en {loc.location_name}</div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Sugerencias de transferencia */}
+                        {sizeInfo.suggestions && sizeInfo.suggestions.length > 0 && (
+                          <div className="border-t border-primary/20 pt-3">
+                            <div className="text-sm font-semibold text-foreground mb-2">📦 Sugerencias de Transferencia</div>
+                            {sizeInfo.suggestions.slice(0, 2).map((sugg: any, idx: number) => (
+                              <div key={idx} className="bg-primary/10 border border-primary/20 rounded p-3 mb-2">
+                                <div className="flex items-start gap-2">
+                                  <Package className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                                  <div className="text-sm">
+                                    <p className="font-medium text-primary">{sugg.action}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Tiempo: ~{sugg.estimated_time_minutes} min • Disponibles: {sugg.metadata?.available_quantity || 0}
+                                    </p>
+                                    {sugg.steps && sugg.steps.length > 0 && (
+                                      <div className="text-xs text-muted-foreground mt-2">
+                                        {sugg.steps.slice(0, 2).map((step: string, stepIdx: number) => (
+                                          <div key={stepIdx}>• {step}</div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })()}

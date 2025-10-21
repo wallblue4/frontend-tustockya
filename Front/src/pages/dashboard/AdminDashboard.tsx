@@ -83,7 +83,7 @@ import {
   fetchProductAssignments,
   
   // Video Inventory (4 endpoints)
-  processVideoInventoryEntryDistributed,
+  processVideoInventoryEntry,
   fetchVideoProcessingHistory,
   
   // System (4 endpoints)
@@ -747,7 +747,7 @@ export const AdminDashboard: React.FC = () => {
       console.log('Enviando datos de inventario con distribución:', inventoryPayload);
       console.log('JSON de distribución:', sizesDistributionJson);
       
-      const response = await processVideoInventoryEntryDistributed(inventoryPayload);
+      const response = await processVideoInventoryEntry(inventoryPayload);
       
       console.log('Respuesta del servidor:', response);
       
