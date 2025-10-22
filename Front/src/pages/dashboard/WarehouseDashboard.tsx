@@ -43,7 +43,7 @@ interface PendingRequest {
   model: string;
   size: string;
   quantity: number;
-  purpose: 'cliente' | 'restock' | 'return';
+  purpose: 'cliente' | 'restock' | 'return' | 'pair_formation';
   priority: 'high' | 'normal';
   priority_level: 'URGENT' | 'NORMAL';
   requested_at: string;
@@ -54,6 +54,13 @@ interface PendingRequest {
   product_image?: string;
   product_price?: string;
   product_color?: string;
+  // Nuevos campos para pies separados
+  request_type?: 'transfer' | 'return';
+  inventory_type?: 'pair' | 'left_only' | 'right_only' | 'both_feet';
+  inventory_type_label?: string;
+  preparation_instruction?: string;
+  urgent_action?: boolean;
+  time_elapsed?: string;
   // Nuevos campos de la API
   requester_info?: {
     name: string;
@@ -72,7 +79,8 @@ interface PendingRequest {
     };
   };
   product_info?: {
-    image: string;
+    image_url?: string;
+    image?: string;
     unit_price: number;
     box_price: number;
     stock_available: number;
@@ -103,7 +111,7 @@ interface AcceptedRequest {
   product_description?: string;
   transfer_type?: string;
   transfer_type_display?: string;
-  purpose: 'cliente' | 'restock' | 'return';
+  purpose: 'cliente' | 'restock' | 'return' | 'pair_formation';
   priority?: string;
   pickup_type?: string;
   pickup_info?: {
@@ -159,6 +167,15 @@ interface AcceptedRequest {
     unit_price: number;
     description: string;
   };
+  // Nuevos campos para pies separados
+  request_type?: 'transfer' | 'return';
+  inventory_type?: 'pair' | 'left_only' | 'right_only' | 'both_feet';
+  inventory_type_label?: string;
+  what_to_deliver?: string;
+  stock_available?: number;
+  source_location_name?: string;
+  destination_location_name?: string;
+  estimated_pickup_time?: string | null;
 }
 
 export const WarehouseDashboard: React.FC = () => {
@@ -487,13 +504,52 @@ export const WarehouseDashboard: React.FC = () => {
     }
   };
 
-  // Funciones de utilidad
+  // Funciones de utilidad con paleta de colores consistente
   const getPriorityColor = (priority: string) => {
-    return priority === 'high' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-blue-100 text-blue-800 border-blue-200';
+    return priority === 'URGENT' || priority === 'high' 
+      ? 'bg-error/10 text-error border-error/20' 
+      : 'bg-primary/10 text-primary border-primary/20';
   };
 
   const getPurposeColor = (purpose: string) => {
-    return purpose === 'cliente' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800';
+    switch (purpose) {
+      case 'cliente':
+        return 'bg-warning/10 text-warning';
+      case 'pair_formation':
+        return 'bg-info/10 text-info';
+      case 'restock':
+        return 'bg-success/10 text-success';
+      case 'return':
+        return 'bg-muted/10 text-muted-foreground';
+      default:
+        return 'bg-primary/10 text-primary';
+    }
+  };
+
+  const getInventoryTypeColor = (inventoryType?: string) => {
+    switch (inventoryType) {
+      case 'pair':
+        return 'bg-success/10 text-success border-success/20';
+      case 'left_only':
+        return 'bg-warning/10 text-warning border-warning/20';
+      case 'right_only':
+        return 'bg-warning/10 text-warning border-warning/20';
+      case 'both_feet':
+        return 'bg-info/10 text-info border-info/20';
+      default:
+        return 'bg-primary/10 text-primary border-primary/20';
+    }
+  };
+
+  const getRequestTypeColor = (requestType?: string) => {
+    switch (requestType) {
+      case 'transfer':
+        return 'bg-primary/10 text-primary border-primary/20';
+      case 'return':
+        return 'bg-muted/10 text-muted-foreground border-muted/20';
+      default:
+        return 'bg-primary/10 text-primary border-primary/20';
+    }
   };
 
   const formatTimeWaiting = (requestedAt: string) => {
@@ -846,7 +902,7 @@ export const WarehouseDashboard: React.FC = () => {
               ) : (
                 <div className="space-y-4 md:space-y-6">
                   {filteredPendingRequests.map((request) => (
-                    <div key={request.id} className="border rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-300">
+                    <div key={request.id} className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300">
                       
                       {/* MOBILE COMPACT VIEW */}
                       <div className="md:hidden">
@@ -858,21 +914,50 @@ export const WarehouseDashboard: React.FC = () => {
                                 {request.priority_level === 'URGENT' ? '🔥 URGENTE' : '📦 Normal'}
                               </span>
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
-                                {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' : '📦 Restock'}
+                                {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' : 
+                                 request.purpose === 'pair_formation' ? '🔗 Formar Par' : '📦 Restock'}
                               </span>
+                              {request.request_type && (
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRequestTypeColor(request.request_type)}`}>
+                                  {request.request_type === 'transfer' ? '📦 Transferencia' : '↩️ Devolución'}
+                                </span>
+                              )}
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-muted-foreground">
                               ID #{request.id}
                             </div>
                           </div>
+
+                          {/* Información específica de pies separados */}
+                          {request.inventory_type && request.inventory_type !== 'pair' && (
+                            <div className="mb-4 p-3 bg-card border border-border rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getInventoryTypeColor(request.inventory_type)}`}>
+                                  {request.inventory_type_label || 
+                                   (request.inventory_type === 'left_only' ? '🦶 Pie Izquierdo' :
+                                    request.inventory_type === 'right_only' ? '🦶 Pie Derecho' : '🦶 Pies Separados')}
+                                </span>
+                                {request.time_elapsed && (
+                                  <span className="text-xs text-muted-foreground">
+                                    ⏱️ {request.time_elapsed}
+                                  </span>
+                                )}
+                              </div>
+                              {request.preparation_instruction && (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  {request.preparation_instruction}
+                                </p>
+                              )}
+                            </div>
+                          )}
                           
                           {/* Layout horizontal: Imagen vertical a la izquierda, info a la derecha */}
                           <div className="flex space-x-4 mb-4">
                             {/* Imagen vertical */}
                             <div className="flex-shrink-0">
-                              <div className="w-32 h-48 rounded-lg overflow-hidden border border-gray-200">
+                              <div className="w-32 h-48 rounded-lg overflow-hidden border border-border">
                                 <img
-                                  src={request.product_info?.image}
+                                  src={request.product_info?.image_url || request.product_info?.image}
                                   alt={`${request.brand} ${request.model}`}
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
@@ -887,30 +972,30 @@ export const WarehouseDashboard: React.FC = () => {
                             
                             {/* Información del producto */}
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-bold text-base text-gray-900 mb-2 leading-tight">
+                              <h3 className="font-bold text-base text-foreground mb-2 leading-tight">
                                 {request.brand} {request.model}
                               </h3>
                               <div className="space-y-2 mb-3">
                                 <div className="flex items-center space-x-3">
-                                  <span className="text-sm font-medium text-blue-600">
+                                  <span className="text-sm font-medium text-primary">
                                     Talla {request.size}
                                   </span>
-                                  <span className="text-sm text-gray-500">
+                                  <span className="text-sm text-muted-foreground">
                                     {request.quantity} unidad{request.quantity > 1 ? 'es' : ''}
                                   </span>
                                 </div>
-                                <div className="flex items-center space-x-1 text-sm text-gray-700">
-                                  <User className="h-3 w-3 text-gray-400" />
+                                <div className="flex items-center space-x-1 text-sm text-foreground">
+                                  <User className="h-3 w-3 text-muted-foreground" />
                                   <span className="font-medium truncate">
                                     Solicitante: {request.requester_info?.name || 'Usuario'}
                                   </span>
                                 </div>
-                                <div className="flex items-center space-x-1 text-xs text-gray-500">
-                                  <MapPin className="h-3 w-3 text-gray-400 mr-1" />
+                                <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                                  <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
                                   <span className="font-medium">De: {request.location_info?.from?.name || 'N/A'}</span>
                                 </div>
-                                <div className="flex items-center space-x-1 text-xs text-gray-500">
-                                  <MapPin className="h-3 w-3 text-gray-400 mr-1" />
+                                <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                                  <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
                                   <span className="font-medium">A: {request.location_info?.to?.name || 'N/A'}</span>
                                 </div>
                               </div>
@@ -918,17 +1003,17 @@ export const WarehouseDashboard: React.FC = () => {
                               {/* Estado de disponibilidad compacto */}
                               <div className={`p-2 rounded text-center ${
                                 ((request.product_info?.stock_available ?? 0) > 0) 
-                                  ? 'bg-green-50 text-green-700 border border-green-200' 
-                                  : 'bg-red-50 text-red-700 border border-red-200'
+                                  ? 'bg-success/10 text-success border border-success/20' 
+                                  : 'bg-error/10 text-error border border-error/20'
                               }`}>
                                 <div className="text-xs font-medium">
                                   {((request.product_info?.stock_available ?? 0) > 0) ? '✅ Disponible' : '❌ Sin stock'}
                                 </div>
-                                <div className="text-xs text-gray-600">
+                                <div className="text-xs text-muted-foreground">
                                   Stock: {request.product_info?.stock_available ?? 0}
                                 </div>
                                 {request.product_info?.unit_price && (
-                                  <div className="text-xs font-medium text-green-600 mt-1">
+                                  <div className="text-xs font-medium text-success mt-1">
                                     {formatPrice(request.product_info.unit_price)}
                                   </div>
                                 )}
@@ -1001,25 +1086,54 @@ export const WarehouseDashboard: React.FC = () => {
                               {request.priority_level === 'URGENT' ? '🔥 URGENTE' : '📦 Normal'}
                             </span>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
-                              {request.purpose === 'cliente' ? '🏃‍♂️ Cliente Presente' : '📦 Restock'}
+                              {request.purpose === 'cliente' ? '🏃‍♂️ Cliente Presente' : 
+                               request.purpose === 'pair_formation' ? '🔗 Formar Par' : '📦 Restock'}
                             </span>
-                            <span className="text-sm text-gray-500">
-                              ⏱️ Esperando: {formatTimeWaiting(request.requested_at)}
+                            {request.request_type && (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRequestTypeColor(request.request_type)}`}>
+                                {request.request_type === 'transfer' ? '📦 Transferencia' : '↩️ Devolución'}
+                              </span>
+                            )}
+                            <span className="text-sm text-muted-foreground">
+                              ⏱️ {request.time_elapsed || formatTimeWaiting(request.requested_at)}
                             </span>
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-muted-foreground">
                             ID #{request.id}
                           </div>
                         </div>
+
+                        {/* Información específica de pies separados */}
+                        {request.inventory_type && request.inventory_type !== 'pair' && (
+                          <div className="mb-6 p-4 bg-card border border-border rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getInventoryTypeColor(request.inventory_type)}`}>
+                                {request.inventory_type_label || 
+                                 (request.inventory_type === 'left_only' ? '🦶 Pie Izquierdo' :
+                                  request.inventory_type === 'right_only' ? '🦶 Pie Derecho' : '🦶 Pies Separados')}
+                              </span>
+                              {request.urgent_action && (
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-error/10 text-error border border-error/20">
+                                  ⚡ Acción Urgente
+                                </span>
+                              )}
+                            </div>
+                            {request.preparation_instruction && (
+                              <p className="text-sm text-muted-foreground">
+                                {request.preparation_instruction}
+                              </p>
+                            )}
+                          </div>
+                        )}
                         
                         {/* Layout horizontal: Imagen vertical a la izquierda, información a la derecha */}
                         <div className="flex space-x-6">
                           
                           {/* Imagen del producto vertical */}
                           <div className="flex-shrink-0">
-                            <div className="w-48 h-64 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                            <div className="w-48 h-64 rounded-xl overflow-hidden border border-border shadow-sm">
                               <img
-                                src={request.product_info?.image || `https://via.placeholder.com/300x400/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
+                                src={request.product_info?.image_url || request.product_info?.image || `https://via.placeholder.com/300x400/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
                                 alt={`${request.brand} ${request.model}`}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
@@ -1031,7 +1145,7 @@ export const WarehouseDashboard: React.FC = () => {
                               />
                             </div>
                             {request.product_info?.unit_price && (
-                              <p className="text-center mt-3 font-medium text-green-600 text-lg">
+                              <p className="text-center mt-3 font-medium text-success text-lg">
                                 💰 {formatPrice(request.product_info.unit_price)}
                               </p>
                             )}
@@ -1040,12 +1154,12 @@ export const WarehouseDashboard: React.FC = () => {
                           {/* Información del producto */}
                           <div className="flex-1 space-y-6">
                             <div>
-                              <h3 className="text-3xl font-bold text-gray-900 mb-3 leading-tight">
+                              <h3 className="text-3xl font-bold text-foreground mb-3 leading-tight">
                                 {request.brand} {request.model}
                               </h3>
                               
                               {request.product_color && (
-                                <p className="text-lg text-gray-600 mb-4">
+                                <p className="text-lg text-muted-foreground mb-4">
                                   🎨 <strong>Color:</strong> {request.product_color}
                                 </p>
                               )}
@@ -1176,7 +1290,7 @@ export const WarehouseDashboard: React.FC = () => {
                 ) : (
                   <div className="space-y-4 md:space-y-6">
                     {preparationRequests.map((request) => (
-                    <div key={request.id} className="border border-border rounded-lg bg-card">
+                    <div key={request.id} className="border border-border rounded-lg bg-card shadow-sm hover:shadow-lg transition-all duration-300">
                       {/* MOBILE VIEW */}
                       <div className="md:hidden p-4">
                         {/* Status tag at the top */}
@@ -1206,6 +1320,24 @@ export const WarehouseDashboard: React.FC = () => {
                            </span>
                         </div>
 
+                        {/* Información específica de pies separados */}
+                        {request.inventory_type && request.inventory_type !== 'pair' && (
+                          <div className="mb-3 p-3 bg-card border border-border rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getInventoryTypeColor(request.inventory_type)}`}>
+                                {request.inventory_type_label || 
+                                 (request.inventory_type === 'left_only' ? '🦶 Pie Izquierdo' :
+                                  request.inventory_type === 'right_only' ? '🦶 Pie Derecho' : '🦶 Pies Separados')}
+                              </span>
+                              {request.what_to_deliver && (
+                                <span className="text-xs text-muted-foreground">
+                                  📦 {request.what_to_deliver}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         <div className="flex items-start space-x-3 mb-3">
                           <div className="flex-shrink-0">
                              <img
@@ -1230,11 +1362,11 @@ export const WarehouseDashboard: React.FC = () => {
                             </p>
                              <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-1">
                                <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
-                               <span className="font-medium">De: {getLocationName(request.location_info?.from || request.location_info?.source)}</span>
+                               <span className="font-medium">De: {request.source_location_name || getLocationName(request.location_info?.from || request.location_info?.source)}</span>
                              </div>
                              <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-1">
                                <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
-                               <span className="font-medium">A: {getLocationName(request.location_info?.to || request.location_info?.destination)}</span>
+                               <span className="font-medium">A: {request.destination_location_name || getLocationName(request.location_info?.to || request.location_info?.destination)}</span>
                              </div>
                           </div>
                         </div>
@@ -1251,16 +1383,16 @@ export const WarehouseDashboard: React.FC = () => {
 
                          {request.pickup_type === 'vendedor' && request.status === 'accepted' && (
                            <div className={`mb-3 p-2 rounded-lg border ${
-                             request.purpose === 'return' ? 'bg-orange-50 border-orange-200' : 'bg-yellow-50 border-yellow-200'
+                             request.purpose === 'return' ? 'bg-muted/10 border-muted/20' : 'bg-warning/10 border-warning/20'
                            }`}>
                              <p className={`text-xs font-medium ${
-                               request.purpose === 'return' ? 'text-orange-800' : 'text-yellow-800'
+                               request.purpose === 'return' ? 'text-muted-foreground' : 'text-warning'
                              }`}>
                                <User className="h-3 w-3 inline mr-1" />
                                <strong>Esperando al vendedor:</strong> {request.requester_info?.name || request.requester_name || 'Usuario'}
                              </p>
                              <p className={`text-xs mt-1 ${
-                               request.purpose === 'return' ? 'text-orange-700' : 'text-yellow-700'
+                               request.purpose === 'return' ? 'text-muted-foreground' : 'text-warning'
                              }`}>
                                {request.purpose === 'return' 
                                  ? '🔄 El vendedor debe traer el producto para devolución'
@@ -1272,12 +1404,12 @@ export const WarehouseDashboard: React.FC = () => {
                          
                          {/* NUEVO: Devolución entregada por vendedor - esperando confirmación */}
                          {request.pickup_type === 'vendedor' && request.status === 'delivered' && request.purpose === 'return' && (
-                           <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg">
-                             <p className="text-xs text-green-800 font-medium">
+                           <div className="mb-3 p-2 bg-success/10 border border-success/20 rounded-lg">
+                             <p className="text-xs text-success font-medium">
                                <CheckCircle className="h-3 w-3 inline mr-1" />
                                <strong>Devolución entregada por vendedor</strong>
                              </p>
-                             <p className="text-xs text-green-700 mt-1">
+                             <p className="text-xs text-success mt-1">
                                🔍 Debes verificar el producto y confirmar la recepción para restaurar el inventario
                              </p>
                            </div>
@@ -1362,14 +1494,19 @@ export const WarehouseDashboard: React.FC = () => {
                               {request.brand} {request.model} - Talla {request.size}
                             </h4>
                             {request.purpose === 'return' && (
-                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted/10 text-muted-foreground">
                                 🔄 Devolución
+                              </span>
+                            )}
+                            {request.request_type && (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRequestTypeColor(request.request_type)}`}>
+                                {request.request_type === 'transfer' ? '📦 Transferencia' : '↩️ Devolución'}
                               </span>
                             )}
                           </div>
                            <span className={`px-3 py-1 rounded-full text-sm font-medium 
                              ${request.status === 'courier_assigned' ? 'bg-success/10 text-success' : 
-                               request.status === 'in_transit' ? 'bg-blue-100 text-blue-800' : 'bg-warning/10 text-warning'}
+                               request.status === 'in_transit' ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning'}
                            `}>
                              {request.pickup_type === 'corredor' ? (
                                request.status === 'courier_assigned' ? '✅ Corredor asignado' : 
@@ -1381,6 +1518,24 @@ export const WarehouseDashboard: React.FC = () => {
                              )}
                            </span>
                         </div>
+
+                        {/* Información específica de pies separados */}
+                        {request.inventory_type && request.inventory_type !== 'pair' && (
+                          <div className="mb-4 p-4 bg-card border border-border rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getInventoryTypeColor(request.inventory_type)}`}>
+                                {request.inventory_type_label || 
+                                 (request.inventory_type === 'left_only' ? '🦶 Pie Izquierdo' :
+                                  request.inventory_type === 'right_only' ? '🦶 Pie Derecho' : '🦶 Pies Separados')}
+                              </span>
+                              {request.what_to_deliver && (
+                                <span className="text-sm text-muted-foreground">
+                                  📦 {request.what_to_deliver}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
                         <div className="flex items-start mb-4">
                           <div className="flex-shrink-0 mr-4">
@@ -1412,11 +1567,11 @@ export const WarehouseDashboard: React.FC = () => {
                              <div className="mb-2">
                                <p className="text-sm text-muted-foreground">
                                  <MapPin className="h-4 w-4 inline mr-1" />
-                                 <strong>De:</strong> {getLocationName(request.location_info?.from || request.location_info?.source)}
+                                 <strong>De:</strong> {request.source_location_name || getLocationName(request.location_info?.from || request.location_info?.source)}
                                </p>
                                <p className="text-sm text-muted-foreground">
                                  <MapPin className="h-4 w-4 inline mr-1" />
-                                 <strong>A:</strong> {getLocationName(request.location_info?.to || request.location_info?.destination)}
+                                 <strong>A:</strong> {request.destination_location_name || getLocationName(request.location_info?.to || request.location_info?.destination)}
                                </p>
                              </div>
                             
@@ -1431,13 +1586,13 @@ export const WarehouseDashboard: React.FC = () => {
                             
                             <div className="space-y-2 text-sm text-muted-foreground">
                               {request.status_info && (
-                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
                                   <div className="flex items-center justify-between mb-1">
-                                    <span className="font-medium text-blue-800">{request.status_info.title}</span>
-                                    <span className="text-xs text-blue-600">{request.status_info.progress}%</span>
+                                    <span className="font-medium text-primary">{request.status_info.title}</span>
+                                    <span className="text-xs text-primary">{request.status_info.progress}%</span>
                                   </div>
-                                  <p className="text-xs text-blue-700 mb-1">{request.status_info.description}</p>
-                                  <p className="text-xs text-blue-600">
+                                  <p className="text-xs text-primary mb-1">{request.status_info.description}</p>
+                                  <p className="text-xs text-primary">
                                     <strong>Siguiente paso:</strong> {request.status_info.next_step}
                                   </p>
                                 </div>
@@ -1449,7 +1604,8 @@ export const WarehouseDashboard: React.FC = () => {
                                   Estado: {request.status}
                                 </span>
                                 <span>
-                                  📍 Propósito: {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' : '📦 Restock'}
+                                  📍 Propósito: {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' : 
+                                                 request.purpose === 'pair_formation' ? '🔗 Formar Par' : '📦 Restock'}
                                 </span>
                                 <span>
                                   📦 Cantidad: {request.quantity}

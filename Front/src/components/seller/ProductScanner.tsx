@@ -99,6 +99,27 @@ interface ProductScannerProps {
     color: string;
     size: string;
     product: ProductOption;
+    source_location_id: number;
+    destination_location_id: number;
+    // Información específica de pies separados
+    pairs?: number;
+    left_feet?: number;
+    right_feet?: number;
+    can_sell?: boolean;
+    can_form_pair?: boolean;
+    missing_foot?: 'left' | 'right' | null;
+    location_name?: string;
+    transfer_type?: 'pair' | 'left_foot' | 'right_foot' | 'form_pair';
+    request_notes?: string;
+    // Opciones disponibles para solicitar
+    available_options?: {
+      pairs_available?: boolean;
+      left_feet_available?: boolean;
+      right_feet_available?: boolean;
+      pairs_quantity?: number;
+      left_feet_quantity?: number;
+      right_feet_quantity?: number;
+    };
   }) => void;
   capturedImage?: File | null;
   scanResult?: any;
@@ -393,16 +414,17 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
   // Convierte la respuesta de la API a ProductOption[]
   function convertScanResponseToProductOptions(scanResponse: any): ProductOption[] {
-    // La nueva estructura ya no tiene results.best_match, sino que viene directamente
-    if (!scanResponse || !scanResponse.success) return [];
+    // La nueva estructura tiene results.matches[0] como el mejor match
+    if (!scanResponse || !scanResponse.success || !scanResponse.results?.matches?.[0]) return [];
     
-    // La nueva API devuelve directamente el producto, no múltiples opciones
-    const product = scanResponse.product || {};
-    const sizes = scanResponse.sizes || {};
-    const classification = scanResponse.classification || {};
+    // Obtener el mejor match de la nueva estructura
+    const bestMatch = scanResponse.results.matches[0];
+    const product = bestMatch.product || {};
+    const sizes = bestMatch.sizes || {};
+    const classification = bestMatch.classification || {};
     
     // Calcular stock total de la nueva estructura con pies separados
-    const calculateTotalStock = () => {
+      const calculateTotalStock = () => {
       let totalPairs = 0;
       let totalLeftFeet = 0;
       let totalRightFeet = 0;
@@ -420,10 +442,10 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       // Retornar el total de pares equivalentes (pares + pies que pueden formar pares)
       const formablePairs = Math.min(totalLeftFeet, totalRightFeet);
       return totalPairs + formablePairs;
-    };
+      };
 
-    // Obtener todas las tallas disponibles
-    const getAvailableSizes = () => {
+      // Obtener todas las tallas disponibles
+      const getAvailableSizes = () => {
       return sizes.available_sizes || [];
     };
 
@@ -445,39 +467,39 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
           location: localAvail.location_name || ''
         };
       });
-    };
-    
-    // Unificar estructura de inventory para el componente
-    const inventory: InventoryInfo = {
-      local_info: {
+      };
+      
+      // Unificar estructura de inventory para el componente
+      const inventory: InventoryInfo = {
+        local_info: {
         location_number: scanResponse.scanned_by?.location_id || 0,
         location_name: sizes.detailed_by_size && Object.values(sizes.detailed_by_size)[0] 
           ? (Object.values(sizes.detailed_by_size)[0] as any).local_availability?.location_name || ''
           : '',
-      },
-      pricing: {
+        },
+        pricing: {
         unit_price: product.unit_price || 0,
         box_price: product.box_price || 0,
-      },
-      stock_by_size: createStockBySize(),
-      total_stock: calculateTotalStock(),
+        },
+        stock_by_size: createStockBySize(),
+        total_stock: calculateTotalStock(),
       total_exhibition: 0,
-      available_sizes: getAvailableSizes(),
+        available_sizes: getAvailableSizes(),
       other_locations: [] // Se llenará desde detailed_by_size
-    };
-    
-    // Adaptar availability
-    const availability: AvailabilityInfo = {
-      in_stock: scanResponse.global_summary?.inventory_local?.pairs_available > 0,
-      can_sell: scanResponse.global_summary?.inventory_local?.can_sell_immediately || false,
-      can_request_from_other_locations: scanResponse.global_summary?.total_opportunities > 0,
-      recommended_action: scanResponse.global_summary?.inventory_local?.can_sell_immediately 
+      };
+      
+      // Adaptar availability
+      const availability: AvailabilityInfo = {
+      in_stock: bestMatch.global_summary?.inventory_local?.pairs_available > 0,
+      can_sell: bestMatch.global_summary?.inventory_local?.can_sell_immediately || false,
+      can_request_from_other_locations: bestMatch.global_summary?.total_opportunities > 0,
+      recommended_action: bestMatch.global_summary?.inventory_local?.can_sell_immediately 
         ? 'Puede vender ahora' 
         : 'Requiere transferencia o formación de pares'
     };
     
     // Crear el objeto ProductOption con la estructura nueva
-    const productOption = {
+      const productOption = {
       id: product.reference_code || 'product-1',
       brand: product.brand || classification.brand_detected || '',
       model: product.model || classification.model_detected || '',
@@ -490,14 +512,14 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       similarity_score: classification.confidence_score || 0,
       confidence_level: classification.confidence_percentage >= 90 ? 'high' : 'medium',
       original_db_id: product.product_id || 0,
-      inventory,
-      availability,
-    };
-    
+        inventory,
+        availability,
+      };
+      
     // Preservar la estructura completa de sizes para que convertAvailabilityToSizes pueda acceder a ella
     (productOption as any).sizesData = sizes;
-    (productOption as any).globalSummary = scanResponse.global_summary;
-    (productOption as any).distributionMatrix = scanResponse.distribution_matrix;
+    (productOption as any).globalSummary = bestMatch.global_summary;
+    (productOption as any).distributionMatrix = bestMatch.distribution_matrix;
     
     return [productOption]; // Retornar como array de un elemento
   }
@@ -601,6 +623,42 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         return;
       }
 
+      // Determinar las opciones disponibles en la ubicación de origen
+      const availableOptions = {
+        pairs_available: (sizeInfo.pairs || 0) > 0,
+        left_feet_available: (sizeInfo.left_feet || 0) > 0,
+        right_feet_available: (sizeInfo.right_feet || 0) > 0,
+        pairs_quantity: sizeInfo.pairs || 0,
+        left_feet_quantity: sizeInfo.left_feet || 0,
+        right_feet_quantity: sizeInfo.right_feet || 0
+      };
+
+      // Determinar el tipo de transferencia por defecto basado en el estado del inventario
+      let transferType: 'pair' | 'left_foot' | 'right_foot' | 'form_pair' = 'pair';
+      let requestNotes = '';
+      
+      if (sizeInfo.can_sell && (sizeInfo.pairs || 0) > 0) {
+        // Hay pares completos disponibles
+        transferType = 'pair';
+        requestNotes = `Solicitar ${sizeInfo.pairs} par(es) completo(s) desde ${sizeInfo.location_name}`;
+      } else if (sizeInfo.can_form_pair && (sizeInfo.left_feet || 0) > 0 && (sizeInfo.right_feet || 0) > 0) {
+        // Se pueden formar pares juntando pies separados
+        transferType = 'form_pair';
+        requestNotes = `Formar pares: ${Math.min(sizeInfo.left_feet || 0, sizeInfo.right_feet || 0)} par(es) desde ${sizeInfo.location_name}`;
+      } else if (sizeInfo.missing_foot === 'right' && (sizeInfo.left_feet || 0) > 0) {
+        // Falta pie derecho, solicitar pie derecho
+        transferType = 'right_foot';
+        requestNotes = `Solicitar pie derecho para completar par con ${sizeInfo.left_feet} pie(s) izquierdo(s) en ${sizeInfo.location_name}`;
+      } else if (sizeInfo.missing_foot === 'left' && (sizeInfo.right_feet || 0) > 0) {
+        // Falta pie izquierdo, solicitar pie izquierdo
+        transferType = 'left_foot';
+        requestNotes = `Solicitar pie izquierdo para completar par con ${sizeInfo.right_feet} pie(s) derecho(s) en ${sizeInfo.location_name}`;
+      } else {
+        // Caso por defecto: solicitar par completo
+        transferType = 'pair';
+        requestNotes = `Solicitar par completo desde ${sizeInfo.location_name}`;
+      }
+
       const transferData = {
         sneaker_reference_code: selectedProduct.product.code,
         brand: selectedProduct.product.brand,
@@ -609,7 +667,19 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         size: size,
         product: selectedProduct.product,
         source_location_id: sourceLocationId,
-        destination_location_id: user.location_id
+        destination_location_id: user.location_id || 0,
+        // Información específica de pies separados
+        pairs: sizeInfo.pairs,
+        left_feet: sizeInfo.left_feet,
+        right_feet: sizeInfo.right_feet,
+        can_sell: sizeInfo.can_sell,
+        can_form_pair: sizeInfo.can_form_pair,
+        missing_foot: sizeInfo.missing_foot,
+        location_name: sizeInfo.location_name,
+        transfer_type: transferType,
+        request_notes: requestNotes,
+        // Opciones disponibles para solicitar
+        available_options: availableOptions
       };
       console.log('Enviando datos para transferencia:', transferData);
       onRequestTransfer(transferData);
@@ -906,19 +976,27 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                           className={`p-4 border rounded-lg text-left transition-all ${
                             isSelected
                               ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
-                              : sizeInfo.can_sell
-                              ? 'border-success bg-success/5 hover:border-success/50 hover:shadow-sm'
-                              : sizeInfo.can_form_pair
-                              ? 'border-warning bg-warning/5 hover:border-warning/50 hover:shadow-sm'
-                              : 'border-muted bg-muted/5 hover:border-muted/50 hover:shadow-sm'
+                              : sizeInfo.location_id === user?.location_id 
+                                ? (sizeInfo.can_sell
+                                  ? 'border-success bg-success/5 hover:border-success/50 hover:shadow-sm'
+                                  : sizeInfo.can_form_pair
+                                  ? 'border-warning bg-warning/5 hover:border-warning/50 hover:shadow-sm'
+                                  : 'border-muted bg-muted/5 hover:border-muted/50 hover:shadow-sm')
+                                : 'border-primary bg-primary/5 hover:border-primary/50 hover:shadow-sm'
                           }`}
                         >
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-semibold text-lg text-foreground">Talla {sizeInfo.size}</span>
                             <div className="flex items-center gap-1">
-                              {sizeInfo.can_sell && <CheckCircle className="h-5 w-5 text-success" />}
-                              {!sizeInfo.can_sell && sizeInfo.can_form_pair && <AlertCircle className="h-5 w-5 text-warning" />}
-                              {!sizeInfo.can_sell && !sizeInfo.can_form_pair && <XCircle className="h-5 w-5 text-muted" />}
+                              {sizeInfo.location_id === user?.location_id ? (
+                                <>
+                                  {sizeInfo.can_sell && <CheckCircle className="h-5 w-5 text-success" />}
+                                  {!sizeInfo.can_sell && sizeInfo.can_form_pair && <AlertCircle className="h-5 w-5 text-warning" />}
+                                  {!sizeInfo.can_sell && !sizeInfo.can_form_pair && <XCircle className="h-5 w-5 text-muted" />}
+                                </>
+                              ) : (
+                                <Package className="h-5 w-5 text-primary" />
+                              )}
                               {isSelected && <Check className="h-5 w-5 text-primary ml-1" />}
                             </div>
                           </div>
@@ -943,7 +1021,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                               <div className="text-xs text-muted-foreground">👟 Pares</div>
                               <div className={`font-bold ${(sizeInfo.pairs || 0) > 0 ? 'text-success' : 'text-muted'}`}>
                                 {sizeInfo.pairs || 0}
-                              </div>
+                          </div>
                             </div>
                             <div className="text-center">
                               <div className="text-xs text-muted-foreground">🦶 Izq</div>
@@ -962,41 +1040,66 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                           {/* Estado de venta */}
                           <div className="flex justify-between items-center">
                             <div className="flex flex-col">
-                              {sizeInfo.can_sell ? (
-                                <span className="text-success font-medium flex items-center gap-1">
-                                  <CheckCircle className="h-4 w-4" />
-                                  Disponible venta
-                                </span>
-                              ) : sizeInfo.can_form_pair ? (
-                                <span className="text-warning font-medium flex items-center gap-1">
-                                  <AlertCircle className="h-4 w-4" />
-                                  Formar pares
-                                </span>
-                              ) : sizeInfo.missing_foot ? (
-                                <span className="text-muted-foreground font-medium flex items-center gap-1">
-                                  <XCircle className="h-4 w-4" />
-                                  Falta pie {sizeInfo.missing_foot === 'left' ? 'izq' : 'der'}
-                                </span>
-                              ) : sizeInfo.quantity === 0 ? (
-                                <span className="text-muted font-medium">
-                                  Transferir
-                                </span>
-                              ) : null}
+                              {(() => {
+                                // Determinar si es el local del vendedor o una ubicación externa
+                                // Comparar con la ubicación del usuario actual
+                                const isLocalVendor = sizeInfo.location_id === user?.location_id;
+                                
+                                if (isLocalVendor) {
+                                  // En el local del vendedor - mostrar estado real
+                                  if (sizeInfo.can_sell) {
+                                    return (
+                                      <span className="text-success font-medium flex items-center gap-1">
+                                        <CheckCircle className="h-4 w-4" />
+                                        Disponible venta
+                                      </span>
+                                    );
+                                  } else if (sizeInfo.can_form_pair) {
+                                    return (
+                                      <span className="text-warning font-medium flex items-center gap-1">
+                                        <AlertCircle className="h-4 w-4" />
+                                        Formar pares
+                                      </span>
+                                    );
+                                  } else if (sizeInfo.missing_foot) {
+                                    return (
+                                      <span className="text-muted-foreground font-medium flex items-center gap-1">
+                                        <XCircle className="h-4 w-4" />
+                                        Falta pie {sizeInfo.missing_foot === 'left' ? 'izq' : 'der'}
+                                      </span>
+                                    );
+                                  } else {
+                                    return (
+                                      <span className="text-muted font-medium">
+                                        Sin stock local
+                                      </span>
+                                    );
+                                  }
+                                } else {
+                                  // En otras ubicaciones - siempre requiere transferencia
+                                  return (
+                                    <span className="text-primary font-medium flex items-center gap-1">
+                                      <Package className="h-4 w-4" />
+                                      Requiere transferencia
+                                    </span>
+                                  );
+                                }
+                              })()}
                             </div>
                             <span className="font-bold text-primary">
                               {formatCurrency(sizeInfo.unit_price)}
                             </span>
                           </div>
 
-                          {/* Oportunidades de formación */}
-                          {sizeInfo.formation_opportunities && sizeInfo.formation_opportunities.length > 0 && (
+                          {/* Oportunidades de formación - solo para local del vendedor */}
+                          {sizeInfo.formation_opportunities && sizeInfo.formation_opportunities.length > 0 && sizeInfo.location_id === user?.location_id && (
                             <div className="text-xs text-warning bg-warning/10 p-2 rounded">
                               💡 {sizeInfo.formation_opportunities[0].action}
                             </div>
                           )}
 
-                          {/* Sugerencias de transferencia */}
-                          {sizeInfo.suggestions && sizeInfo.suggestions.length > 0 && !sizeInfo.can_sell && (
+                          {/* Sugerencias de transferencia - solo para ubicaciones externas */}
+                          {sizeInfo.suggestions && sizeInfo.suggestions.length > 0 && sizeInfo.location_id !== user?.location_id && (
                             <div className="text-xs text-primary bg-primary/10 p-2 rounded">
                               📦 {sizeInfo.suggestions[0].action}
                             </div>
@@ -1036,7 +1139,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                     
                     return (
                       <div className="space-y-4">
-                        <div>
+                      <div>
                           <h6 className="font-medium text-primary mb-3 flex items-center gap-2">
                             Talla {size} Seleccionada
                             {sizeInfo.can_sell && <CheckCircle className="h-5 w-5 text-success" />}
@@ -1062,28 +1165,34 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-muted-foreground">Ubicación:</span>
-                              <p className="font-medium text-foreground">{sizeInfo.location}</p>
-                            </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Ubicación:</span>
+                            <p className="font-medium text-foreground">{sizeInfo.location}</p>
+                          </div>
                             <div>
                               <span className="text-muted-foreground">Estado:</span>
-                              <p className={`font-medium ${sizeInfo.can_sell ? 'text-success' : 'text-warning'}`}>
-                                {sizeInfo.can_sell ? '✅ Disponible venta' : sizeInfo.can_form_pair ? '⚠️ Puede formar pares' : '❌ Requiere transferencia'}
+                              <p className={`font-medium ${sizeInfo.location_id === user?.location_id ? 
+                                (sizeInfo.can_sell ? 'text-success' : sizeInfo.can_form_pair ? 'text-warning' : 'text-muted') 
+                                : 'text-primary'}`}>
+                                {sizeInfo.location_id === user?.location_id ? 
+                                  (sizeInfo.can_sell ? '✅ Disponible venta' : 
+                                   sizeInfo.can_form_pair ? '⚠️ Puede formar pares' : 
+                                   '❌ Sin stock local') : 
+                                  '📦 Requiere transferencia'}
                               </p>
                             </div>
-                            <div>
-                              <span className="text-muted-foreground">Precio unitario:</span>
-                              <p className="font-bold text-lg text-primary">{formatCurrency(sizeInfo.unit_price)}</p>
-                            </div>
-                            {sizeInfo.box_price > 0 && sizeInfo.box_price !== sizeInfo.unit_price && (
-                              <div>
-                                <span className="text-muted-foreground">Precio por caja:</span>
-                                <p className="font-medium text-primary">{formatCurrency(sizeInfo.box_price)}</p>
-                              </div>
-                            )}
+                          <div>
+                            <span className="text-muted-foreground">Precio unitario:</span>
+                            <p className="font-bold text-lg text-primary">{formatCurrency(sizeInfo.unit_price)}</p>
                           </div>
+                          {sizeInfo.box_price > 0 && sizeInfo.box_price !== sizeInfo.unit_price && (
+                              <div>
+                              <span className="text-muted-foreground">Precio por caja:</span>
+                              <p className="font-medium text-primary">{formatCurrency(sizeInfo.box_price)}</p>
+                            </div>
+                          )}
+                        </div>
                         </div>
 
                         {/* Oportunidades de formación de pares */}

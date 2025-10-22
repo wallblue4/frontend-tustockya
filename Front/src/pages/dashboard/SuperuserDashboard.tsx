@@ -26,7 +26,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { superadminAPI } from '../../services/superadminAPI';
 
-type TabType = 'overview' | 'companies' | 'subscriptions' | 'invoices' | 'plans' | 'reports' | 'setup';
+type TabType = 'overview' | 'companies' | 'bosses' | 'subscriptions' | 'invoices' | 'plans' | 'reports' | 'setup';
 
 interface GlobalMetrics {
   total_companies: number;
@@ -50,6 +50,9 @@ interface Company {
   name: string;
   subdomain: string;
   email: string;
+  legal_name?: string;
+  tax_id?: string;
+  phone?: string;
   subscription_plan: string;
   subscription_status: string;
   current_locations_count: number;
@@ -122,6 +125,8 @@ export const SuperuserDashboard: React.FC = () => {
   
   // Estado para crear empresa
   const [showCreateCompany, setShowCreateCompany] = useState(false);
+  const [showEditCompany, setShowEditCompany] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [newCompany, setNewCompany] = useState({
     name: '',
     subdomain: '',
@@ -142,6 +147,20 @@ export const SuperuserDashboard: React.FC = () => {
     first_name: '',
     last_name: ''
   });
+  const [showCreateBoss, setShowCreateBoss] = useState(false);
+  const [selectedCompanyForBoss, setSelectedCompanyForBoss] = useState<number | null>(null);
+  const [bossInfo, setBossInfo] = useState<any>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordValidation, setPasswordValidation] = useState({
+    hasUpperCase: false,
+    hasNumber: false,
+    hasSpecialChar: false,
+    isValid: false
+  });
+  
+  // Estado para empresas con Boss
+  const [companiesWithBoss, setCompaniesWithBoss] = useState<any[]>([]);
+  const [loadingBosses, setLoadingBosses] = useState(false);
   
   // Estado para suscripciones (Endpoints 9, 10)
   const [subscriptionHistory, setSubscriptionHistory] = useState<any[]>([]);
@@ -174,6 +193,9 @@ export const SuperuserDashboard: React.FC = () => {
     sort_order: 0
   });
   
+  // Estado para planes disponibles para empresas
+  const [availablePlans, setAvailablePlans] = useState<Plan[]>([]);
+  
   // Estado para reportes (Endpoint 17)
   const [financialReport, setFinancialReport] = useState<any>(null);
   const [reportDates, setReportDates] = useState({
@@ -197,6 +219,7 @@ export const SuperuserDashboard: React.FC = () => {
   useEffect(() => {
     loadGlobalMetrics();
     checkHealth();
+    loadAvailablePlans();
   }, []);
 
   // Cargar datos según la tab activa
@@ -207,6 +230,9 @@ export const SuperuserDashboard: React.FC = () => {
         break;
       case 'companies':
         loadCompanies();
+        break;
+      case 'bosses':
+        loadCompaniesWithBoss(); // Cargar empresas con información de Boss
         break;
       case 'invoices':
         loadInvoices();
@@ -337,33 +363,142 @@ export const SuperuserDashboard: React.FC = () => {
   };
 
   // ========== FUNCIONES PARA BOSS (Endpoints 21, 22, 23) ==========
-  const createBoss = async (e: React.FormEvent, companyId: number) => {
+  const validatePassword = (password: string) => {
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+    const isValid = hasUpperCase && hasNumber && hasSpecialChar && password.length >= 8;
+    
+    setPasswordValidation({
+      hasUpperCase,
+      hasNumber,
+      hasSpecialChar,
+      isValid
+    });
+  };
+
+  const createBoss = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedCompanyForBoss) return;
+    
+    if (!passwordValidation.isValid) {
+      alert('La contraseña debe tener al menos 8 caracteres, una letra mayúscula, un número y un carácter especial');
+      return;
+    }
+    
     try {
-      await superadminAPI.createBoss(companyId, newBoss);
+      setLoading(true);
+      await superadminAPI.createBoss(selectedCompanyForBoss, newBoss);
       setNewBoss({ email: '', password: '', first_name: '', last_name: '' });
+      setPasswordValidation({ hasUpperCase: false, hasNumber: false, hasSpecialChar: false, isValid: false });
+      setShowCreateBoss(false);
+      setSelectedCompanyForBoss(null);
+      setShowPassword(false);
+      loadCompaniesWithBoss(); // Recargar lista de empresas con Boss
       alert('Usuario Boss creado exitosamente');
     } catch (err: any) {
       alert(`Error: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
   const getBoss = async (companyId: number) => {
     try {
+      setLoading(true);
       const boss = await superadminAPI.getBoss(companyId);
-      alert(`Boss: ${boss.full_name} (${boss.email})`);
+      setBossInfo(boss);
+      setSelectedCompanyForBoss(companyId);
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   const getCompanyWithBoss = async (companyId: number) => {
     try {
+      setLoading(true);
       const data = await superadminAPI.getCompanyWithBoss(companyId);
-      console.log('Company with Boss:', data);
       setSelectedCompany(data.company);
+      setBossInfo(data.boss);
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCompaniesWithBoss = async () => {
+    try {
+      setLoadingBosses(true);
+      setError(null);
+      
+      // Cargar todas las empresas primero
+      const companiesData = await superadminAPI.getCompanies({ limit: 100 });
+      const companiesList = Array.isArray(companiesData) ? companiesData : [];
+      
+      // Para cada empresa, intentar obtener su Boss
+      const companiesWithBossData = await Promise.allSettled(
+        companiesList.map(async (company: any) => {
+          try {
+            const bossData = await superadminAPI.getCompanyWithBoss(company.id);
+            return {
+              company: bossData.company || company,
+              boss: bossData.boss,
+              hasBoss: !!bossData.boss
+            };
+          } catch (err) {
+            // Si no tiene Boss, devolver solo la empresa
+            return {
+              company: company,
+              boss: null,
+              hasBoss: false
+            };
+          }
+        })
+      );
+      
+      // Procesar resultados exitosos
+      const successfulResults = companiesWithBossData
+        .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
+        .map(result => result.value);
+      
+      setCompaniesWithBoss(successfulResults);
+    } catch (err: any) {
+      console.error('Error loading companies with boss:', err);
+      setError('Error cargando información de empresas y Boss');
+    } finally {
+      setLoadingBosses(false);
+    }
+  };
+
+  // ========== FUNCIÓN PARA ACTUALIZAR EMPRESA (Endpoint 5) ==========
+  const updateCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCompany) return;
+    
+    try {
+      setLoading(true);
+      await superadminAPI.updateCompany(editingCompany.id, {
+        name: editingCompany.name,
+        email: editingCompany.email,
+        legal_name: editingCompany.legal_name || '',
+        tax_id: editingCompany.tax_id || '',
+        phone: editingCompany.phone || '',
+        subscription_plan: editingCompany.subscription_plan as any,
+        max_locations: editingCompany.max_locations || 3,
+        max_employees: editingCompany.max_employees || 10,
+        price_per_location: editingCompany.monthly_cost || '50'
+      });
+      setShowEditCompany(false);
+      setEditingCompany(null);
+      loadCompanies();
+      alert('Empresa actualizada exitosamente');
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -464,6 +599,28 @@ export const SuperuserDashboard: React.FC = () => {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAvailablePlans = async () => {
+    try {
+      const data = await superadminAPI.getPlans(true);
+      setAvailablePlans(data);
+    } catch (err: any) {
+      console.error('Error loading available plans:', err);
+    }
+  };
+
+  const handlePlanChange = (planCode: string) => {
+    const selectedPlan = availablePlans.find(plan => plan.plan_code === planCode);
+    if (selectedPlan) {
+      setNewCompany({
+        ...newCompany,
+        subscription_plan: planCode as any,
+        max_locations: selectedPlan.max_locations,
+        max_employees: selectedPlan.max_employees,
+        price_per_location: parseFloat(selectedPlan.price_per_location)
+      });
     }
   };
 
@@ -729,34 +886,48 @@ export const SuperuserDashboard: React.FC = () => {
                 value={newCompany.phone}
                 onChange={(e) => setNewCompany({ ...newCompany, phone: e.target.value })}
               />
-              <Select
-                label="Plan"
-                value={newCompany.subscription_plan}
-                onChange={(e) => setNewCompany({ ...newCompany, subscription_plan: e.target.value as any })}
-                options={[
-                  { value: 'basic', label: 'Básico' },
-                  { value: 'professional', label: 'Professional' },
-                  { value: 'enterprise', label: 'Enterprise' },
-                  { value: 'custom', label: 'Personalizado' }
-                ]}
-              />
+              <div className="space-y-2">
+                <Select
+                  label="Plan"
+                  value={newCompany.subscription_plan}
+                  onChange={(e) => handlePlanChange(e.target.value)}
+                  options={[
+                    { value: '', label: 'Selecciona un plan...' },
+                    ...availablePlans.map(plan => ({
+                      value: plan.plan_code,
+                      label: `${plan.display_name} - ${plan.max_locations} ubicaciones, ${plan.max_employees} empleados`
+                    }))
+                  ]}
+                />
+                {newCompany.subscription_plan && (
+                  <p className="text-xs text-muted-foreground">
+                    ℹ️ Los campos de ubicaciones, empleados y precio se prellenan automáticamente según el plan seleccionado
+                  </p>
+                )}
+              </div>
               <Input
                 label="Máximo Ubicaciones"
                 type="number"
                 value={newCompany.max_locations}
                 onChange={(e) => setNewCompany({ ...newCompany, max_locations: parseInt(e.target.value) })}
+                disabled={!!newCompany.subscription_plan}
+                className={newCompany.subscription_plan ? 'bg-muted/50' : ''}
               />
               <Input
                 label="Máximo Empleados"
                 type="number"
                 value={newCompany.max_employees}
                 onChange={(e) => setNewCompany({ ...newCompany, max_employees: parseInt(e.target.value) })}
+                disabled={!!newCompany.subscription_plan}
+                className={newCompany.subscription_plan ? 'bg-muted/50' : ''}
               />
               <Input
                 label="Precio por Ubicación"
                 type="number"
                 value={newCompany.price_per_location}
                 onChange={(e) => setNewCompany({ ...newCompany, price_per_location: parseFloat(e.target.value) })}
+                disabled={!!newCompany.subscription_plan}
+                className={newCompany.subscription_plan ? 'bg-muted/50' : ''}
               />
               <div className="md:col-span-2 flex gap-2">
                 <Button type="submit" disabled={loading}>
@@ -767,6 +938,149 @@ export const SuperuserDashboard: React.FC = () => {
               </Button>
               </div>
             </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Modal de edición de empresa */}
+      {showEditCompany && editingCompany && (
+        <Card>
+          <CardHeader>
+            <h2 className="text-xl font-semibold">Editar Empresa: {editingCompany.name}</h2>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={updateCompany} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Nombre"
+                value={editingCompany.name}
+                onChange={(e) => setEditingCompany({ ...editingCompany, name: e.target.value })}
+                required
+              />
+              <Input
+                label="Subdominio"
+                value={editingCompany.subdomain}
+                onChange={(e) => setEditingCompany({ ...editingCompany, subdomain: e.target.value })}
+                required
+                disabled
+              />
+              <Input
+                label="Email"
+                type="email"
+                value={editingCompany.email}
+                onChange={(e) => setEditingCompany({ ...editingCompany, email: e.target.value })}
+                required
+              />
+              <Input
+                label="Razón Social"
+                value={editingCompany.legal_name || ''}
+                onChange={(e) => setEditingCompany({ ...editingCompany, legal_name: e.target.value })}
+              />
+              <Input
+                label="NIT/RUT"
+                value={editingCompany.tax_id || ''}
+                onChange={(e) => setEditingCompany({ ...editingCompany, tax_id: e.target.value })}
+              />
+              <Input
+                label="Teléfono"
+                value={editingCompany.phone || ''}
+                onChange={(e) => setEditingCompany({ ...editingCompany, phone: e.target.value })}
+              />
+              <Select
+                label="Plan"
+                value={editingCompany.subscription_plan}
+                onChange={(e) => {
+                  const selectedPlan = availablePlans.find(plan => plan.plan_code === e.target.value);
+                  if (selectedPlan) {
+                    setEditingCompany({
+                      ...editingCompany,
+                      subscription_plan: e.target.value as any,
+                      max_locations: selectedPlan.max_locations,
+                      max_employees: selectedPlan.max_employees,
+                      monthly_cost: selectedPlan.price_per_location
+                    });
+                  } else {
+                    setEditingCompany({ ...editingCompany, subscription_plan: e.target.value as any });
+                  }
+                }}
+                options={[
+                  { value: '', label: 'Selecciona un plan...' },
+                  ...availablePlans.map(plan => ({
+                    value: plan.plan_code,
+                    label: `${plan.display_name} - ${plan.max_locations} ubicaciones, ${plan.max_employees} empleados`
+                  }))
+                ]}
+              />
+              <Input
+                label="Máximo Ubicaciones"
+                type="number"
+                value={editingCompany.max_locations || 3}
+                onChange={(e) => setEditingCompany({ ...editingCompany, max_locations: parseInt(e.target.value) })}
+              />
+              <Input
+                label="Máximo Empleados"
+                type="number"
+                value={editingCompany.max_employees || 10}
+                onChange={(e) => setEditingCompany({ ...editingCompany, max_employees: parseInt(e.target.value) })}
+              />
+              <Input
+                label="Precio por Ubicación"
+                type="number"
+                value={parseFloat(editingCompany.monthly_cost || '50')}
+                onChange={(e) => setEditingCompany({ ...editingCompany, monthly_cost: e.target.value })}
+              />
+              <div className="md:col-span-2 flex gap-2">
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Actualizando...' : 'Actualizar Empresa'}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => {
+                  setShowEditCompany(false);
+                  setEditingCompany(null);
+                }}>
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+
+      {/* Información del Boss */}
+      {bossInfo && (
+        <Card>
+          <CardHeader>
+            <h2 className="text-xl font-semibold">Información del Boss</h2>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Nombre Completo</p>
+                <p className="font-medium">{bossInfo.full_name || `${bossInfo.first_name} ${bossInfo.last_name}`}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Email</p>
+                <p className="font-medium">{bossInfo.email}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Empresa ID</p>
+                <p className="font-medium">{bossInfo.company_id || selectedCompanyForBoss}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Estado</p>
+                <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-success/20 text-success">
+                  Activo
+                </span>
+              </div>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => setBossInfo(null)}
+              >
+                Cerrar
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -841,25 +1155,28 @@ export const SuperuserDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Botones de acción */}
-                  <div className="flex flex-wrap gap-2">
+                  {/* Botones de acción principales */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <Button 
+                      size="sm" 
+                      variant="primary" 
+                      onClick={() => {
+                        setEditingCompany(company);
+                        setShowEditCompany(true);
+                      }}
+                      className="flex-1 sm:flex-initial"
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      <span className="hidden sm:inline">Editar</span>
+                    </Button>
                     <Button 
                       size="sm" 
                       variant="outline" 
                       onClick={() => viewCompanyDetails(company.id)}
                       className="flex-1 sm:flex-initial"
                     >
-                      <Edit className="h-4 w-4 mr-1" />
-                      <span className="hidden sm:inline">Ver</span>
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => getCompanyWithBoss(company.id)}
-                      className="flex-1 sm:flex-initial"
-                    >
-                      <Users className="h-4 w-4 mr-1" />
-                      <span className="hidden sm:inline">Boss</span>
+                      <Activity className="h-4 w-4 mr-1" />
+                      <span className="hidden sm:inline">Métricas</span>
                     </Button>
                     <Button 
                       size="sm" 
@@ -870,6 +1187,10 @@ export const SuperuserDashboard: React.FC = () => {
                       <FileText className="h-4 w-4 mr-1" />
                       <span className="hidden sm:inline">Facturas</span>
                     </Button>
+                  </div>
+
+                  {/* Botones de gestión financiera */}
+                  <div className="flex flex-wrap gap-2 mb-3">
                     <Button 
                       size="sm" 
                       variant="outline" 
@@ -877,16 +1198,20 @@ export const SuperuserDashboard: React.FC = () => {
                       className="flex-1 sm:flex-initial"
                     >
                       <CreditCard className="h-4 w-4 mr-1" />
-                      <span className="hidden sm:inline">Generar</span>
+                      <span className="hidden sm:inline">Generar Factura</span>
                     </Button>
+                  </div>
+
+                  {/* Botones de estado */}
+                  <div className="flex flex-wrap gap-2">
                     {company.subscription_status === 'suspended' ? (
                       <Button 
                         size="sm" 
                         variant="outline" 
                         onClick={() => activateCompany(company.id)}
-                        className="flex-1 sm:flex-initial"
+                        className="flex-1 sm:flex-initial bg-success/10 text-success hover:bg-success/20"
                       >
-                        <CheckCircle className="h-4 w-4 text-success mr-1" />
+                        <CheckCircle className="h-4 w-4 mr-1" />
                         <span className="hidden sm:inline">Activar</span>
                       </Button>
                     ) : (
@@ -894,9 +1219,9 @@ export const SuperuserDashboard: React.FC = () => {
                         size="sm" 
                         variant="outline" 
                         onClick={() => suspendCompany(company.id)}
-                        className="flex-1 sm:flex-initial"
+                        className="flex-1 sm:flex-initial bg-warning/10 text-warning hover:bg-warning/20"
                       >
-                        <Ban className="h-4 w-4 text-warning mr-1" />
+                        <Ban className="h-4 w-4 mr-1" />
                         <span className="hidden sm:inline">Suspender</span>
                       </Button>
                     )}
@@ -904,9 +1229,9 @@ export const SuperuserDashboard: React.FC = () => {
                       size="sm" 
                       variant="outline" 
                       onClick={() => deleteCompany(company.id)}
-                      className="flex-1 sm:flex-initial"
+                      className="flex-1 sm:flex-initial bg-error/10 text-error hover:bg-error/20"
                     >
-                      <Trash2 className="h-4 w-4 text-error mr-1" />
+                      <Trash2 className="h-4 w-4 mr-1" />
                       <span className="hidden sm:inline">Eliminar</span>
                     </Button>
                   </div>
@@ -969,44 +1294,6 @@ export const SuperuserDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Formulario para crear Boss */}
-            <div className="mt-6 pt-6 border-t">
-              <h3 className="font-semibold mb-4">Crear Usuario Boss</h3>
-              <form onSubmit={(e) => createBoss(e, selectedCompany.id)} className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Email"
-                  type="email"
-                  value={newBoss.email}
-                  onChange={(e) => setNewBoss({ ...newBoss, email: e.target.value })}
-                  required
-                />
-                <Input
-                  label="Password"
-                  type="password"
-                  value={newBoss.password}
-                  onChange={(e) => setNewBoss({ ...newBoss, password: e.target.value })}
-                  required
-                />
-                <Input
-                  label="Nombre"
-                  value={newBoss.first_name}
-                  onChange={(e) => setNewBoss({ ...newBoss, first_name: e.target.value })}
-                  required
-                />
-                <Input
-                  label="Apellido"
-                  value={newBoss.last_name}
-                  onChange={(e) => setNewBoss({ ...newBoss, last_name: e.target.value })}
-                  required
-                />
-                <div className="col-span-2 flex gap-2">
-                  <Button type="submit">Crear Boss</Button>
-                  <Button type="button" variant="outline" onClick={() => getBoss(selectedCompany.id)}>
-                    Ver Boss Actual
-                  </Button>
-                </div>
-              </form>
-            </div>
           </CardContent>
         </Card>
       )}
@@ -1494,6 +1781,389 @@ export const SuperuserDashboard: React.FC = () => {
     </div>
   );
 
+  const renderBossesTab = () => (
+    <div className="space-y-6">
+      {/* Filtros y búsqueda */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <Input
+                icon={<Search className="h-5 w-5" />}
+                placeholder="Buscar por nombre de empresa..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Button onClick={() => setShowCreateBoss(true)}>
+              <Plus className="h-4 w-4 mr-2" /> Crear Boss
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Modal de creación de Boss */}
+      {showCreateBoss && (
+        <Card>
+          <CardHeader>
+            <h2 className="text-xl font-semibold">Crear Usuario Boss</h2>
+            <p className="text-sm text-muted-foreground">
+              Selecciona una empresa para crear el usuario Boss
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4">
+              <Select
+                label="Seleccionar Empresa"
+                value={selectedCompanyForBoss || ''}
+                onChange={(e) => setSelectedCompanyForBoss(parseInt(e.target.value))}
+                options={[
+                  { value: '', label: 'Selecciona una empresa...' },
+                  ...companies.map(company => ({
+                    value: company.id.toString(),
+                    label: `${company.name} (${company.subdomain})`
+                  }))
+                ]}
+                required
+              />
+            </div>
+            
+            {selectedCompanyForBoss && (
+              <form onSubmit={createBoss} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Email"
+                  type="email"
+                  value={newBoss.email}
+                  onChange={(e) => setNewBoss({ ...newBoss, email: e.target.value })}
+                  required
+                />
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Password</label>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={newBoss.password}
+                      onChange={(e) => {
+                        setNewBoss({ ...newBoss, password: e.target.value });
+                        validatePassword(e.target.value);
+                      }}
+                      required
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? (
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  
+                  {/* Validaciones de contraseña */}
+                  <div className="space-y-1 text-xs">
+                    <div className={`flex items-center gap-2 ${passwordValidation.hasUpperCase ? 'text-success' : 'text-muted-foreground'}`}>
+                      <div className={`w-2 h-2 rounded-full ${passwordValidation.hasUpperCase ? 'bg-success' : 'bg-muted'}`}></div>
+                      Al menos una letra mayúscula
+                    </div>
+                    <div className={`flex items-center gap-2 ${passwordValidation.hasNumber ? 'text-success' : 'text-muted-foreground'}`}>
+                      <div className={`w-2 h-2 rounded-full ${passwordValidation.hasNumber ? 'bg-success' : 'bg-muted'}`}></div>
+                      Al menos un número
+                    </div>
+                    <div className={`flex items-center gap-2 ${passwordValidation.hasSpecialChar ? 'text-success' : 'text-muted-foreground'}`}>
+                      <div className={`w-2 h-2 rounded-full ${passwordValidation.hasSpecialChar ? 'bg-success' : 'bg-muted'}`}></div>
+                      Al menos un carácter especial
+                    </div>
+                    <div className={`flex items-center gap-2 ${newBoss.password.length >= 8 ? 'text-success' : 'text-muted-foreground'}`}>
+                      <div className={`w-2 h-2 rounded-full ${newBoss.password.length >= 8 ? 'bg-success' : 'bg-muted'}`}></div>
+                      Mínimo 8 caracteres
+                    </div>
+                  </div>
+                </div>
+                <Input
+                  label="Nombre"
+                  value={newBoss.first_name}
+                  onChange={(e) => setNewBoss({ ...newBoss, first_name: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Apellido"
+                  value={newBoss.last_name}
+                  onChange={(e) => setNewBoss({ ...newBoss, last_name: e.target.value })}
+                  required
+                />
+                <div className="md:col-span-2 flex gap-2">
+                  <Button type="submit" disabled={loading || !passwordValidation.isValid}>
+                    {loading ? 'Creando...' : 'Crear Boss'}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => {
+                    setShowCreateBoss(false);
+                    setSelectedCompanyForBoss(null);
+                    setNewBoss({ email: '', password: '', first_name: '', last_name: '' });
+                    setPasswordValidation({ hasUpperCase: false, hasNumber: false, hasSpecialChar: false, isValid: false });
+                    setShowPassword(false);
+                  }}>
+                    Cancelar
+                  </Button>
+                </div>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Lista de empresas con información de Boss */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Gestión de Usuarios Boss</h2>
+            {loadingBosses && <span className="text-sm text-muted-foreground">Cargando...</span>}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingBosses ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Cargando empresas y Boss...</p>
+            </div>
+          ) : companiesWithBoss.length > 0 ? (
+            <div className="space-y-4">
+              {companiesWithBoss.map((item) => (
+                <div key={item.company.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <Building2 className="h-6 w-6 text-primary" />
+                      <div>
+                        <h3 className="font-semibold text-lg">{item.company.name}</h3>
+                        <p className="text-sm text-muted-foreground">{item.company.subdomain}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-xs px-2 py-1 rounded font-medium ${
+                            item.company.subscription_status === 'active' ? 'bg-success/20 text-success' :
+                            item.company.subscription_status === 'suspended' ? 'bg-error/20 text-error' :
+                            'bg-warning/20 text-warning'
+                          }`}>
+                            {item.company.subscription_status === 'active' ? 'Activo' :
+                             item.company.subscription_status === 'suspended' ? 'Suspendido' : 
+                             item.company.subscription_status}
+                          </span>
+                          <span className="text-xs px-2 py-1 rounded bg-primary/20 text-primary font-medium">
+                            {item.company.subscription_plan}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Información del Boss */}
+                    <div className="text-right">
+                      {item.hasBoss ? (
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-success">Boss Asignado</p>
+                            <p className="text-xs text-muted-foreground">
+                              {item.boss.full_name || `${item.boss.first_name} ${item.boss.last_name}`}
+                            </p>
+                          </div>
+                          <Shield className="h-5 w-5 text-success" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-muted-foreground">Sin Boss</p>
+                            <p className="text-xs text-muted-foreground">No asignado</p>
+                          </div>
+                          <Shield className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Estadísticas de la empresa */}
+                  <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-muted/20 rounded-md">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Ubicaciones</p>
+                      <p className="font-semibold">{item.company.current_locations_count}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Empleados</p>
+                      <p className="font-semibold">{item.company.current_employees_count}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Costo Mensual</p>
+                      <p className="font-semibold">${parseFloat(item.company.monthly_cost).toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  {/* Botones de acción */}
+                  <div className="flex flex-wrap gap-2">
+                    {item.hasBoss ? (
+                      <>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            setBossInfo(item.boss);
+                            setSelectedCompanyForBoss(item.company.id);
+                          }}
+                          className="flex-1 sm:flex-initial"
+                        >
+                          <Shield className="h-4 w-4 mr-1" />
+                          Ver Boss
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="primary" 
+                          onClick={() => {
+                            setSelectedCompanyForBoss(item.company.id);
+                            setShowCreateBoss(true);
+                          }}
+                          className="flex-1 sm:flex-initial"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Cambiar Boss
+                        </Button>
+                      </>
+                    ) : (
+                      <Button 
+                        size="sm" 
+                        variant="primary" 
+                        onClick={() => {
+                          setSelectedCompanyForBoss(item.company.id);
+                          setShowCreateBoss(true);
+                        }}
+                        className="flex-1 sm:flex-initial"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Crear Boss
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Building2 className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium text-muted-foreground">No hay empresas para mostrar</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Información del Boss seleccionado */}
+      {bossInfo && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Shield className="h-6 w-6 text-primary" />
+                <h2 className="text-xl font-semibold">Información del Boss</h2>
+              </div>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => setBossInfo(null)}
+              >
+                Cerrar
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Información personal */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Nombre Completo</p>
+                  <p className="font-medium text-lg">{bossInfo.full_name || `${bossInfo.first_name} ${bossInfo.last_name}`}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Email</p>
+                  <p className="font-medium">{bossInfo.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Empresa ID</p>
+                  <p className="font-medium">{bossInfo.company_id || selectedCompanyForBoss}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Estado</p>
+                  <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-success/20 text-success">
+                    Activo
+                  </span>
+                </div>
+              </div>
+
+              {/* Información adicional si está disponible */}
+              {(bossInfo.created_at || bossInfo.updated_at) && (
+                <div className="pt-4 border-t">
+                  <h3 className="font-semibold mb-3">Información del Sistema</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    {bossInfo.created_at && (
+                      <div>
+                        <p className="text-muted-foreground">Creado</p>
+                        <p className="font-medium">
+                          {new Date(bossInfo.created_at).toLocaleDateString('es-ES', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                    )}
+                    {bossInfo.updated_at && (
+                      <div>
+                        <p className="text-muted-foreground">Última actualización</p>
+                        <p className="font-medium">
+                          {new Date(bossInfo.updated_at).toLocaleDateString('es-ES', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Acciones */}
+              <div className="pt-4 border-t flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => {
+                    setSelectedCompanyForBoss(bossInfo.company_id || selectedCompanyForBoss);
+                    setShowCreateBoss(true);
+                    setBossInfo(null);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Cambiar Boss
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => setBossInfo(null)}
+                >
+                  Cerrar
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+
   const renderSetupTab = () => (
     <div className="space-y-6">
       <Card>
@@ -1580,6 +2250,13 @@ export const SuperuserDashboard: React.FC = () => {
             <Building2 className="h-4 w-4 mr-2" /> Empresas
           </Button>
           <Button
+            variant={activeTab === 'bosses' ? 'primary' : 'outline'}
+            onClick={() => setActiveTab('bosses')}
+            className="px-4 py-3 min-w-fit"
+          >
+            <Shield className="h-4 w-4 mr-2" /> Usuarios Boss
+          </Button>
+          <Button
             variant={activeTab === 'subscriptions' ? 'primary' : 'outline'}
             onClick={() => setActiveTab('subscriptions')}
             className="px-4 py-3 min-w-fit"
@@ -1620,6 +2297,7 @@ export const SuperuserDashboard: React.FC = () => {
         <div className="pb-8">
           {activeTab === 'overview' && renderOverviewTab()}
           {activeTab === 'companies' && renderCompaniesTab()}
+          {activeTab === 'bosses' && renderBossesTab()}
           {activeTab === 'subscriptions' && renderSubscriptionsTab()}
           {activeTab === 'invoices' && renderInvoicesTab()}
           {activeTab === 'plans' && renderPlansTab()}

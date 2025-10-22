@@ -31,6 +31,25 @@ interface TransfersViewProps {
     product?: any;
     source_location_id?: number;
     destination_location_id?: number;
+    // Información específica de pies separados
+    pairs?: number;
+    left_feet?: number;
+    right_feet?: number;
+    can_sell?: boolean;
+    can_form_pair?: boolean;
+    missing_foot?: 'left' | 'right' | null;
+    location_name?: string;
+    transfer_type?: 'pair' | 'left_foot' | 'right_foot' | 'form_pair';
+    request_notes?: string;
+    // Opciones disponibles para solicitar
+    available_options?: {
+      pairs_available?: boolean;
+      left_feet_available?: boolean;
+      right_feet_available?: boolean;
+      pairs_quantity?: number;
+      left_feet_quantity?: number;
+      right_feet_quantity?: number;
+    };
   } | null;
   onSellProduct?: (productData: {
     code: string;
@@ -58,10 +77,10 @@ interface CompletedTransfer {
   model: string;
   size: string;
   quantity: number;
-  purpose: 'cliente' | 'restock';
+  purpose: 'cliente' | 'restock' | 'pair_formation';
   priority: 'high' | 'normal';
   requested_at: string;
-  completed_at: string;
+  completed_at: string | null;
   duration: string;
   next_action: string;
   product_image?: string; // Campo opcional para la imagen
@@ -112,6 +131,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     pickup_type: string;
     destination_type: string;
     notes: string;
+    // Nuevo campo para tipo de transferencia
+    transfer_type: 'pair' | 'single_foot';
+    foot_side?: 'left' | 'right';
   }>({
     source_location_id: undefined, // origen: producto/talla seleccionada
     destination_location_id: user?.location_id ?? undefined, // destino: usuario actual
@@ -123,12 +145,22 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     purpose: 'cliente',
     pickup_type: 'corredor',
     destination_type: 'exhibicion',
-    notes: ''
+    notes: '',
+    transfer_type: 'pair',
+    foot_side: undefined
   });
 
   // Effect para manejar datos prefilled
   useEffect(() => {
     if (prefilledProductData) {
+      // Determinar cantidad basada en el tipo de transferencia
+      let quantity = 1;
+      if (prefilledProductData.transfer_type === 'form_pair') {
+        quantity = Math.min(prefilledProductData.left_feet || 0, prefilledProductData.right_feet || 0);
+      } else if (prefilledProductData.pairs && prefilledProductData.pairs > 0) {
+        quantity = prefilledProductData.pairs;
+      }
+
       setRequestForm({
         source_location_id: prefilledProductData.source_location_id ?? undefined,
         destination_location_id: user?.location_id ?? undefined,
@@ -136,11 +168,13 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         brand: prefilledProductData.brand || '',
         model: prefilledProductData.model || '',
         size: prefilledProductData.size || '',
-        quantity: 1,
+        quantity: quantity,
         purpose: 'cliente',
         pickup_type: 'corredor',
         destination_type: 'exhibicion',
-        notes: `Solicitud desde escáner - Color: ${prefilledProductData.color || 'N/A'}`
+        notes: prefilledProductData.request_notes || `Solicitud desde escáner - Color: ${prefilledProductData.color || 'N/A'}`,
+        transfer_type: 'pair', // Por defecto par completo
+        foot_side: undefined
       });
       setActiveTab('new');
     }
@@ -205,7 +239,28 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       }
       // destination siempre es el usuario actual
       transferPayload.destination_location_id = user?.location_id ?? undefined;
-      const response = await vendorAPI.requestTransfer(transferPayload);
+      let response;
+      
+      // Determinar qué endpoint usar basado en el tipo de transferencia
+      if (requestForm.transfer_type === 'single_foot' && requestForm.foot_side) {
+        // Usar endpoint para pie individual
+        const singleFootPayload = {
+          source_location_id: transferPayload.source_location_id || 0,
+          destination_location_id: transferPayload.destination_location_id || 0,
+          sneaker_reference_code: transferPayload.sneaker_reference_code,
+          size: transferPayload.size,
+          foot_side: requestForm.foot_side,
+          quantity: transferPayload.quantity,
+          purpose: 'pair_formation',
+          pickup_type: transferPayload.pickup_type,
+          notes: transferPayload.notes
+        };
+        response = await vendorAPI.requestSingleFoot(singleFootPayload);
+      } else {
+        // Usar endpoint normal para par completo
+        response = await vendorAPI.requestTransfer(transferPayload);
+      }
+
       onTransferRequested?.(
         response.transfer_request_id,
         requestForm.purpose === 'cliente'
@@ -222,7 +277,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         purpose: 'cliente',
         pickup_type: 'corredor',
         destination_type: 'exhibicion',
-        notes: ''
+        notes: '',
+        transfer_type: 'pair',
+        foot_side: undefined
       });
       setActiveTab('pending');
       loadTransfersData();
@@ -458,20 +515,20 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
   // Función para obtener el color del progreso
   const getProgressColor = (percentage: number): string => {
-    if (percentage < 30) return 'bg-red-500';
-    if (percentage < 60) return 'bg-yellow-500';
-    if (percentage < 90) return 'bg-blue-500';
-    return 'bg-green-500';
+    if (percentage < 30) return 'bg-error';
+    if (percentage < 60) return 'bg-warning';
+    if (percentage < 90) return 'bg-primary';
+    return 'bg-success';
   };
 
   const getStatusColor = (transfer: PendingTransferItem) => {
     switch (transfer.priority) {
       case 'high':
-        return 'bg-red-100 text-red-800';
+        return 'bg-error/10 text-error';
       case 'normal':
-        return 'bg-green-100 text-green-800';
+        return 'bg-success/10 text-success';
       default:
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-warning/10 text-warning';
     }
   };
 
@@ -515,16 +572,61 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       {prefilledProductData && (
         <Card className="border-primary/30 bg-primary/10">
           <CardContent className="p-3 md:p-4">
-            <div className="flex items-center space-x-3">
-              <Package className="h-4 w-4 md:h-5 md:w-5 text-primary flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-primary">
-                  Producto desde Escáner IA
-                </p>
-                <p className="text-sm text-primary truncate">
-                  {prefilledProductData.brand} {prefilledProductData.model} - Talla {prefilledProductData.size}
-                </p>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-3">
+                <Package className="h-4 w-4 md:h-5 md:w-5 text-primary flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-primary">
+                    Producto desde Escáner IA
+                  </p>
+                  <p className="text-sm text-primary truncate">
+                    {prefilledProductData.brand} {prefilledProductData.model} - Talla {prefilledProductData.size}
+                  </p>
+                </div>
               </div>
+              
+              {/* Información específica de transferencia */}
+              {prefilledProductData.transfer_type && (
+                <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 border border-primary/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    {prefilledProductData.transfer_type === 'pair' && (
+                      <span className="text-sm font-semibold text-success">👟 Par Completo</span>
+                    )}
+                    {prefilledProductData.transfer_type === 'left_foot' && (
+                      <span className="text-sm font-semibold text-warning">🦶 Pie Izquierdo</span>
+                    )}
+                    {prefilledProductData.transfer_type === 'right_foot' && (
+                      <span className="text-sm font-semibold text-warning">🦶 Pie Derecho</span>
+                    )}
+                    {prefilledProductData.transfer_type === 'form_pair' && (
+                      <span className="text-sm font-semibold text-info">🔗 Formar Pares</span>
+                    )}
+                  </div>
+                  
+                  {/* Inventario disponible en origen */}
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="text-center p-2 bg-success/10 rounded">
+                      <div className="font-bold text-success">{prefilledProductData.pairs || 0}</div>
+                      <div className="text-muted-foreground">👟 Pares</div>
+                    </div>
+                    <div className="text-center p-2 bg-warning/10 rounded">
+                      <div className="font-bold text-warning">{prefilledProductData.left_feet || 0}</div>
+                      <div className="text-muted-foreground">🦶 Izq</div>
+                    </div>
+                    <div className="text-center p-2 bg-warning/10 rounded">
+                      <div className="font-bold text-warning">{prefilledProductData.right_feet || 0}</div>
+                      <div className="text-muted-foreground">🦶 Der</div>
+                    </div>
+                  </div>
+                  
+                  {/* Notas específicas */}
+                  {prefilledProductData.request_notes && (
+                    <div className="mt-2 text-xs text-muted-foreground bg-muted/20 p-2 rounded">
+                      💡 {prefilledProductData.request_notes}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -552,9 +654,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 </div>
               )}
               {todayStats && (
-                <div className="bg-primary/10 p-3 rounded-lg">
-                  <p className="text-2xl font-bold text-primary">{todayStats.completed || 0}</p>
-                  <p className="text-xs text-primary">Completadas Hoy</p>
+                <div className="bg-success/10 p-3 rounded-lg border border-success/20">
+                  <p className="text-2xl font-bold text-success">{todayStats.completed || 0}</p>
+                  <p className="text-xs text-success">Completadas Hoy</p>
                 </div>
               )}
             </div>
@@ -730,14 +832,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     return progressB - progressA;
                   })
                   .map((transfer) => (
-                  <div key={transfer.id} className="border rounded-lg p-3 md:p-4">
+                  <div key={transfer.id} className="border border-border rounded-lg p-3 md:p-4 bg-card shadow-sm hover:shadow-lg transition-all duration-300">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
                       <div className="flex-1 min-w-0">
                         <div className="mb-4">
-                            <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                            <div className="bg-gradient-to-br from-muted/20 to-muted/40 rounded-lg flex items-center justify-center">
                               <img
                                 src={transfer.product_image}
-                                className="w-32 h-48 object-cover rounded-lg border border-gray-200"
+                                className="w-32 h-48 object-cover rounded-lg border border-border"
                                 alt={`${transfer.brand} ${transfer.model}`}
                               />
                           </div>
@@ -748,13 +850,18 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                             <span>{getStatusText(transfer)}</span>
                           </span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            transfer.pickup_type === 'corredor' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
+                            transfer.pickup_type === 'corredor' ? 'bg-primary/10 text-primary' : 'bg-success/10 text-success'
                           }`}>
                             {transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}
                           </span>
                           {transfer.purpose === 'return' && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted/10 text-muted-foreground">
                               🔄 Devolución
+                            </span>
+                          )}
+                          {transfer.purpose === 'pair_formation' && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                              🔗 Formar Par
                             </span>
                           )}
                         </div>
@@ -765,7 +872,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                             <span className="text-xs font-medium text-muted-foreground">Progreso</span>
                             <span className="text-xs font-bold text-primary">{getProgressPercentage(transfer)}%</span>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="w-full bg-muted rounded-full h-2">
                             <div 
                               className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(getProgressPercentage(transfer))}`}
                               style={{ width: `${getProgressPercentage(transfer)}%` }}
@@ -794,7 +901,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                               {transfer.status === 'delivered' && (
                                 <Button
                                   onClick={() => handleConfirmReception(transfer)}
-                                  className="bg-green-600 hover:bg-green-700 text-sm w-full"
+                                  className="bg-success hover:bg-success/90 text-success-foreground text-sm w-full"
                                   size="sm"
                                 >
                                   <CheckCircle className="h-4 w-4 mr-2" />
@@ -805,7 +912,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                               {transfer.status === 'pending' && (
                                 <Button
                                   onClick={() => handleCancelTransfer(transfer.id)}
-                                  className="bg-red-600 hover:bg-red-700 text-sm w-full"
+                                  className="bg-error hover:bg-error/90 text-error-foreground text-sm w-full"
                                   size="sm"
                                   variant="outline"
                                 >
@@ -822,20 +929,20 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                               {/* CASO 1: Devolución - Status accepted - Debes llevar el producto a bodega */}
                               {transfer.purpose === 'return' && transfer.status === 'accepted' && (
                                 <>
-                                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg mb-2">
+                                  <div className="p-3 bg-muted/10 border border-muted/20 rounded-lg mb-2">
                                     <div className="flex items-center space-x-2 mb-1">
-                                      <AlertCircle className="h-4 w-4 text-orange-600" />
-                                      <span className="text-sm font-medium text-orange-800">
+                                      <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                                      <span className="text-sm font-medium text-muted-foreground">
                                         🔄 Devolución: Debes llevar el producto a la bodega
                                       </span>
                                     </div>
-                                    <p className="text-xs text-orange-700 mt-1">
+                                    <p className="text-xs text-muted-foreground mt-1">
                                       Lleva el producto personalmente a la bodega para completar la devolución.
                                     </p>
                                   </div>
                                   <Button
                                     onClick={() => handleDeliverReturnToWarehouse(transfer.id)}
-                                    className="bg-orange-600 hover:bg-orange-700 text-sm w-full"
+                                    className="bg-muted text-muted-foreground hover:bg-muted/80 text-sm w-full"
                                     size="sm"
                                   >
                                     <Package className="h-4 w-4 mr-2" />
@@ -846,10 +953,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                               
                               {/* CASO 2: Transferencia normal - Status accepted - Debes ir a recoger */}
                               {transfer.purpose !== 'return' && transfer.status === 'accepted' && (
-                                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
                                   <div className="flex items-center space-x-2">
-                                    <AlertCircle className="h-4 w-4 text-yellow-600" />
-                                    <span className="text-sm font-medium text-yellow-800">
+                                    <AlertCircle className="h-4 w-4 text-warning" />
+                                    <span className="text-sm font-medium text-warning">
                                       Debes ir a recoger el producto a la bodega
                                     </span>
                                   </div>
@@ -860,7 +967,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                               {transfer.status === 'delivered' && (
                                 <Button
                                   onClick={() => handleConfirmReception(transfer)}
-                                  className="bg-green-600 hover:bg-green-700 text-sm w-full"
+                                  className="bg-success hover:bg-success/90 text-success-foreground text-sm w-full"
                                   size="sm"
                                 >
                                   <CheckCircle className="h-4 w-4 mr-2" />
@@ -872,7 +979,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                               {transfer.status === 'pending' && (
                                 <Button
                                   onClick={() => handleCancelTransfer(transfer.id)}
-                                  className="bg-red-600 hover:bg-red-700 text-sm w-full"
+                                  className="bg-error hover:bg-error/90 text-error-foreground text-sm w-full"
                                   size="sm"
                                   variant="outline"
                                 >
@@ -887,7 +994,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     </div>
 
                     {/* Información de participantes */}
-                    <div className="mt-3 p-2 md:p-3 bg-primary/10 rounded-md">
+                    <div className="mt-3 p-2 md:p-3 bg-muted/5 border border-border rounded-md">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs md:text-sm">
                         {transfer.pickup_type === 'corredor' ? (
                           <>
@@ -940,16 +1047,16 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             ) : (
               <div className="space-y-3 md:space-y-4">
                 {completedTransfers.map((transfer) => (
-                  <div key={transfer.id} className="border rounded-lg p-3 md:p-4 bg-card">
+                  <div key={transfer.id} className="border border-border rounded-lg p-3 md:p-4 bg-card shadow-sm hover:shadow-lg transition-all duration-300">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
                       <div className="flex-1 min-w-0">
                         {/* Imagen del producto */}
                         <div className="mb-4">
-                          <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                          <div className="bg-gradient-to-br from-muted/20 to-muted/40 rounded-lg flex items-center justify-center">
                             {transfer.product_image && (
                               <img
                                 src={transfer.product_image}
-                                className="w-32 h-48 object-cover rounded-lg border border-gray-200"
+                                className="w-32 h-48 object-cover rounded-lg border border-border"
                                 alt={`${transfer.brand} ${transfer.model}`}
                               />
                             )}
@@ -959,15 +1066,20 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         {/* Estado */}
                         <div className="flex items-center space-x-2 mb-3">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            transfer.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            transfer.status === 'completed' ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
                           }`}>
                             {transfer.status === 'completed' ? '✅ Completada' : '❌ Cancelada'}
                           </span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            transfer.priority === 'high' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                            transfer.priority === 'high' ? 'bg-error/10 text-error' : 'bg-primary/10 text-primary'
                           }`}>
                             {transfer.priority === 'high' ? '🔥 Urgente' : '📦 Normal'}
                           </span>
+                          {transfer.purpose === 'pair_formation' && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                              🔗 Formar Par
+                            </span>
+                          )}
                         </div>
 
                         {/* Información del producto */}
@@ -982,7 +1094,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         <div className="text-xs md:text-sm mb-3">
                           <span className="text-muted-foreground">Propósito:</span>
                           <span className="font-medium ml-1">
-                            {transfer.purpose === 'cliente' ? '🏃‍♂️ Cliente' : '📦 Restock'}
+                            {transfer.purpose === 'cliente' ? '🏃‍♂️ Cliente' : 
+                             transfer.purpose === 'pair_formation' ? '🔗 Formar Par' : '📦 Restock'}
                           </span>
                         </div>
 
@@ -992,7 +1105,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                             <strong>Solicitado:</strong> {new Date(transfer.requested_at).toLocaleString()}
                           </div>
                           <div>
-                            <strong>Completado:</strong> {new Date(transfer.completed_at).toLocaleString()}
+                            <strong>Completado:</strong> {transfer.completed_at ? new Date(transfer.completed_at).toLocaleString() : 'N/A'}
                           </div>
                           <div>
                             <strong>Duración:</strong> {transfer.duration}
@@ -1004,7 +1117,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                           <div className="flex flex-col md:flex-row gap-2 mt-3">
                             <Button
                               onClick={() => handleGenerateReturn(transfer)}
-                              className="bg-orange-600 hover:bg-orange-700 text-sm flex-1"
+                              className="bg-muted text-muted-foreground hover:bg-muted/80 text-sm flex-1"
                               size="sm"
                             >
                               <Package className="h-4 w-4 mr-2" />
@@ -1012,7 +1125,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                             </Button>
                             <Button
                               onClick={() => handleSellFromCompletedTransfer(transfer)}
-                              className="bg-blue-600 hover:bg-blue-700 text-sm flex-1"
+                              className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm flex-1"
                               size="sm"
                             >
                               <DollarSign className="h-4 w-4 mr-2" />
@@ -1142,7 +1255,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
-                    Cantidad
+                    Cantidad {prefilledProductData?.transfer_type && '✅'}
                   </label>
                   <input
                     type="number"
@@ -1150,10 +1263,129 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     onChange={(e) => setRequestForm({...requestForm, quantity: parseInt(e.target.value) || 1})}
                     min="1"
                     required
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${
+                      prefilledProductData?.transfer_type ? 'border-primary/30 bg-primary/10' : 'border-border'
+                    }`}
                   />
+                  {prefilledProductData?.transfer_type && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      💡 Cantidad calculada automáticamente según disponibilidad
+                    </p>
+                  )}
                 </div>
               </div>
+
+              {/* Selección de tipo de transferencia - Solo mostrar si hay opciones disponibles */}
+              {prefilledProductData?.available_options && (
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-primary mb-3">
+                    🎯 ¿Qué deseas solicitar desde {prefilledProductData.location_name}?
+                  </h4>
+                  
+                  <div className="space-y-3">
+                    {/* Opción 1: Par Completo */}
+                    {prefilledProductData.available_options.pairs_available && (
+                      <label className="flex items-center space-x-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-muted/20">
+                        <input
+                          type="radio"
+                          name="transfer_type"
+                          value="pair"
+                          checked={requestForm.transfer_type === 'pair'}
+                          onChange={() => {
+                            setRequestForm(prev => ({
+                              ...prev,
+                              transfer_type: 'pair',
+                              foot_side: undefined,
+                              quantity: prefilledProductData.available_options?.pairs_quantity || 1
+                            }));
+                          }}
+                          className="text-primary"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">👟 Par Completo</span>
+                            <span className="text-xs text-success bg-success/10 px-2 py-1 rounded">
+                              {prefilledProductData.available_options.pairs_quantity} disponible(s)
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Solicitar par completo para venta inmediata
+                          </p>
+                        </div>
+                      </label>
+                    )}
+
+                    {/* Opción 2: Pie Izquierdo */}
+                    {prefilledProductData.available_options.left_feet_available && (
+                      <label className="flex items-center space-x-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-muted/20">
+                        <input
+                          type="radio"
+                          name="transfer_type"
+                          value="single_foot"
+                          checked={requestForm.transfer_type === 'single_foot' && requestForm.foot_side === 'left'}
+                          onChange={() => {
+                            setRequestForm(prev => ({
+                              ...prev,
+                              transfer_type: 'single_foot',
+                              foot_side: 'left',
+                              quantity: prefilledProductData.available_options?.left_feet_quantity || 1
+                            }));
+                          }}
+                          className="text-primary"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">🦶 Pie Izquierdo</span>
+                            <span className="text-xs text-warning bg-warning/10 px-2 py-1 rounded">
+                              {prefilledProductData.available_options.left_feet_quantity} disponible(s)
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Solicitar pie izquierdo para formar par con pie derecho local
+                          </p>
+                        </div>
+                      </label>
+                    )}
+
+                    {/* Opción 3: Pie Derecho */}
+                    {prefilledProductData.available_options.right_feet_available && (
+                      <label className="flex items-center space-x-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-muted/20">
+                        <input
+                          type="radio"
+                          name="transfer_type"
+                          value="single_foot"
+                          checked={requestForm.transfer_type === 'single_foot' && requestForm.foot_side === 'right'}
+                          onChange={() => {
+                            setRequestForm(prev => ({
+                              ...prev,
+                              transfer_type: 'single_foot',
+                              foot_side: 'right',
+                              quantity: prefilledProductData.available_options?.right_feet_quantity || 1
+                            }));
+                          }}
+                          className="text-primary"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">🦶 Pie Derecho</span>
+                            <span className="text-xs text-warning bg-warning/10 px-2 py-1 rounded">
+                              {prefilledProductData.available_options.right_feet_quantity} disponible(s)
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Solicitar pie derecho para formar par con pie izquierdo local
+                          </p>
+                        </div>
+                      </label>
+                    )}
+                  </div>
+
+                  {/* Información adicional */}
+                  <div className="mt-3 p-2 bg-muted/20 rounded text-xs text-muted-foreground">
+                    💡 <strong>Tip:</strong> Los pies individuales se usan para formar pares completos con el inventario local
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
