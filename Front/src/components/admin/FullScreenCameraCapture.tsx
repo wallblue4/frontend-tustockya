@@ -95,7 +95,7 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
 
   // Usar React Portal para renderizar fuera del contenedor padre
   const fullScreenContent = (
-    <div className="fixed inset-0 bg-black flex flex-col" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', zIndex: 999999 }}>
+    <div className="fixed inset-0 bg-black flex flex-col" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100dvh', zIndex: 999999 }}>
       {/* Header con botón cerrar */}
       <div className="flex justify-between items-center p-4 bg-black/90 backdrop-blur-sm">
         <h2 className="text-lg font-semibold text-white">Grabar Video</h2>
@@ -126,7 +126,7 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
           style={{ maxHeight: "calc(100vh - 160px)" }}
         />
         {/* Controls overlayed at the bottom center */}
-        <div className="absolute left-0 w-full flex justify-center z-10" style={{ bottom: '7%' }}>
+        <div className="absolute left-0 w-full flex justify-center z-10" style={{ bottom: 'env(safe-area-inset-bottom, 0px)', paddingBottom: 'calc(7% + env(safe-area-inset-bottom, 80px))' }}>
           {stream && !recording && (
             <Button 
               onClick={startRecording} 
