@@ -741,6 +741,7 @@ export const AdminDashboard: React.FC = () => {
         product_brand: videoData.product_brand || '',
         product_model: videoData.product_model || '',
         box_price: videoData.box_price || 0,
+        notes: '',
         reference_image: videoData.reference_image && videoData.reference_image instanceof File ? videoData.reference_image : null
       };
 
@@ -1805,7 +1806,7 @@ Por favor verifica que:
                 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
-                    Marca (Opcional)
+                    Marca 
                   </label>
                   <Input 
                     placeholder="Ej: Nike, Adidas" 
@@ -1817,7 +1818,7 @@ Por favor verifica que:
 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
-                    Modelo (Opcional)
+                    Modelo
                   </label>
                   <Input 
                     placeholder="Ej: Air Max 90" 

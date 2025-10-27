@@ -1,5 +1,5 @@
-//const BACKEND_URL = 'http://localhost:8000';
-const BACKEND_URL = 'https://tustockya-api.onrender.com';
+const BACKEND_URL = 'http://localhost:8000';
+//const BACKEND_URL = 'https://tustockya-api.onrender.com';
 
 const getHeaders = () => {
   const token = localStorage.getItem('token');
@@ -583,10 +583,9 @@ export const fetchSystemOverview = async () => {
 
 // ========== 13. INVENTARIO POR VIDEO IA (4 endpoints) ==========
 
-// POST /api/v1/admin/admin/inventory/video-entry
+// POST /api/v1/admin/admin/inventory/video-entry-distributed
 export const processVideoInventoryEntry = async (inventoryData: {
-  warehouse_location_id: number;
-  size_quantities_json: string; // JSON de tallas y cantidades
+  sizes_distribution_json: string; // JSON de tallas y cantidades
   unit_price: number;
   video_file: File;
   product_brand?: string | null;
@@ -597,27 +596,34 @@ export const processVideoInventoryEntry = async (inventoryData: {
 }) => {
   const formData = new FormData();
   
-  // ORDEN EXACTO según el curl correcto:
+  // ORDEN EXACTO según el curl que funciona:
   
-  // 1. warehouse_location_id (obligatorio)
-  formData.append('warehouse_location_id', inventoryData.warehouse_location_id.toString());
-  
-  // 2. size_quantities_json (obligatorio)
-  formData.append('size_quantities_json', inventoryData.size_quantities_json);
-  
-  // 3. product_brand (opcional pero siempre presente)
+  // 1. product_brand (opcional pero siempre presente)
   const productBrand = inventoryData.product_brand?.trim() || '';
   formData.append('product_brand', productBrand);
   
-  // 4. product_model (opcional pero siempre presente)
+  // 2. product_model (opcional pero siempre presente)
   const productModel = inventoryData.product_model?.trim() || '';
   formData.append('product_model', productModel);
   
-  // 5. notes (opcional pero siempre presente)
+  // 3. unit_price (obligatorio)
+  formData.append('unit_price', inventoryData.unit_price.toString());
+  
+  // 4. sizes_distribution_json (obligatorio)
+  formData.append('sizes_distribution_json', inventoryData.sizes_distribution_json);
+  
+  // 5. video_file (obligatorio)
+  formData.append('video_file', inventoryData.video_file);
+  
+  // 6. box_price (opcional pero siempre presente)
+  const boxPrice = inventoryData.box_price || 0;
+  formData.append('box_price', boxPrice.toString());
+  
+  // 7. notes (opcional pero siempre presente)
   const notes = inventoryData.notes?.trim() || '';
   formData.append('notes', notes);
   
-  // 6. reference_image (siempre presente)
+  // 8. reference_image (siempre presente)
   if (inventoryData.reference_image && inventoryData.reference_image instanceof File) {
     formData.append('reference_image', inventoryData.reference_image);
   } else {
@@ -625,43 +631,31 @@ export const processVideoInventoryEntry = async (inventoryData: {
     const emptyFile = new File([''], 'empty.jpg', { type: 'image/jpeg' });
     formData.append('reference_image', emptyFile);
   }
-  
-  // 7. video_file (obligatorio)
-  formData.append('video_file', inventoryData.video_file);
-  
-  // 8. unit_price (obligatorio)
-  formData.append('unit_price', inventoryData.unit_price.toString());
-  
-  // 9. box_price (opcional pero siempre presente)
-  const boxPrice = inventoryData.box_price || 0;
-  formData.append('box_price', boxPrice.toString());
 
   // Log detallado de lo que se está enviando (en orden de envío)
   console.log('=== PAYLOAD COMPLETO PARA API (ORDEN CORRECTO) ===');
-  console.log('1. warehouse_location_id:', inventoryData.warehouse_location_id);
-  console.log('2. size_quantities_json:', inventoryData.size_quantities_json);
-  console.log('3. product_brand:', productBrand || '(vacío)');
-  console.log('4. product_model:', productModel || '(vacío)');
-  console.log('5. notes:', notes || '(vacío)');
+  console.log('1. product_brand:', productBrand || '(vacío)');
+  console.log('2. product_model:', productModel || '(vacío)');
+  console.log('3. unit_price:', inventoryData.unit_price);
+  console.log('4. sizes_distribution_json:', inventoryData.sizes_distribution_json);
+  console.log('5. video_file (size):', inventoryData.video_file.size, 'bytes');
+  console.log('5. video_file (type):', inventoryData.video_file.type);
+  console.log('6. box_price:', boxPrice);
+  console.log('7. notes:', notes || '(vacío)');
   if (inventoryData.reference_image && inventoryData.reference_image instanceof File) {
-    console.log('6. reference_image: File presente -', inventoryData.reference_image.name, inventoryData.reference_image.size, 'bytes');
+    console.log('8. reference_image: File presente -', inventoryData.reference_image.name, inventoryData.reference_image.size, 'bytes');
   } else {
-    console.log('6. reference_image: Archivo vacío (no se tomó foto)');
+    console.log('8. reference_image: Archivo vacío (no se tomó foto)');
   }
-  console.log('7. video_file (size):', inventoryData.video_file.size, 'bytes');
-  console.log('7. video_file (type):', inventoryData.video_file.type);
-  console.log('8. unit_price:', inventoryData.unit_price);
-  console.log('9. box_price:', boxPrice);
   
   // Log de FormData contents
   console.log('=== FORMDATA CONTENTS ===');
   const expectedFields = [
-    'warehouse_location_id', 'size_quantities_json', 'product_brand', 
-    'product_model', 'notes', 'reference_image', 'video_file', 
-    'unit_price', 'box_price'
+    'product_brand', 'product_model', 'unit_price', 'sizes_distribution_json',
+    'video_file', 'box_price', 'notes', 'reference_image'
   ];
   
-  const actualFields = [];
+  const actualFields: string[] = [];
   for (let [key, value] of formData.entries()) {
     actualFields.push(key);
     if (value instanceof File) {
@@ -696,20 +690,19 @@ export const processVideoInventoryEntry = async (inventoryData: {
   console.log('Esto genera el curl correcto con --form en lugar de --data-raw');
   console.log('');
   console.log('Curl equivalente esperado:');
-  console.log(`curl --location '${BACKEND_URL}/api/v1/admin/admin/inventory/video-entry' \\`);
+  console.log(`curl --location '${BACKEND_URL}/api/v1/admin/admin/inventory/video-entry-distributed' \\`);
   console.log(`--header 'Authorization: Bearer ${headers.Authorization?.replace('Bearer ', '')}' \\`);
-  console.log(`--form 'warehouse_location_id="${inventoryData.warehouse_location_id}"' \\`);
-  console.log(`--form 'size_quantities_json="${inventoryData.size_quantities_json}"' \\`);
   console.log(`--form 'product_brand="${productBrand}"' \\`);
   console.log(`--form 'product_model="${productModel}"' \\`);
-  console.log(`--form 'notes="${notes}"' \\`);
-  console.log(`--form 'reference_image=@file' \\`);
-  console.log(`--form 'video_file=@file' \\`);
   console.log(`--form 'unit_price="${inventoryData.unit_price}"' \\`);
-  console.log(`--form 'box_price="${boxPrice}"'`);
+  console.log(`--form 'sizes_distribution_json="${inventoryData.sizes_distribution_json}"' \\`);
+  console.log(`--form 'video_file=@file' \\`);
+  console.log(`--form 'box_price="${boxPrice}"' \\`);
+  console.log(`--form 'notes="${notes}"' \\`);
+  console.log(`--form 'reference_image=@file'`);
   console.log('========================');
 
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/inventory/video-entry`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/inventory/video-entry-distributed`, {
     method: 'POST',
     headers: headers,
     body: formData,
