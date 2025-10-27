@@ -253,11 +253,13 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
           quantity: transferPayload.quantity,
           purpose: 'pair_formation',
           pickup_type: transferPayload.pickup_type,
-          notes: transferPayload.notes
+          notes: transferPayload.notes || null
         };
+        console.log('📤 Enviando solicitud de pie individual:', singleFootPayload);
         response = await vendorAPI.requestSingleFoot(singleFootPayload);
       } else {
         // Usar endpoint normal para par completo
+        console.log('📤 Enviando solicitud de par completo:', transferPayload);
         response = await vendorAPI.requestTransfer(transferPayload);
       }
 

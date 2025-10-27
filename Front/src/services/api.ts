@@ -1,7 +1,7 @@
 //api.ts
 
-//const API_BASE_URL = 'http://localhost:8000'
-const API_BASE_URL = 'https://tustockya-api.onrender.com';
+const API_BASE_URL = 'http://localhost:8000'
+//const API_BASE_URL = 'https://tustockya-api.onrender.com';
 
 // Get token from localStorage
 const getAuthToken = () => {
@@ -397,6 +397,20 @@ export const vendorAPI = {
   requestTransfer: (transferData: TransferData) => apiRequest('/api/v1/transfers/request', {
     method: 'POST',
     body: JSON.stringify(transferData),
+  }),
+  requestSingleFoot: (singleFootData: {
+    source_location_id: number;
+    destination_location_id: number;
+    sneaker_reference_code: string;
+    size: string;
+    foot_side: 'left' | 'right';
+    quantity: number;
+    purpose: string;
+    pickup_type: string;
+    notes?: string;
+  }) => apiRequest('/api/v1/transfers/request-single-foot', {
+    method: 'POST',
+    body: JSON.stringify(singleFootData),
   }),
   getMyTransferRequests: () => apiRequest('/api/v1/transfers/my-requests'),
   

@@ -1,8 +1,8 @@
 // src/services/transfersAPI.ts - CORREGIDO PARA USAR ENDPOINTS CORRECTOS
 import type { ReturnRequestCreate, ReturnResponse } from '../types/transfers';
 
-//const BACKEND_URL = 'http://localhost:8000';
-const BACKEND_URL = 'https://tustockya-api.onrender.com'; 
+const BACKEND_URL = 'http://localhost:8000';
+//const BACKEND_URL = 'https://tustockya-api.onrender.com'; 
 
 const getHeaders = () => {
   const token = localStorage.getItem('token');
@@ -64,6 +64,51 @@ export const vendorAPI = {
         estimated_time: transferData.purpose === 'cliente' ? '30 minutos' : '45 minutos',
         priority: transferData.purpose === 'cliente' ? 'high' : 'normal',
         reservation_expires_at: new Date(Date.now() + 2700000).toISOString()
+      };
+    }
+  },
+
+  async requestSingleFoot(singleFootData: {
+    source_location_id: number;
+    destination_location_id: number;
+    sneaker_reference_code: string;
+    size: string;
+    foot_side: 'left' | 'right';
+    quantity: number;
+    purpose: string;
+    pickup_type: string;
+    notes?: string | null;
+  }) {
+    console.log('🔄 Solicitando transferencia de pie individual...', singleFootData);
+    
+    const backendCall = async () => {
+      const response = await fetch(`${BACKEND_URL}/api/v1/transfers/request-single-foot`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(singleFootData)
+      });
+      return handleResponse(response);
+    };
+
+    const result = await tryBackendFirst(backendCall);
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      // Fallback a mock
+      console.log('📦 Usando respuesta mock para requestSingleFoot');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const transferId = Math.floor(Math.random() * 1000) + 100;
+      
+      return {
+        success: true,
+        transfer_request_id: transferId,
+        status: 'pending',
+        estimated_time: '30 minutos',
+        priority: 'high',
+        reservation_expires_at: new Date(Date.now() + 2700000).toISOString(),
+        pair_formation_available: true,
+        pairs_can_be_formed: 1
       };
     }
   },

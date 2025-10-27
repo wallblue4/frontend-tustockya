@@ -414,114 +414,137 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
   // Convierte la respuesta de la API a ProductOption[]
   function convertScanResponseToProductOptions(scanResponse: any): ProductOption[] {
-    // La nueva estructura tiene results.matches[0] como el mejor match
-    if (!scanResponse || !scanResponse.success || !scanResponse.results?.matches?.[0]) return [];
+    // La nueva estructura tiene results.matches con TODOS los matches
+    if (!scanResponse || !scanResponse.success || !scanResponse.results?.matches?.length) return [];
     
-    // Obtener el mejor match de la nueva estructura
-    const bestMatch = scanResponse.results.matches[0];
-    const product = bestMatch.product || {};
-    const sizes = bestMatch.sizes || {};
-    const classification = bestMatch.classification || {};
+    const allMatches = scanResponse.results.matches;
+    const options: ProductOption[] = [];
     
-    // Calcular stock total de la nueva estructura con pies separados
+    // Procesar CADA match
+    allMatches.forEach((match: any, index: number) => {
+      const product = match.product || {};
+      const sizes = match.sizes || {};
+      const classification = match.classification || {};
+      
+      // Calcular stock total de la nueva estructura con pies separados
       const calculateTotalStock = () => {
-      let totalPairs = 0;
-      let totalLeftFeet = 0;
-      let totalRightFeet = 0;
-      
-      if (sizes.detailed_by_size) {
-        Object.values(sizes.detailed_by_size).forEach((sizeData: any) => {
-          if (sizeData.local_availability) {
-            totalPairs += sizeData.local_availability.pairs?.quantity || 0;
-            totalLeftFeet += sizeData.local_availability.individual_feet?.left?.quantity || 0;
-            totalRightFeet += sizeData.local_availability.individual_feet?.right?.quantity || 0;
-          }
-        });
-      }
-      
-      // Retornar el total de pares equivalentes (pares + pies que pueden formar pares)
-      const formablePairs = Math.min(totalLeftFeet, totalRightFeet);
-      return totalPairs + formablePairs;
+        let totalPairs = 0;
+        let totalLeftFeet = 0;
+        let totalRightFeet = 0;
+        
+        if (sizes.detailed_by_size) {
+          Object.values(sizes.detailed_by_size).forEach((sizeData: any) => {
+            if (sizeData.local_availability) {
+              totalPairs += sizeData.local_availability.pairs?.quantity || 0;
+              totalLeftFeet += sizeData.local_availability.individual_feet?.left?.quantity || 0;
+              totalRightFeet += sizeData.local_availability.individual_feet?.right?.quantity || 0;
+            }
+          });
+        }
+        
+        // Retornar el total de pares equivalentes (pares + pies que pueden formar pares)
+        const formablePairs = Math.min(totalLeftFeet, totalRightFeet);
+        return totalPairs + formablePairs;
       };
 
       // Obtener todas las tallas disponibles
       const getAvailableSizes = () => {
-      return sizes.available_sizes || [];
-    };
+        return sizes.available_sizes || [];
+      };
 
-    // Crear stock_by_size para current_location (adaptado a nueva estructura)
-    const createStockBySize = () => {
-      if (!sizes.detailed_by_size) return [];
-      
-      return Object.entries(sizes.detailed_by_size).map(([size, sizeData]: [string, any]) => {
-        const localAvail = sizeData.local_availability || {};
-        const pairs = localAvail.pairs?.quantity || 0;
-        const leftFeet = localAvail.individual_feet?.left?.quantity || 0;
-        const rightFeet = localAvail.individual_feet?.right?.quantity || 0;
-        const formablePairs = Math.min(leftFeet, rightFeet);
+      // Crear stock_by_size para current_location (adaptado a nueva estructura)
+      const createStockBySize = () => {
+        if (!sizes.detailed_by_size) return [];
         
-        return {
-          size,
-          quantity_stock: pairs + formablePairs,
-          quantity_exhibition: localAvail.pairs?.quantity_exhibition || 0,
-          location: localAvail.location_name || ''
-        };
-      });
+        return Object.entries(sizes.detailed_by_size).map(([size, sizeData]: [string, any]) => {
+          const localAvail = sizeData.local_availability || {};
+          const pairs = localAvail.pairs?.quantity || 0;
+          const leftFeet = localAvail.individual_feet?.left?.quantity || 0;
+          const rightFeet = localAvail.individual_feet?.right?.quantity || 0;
+          const formablePairs = Math.min(leftFeet, rightFeet);
+          
+          return {
+            size,
+            quantity_stock: pairs + formablePairs,
+            quantity_exhibition: localAvail.pairs?.quantity_exhibition || 0,
+            location: localAvail.location_name || ''
+          };
+        });
       };
       
       // Unificar estructura de inventory para el componente
       const inventory: InventoryInfo = {
         local_info: {
-        location_number: scanResponse.scanned_by?.location_id || 0,
-        location_name: sizes.detailed_by_size && Object.values(sizes.detailed_by_size)[0] 
-          ? (Object.values(sizes.detailed_by_size)[0] as any).local_availability?.location_name || ''
-          : '',
+          location_number: scanResponse.scanned_by?.location_id || 0,
+          location_name: sizes.detailed_by_size && Object.values(sizes.detailed_by_size)[0] 
+            ? (Object.values(sizes.detailed_by_size)[0] as any).local_availability?.location_name || ''
+            : '',
         },
         pricing: {
-        unit_price: product.unit_price || 0,
-        box_price: product.box_price || 0,
+          unit_price: product.unit_price || 0,
+          box_price: product.box_price || 0,
         },
         stock_by_size: createStockBySize(),
         total_stock: calculateTotalStock(),
-      total_exhibition: 0,
+        total_exhibition: 0,
         available_sizes: getAvailableSizes(),
-      other_locations: [] // Se llenará desde detailed_by_size
+        other_locations: [] // Se llenará desde detailed_by_size
       };
       
-      // Adaptar availability
+      // Adaptar availability con datos del global_summary
       const availability: AvailabilityInfo = {
-      in_stock: bestMatch.global_summary?.inventory_local?.pairs_available > 0,
-      can_sell: bestMatch.global_summary?.inventory_local?.can_sell_immediately || false,
-      can_request_from_other_locations: bestMatch.global_summary?.total_opportunities > 0,
-      recommended_action: bestMatch.global_summary?.inventory_local?.can_sell_immediately 
-        ? 'Puede vender ahora' 
-        : 'Requiere transferencia o formación de pares'
-    };
-    
-    // Crear el objeto ProductOption con la estructura nueva
+        in_stock: match.global_summary?.inventory_local?.pairs_available > 0,
+        can_sell: match.global_summary?.inventory_local?.can_sell_immediately || false,
+        can_request_from_other_locations: match.global_summary?.total_opportunities > 0 || match.global_summary?.total_suggestions > 0,
+        recommended_action: match.global_summary?.inventory_local?.can_sell_immediately 
+          ? 'Puede vender ahora' 
+          : 'Requiere transferencia o formación de pares'
+      };
+      
+      // Obtener confianza real desde el match
+      const confidencePercentage = match.confidence_percentage || 0;
+      const similarityScore = match.similarity_score || 0;
+      
+      // Mapear confidence_level de la API
+      const mapConfidenceLevel = (level: string): 'very_high' | 'high' | 'medium' | 'low' => {
+        switch(level.toLowerCase()) {
+          case 'very_high': return 'very_high';
+          case 'high': return 'high';
+          case 'medium': return 'medium';
+          case 'low': return 'low';
+          default: return confidencePercentage >= 90 ? 'very_high' : confidencePercentage >= 70 ? 'high' : 'medium';
+        }
+      };
+      
+      // Crear el objeto ProductOption con la estructura nueva
       const productOption = {
-      id: product.reference_code || 'product-1',
-      brand: product.brand || classification.brand_detected || '',
-      model: product.model || classification.model_detected || '',
-      code: product.reference_code || '',
-      description: product.description || `${product.brand} ${product.model}`,
-      color: '', // No viene en la nueva estructura
-      image: product.image_url || undefined,
-      confidence: classification.confidence_percentage || 0,
-      rank: 1,
-      similarity_score: classification.confidence_score || 0,
-      confidence_level: classification.confidence_percentage >= 90 ? 'high' : 'medium',
-      original_db_id: product.product_id || 0,
+        id: `${product.reference_code}-${index}` || `product-${index}`,
+        brand: product.brand || classification.brand_detected || '',
+        model: product.model || classification.model_detected || '',
+        code: product.reference_code || '',
+        description: product.description || `${product.brand} ${product.model}`,
+        color: '', // No viene en la nueva estructura
+        image: product.image_url || undefined,
+        confidence: confidencePercentage,
+        rank: match.rank || index + 1,
+        similarity_score: similarityScore,
+        confidence_level: mapConfidenceLevel(match.confidence_level),
+        original_db_id: product.product_id || 0,
         inventory,
         availability,
       };
       
-    // Preservar la estructura completa de sizes para que convertAvailabilityToSizes pueda acceder a ella
-    (productOption as any).sizesData = sizes;
-    (productOption as any).globalSummary = bestMatch.global_summary;
-    (productOption as any).distributionMatrix = bestMatch.distribution_matrix;
+      // Preservar la estructura completa de sizes para que convertAvailabilityToSizes pueda acceder a ella
+      (productOption as any).sizesData = sizes;
+      (productOption as any).globalSummary = match.global_summary;
+      (productOption as any).distributionMatrix = match.distribution_matrix;
+      (productOption as any).matchRank = match.rank;
+      (productOption as any).classification = classification;
+      
+      options.push(productOption);
+    });
     
-    return [productOption]; // Retornar como array de un elemento
+    return options; // Retornar TODOS los matches
   }
 
   // Función handleScanFromCamera actualizada para usar la nueva API
@@ -552,7 +575,8 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         user_location: scanResponse.user_location,
         processing_time: scanResponse.processing_time_ms,
         availability_summary: scanResponse.availability_summary,
-        classification_service: scanResponse.classification_service
+        classification_service: scanResponse.classification_service,
+        total_matches: scanResponse.results?.total_matches || 0
       });
 
       // Convertir la respuesta a formato compatible con el componente
@@ -778,6 +802,13 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                 </div>
               </div>
               
+              {/* Show total matches */}
+              {(scanInfo as any).total_matches > 0 && (
+                <div className="text-xs text-primary bg-primary/20 p-2 rounded">
+                  <strong>Productos similares encontrados: {(scanInfo as any).total_matches}</strong>
+                </div>
+              )}
+              
               {/* New: Show availability summary */}
               {scanInfo.availability_summary && (
                 <div className="grid grid-cols-2 gap-4 text-xs text-primary bg-primary/20 p-2 rounded">
@@ -841,16 +872,30 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                     <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
                       {/* Título y confianza */}
                       <div className="flex items-start justify-between">
-                        <h4 className="font-semibold text-lg text-foreground truncate max-w-[16ch]">{option.description || `${option.brand} ${option.model}`}</h4>
-                        <div className="flex flex-col items-end">
-                          <span className={`text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded mb-1`}>{option.confidence?.toFixed(6)}%</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-bold bg-primary text-white px-2 py-0.5 rounded">#{option.rank}</span>
+                            <h4 className="font-semibold text-lg text-foreground truncate">{option.description || `${option.brand} ${option.model}`}</h4>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">{option.brand} • {option.model}</p>
+                        </div>
+                        <div className="flex flex-col items-end ml-2">
+                          <span className={`text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded mb-1`}>{option.confidence?.toFixed(1)}%</span>
                           <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getConfidenceLevelColor(option.confidence_level)}`}>{getConfidenceLevelText(option.confidence_level)}</span>
                         </div>
                       </div>
                       {/* Info principal */}
                       <div className="mt-1 text-sm text-muted-foreground">
-                        <div>Código: <span className="font-medium text-foreground">{option.code}</span> | Color: {option.color} | Modelo: {option.model}</div>
-                        <div className="truncate">{option.description}</div>
+                        <div className="truncate">
+                          Código: <span className="font-medium text-foreground">{option.code}</span>
+                          {option.color && ` | Color: ${option.color}`}
+                        </div>
+                        {option.inventory.available_sizes && option.inventory.available_sizes.length > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            Tallas: {option.inventory.available_sizes.slice(0, 5).join(', ')}
+                            {option.inventory.available_sizes.length > 5 && '...'}
+                          </div>
+                        )}
                       </div>
                       {/* Estado de disponibilidad */}
                       <div className="mt-2">
@@ -931,22 +976,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                   Código: {selectedProduct.product.code} | Modelo: {selectedProduct.product.model}
                 </p>
                 <p className="text-sm text-muted-foreground mb-3">Marca: {selectedProduct.product.brand}</p>
-                
-                {/* Availability Status */}
-                <div className={`p-3 rounded-md border ${getAvailabilityColor(selectedProduct.product.availability)}`}>
-                  <div className="flex items-center space-x-2 mb-2">
-                    {getAvailabilityIcon(selectedProduct.product.availability)}
-                    <span className="font-medium text-foreground">
-                      {selectedProduct.product.availability.recommended_action}
-                    </span>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Stock total: {selectedProduct.product.inventory.total_stock} unidades
-                    {selectedProduct.product.inventory.total_exhibition > 0 && (
-                      <span className="ml-2">| Exhibición: {selectedProduct.product.inventory.total_exhibition}</span>
-                    )}
-                  </div>
-                </div>
 
                 <div className="mt-3 flex items-center space-x-4">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getConfidenceLevelColor(selectedProduct.product.confidence_level)}`}>
