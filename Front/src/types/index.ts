@@ -140,7 +140,7 @@ export interface TransportLocation {
 
 export interface AssignedTransport {
   id: number;
-  status: 'courier_assigned' | 'in_transit' | 'delivered' ;
+  status: 'courier_assigned' | 'in_transit' | 'delivered' | 'completed';
   sneaker_reference_code: string;
   brand: string;
   model: string;
@@ -156,6 +156,8 @@ export interface AssignedTransport {
   pickup_notes: string | null;
   source_location: TransportLocation;
   destination_location: TransportLocation;
+  inventory_type?: string;
+  inventory_type_label?: string;
 }
 
 export interface CourierStats {

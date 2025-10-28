@@ -27,27 +27,42 @@ import { useAuth } from '../../context/AuthContext';
 import { courierAPI } from '../../services/transfersAPI';
 import { AssignedTransport, CourierStats, MyTransportsResponse } from '../../types';
 
-// Tipos actualizados
+// Tipos actualizados - ESTRUCTURA REAL DEL BACKEND
 interface AvailableRequest {
-  product_image: string | undefined;
   id: number;
   status: string;
+  request_type: string;
+  sneaker_reference_code: string;
+  brand: string;
+  model: string;
+  size: string;
+  quantity: number;
+  courier_id: number | null;
+  inventory_type: string;
+  inventory_type_label: string;
+  cargo_description: string;
+  purpose: 'cliente' | 'restock' | 'return';
+  urgency: string;
+  priority_score: number;
+  product_image: string;
+  transport_info: {
+    pickup_location: {
+      id: number;
+      name: string;
+      address: string;
+      phone: string | null;
+      contact: string;
+    };
+    delivery_location: {
+      id: number;
+      name: string;
+      address: string;
+      phone: string | null;
+    };
+  };
+  estimated_pickup_time: string | null;
   action_required: string;
   status_description: string;
-  next_step: string;
-  purpose: 'cliente' | 'restock' | 'return';
-  hours_since_accepted: number;
-  notes?: string;
-  request_info: {
-    pickup_location: string;
-    pickup_address: string;
-    delivery_location: string;
-    delivery_address: string;
-    product_description: string;
-    urgency: string;
-    warehouse_keeper: string;
-    requester: string;
-  };
 }
 
 // Removido - ahora usamos el tipo de types/index.ts
@@ -105,14 +120,11 @@ export const RunnerDashboard: React.FC = () => {
       );
       
       newRequests.forEach((request: AvailableRequest) => {
-        // Validar que request_info existe antes de usarlo
-        if (request.request_info) {
-          notifyTransportAvailable({
-            product: request.request_info.product_description || 'Producto no especificado',
-            distance: '3.2 km',
-            purpose: request.purpose
-          });
-        }
+        notifyTransportAvailable({
+          product: request.cargo_description,
+          distance: '3.2 km',
+          purpose: request.purpose
+        });
       });
     }
 
@@ -191,8 +203,8 @@ export const RunnerDashboard: React.FC = () => {
       const estimatedTime = request?.purpose === 'cliente' ? 15 : 20;
       
       // Detectar si es una devolución
-      const isReturn = request?.request_info?.product_description?.includes('devolución') || 
-                      request?.notes?.includes('return') ||
+      const isReturn = request?.cargo_description?.includes('devolución') || 
+                      request?.cargo_description?.includes('return') ||
                       request?.purpose === 'return';
       
       let response;
@@ -627,11 +639,11 @@ export const RunnerDashboard: React.FC = () => {
               ) : (
                 <div className="space-y-4 md:space-y-6">
                   {filteredAvailableRequests
-                    .filter((request) => request.request_info) // Filtrar requests sin request_info
+                    .filter((request) => request.transport_info) // Filtrar requests sin transport_info
                     .map((request) => {
                     const distance = formatDistance(
-                      request.request_info!.pickup_location || 'Ubicación desconocida',
-                      request.request_info!.delivery_location || 'Destino desconocido'
+                      request.transport_info!.pickup_location.name || 'Ubicación desconocida',
+                      request.transport_info!.delivery_location.name || 'Destino desconocido'
                     );
                     const earnings = calculateEarnings(distance, request.purpose === 'cliente');
                     
@@ -649,7 +661,7 @@ export const RunnerDashboard: React.FC = () => {
                                     ? 'bg-error/20 text-error border border-error/30' 
                                     : 'bg-primary/20 text-primary border border-primary/30'
                                 }`}>
-                                  {request.request_info.urgency}
+                                  {request.urgency}
                                 </span>
                               </div>
                               <div className="text-xs text-muted-foreground">
@@ -665,7 +677,7 @@ export const RunnerDashboard: React.FC = () => {
                                   {request.product_image ? (
                                     <img
                                       src={request.product_image}
-                                      alt={request.request_info.product_description}
+                                      alt={request.cargo_description}
                                       className="w-full h-full object-cover"
                                     />
                                   ) : (
@@ -682,19 +694,19 @@ export const RunnerDashboard: React.FC = () => {
                               {/* Información del producto */}
                               <div className="flex-1 min-w-0">
                                 <h3 className="font-bold text-base text-card-foreground mb-2 leading-tight">
-                                  {request.request_info.product_description}
+                                  {request.cargo_description}
                                 </h3>
                                 
                                 <div className="space-y-2 mb-3">
                                   <div className="flex items-center space-x-1 text-sm text-card-foreground">
                                     <User className="h-3 w-3 text-muted-foreground" />
                                     <span className="font-medium truncate">
-                                      Solicitante: {request.request_info.requester}
+                                      Cliente: {request.transport_info.delivery_location.name}
                                     </span>
                                   </div>
                                   
                                   <p className="text-xs text-muted-foreground">
-                                    ⏱️ {request.hours_since_accepted ? request.hours_since_accepted.toFixed(1) : '0'}h • 📍 {distance} km
+                                    📦 {request.quantity} • Talla {request.size} • 📍 {distance} km
                                   </p>
                                 </div>
                                 
@@ -729,22 +741,22 @@ export const RunnerDashboard: React.FC = () => {
                                       <MapPin className="h-4 w-4 text-primary mr-1" />
                                       <span className="font-medium text-primary text-sm">Recoger</span>
                                     </div>
-                                    <p className="text-sm font-medium text-card-foreground">{request.request_info.pickup_location}</p>
-                                    <p className="text-xs text-muted-foreground">{request.request_info.pickup_address}</p>
+                                    <p className="text-sm font-medium text-card-foreground">{request.transport_info.pickup_location.name}</p>
+                                    <p className="text-xs text-muted-foreground">{request.transport_info.pickup_location.address}</p>
                                   </div>
                                   <div className="p-3 bg-success/10 rounded-lg border border-success/20">
                                     <div className="flex items-center mb-1">
                                       <Navigation className="h-4 w-4 text-success mr-1" />
                                       <span className="font-medium text-success text-sm">Entregar</span>
                                     </div>
-                                    <p className="text-sm font-medium text-card-foreground">{request.request_info.delivery_location}</p>
-                                    <p className="text-xs text-muted-foreground">{request.request_info.delivery_address}</p>
+                                    <p className="text-sm font-medium text-card-foreground">{request.transport_info.delivery_location.name}</p>
+                                    <p className="text-xs text-muted-foreground">{request.transport_info.delivery_location.address}</p>
                                   </div>
                                 </div>
                                 
                                 <div className="p-2 bg-muted/20 rounded-lg border border-border">
                                   <p className="text-xs text-card-foreground">
-                                    <strong>📋 Siguiente:</strong> {request.next_step}
+                                    <strong>📋 Siguiente:</strong> {request.action_required} - {request.status_description}
                                   </p>
                                 </div>
                               </div>
@@ -776,10 +788,10 @@ export const RunnerDashboard: React.FC = () => {
                                   ? 'bg-error/20 text-error border border-error/30' 
                                   : 'bg-primary/20 text-primary border border-primary/30'
                               }`}>
-                                {request.request_info.urgency}
+                                {request.urgency}
                               </span>
                               <span className="text-sm text-muted-foreground">
-                                ⏱️ Esperando: {request.hours_since_accepted ? request.hours_since_accepted.toFixed(1) : '0'} horas
+                                📦 {request.quantity} unidades • Talla {request.size}
                               </span>
                             </div>
                             <div className="text-sm text-muted-foreground">
@@ -796,7 +808,7 @@ export const RunnerDashboard: React.FC = () => {
                                 {request.product_image ? (
                                   <img
                                     src={request.product_image}
-                                    alt={request.request_info.product_description}
+                                    alt={request.cargo_description}
                                     className="w-full h-full object-cover"
                                   />
                                 ) : (
@@ -822,7 +834,7 @@ export const RunnerDashboard: React.FC = () => {
                             <div className="flex-1 space-y-6">
                               <div>
                                 <h3 className="text-3xl font-bold text-card-foreground mb-3 leading-tight">
-                                  {request.request_info.product_description}
+                                  {request.cargo_description}
                                 </h3>
                                 
                                 {/* Cliente */}
@@ -833,9 +845,9 @@ export const RunnerDashboard: React.FC = () => {
                                     </div>
                                     <div>
                                       <div className="font-semibold text-card-foreground text-lg">
-                                        Solicitante: {request.request_info.requester}
+                                        Destino: {request.transport_info.delivery_location.name}
                                       </div>
-                                      <div className="text-sm text-muted-foreground">Cliente</div>
+                                      <div className="text-sm text-muted-foreground">{request.transport_info.delivery_location.address}</div>
                                     </div>
                                   </div>
                                 </div>
@@ -847,10 +859,10 @@ export const RunnerDashboard: React.FC = () => {
                                       <MapPin className="h-5 w-5 text-primary mr-2" />
                                       <h4 className="font-semibold text-primary">Punto de Recolección</h4>
                                     </div>
-                                    <p className="font-medium text-card-foreground">{request.request_info.pickup_location}</p>
-                                    <p className="text-sm text-muted-foreground">{request.request_info.pickup_address}</p>
+                                    <p className="font-medium text-card-foreground">{request.transport_info.pickup_location.name}</p>
+                                    <p className="text-sm text-muted-foreground">{request.transport_info.pickup_location.address}</p>
                                     <p className="text-xs text-primary mt-1">
-                                      📞 Contacto: {request.request_info.warehouse_keeper}
+                                      📞 Contacto: {request.transport_info.pickup_location.contact}
                                     </p>
                                   </div>
                                   
@@ -859,8 +871,8 @@ export const RunnerDashboard: React.FC = () => {
                                       <Navigation className="h-5 w-5 text-success mr-2" />
                                       <h4 className="font-semibold text-success">Punto de Entrega</h4>
                                     </div>
-                                    <p className="font-medium text-card-foreground">{request.request_info.delivery_location}</p>
-                                    <p className="text-sm text-muted-foreground">{request.request_info.delivery_address}</p>
+                                    <p className="font-medium text-card-foreground">{request.transport_info.delivery_location.name}</p>
+                                    <p className="text-sm text-muted-foreground">{request.transport_info.delivery_location.address}</p>
                                     <p className="text-xs text-success mt-1">
                                       📍 Distancia: ~{distance} km
                                     </p>
@@ -869,9 +881,8 @@ export const RunnerDashboard: React.FC = () => {
 
                                 <div className="p-4 bg-muted/20 rounded-lg border border-border mb-6">
                                   <p className="text-sm text-card-foreground">
-                                    <strong>📋 Siguiente paso:</strong> {request.next_step}
+                                    <strong>📋 Siguiente paso:</strong> {request.action_required} - {request.status_description}
                                   </p>
-                                  <p className="text-xs text-muted-foreground mt-1">{request.status_description}</p>
                                 </div>
 
                                 <Button
