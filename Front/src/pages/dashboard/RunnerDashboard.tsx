@@ -105,11 +105,14 @@ export const RunnerDashboard: React.FC = () => {
       );
       
       newRequests.forEach((request: AvailableRequest) => {
-        notifyTransportAvailable({
-          product: request.request_info.product_description,
-          distance: '3.2 km',
-          purpose: request.purpose
-        });
+        // Validar que request_info existe antes de usarlo
+        if (request.request_info) {
+          notifyTransportAvailable({
+            product: request.request_info.product_description || 'Producto no especificado',
+            distance: '3.2 km',
+            purpose: request.purpose
+          });
+        }
       });
     }
 
@@ -623,10 +626,12 @@ export const RunnerDashboard: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-4 md:space-y-6">
-                  {filteredAvailableRequests.map((request) => {
+                  {filteredAvailableRequests
+                    .filter((request) => request.request_info) // Filtrar requests sin request_info
+                    .map((request) => {
                     const distance = formatDistance(
-                      request.request_info.pickup_location,
-                      request.request_info.delivery_location
+                      request.request_info!.pickup_location || 'Ubicación desconocida',
+                      request.request_info!.delivery_location || 'Destino desconocido'
                     );
                     const earnings = calculateEarnings(distance, request.purpose === 'cliente');
                     
