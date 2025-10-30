@@ -17,7 +17,7 @@ const resolveEnv = (keys: string[], fallback: string): string => {
 
 export const BACKEND_URL: string = resolveEnv(
   ['VITE_BACKEND_URL', 'BACKEND_URL'],
-  'http://localhost:8000'
+  'https://tustockya-api.onrender.com' 
 );
 
 export const API_BASE_URL: string = resolveEnv(
