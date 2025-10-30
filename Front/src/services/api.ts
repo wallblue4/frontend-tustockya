@@ -1,7 +1,5 @@
 //api.ts
-
-const API_BASE_URL = 'http://localhost:8000'
-//const API_BASE_URL = 'https://tustockya-api.onrender.com';
+import { API_BASE_URL } from '../config/env'
 
 // Get token from localStorage
 const getAuthToken = () => {

@@ -1,8 +1,6 @@
 // src/services/transfersAPI.ts - CORREGIDO PARA USAR ENDPOINTS CORRECTOS
 import type { ReturnRequestCreate, ReturnResponse } from '../types/transfers';
-
-const BACKEND_URL = 'http://localhost:8000';
-//const BACKEND_URL = 'https://tustockya-api.onrender.com'; 
+import { BACKEND_URL } from '../config/env';
 
 const getHeaders = () => {
   const token = localStorage.getItem('token');
