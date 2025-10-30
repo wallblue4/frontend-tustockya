@@ -102,80 +102,62 @@ interface AcceptedRequest {
     next_step: string;
     progress: number;
   };
-  sneaker_reference_code: string;
-  brand: string;
-  model: string;
-  size: string;
-  quantity: number;
-  product_image?: string;
-  product_description?: string;
-  transfer_type?: string;
-  transfer_type_display?: string;
+  request_type: 'transfer' | 'return';
+  request_type_display: string;
+  product: {
+    reference_code: string;
+    brand: string;
+    model: string;
+    size: string;
+    quantity: number;
+    inventory_type: 'pair' | 'left_only' | 'right_only' | 'both_feet';
+    inventory_type_label: string;
+    image_url: string;
+    stock_available: number;
+  };
   purpose: 'cliente' | 'restock' | 'return' | 'pair_formation';
-  priority?: string;
-  pickup_type?: string;
-  pickup_info?: {
+  purpose_display: string;
+  urgent_action: boolean;
+  pickup_type: 'corredor' | 'vendedor';
+  pickup_info: {
     type: string;
     type_display: string;
     who: string;
     description: string;
-    icon: string;
-    requires_courier: boolean;
-    courier_assigned: boolean;
+    requires_courier?: boolean;
+    courier_assigned?: boolean;
+    courier_id?: number;
   };
-  accepted_at: string;
-  courier_accepted_at?: string | null;
-  picked_up_at?: string | null;
-  time_since_accepted?: string;
-  notes?: string | null;
-  warehouse_notes?: string | null;
-  // Campos opcionales que pueden no estar en la respuesta
-  requester_name?: string;
-  courier_name?: string;
-  courier_assigned?: boolean;
-  courier_id?: number | null;
-  requester_info?: {
+  courier_info?: {
+    id: number;
+    name: string;
+    assigned: boolean;
+    status: string;
+  } | null;
+  requester_info: {
     id: number;
     name: string;
     role: string;
   };
-  courier_info?: {
-    id: number | null;
-    name: string | null;
-    assigned: boolean;
+  location: {
+    source_id: number;
+    source_name: string;
   };
-  location_info?: {
-    from?: {
-      id: number;
-      name: string;
-    };
-    to?: {
-      id: number;
-      name: string;
-    };
-    source?: {
-      id: number;
-      name: string;
-    };
-    destination?: {
-      id: number;
-      name: string;
-    };
-  };
-  product_info?: {
-    image_url: string;
-    unit_price: number;
-    description: string;
-  };
-  // Nuevos campos para pies separados
-  request_type?: 'transfer' | 'return';
-  inventory_type?: 'pair' | 'left_only' | 'right_only' | 'both_feet';
-  inventory_type_label?: string;
-  what_to_deliver?: string;
-  stock_available?: number;
+  requested_at: string;
+  accepted_at: string;
+  time_since_accepted: string;
+  notes?: string | null;
+  warehouse_notes?: string | null;
+  
+  // Campos legacy para compatibilidad
+  sneaker_reference_code?: string;
+  brand?: string;
+  model?: string;
+  size?: string;
+  quantity?: number;
+  product_image?: string;
   source_location_name?: string;
   destination_location_name?: string;
-  estimated_pickup_time?: string | null;
 }
 
 export const WarehouseDashboard: React.FC = () => {
@@ -385,17 +367,20 @@ export const WarehouseDashboard: React.FC = () => {
          throw new Error('Solicitud no encontrada');
        }
 
-       if (!request.courier_info?.id) {
+       // Usar la nueva estructura: pickup_info.courier_id o courier_info.id
+       const courierId = request.pickup_info?.courier_id || request.courier_info?.id;
+       
+       if (!courierId) {
          throw new Error('No hay corredor asignado para esta solicitud');
        }
 
        console.log('📦 Datos de la solicitud:', request);
-       console.log('🚚 Courier ID:', request.courier_info.id);
+       console.log('🚚 Courier ID:', courierId);
        
       // Llamada usando transfersAPI con la estructura correcta
       const response = await warehouseAPI.deliverToCourier({
         transfer_request_id: requestId,
-        courier_id: request.courier_info.id,
+        courier_id: courierId,
         delivery_notes: 'Producto entregado al corredor en perfecto estado. Caja original sellada.'
       });
        
@@ -405,7 +390,7 @@ export const WarehouseDashboard: React.FC = () => {
       addNotification(
         'success',
         '🚚 Entregado al Corredor',
-        `Transferencia #${requestId} entregada exitosamente al corredor ${request.courier_info.name || request.courier_info.id}`
+        `Transferencia #${requestId} entregada exitosamente al corredor ${request.courier_info?.name || request.pickup_info?.who || courierId}`
       );
       
       console.log('🔄 Recargando datos después de entrega...');
@@ -429,10 +414,22 @@ export const WarehouseDashboard: React.FC = () => {
     setActionLoading(requestId);
     
     try {
+      // Buscar la solicitud para obtener información del vendedor
+      const request = acceptedRequests.find(r => r.id === requestId);
+      
+      if (!request) {
+        throw new Error('Solicitud no encontrada');
+      }
+
+      console.log('📦 Datos de la solicitud:', request);
+      console.log('👤 Vendedor:', request.requester_info?.name);
+      
       // Llamada usando transfersAPI
       const response = await warehouseAPI.deliverToVendor(requestId, {
         delivered: true,
-        delivery_notes: 'Producto entregado al vendedor en perfecto estado. Caja original sellada.'
+        delivery_notes: 'Producto entregado al vendedor en perfecto estado. Caja original sellada.',
+        vendor_id: request.requester_info?.id,
+        vendor_name: request.requester_info?.name
       });
       
       console.log('✅ WH005 Response:', response);
@@ -440,7 +437,7 @@ export const WarehouseDashboard: React.FC = () => {
       addNotification(
         'success',
         '👤 Entregado al Vendedor',
-        `Transferencia #${requestId} entregada exitosamente`
+        `Transferencia #${requestId} entregada exitosamente a ${request.requester_info?.name || 'vendedor'}`
       );
       
       await loadInitialData();
@@ -625,21 +622,6 @@ export const WarehouseDashboard: React.FC = () => {
      return location.products.reduce((total, product) => total + product.total_quantity, 0);
    };
 
-   // Helper function para extraer nombres de ubicación de forma segura
-   const getLocationName = (locationObj: any): string => {
-     if (typeof locationObj === 'string') {
-       return locationObj;
-     }
-     if (locationObj && typeof locationObj === 'object') {
-       if (locationObj.name) {
-         return locationObj.name;
-       }
-       if (locationObj.id) {
-         return `Ubicación ${locationObj.id}`;
-       }
-     }
-    return 'N/A';
-  };
 
   // *** NUEVA FUNCIÓN PARA DEVOLUCIONES ***
   const handleConfirmReturnReception = async (returnId: number) => {
@@ -1276,8 +1258,9 @@ export const WarehouseDashboard: React.FC = () => {
                 // Filtrar transferencias que están en preparación:
                 // 1. Status "courier_assigned" (para entregar a corredor)
                 // 2. Status "accepted" con pickup_type "vendedor" (para entregar a vendedor)
+                // Solo estos estados permiten realizar entregas (excluye "delivered", "in_transit", etc.)
                 const preparationRequests = acceptedRequests.filter(request => 
-                  request.status === 'courier_assigned' ||'accepted'||
+                  request.status === 'courier_assigned' ||
                   (request.status === 'accepted' && request.pickup_type === 'vendedor')
                 );
                 
@@ -1297,7 +1280,7 @@ export const WarehouseDashboard: React.FC = () => {
                         <div className="flex justify-between items-center mb-3">
                           <div className="flex items-center space-x-2">
                             <h4 className="font-semibold text-base text-foreground">
-                              {request.brand} {request.model}
+                              {request.product.brand} {request.product.model}
                             </h4>
                             {request.purpose === 'return' && (
                               <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
@@ -1321,19 +1304,17 @@ export const WarehouseDashboard: React.FC = () => {
                         </div>
 
                         {/* Información específica de pies separados */}
-                        {request.inventory_type && request.inventory_type !== 'pair' && (
+                        {request.product.inventory_type && request.product.inventory_type !== 'pair' && (
                           <div className="mb-3 p-3 bg-card border border-border rounded-lg">
                             <div className="flex items-center justify-between mb-2">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getInventoryTypeColor(request.inventory_type)}`}>
-                                {request.inventory_type_label || 
-                                 (request.inventory_type === 'left_only' ? '🦶 Pie Izquierdo' :
-                                  request.inventory_type === 'right_only' ? '🦶 Pie Derecho' : '🦶 Pies Separados')}
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getInventoryTypeColor(request.product.inventory_type)}`}>
+                                {request.product.inventory_type_label || 
+                                 (request.product.inventory_type === 'left_only' ? '🦶 Pie Izquierdo' :
+                                  request.product.inventory_type === 'right_only' ? '🦶 Pie Derecho' : '🦶 Pies Separados')}
                               </span>
-                              {request.what_to_deliver && (
-                                <span className="text-xs text-muted-foreground">
-                                  📦 {request.what_to_deliver}
-                                </span>
-                              )}
+                              <span className="text-xs text-muted-foreground">
+                                📦 {request.product.quantity} × {request.product.inventory_type_label}
+                              </span>
                             </div>
                           </div>
                         )}
@@ -1341,13 +1322,13 @@ export const WarehouseDashboard: React.FC = () => {
                         <div className="flex items-start space-x-3 mb-3">
                           <div className="flex-shrink-0">
                              <img
-                               src={request.product_image || request.product_info?.image_url || `https://via.placeholder.com/200x300/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
-                               alt={`${request.brand} ${request.model}`}
+                               src={request.product.image_url || `https://via.placeholder.com/200x300/e5e7eb/6b7280?text=${encodeURIComponent(request.product.brand + ' ' + request.product.model)}`}
+                               alt={`${request.product.brand} ${request.product.model}`}
                                className="w-32 h-48 object-cover rounded-lg border border-border bg-muted"
                                onError={(e) => {
                                  if (!e.currentTarget.dataset.fallback) {
                                    e.currentTarget.dataset.fallback = 'true';
-                                   e.currentTarget.src = `https://via.placeholder.com/200x300/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
+                                   e.currentTarget.src = `https://via.placeholder.com/200x300/f3f4f6/9ca3af?text=${encodeURIComponent(request.product.brand)}`;
                                  }
                                }}
                              />
@@ -1355,28 +1336,28 @@ export const WarehouseDashboard: React.FC = () => {
                           
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-muted-foreground mb-1">
-                              Talla {request.size} • {request.quantity} unidad{request.quantity > 1 ? 'es' : ''}
+                              Talla {request.product.size} • {request.product.quantity} unidad{request.product.quantity > 1 ? 'es' : ''}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              Solicitado por: {request.requester_info?.name || request.requester_name || 'Usuario'}
+                              Solicitado por: {request.requester_info?.name || 'Usuario'}
                             </p>
                              <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-1">
                                <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
-                               <span className="font-medium">De: {request.source_location_name || getLocationName(request.location_info?.from || request.location_info?.source)}</span>
+                               <span className="font-medium">De: {request.location.source_name}</span>
                              </div>
                              <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-1">
                                <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
-                               <span className="font-medium">A: {request.destination_location_name || getLocationName(request.location_info?.to || request.location_info?.destination)}</span>
+                               <span className="font-medium">A: {request.requester_info?.name} (Local)</span>
                              </div>
                           </div>
                         </div>
                         
                          {/* Información específica según pickup_type */}
-                         {request.pickup_type === 'corredor' && request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
+                         {request.pickup_type === 'corredor' && request.status === 'courier_assigned' && request.courier_info?.assigned && (
                            <div className="mb-3 p-2 bg-primary/10 rounded-lg">
                              <p className="text-xs text-primary">
                                <Truck className="h-3 w-3 inline mr-1" />
-                               Corredor: <strong>{request.courier_info.name || `ID: ${request.courier_info.id}`}</strong>
+                               Corredor: <strong>{request.courier_info.name || request.pickup_info.who || `ID: ${request.courier_info.id}`}</strong>
                              </p>
                            </div>
                          )}
@@ -1389,7 +1370,7 @@ export const WarehouseDashboard: React.FC = () => {
                                request.purpose === 'return' ? 'text-muted-foreground' : 'text-warning'
                              }`}>
                                <User className="h-3 w-3 inline mr-1" />
-                               <strong>Esperando al vendedor:</strong> {request.requester_info?.name || request.requester_name || 'Usuario'}
+                               <strong>Esperando al vendedor:</strong> {request.requester_info?.name || 'Usuario'}
                              </p>
                              <p className={`text-xs mt-1 ${
                                request.purpose === 'return' ? 'text-muted-foreground' : 'text-warning'
@@ -1416,7 +1397,7 @@ export const WarehouseDashboard: React.FC = () => {
                          )}
                          
                          {/* Botones de entrega según pickup_type */}
-                         {request.pickup_type === 'corredor' && request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
+                         {request.status === 'courier_assigned' && request.pickup_type === 'corredor' && request.purpose !== 'return' && (
                           <Button
                             onClick={() => handleDeliverToCourier(request.id)}
                             disabled={actionLoading === request.id}
@@ -1433,7 +1414,7 @@ export const WarehouseDashboard: React.FC = () => {
                          )}
 
                          {/* Botón para transferencia normal con vendedor - status accepted */}
-                         {request.pickup_type === 'vendedor' && request.status === 'accepted' && request.purpose !== 'return' && (
+                         {request.status === 'accepted' && request.pickup_type === 'vendedor' && request.purpose !== 'return' && (
                            <Button
                              onClick={() => handleDeliverToVendor(request.id)}
                              disabled={actionLoading === request.id}
@@ -1491,7 +1472,7 @@ export const WarehouseDashboard: React.FC = () => {
                         <div className="flex justify-between items-center mb-4">
                           <div className="flex items-center space-x-2">
                             <h4 className="font-semibold text-lg text-foreground">
-                              {request.brand} {request.model} - Talla {request.size}
+                              {request.product.brand} {request.product.model} - Talla {request.product.size}
                             </h4>
                             {request.purpose === 'return' && (
                               <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted/10 text-muted-foreground">
@@ -1520,19 +1501,17 @@ export const WarehouseDashboard: React.FC = () => {
                         </div>
 
                         {/* Información específica de pies separados */}
-                        {request.inventory_type && request.inventory_type !== 'pair' && (
+                        {request.product.inventory_type && request.product.inventory_type !== 'pair' && (
                           <div className="mb-4 p-4 bg-card border border-border rounded-lg">
                             <div className="flex items-center justify-between mb-2">
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getInventoryTypeColor(request.inventory_type)}`}>
-                                {request.inventory_type_label || 
-                                 (request.inventory_type === 'left_only' ? '🦶 Pie Izquierdo' :
-                                  request.inventory_type === 'right_only' ? '🦶 Pie Derecho' : '🦶 Pies Separados')}
+                              <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getInventoryTypeColor(request.product.inventory_type)}`}>
+                                {request.product.inventory_type_label || 
+                                 (request.product.inventory_type === 'left_only' ? '🦶 Pie Izquierdo' :
+                                  request.product.inventory_type === 'right_only' ? '🦶 Pie Derecho' : '🦶 Pies Separados')}
                               </span>
-                              {request.what_to_deliver && (
-                                <span className="text-sm text-muted-foreground">
-                                  📦 {request.what_to_deliver}
-                                </span>
-                              )}
+                              <span className="text-sm text-muted-foreground">
+                                📦 {request.product.quantity} × {request.product.inventory_type_label}
+                              </span>
                             </div>
                           </div>
                         )}
@@ -1540,46 +1519,41 @@ export const WarehouseDashboard: React.FC = () => {
                         <div className="flex items-start mb-4">
                           <div className="flex-shrink-0 mr-4">
                              <img
-                               src={request.product_image || request.product_info?.image_url || `https://via.placeholder.com/200x300/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
-                               alt={`${request.brand} ${request.model}`}
+                               src={request.product.image_url || `https://via.placeholder.com/200x300/e5e7eb/6b7280?text=${encodeURIComponent(request.product.brand + ' ' + request.product.model)}`}
+                               alt={`${request.product.brand} ${request.product.model}`}
                                className="w-32 h-48 object-cover rounded-lg border border-border bg-muted shadow-sm"
                                onError={(e) => {
                                  if (!e.currentTarget.dataset.fallback) {
                                    e.currentTarget.dataset.fallback = 'true';
-                                   e.currentTarget.src = `https://via.placeholder.com/200x300/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
+                                   e.currentTarget.src = `https://via.placeholder.com/200x300/f3f4f6/9ca3af?text=${encodeURIComponent(request.product.brand)}`;
                                  }
                                }}
                              />
-                            {request.product_info?.unit_price && (
-                              <p className="text-xs text-muted-foreground mt-1 text-center font-medium">
-                                💰 {formatPrice(request.product_info.unit_price)}
-                              </p>
-                            )}
                           </div>
 
                           <div className="flex-1">
                             
                             <p className="text-sm text-muted-foreground mb-2">
                               <User className="h-4 w-4 inline mr-1" />
-                              Solicitado por: <strong>{request.requester_info?.name || request.requester_name || 'Usuario'}</strong>
+                              Solicitado por: <strong>{request.requester_info?.name || 'Usuario'}</strong>
                             </p>
                             
                              <div className="mb-2">
                                <p className="text-sm text-muted-foreground">
                                  <MapPin className="h-4 w-4 inline mr-1" />
-                                 <strong>De:</strong> {request.source_location_name || getLocationName(request.location_info?.from || request.location_info?.source)}
+                                 <strong>De:</strong> {request.location.source_name}
                                </p>
                                <p className="text-sm text-muted-foreground">
                                  <MapPin className="h-4 w-4 inline mr-1" />
-                                 <strong>A:</strong> {request.destination_location_name || getLocationName(request.location_info?.to || request.location_info?.destination)}
+                                 <strong>A:</strong> {request.requester_info?.name} (Local)
                                </p>
                              </div>
                             
-                             {request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
+                             {request.status === 'courier_assigned' && request.courier_info?.assigned && (
                                <div className="mb-2">
                                  <p className="text-sm text-primary">
                                    <Truck className="h-4 w-4 inline mr-1" />
-                                   Corredor: <strong>{request.courier_info.name || `ID: ${request.courier_info.id}`}</strong>
+                                   Corredor: <strong>{request.courier_info.name || request.pickup_info.who || `ID: ${request.courier_info.id}`}</strong>
                                  </p>
                                </div>
                              )}
@@ -1615,20 +1589,20 @@ export const WarehouseDashboard: React.FC = () => {
                           </div>
                         </div>
 
-                        {request.product_info?.description && (
+                        {request.product.reference_code && (
                           <div className="mb-4 p-3 bg-muted rounded-lg">
                             <p className="text-sm text-muted-foreground">
-                              <strong>📝 Descripción:</strong> {request.product_info.description}
+                              <strong>📝 Código de referencia:</strong> {request.product.reference_code}
                             </p>
                           </div>
                         )}
 
                          {/* Información específica según pickup_type - Desktop */}
-                         {request.pickup_type === 'corredor' && request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
+                         {request.pickup_type === 'corredor' && request.status === 'courier_assigned' && request.courier_info?.assigned && (
                            <div className="mb-4 p-3 bg-primary/10 rounded-lg">
                              <p className="text-sm text-primary">
                                <Truck className="h-4 w-4 inline mr-1" />
-                               <strong>Corredor asignado:</strong> {request.courier_info.name || `ID: ${request.courier_info.id}`}
+                               <strong>Corredor asignado:</strong> {request.courier_info.name || request.pickup_info.who || `ID: ${request.courier_info.id}`}
                              </p>
                            </div>
                          )}
@@ -1641,7 +1615,7 @@ export const WarehouseDashboard: React.FC = () => {
                                request.purpose === 'return' ? 'text-orange-800' : 'text-yellow-800'
                              }`}>
                                <User className="h-4 w-4 inline mr-1" />
-                               <strong>Esperando al vendedor:</strong> {request.requester_info?.name || request.requester_name || 'Usuario'}
+                               <strong>Esperando al vendedor:</strong> {request.requester_info?.name || 'Usuario'}
                              </p>
                              <p className={`text-sm mt-1 ${
                                request.purpose === 'return' ? 'text-orange-700' : 'text-yellow-700'
@@ -1668,7 +1642,7 @@ export const WarehouseDashboard: React.FC = () => {
                          )}
 
                          {/* Botones de entrega según pickup_type - Desktop */}
-                         {request.pickup_type === 'corredor' && request.status === 'courier_assigned' && request.courier_info?.assigned && request.courier_info?.id && (
+                         {request.status === 'courier_assigned' && request.pickup_type === 'corredor' && request.purpose !== 'return' && (
                            <div className="mt-4">
                              <Button
                                onClick={() => handleDeliverToCourier(request.id)}
@@ -1686,7 +1660,7 @@ export const WarehouseDashboard: React.FC = () => {
                          )}
 
                          {/* Botón para transferencia normal con vendedor - status accepted - Desktop */}
-                         {request.pickup_type === 'vendedor' && request.status === 'accepted' && request.purpose !== 'return' && (
+                         {request.status === 'accepted' && request.pickup_type === 'vendedor' && request.purpose !== 'return' && (
                            <div className='mt-4'>
                              <Button
                                onClick={() => handleDeliverToVendor(request.id)}
@@ -1741,8 +1715,8 @@ export const WarehouseDashboard: React.FC = () => {
                         
                           <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
                           <div className="flex justify-between items-center">
-                            <span>ID: {request.id} | Código: {request.sneaker_reference_code}</span>
-                            <span>Status: {request.status} | Corredor: {request.courier_info?.name || request.courier_name || 'Sin asignar'}</span>
+                            <span>ID: {request.id} | Código: {request.product.reference_code}</span>
+                            <span>Status: {request.status} | Corredor: {request.courier_info?.name || request.pickup_info?.who || 'Sin asignar'}</span>
                           </div>
                         </div>
                       </div>
@@ -2217,22 +2191,22 @@ export const WarehouseDashboard: React.FC = () => {
 
                         {/* Información del producto */}
                         <div className="flex items-center space-x-4 mb-4">
-                          {returnItem.product_image && (
+                          {returnItem.product?.image_url && (
                             <img 
-                              src={returnItem.product_image} 
-                              alt={`${returnItem.brand} ${returnItem.model}`}
+                              src={returnItem.product.image_url} 
+                              alt={`${returnItem.product.brand} ${returnItem.product.model}`}
                               className="w-16 h-16 object-cover rounded-lg border border-border"
                             />
                           )}
                           <div>
                             <h3 className="font-bold text-lg text-card-foreground">
-                              {returnItem.brand} {returnItem.model}
+                              {returnItem.product?.brand || returnItem.brand} {returnItem.product?.model || returnItem.model}
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              Talla {returnItem.size} • Cantidad: {returnItem.quantity} • Ref: {returnItem.sneaker_reference_code}
+                              Talla {returnItem.product?.size || returnItem.size} • Cantidad: {returnItem.product?.quantity || returnItem.quantity} • Ref: {returnItem.product?.reference_code || returnItem.sneaker_reference_code}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              <strong>Tipo:</strong> {returnItem.transfer_type_display || 'Devolución'}
+                              <strong>Tipo:</strong> {returnItem.request_type_display || 'Devolución'}
                             </p>
                             {returnItem.requester_info && (
                               <p className="text-sm text-muted-foreground">
@@ -2248,18 +2222,18 @@ export const WarehouseDashboard: React.FC = () => {
                         </div>
 
                         {/* Información de ubicaciones */}
-                        {returnItem.location_info && (
+                        {returnItem.location && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
                               <div className="text-sm font-medium text-primary mb-1">📍 Desde (Vendedor)</div>
                               <div className="text-sm font-medium text-card-foreground">
-                                {returnItem.location_info.source?.name || returnItem.location_info.from?.name || 'N/A'}
+                                {returnItem.location.source_name || 'N/A'}
                               </div>
                             </div>
                             <div className="p-3 bg-success/10 rounded-lg border border-success/20">
                               <div className="text-sm font-medium text-success mb-1">🏪 Hacia (Bodega)</div>
                               <div className="text-sm font-medium text-card-foreground">
-                                {returnItem.location_info.destination?.name || returnItem.location_info.to?.name || 'N/A'}
+                                Bodega Principal
                               </div>
                             </div>
                           </div>

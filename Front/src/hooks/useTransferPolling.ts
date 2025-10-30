@@ -44,9 +44,9 @@ export const useTransferPolling = (
         case 'corredor':
           const [available, assigned] = await Promise.all([
             courierAPI.getAvailableRequests(),
-            courierAPI.getMyDeliveries() // Cambiado de getMyAssignedTransports a getMyDeliveries
+            courierAPI.getMyAssignedTransports() // my-transports - entregas asignadas/pendientes
           ]);
-          response = { available: available.available_requests, assigned: assigned.my_transports || assigned.recent_deliveries || [] };
+          response = { available: available.available_requests, assigned: assigned.my_transports || [] };
           break;
          
         default:

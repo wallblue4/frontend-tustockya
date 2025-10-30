@@ -551,7 +551,10 @@ export const RunnerDashboard: React.FC = () => {
               <div className="flex-grow hidden md:block"></div>
               <Button
                 variant="ghost"
-                onClick={refetch}
+                onClick={() => {
+                  loadInitialData();
+                  refetch(); // También actualizar el polling
+                }}
                 size="sm"
                 className="text-xs md:text-sm"
               >
@@ -697,14 +700,25 @@ export const RunnerDashboard: React.FC = () => {
                                   {request.cargo_description}
                                 </h3>
                                 
-                                <div className="space-y-2 mb-3">
-                                  <div className="flex items-center space-x-1 text-sm text-card-foreground">
-                                    <User className="h-3 w-3 text-muted-foreground" />
-                                    <span className="font-medium truncate">
-                                      Cliente: {request.transport_info.delivery_location.name}
+                                {/* Ruta: Origen → Destino */}
+                                <div className="mb-3 p-2 bg-muted/30 rounded-lg border border-border/50">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    <MapPin className="h-3 w-3 text-primary flex-shrink-0" />
+                                    <span className="text-xs font-medium text-primary">Origen:</span>
+                                    <span className="text-xs text-card-foreground truncate">
+                                      {request.transport_info.pickup_location.name}
                                     </span>
                                   </div>
-                                  
+                                  <div className="flex items-center space-x-2">
+                                    <Navigation className="h-3 w-3 text-success flex-shrink-0" />
+                                    <span className="text-xs font-medium text-success">Destino:</span>
+                                    <span className="text-xs text-card-foreground truncate">
+                                      {request.transport_info.delivery_location.name}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                <div className="space-y-1 mb-3">
                                   <p className="text-xs text-muted-foreground">
                                     📦 {request.quantity} • Talla {request.size} • 📍 {distance} km
                                   </p>
@@ -837,45 +851,43 @@ export const RunnerDashboard: React.FC = () => {
                                   {request.cargo_description}
                                 </h3>
                                 
-                                {/* Cliente */}
-                                <div className="p-4 bg-muted/20 rounded-lg mb-6">
-                                  <div className="flex items-center space-x-3">
-                                    <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
-                                      <User className="h-6 w-6 text-primary-foreground" />
-                                    </div>
-                                    <div>
-                                      <div className="font-semibold text-card-foreground text-lg">
-                                        Destino: {request.transport_info.delivery_location.name}
+                                {/* Ruta de entrega - Mejorada con visualización de origen → destino */}
+                                <div className="mb-6 p-5 bg-gradient-to-r from-primary/5 via-muted/5 to-success/5 rounded-xl border-2 border-primary/20 shadow-sm">
+                                  <div className="grid grid-cols-12 gap-4 items-start">
+                                    {/* Origen */}
+                                    <div className="col-span-5">
+                                      <div className="flex items-center space-x-2 mb-2">
+                                        <MapPin className="h-5 w-5 text-primary" />
+                                        <h4 className="font-semibold text-primary text-base">Recoger en</h4>
                                       </div>
-                                      <div className="text-sm text-muted-foreground">{request.transport_info.delivery_location.address}</div>
+                                      <p className="font-semibold text-card-foreground text-lg mb-1">{request.transport_info.pickup_location.name}</p>
+                                      <p className="text-sm text-muted-foreground mb-2">{request.transport_info.pickup_location.address}</p>
+                                      {request.transport_info.pickup_location.contact && (
+                                        <p className="text-xs text-primary">
+                                          📞 {request.transport_info.pickup_location.contact}
+                                        </p>
+                                      )}
                                     </div>
-                                  </div>
-                                </div>
-
-                                {/* Ruta de entrega */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                  <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
-                                    <div className="flex items-center mb-2">
-                                      <MapPin className="h-5 w-5 text-primary mr-2" />
-                                      <h4 className="font-semibold text-primary">Punto de Recolección</h4>
+                                    
+                                    {/* Flecha visual */}
+                                    <div className="col-span-2 flex items-center justify-center pt-6">
+                                      <div className="flex flex-col items-center">
+                                        <Navigation className="h-6 w-6 text-primary animate-pulse" />
+                                        <div className="text-xs text-muted-foreground mt-1 font-medium">
+                                          ~{distance} km
+                                        </div>
+                                      </div>
                                     </div>
-                                    <p className="font-medium text-card-foreground">{request.transport_info.pickup_location.name}</p>
-                                    <p className="text-sm text-muted-foreground">{request.transport_info.pickup_location.address}</p>
-                                    <p className="text-xs text-primary mt-1">
-                                      📞 Contacto: {request.transport_info.pickup_location.contact}
-                                    </p>
-                                  </div>
-                                  
-                                  <div className="p-4 bg-success/10 rounded-lg border border-success/20">
-                                    <div className="flex items-center mb-2">
-                                      <Navigation className="h-5 w-5 text-success mr-2" />
-                                      <h4 className="font-semibold text-success">Punto de Entrega</h4>
+                                    
+                                    {/* Destino */}
+                                    <div className="col-span-5">
+                                      <div className="flex items-center space-x-2 mb-2">
+                                        <Navigation className="h-5 w-5 text-success" />
+                                        <h4 className="font-semibold text-success text-base">Entregar en</h4>
+                                      </div>
+                                      <p className="font-semibold text-card-foreground text-lg mb-1">{request.transport_info.delivery_location.name}</p>
+                                      <p className="text-sm text-muted-foreground">{request.transport_info.delivery_location.address}</p>
                                     </div>
-                                    <p className="font-medium text-card-foreground">{request.transport_info.delivery_location.name}</p>
-                                    <p className="text-sm text-muted-foreground">{request.transport_info.delivery_location.address}</p>
-                                    <p className="text-xs text-success mt-1">
-                                      📍 Distancia: ~{distance} km
-                                    </p>
                                   </div>
                                 </div>
 

@@ -70,6 +70,7 @@ interface TransfersViewProps {
 
 // Interfaz para transferencia completada (historial) - Actualizada según respuesta real del API
 interface CompletedTransfer {
+  inventory_type: any;
   id: number;
   status: 'completed' | 'cancelled';
   sneaker_reference_code: string;
@@ -77,7 +78,7 @@ interface CompletedTransfer {
   model: string;
   size: string;
   quantity: number;
-  purpose: 'cliente' | 'restock' | 'pair_formation';
+  purpose: 'cliente' | 'restock' | 'pair_formation' | 'return';
   priority: 'high' | 'normal';
   requested_at: string;
   completed_at: string | null;
@@ -153,14 +154,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   // Effect para manejar datos prefilled
   useEffect(() => {
     if (prefilledProductData) {
-      // Determinar cantidad basada en el tipo de transferencia
-      let quantity = 1;
-      if (prefilledProductData.transfer_type === 'form_pair') {
-        quantity = Math.min(prefilledProductData.left_feet || 0, prefilledProductData.right_feet || 0);
-      } else if (prefilledProductData.pairs && prefilledProductData.pairs > 0) {
-        quantity = prefilledProductData.pairs;
-      }
-
+      // Mantener cantidad en 1 por defecto; el usuario puede cambiarla manualmente
       setRequestForm({
         source_location_id: prefilledProductData.source_location_id ?? undefined,
         destination_location_id: user?.location_id ?? undefined,
@@ -168,12 +162,12 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         brand: prefilledProductData.brand || '',
         model: prefilledProductData.model || '',
         size: prefilledProductData.size || '',
-        quantity: quantity,
+        quantity: 1,
         purpose: 'cliente',
         pickup_type: 'corredor',
         destination_type: 'exhibicion',
         notes: prefilledProductData.request_notes || `Solicitud desde escáner - Color: ${prefilledProductData.color || 'N/A'}`,
-        transfer_type: 'pair', // Por defecto par completo
+        transfer_type: 'pair',
         foot_side: undefined
       });
       setActiveTab('new');
@@ -301,6 +295,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       model: transfer.model,
       size: transfer.size,
       quantity: transfer.quantity,
+      inventory_type: transfer.inventory_type,
       product_image: transfer.product_image
     };
     setSelectedTransferForReturn(transferForReturn);
@@ -966,7 +961,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                               )}
                               
                               {/* CASO 3: Status delivered - Confirmar recepción */}
-                              {transfer.status === 'delivered' && (
+                              {transfer.status === 'delivered' && transfer.purpose !== 'return' && (
                                 <Button
                                   onClick={() => handleConfirmReception(transfer)}
                                   className="bg-success hover:bg-success/90 text-success-foreground text-sm w-full"
@@ -975,6 +970,18 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                   <CheckCircle className="h-4 w-4 mr-2" />
                                   Confirmar Recepción
                                 </Button>
+                              )}
+                              
+                              {/* CASO 3.1: Status delivered Y purpose return - Ya entregado, nada más que hacer */}
+                              {transfer.status === 'delivered' && transfer.purpose === 'return' && (
+                                <div className="p-3 bg-muted/10 border border-muted/20 rounded-lg">
+                                  <div className="flex items-center space-x-2">
+                                    <Clock className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-sm font-medium text-card-foreground">
+                                      ⏳ Esperando que bodeguero confirme la recepción
+                                    </span>
+                                  </div>
+                                </div>
                               )}
                               
                               {/* CASO 4: Status pending - Cancelar */}
@@ -1082,6 +1089,11 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                               🔗 Formar Par
                             </span>
                           )}
+                          {String(transfer.purpose).toLowerCase().trim() === 'return' && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted/10 text-muted-foreground">
+                              🔄 Devolución
+                            </span>
+                          )}
                         </div>
 
                         {/* Información del producto */}
@@ -1096,8 +1108,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         <div className="text-xs md:text-sm mb-3">
                           <span className="text-muted-foreground">Propósito:</span>
                           <span className="font-medium ml-1">
-                            {transfer.purpose === 'cliente' ? '🏃‍♂️ Cliente' : 
-                             transfer.purpose === 'pair_formation' ? '🔗 Formar Par' : '📦 Restock'}
+                            {String(transfer.purpose).toLowerCase().trim() === 'cliente' ? '🏃‍♂️ Cliente' : 
+                             String(transfer.purpose).toLowerCase().trim() === 'pair_formation' ? '🔗 Formar Par' : 
+                             String(transfer.purpose).toLowerCase().trim() === 'return' ? '🔄 Devolución' : '📦 Restock'}
                           </span>
                         </div>
 
@@ -1116,24 +1129,46 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
                         {/* Botones de acción - SOLO para transferencias completadas */}
                         {transfer.status === 'completed' && (
-                          <div className="flex flex-col md:flex-row gap-2 mt-3">
-                            <Button
-                              onClick={() => handleGenerateReturn(transfer)}
-                              className="bg-muted text-muted-foreground hover:bg-muted/80 text-sm flex-1"
-                              size="sm"
-                            >
-                              <Package className="h-4 w-4 mr-2" />
-                              Generar Devolución
-                            </Button>
-                            <Button
-                              onClick={() => handleSellFromCompletedTransfer(transfer)}
-                              className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm flex-1"
-                              size="sm"
-                            >
-                              <DollarSign className="h-4 w-4 mr-2" />
-                              Vender
-                            </Button>
-                          </div>
+                          <>
+                            {/* Caso especial: Devolución completada - Sin acciones disponibles */}
+                            {(() => {
+                              const purposeValue = String(transfer.purpose).toLowerCase().trim();
+                              console.log('🔍 Debug - Transfer ID:', transfer.id, 'Purpose:', transfer.purpose, 'Normalized:', purposeValue, 'Is Return:', purposeValue === 'return');
+                              return purposeValue === 'return';
+                            })() ? (
+                              <div className="p-3 bg-muted/10 border border-muted/20 rounded-lg mt-3">
+                                <div className="flex items-center space-x-2">
+                                  <CheckCircle className="h-4 w-4 text-success" />
+                                  <span className="text-sm font-medium text-muted-foreground">
+                                    ✅ Devolución completada - No hay acciones disponibles
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Esta devolución ha sido completada y procesada. No se requieren más acciones de tu parte.
+                                </p>
+                              </div>
+                            ) : (
+                              /* Transferencias normales completadas - Mostrar botones de acción */
+                              <div className="flex flex-col md:flex-row gap-2 mt-3">
+                                <Button
+                                  onClick={() => handleGenerateReturn(transfer)}
+                                  className="bg-muted text-muted-foreground hover:bg-muted/80 text-sm flex-1"
+                                  size="sm"
+                                >
+                                  <Package className="h-4 w-4 mr-2" />
+                                  Generar Devolución
+                                </Button>
+                                <Button
+                                  onClick={() => handleSellFromCompletedTransfer(transfer)}
+                                  className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm flex-1"
+                                  size="sm"
+                                >
+                                  <DollarSign className="h-4 w-4 mr-2" />
+                                  Vender
+                                </Button>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
@@ -1265,15 +1300,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     onChange={(e) => setRequestForm({...requestForm, quantity: parseInt(e.target.value) || 1})}
                     min="1"
                     required
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${
-                      prefilledProductData?.transfer_type ? 'border-primary/30 bg-primary/10' : 'border-border'
-                    }`}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground border-border"
                   />
-                  {prefilledProductData?.transfer_type && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      💡 Cantidad calculada automáticamente según disponibilidad
-                    </p>
-                  )}
                 </div>
               </div>
 
@@ -1297,8 +1325,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                             setRequestForm(prev => ({
                               ...prev,
                               transfer_type: 'pair',
-                              foot_side: undefined,
-                              quantity: prefilledProductData.available_options?.pairs_quantity || 1
+                              foot_side: undefined
                             }));
                           }}
                           className="text-primary"
@@ -1329,8 +1356,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                             setRequestForm(prev => ({
                               ...prev,
                               transfer_type: 'single_foot',
-                              foot_side: 'left',
-                              quantity: prefilledProductData.available_options?.left_feet_quantity || 1
+                              foot_side: 'left'
                             }));
                           }}
                           className="text-primary"
@@ -1361,8 +1387,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                             setRequestForm(prev => ({
                               ...prev,
                               transfer_type: 'single_foot',
-                              foot_side: 'right',
-                              quantity: prefilledProductData.available_options?.right_feet_quantity || 1
+                              foot_side: 'right'
                             }));
                           }}
                           className="text-primary"

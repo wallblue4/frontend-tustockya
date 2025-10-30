@@ -12,6 +12,7 @@ interface TransferForReturn {
   model: string;
   size: string;
   quantity: number;
+  inventory_type: any;
   product_image?: string;
 }
 
@@ -88,6 +89,7 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
         quantity_to_return: formData.quantity_to_return,
         product_condition: formData.product_condition,
         pickup_type: formData.pickup_type,
+        inventory_type: transfer.inventory_type,
         notes: formData.notes
       });
     }
