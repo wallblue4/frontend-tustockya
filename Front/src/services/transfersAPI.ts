@@ -68,6 +68,57 @@ export const vendorAPI = {
     }
   },
 
+  // *** NUEVA FUNCIÓN - Registrar venta desde una transferencia ***
+  async sellFromTransfer(
+    transferId: number,
+    totalAmount: number,
+    payments: Array<{ type: 'efectivo' | 'tarjeta' | 'transferencia'; amount: number; reference?: string | null }>,
+    notes: string
+  ) {
+    console.log('🔄 Registrando venta desde transferencia...', { transferId, totalAmount, payments, notes });
+
+    const backendCall = async () => {
+      // Usar multipart/form-data según especificación del backend
+      const formData = new FormData();
+      formData.append('total_amount', String(totalAmount));
+      formData.append('payment_methods', JSON.stringify(payments));
+      formData.append('notes', notes || '');
+
+      // Construir headers sin Content-Type para que el navegador agregue el boundary
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${token || ''}`
+      };
+
+      const response = await fetch(`${BACKEND_URL}/api/v1/vendor/sell-from-transfer/${transferId}`, {
+        method: 'POST',
+        headers,
+        body: formData
+      });
+      return handleResponse(response);
+    };
+
+    const result = await tryBackendFirst(backendCall);
+
+    if (result.success) {
+      return result.data;
+    } else {
+      // Fallback mock
+      console.log('📦 Usando respuesta mock para sellFromTransfer');
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const saleId = Math.floor(Math.random() * 10000) + 1000;
+      return {
+        success: true,
+        sale_id: saleId,
+        total_amount: totalAmount,
+        payments,
+        status: 'completed',
+        sale_timestamp: new Date().toISOString(),
+        seller_info: { seller_name: 'Vendedor Mock' }
+      };
+    }
+  },
+
   async requestSingleFoot(singleFootData: {
     source_location_id: number;
     destination_location_id: number;

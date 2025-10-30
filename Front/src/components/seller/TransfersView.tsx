@@ -78,6 +78,7 @@ interface CompletedTransfer {
   model: string;
   size: string;
   quantity: number;
+  unit_price?: number;
   purpose: 'cliente' | 'restock' | 'pair_formation' | 'return';
   priority: 'high' | 'normal';
   requested_at: string;
@@ -362,7 +363,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       brand: transfer.brand,
       model: transfer.model,
       size: transfer.size,
-      price: 0, // No disponible en el endpoint, el vendedor deberá ingresarlo
+      price: typeof transfer.unit_price === 'number' ? transfer.unit_price : 0,
       location: 'Local Actual', // No disponible en el endpoint
       storage_type: 'display',
       color: 'N/A', // No disponible en el endpoint
