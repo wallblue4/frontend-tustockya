@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Shovel as Shoe, ShoppingBag, Menu, X, User, LogOut } from 'lucide-react';
+import { ShoppingBag, Menu, X, User, LogOut } from 'lucide-react';
+import SoloLogo from '../../Logo/Solo logo sin fondo.png';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 
@@ -43,7 +44,7 @@ export const Navbar: React.FC = () => {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex items-center">
-              <Shoe className="h-8 w-8 text-primary" />
+              <img src={SoloLogo} alt="TuStockYa" className="h-10 w-8 object-contain" />
               <span className="ml-2 text-xl font-bold text-foreground">TuStockYa</span>
             </Link>
             <div className="hidden md:ml-6 md:flex md:space-x-4">

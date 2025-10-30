@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shovel as Shoe, Mail, Lock } from 'lucide-react';
+import LogoImage from '../../Logo/isologo_tustockya-removebg-preview.png';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Layout } from '../../components/layout/Layout';
@@ -81,9 +82,7 @@ export const LoginPage: React.FC = () => {
         <div className="max-w-md w-full space-y-8 bg-card p-8 rounded-xl shadow-2xl border border-border backdrop-blur-sm">
           <div className="text-center">
             <div className="flex justify-center">
-              <div className="p-3 bg-primary/10 rounded-full">
-                <Shoe className="h-12 w-12 text-primary" />
-              </div>
+                <img src={LogoImage} alt="TuStockYa" className="h-40 w-90 " />
             </div>
             <h2 className="mt-6 text-3xl font-extrabold text-foreground">Iniciar sesión</h2>
             <p className="mt-2 text-sm text-muted-foreground">
