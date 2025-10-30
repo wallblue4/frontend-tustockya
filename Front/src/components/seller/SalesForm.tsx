@@ -47,9 +47,11 @@ interface SalesFormProps {
 
 export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
   const [items, setItems] = useState<SaleItem[]>([]);
+  const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
     { type: 'efectivo', amount: 0 }
   ]);
+  const [paymentAmountInputs, setPaymentAmountInputs] = useState<string[]>(['0']);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [notes, setNotes] = useState('');
   const [requiresConfirmation, setRequiresConfirmation] = useState(false);
@@ -61,6 +63,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
   
   // Discount fields
   const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [discountInput, setDiscountInput] = useState<string>('0');
   const [discountReason, setDiscountReason] = useState('');
   const [isRequestingDiscount, setIsRequestingDiscount] = useState(false);
 
@@ -83,9 +86,11 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
         unit_price: prefilledProduct.price
       };
       setItems([newItem]);
+      setPriceInputs({ [newItem.id]: String(newItem.unit_price ?? 0) });
       
       // Set payment amount to product price
       setPaymentMethods([{ type: 'efectivo', amount: prefilledProduct.price }]);
+      setPaymentAmountInputs([String(prefilledProduct.price ?? 0)]);
       
       // Add note about the product source
       if (prefilledProduct.location && prefilledProduct.storage_type) {
@@ -107,6 +112,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
       unit_price: 0
     };
     setItems([...items, newItem]);
+    setPriceInputs(prev => ({ ...prev, [newItem.id]: '0' }));
   };
 
   // Update item
@@ -124,6 +130,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
   // Add payment method
   const addPaymentMethod = () => {
     setPaymentMethods([...paymentMethods, { type: 'efectivo', amount: 0 }]);
+    setPaymentAmountInputs(prev => [...prev, '0']);
   };
 
   // Update payment method
@@ -137,6 +144,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
   const removePaymentMethod = (index: number) => {
     if (paymentMethods.length > 1) {
       setPaymentMethods(paymentMethods.filter((_, i) => i !== index));
+      setPaymentAmountInputs(paymentAmountInputs.filter((_, i) => i !== index));
     }
   };
 
@@ -548,8 +556,13 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
                     <Input
                       label="Precio"
                       type="number"
-                      value={item.unit_price}
-                      onChange={(e) => updateItem(item.id, 'unit_price', parseFloat(e.target.value) )}
+                    value={priceInputs[item.id] ?? String(item.unit_price ?? 0)}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setPriceInputs(prev => ({ ...prev, [item.id]: raw }));
+                      const parsed = raw.trim() === '' ? 0 : (Number.isNaN(parseFloat(raw)) ? 0 : parseFloat(raw));
+                      updateItem(item.id, 'unit_price', parsed);
+                    }}
                       placeholder="0"
                       step="0.01"
                       min="0"
@@ -584,8 +597,13 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
             <Input
               label="Monto del Descuento"
               type="number"
-              value={discountAmount}
-              onChange={(e) => setDiscountAmount(parseFloat(e.target.value) )}
+              value={discountInput}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setDiscountInput(raw);
+                const parsed = raw.trim() === '' ? 0 : (Number.isNaN(parseFloat(raw)) ? 0 : parseFloat(raw));
+                setDiscountAmount(parsed);
+              }}
               placeholder="0"
               min="0"
               step="0.01"
@@ -649,8 +667,17 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
                 <Input
                   label="Monto"
                   type="number"
-                  value={payment.amount}
-                  onChange={(e) => updatePaymentMethod(index, 'amount', parseFloat(e.target.value))}
+                  value={paymentAmountInputs[index] ?? String(payment.amount ?? 0)}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setPaymentAmountInputs(prev => {
+                      const copy = [...prev];
+                      copy[index] = raw;
+                      return copy;
+                    });
+                    const parsed = raw.trim() === '' ? 0 : (Number.isNaN(parseFloat(raw)) ? 0 : parseFloat(raw));
+                    updatePaymentMethod(index, 'amount', parsed);
+                  }}
                   placeholder="0"
                   step="0.01"
                   min="0"
