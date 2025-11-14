@@ -20,7 +20,6 @@ import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 
 // IMPORTACIONES
-import { TransferNotifications } from '../../components/notifications/TransferNotifications';
 import { useTransferNotifications } from '../../hooks/useTransferNotifications';
 import { useTransferPolling } from '../../hooks/useTransferPolling';
 import { useAuth } from '../../context/AuthContext';
@@ -100,13 +99,7 @@ export const RunnerDashboard: React.FC = () => {
 
   // HOOKS
   const { } = useAuth();
-  const {
-    notifications,
-    dismissNotification,
-    dismissAllNotifications,
-    notifyTransportAvailable,
-    addNotification
-  } = useTransferNotifications();
+  const { notifyTransportAvailable, addNotification } = useTransferNotifications();
 
   // Callback para manejar actualizaciones de polling
   const handlePollingUpdate = useCallback((data: any) => {
@@ -493,12 +486,7 @@ export const RunnerDashboard: React.FC = () => {
 
   return (
     <DashboardLayout title="Panel de Corredor">
-      {/* COMPONENTE DE NOTIFICACIONES */}
-      <TransferNotifications
-        notifications={notifications}
-        onDismiss={dismissNotification}
-        onDismissAll={dismissAllNotifications}
-      />
+      {/* Notificaciones removidas - botón eliminado según solicitud */}
 
       <div className="space-y-4 md:space-y-6">
         {/* Navigation Tabs - RESPONSIVE */}

@@ -22,7 +22,6 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
 // NUEVAS IMPORTACIONES
-import { TransferNotifications } from '../../components/notifications/TransferNotifications';
 import { useTransferNotifications } from '../../hooks/useTransferNotifications';
 import { useTransferPolling } from '../../hooks/useTransferPolling';
 import { warehouseAPI } from '../../services/transfersAPI';
@@ -196,13 +195,7 @@ export const WarehouseDashboard: React.FC = () => {
   const [inventorySearchTerm, setInventorySearchTerm] = useState('');
 
   // HOOKS
-  const {
-    notifications,
-    dismissNotification,
-    dismissAllNotifications,
-    notifyNewTransferAvailable,
-    addNotification
-  } = useTransferNotifications();
+  const { notifyNewTransferAvailable, addNotification } = useTransferNotifications();
 
   // Callback para manejar actualizaciones de polling
   const handlePollingUpdate = useCallback((data: any) => {
@@ -657,12 +650,7 @@ export const WarehouseDashboard: React.FC = () => {
 
   return (
     <DashboardLayout title="Panel de Bodega">
-      {/* COMPONENTE DE NOTIFICACIONES */}
-      <TransferNotifications
-        notifications={notifications}
-        onDismiss={dismissNotification}
-        onDismissAll={dismissAllNotifications}
-      />
+      {/* Notificaciones removidas - botón eliminado según solicitud */}
 
       <div className="space-y-4 md:space-y-6">
         {/* Header con estadísticas rápidas - RESPONSIVE */}
