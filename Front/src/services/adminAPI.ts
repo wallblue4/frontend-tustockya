@@ -76,6 +76,27 @@ interface ReportFilter {
   sale_type?: 'detalle' | 'mayor';
 }
 
+interface DailySaleItem {
+  product_reference: string;
+  brand: string;
+  model: string;
+  size: string;
+  quantity: number;
+  unit_price: number;
+}
+
+export interface DailySaleTraceability {
+  sale_id: number;
+  location_id: number;
+  location_name: string;
+  seller_id: number;
+  seller_name: string;
+  total_amount: number;
+  sale_date: string;
+  items: DailySaleItem[];
+  receipt_image?: string | null;
+}
+
 interface InventoryAlert {
   location_id: number;
   alert_type: 'inventario_minimo' | 'stock_agotado' | 'producto_vencido';
@@ -420,6 +441,20 @@ export const generateSalesReports = async (reportFilter: ReportFilter) => {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(reportFilter),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/sales/daily-traceability
+export const fetchDailySalesTraceability = async (params: { target_date: string; location_id: number }) => {
+  const searchParams = new URLSearchParams({
+    target_date: params.target_date,
+    location_id: params.location_id.toString()
+  });
+
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/sales/daily-traceability?${searchParams.toString()}`, {
+    method: 'GET',
+    headers: getHeaders(),
   });
   return handleResponse(response);
 };

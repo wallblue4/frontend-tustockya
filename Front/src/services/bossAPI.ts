@@ -147,6 +147,23 @@ export const bossAPI = {
       headers: getHeaders()
     });
     return handleResponse(response);
+  },
+
+  // 12. Crear nuevo administrador
+  async createAdmin(adminData: {
+    email: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+    location_ids: number[];
+    role: string;
+  }) {
+    const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/admin`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(adminData)
+    });
+    return handleResponse(response);
   }
 };
 

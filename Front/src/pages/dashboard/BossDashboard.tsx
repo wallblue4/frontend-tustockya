@@ -20,7 +20,10 @@ import {
   Loader2,
   X,
   Check,
-  Calendar
+  Calendar,
+  Users,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { StatsCard } from '../../components/dashboard/StatsCard';
@@ -35,7 +38,8 @@ type BossView =
   | 'inventory' 
   | 'financial' 
   | 'sales'
-  | 'analytics';
+  | 'analytics'
+  | 'admins';
 
 export const BossDashboard: React.FC = () => {
   const [currentView, setCurrentView] = useState<BossView>('dashboard');
@@ -61,6 +65,18 @@ export const BossDashboard: React.FC = () => {
     manager_name: '',
     capacity: '',
     notes: ''
+  });
+
+  // Estados para crear admin
+  const [createAdminLoading, setCreateAdminLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string>('');
+  const [adminFormData, setAdminFormData] = useState({
+    email: '',
+    password: '',
+    first_name: '',
+    last_name: '',
+    location_ids: [] as number[]
   });
 
   // Estados para selectores de fecha
@@ -184,6 +200,90 @@ export const BossDashboard: React.FC = () => {
       alert('Error al crear ubicación: ' + (err.message || 'Error desconocido'));
     } finally {
       setCreateLocationLoading(false);
+    }
+  };
+
+  // Función para validar contraseña
+  const validatePassword = (password: string): string => {
+    if (!password) {
+      return ''; // No mostrar error si está vacío
+    }
+    if (password.length < 6) {
+      return 'La contraseña debe tener al menos 6 caracteres';
+    }
+    if (!/[A-Z]/.test(password)) {
+      return 'La contraseña debe contener al menos una mayúscula';
+    }
+    if (!/[0-9]/.test(password)) {
+      return 'La contraseña debe contener al menos un número';
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      return 'La contraseña debe contener al menos un carácter especial';
+    }
+    return '';
+  };
+
+  // Función para verificar requisitos de contraseña
+  const getPasswordRequirements = (password: string) => {
+    return {
+      minLength: password.length >= 6,
+      hasUpperCase: /[A-Z]/.test(password),
+      hasNumber: /[0-9]/.test(password),
+      hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+    };
+  };
+
+  // Función para crear nuevo admin
+  const handleCreateAdmin = async () => {
+    setCreateAdminLoading(true);
+    try {
+      // Validar contraseña
+      const passwordValidation = validatePassword(adminFormData.password);
+      if (passwordValidation) {
+        setPasswordError(passwordValidation);
+        setCreateAdminLoading(false);
+        return;
+      }
+      setPasswordError('');
+
+      // Validar que se haya seleccionado al menos una ubicación
+      if (adminFormData.location_ids.length === 0) {
+        alert('Por favor selecciona al menos una ubicación');
+        setCreateAdminLoading(false);
+        return;
+      }
+
+      const dataToSend = {
+        email: adminFormData.email,
+        password: adminFormData.password,
+        first_name: adminFormData.first_name,
+        last_name: adminFormData.last_name,
+        location_ids: adminFormData.location_ids,
+        role: 'admin'
+      };
+
+      await bossAPI.createAdmin(dataToSend);
+      
+      // Recargar dashboard para actualizar datos
+      await loadInitialData();
+      
+      // Resetear formulario
+      setAdminFormData({
+        email: '',
+        password: '',
+        first_name: '',
+        last_name: '',
+        location_ids: []
+      });
+      setPasswordError('');
+      setShowPassword(false);
+      
+      alert('Administrador creado exitosamente');
+    } catch (err: any) {
+      console.error('Error creando administrador:', err);
+      alert('Error al crear administrador: ' + (err.message || 'Error desconocido'));
+    } finally {
+      setCreateAdminLoading(false);
     }
   };
 
@@ -1138,6 +1238,243 @@ export const BossDashboard: React.FC = () => {
     );
   };
 
+  // Vista de Administradores
+  const renderAdminsView = () => {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+          <h2 className="text-2xl font-bold text-foreground">Gestión de Administradores</h2>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold flex items-center">
+              <Users className="h-5 w-5 mr-2" />
+              Crear Nuevo Administrador
+            </h3>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Nombre y Apellido */}
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Nombre *"
+                  value={adminFormData.first_name}
+                  onChange={(e) => setAdminFormData({ ...adminFormData, first_name: e.target.value })}
+                  placeholder="Ej: Juan"
+                  required
+                />
+                <Input
+                  label="Apellido *"
+                  value={adminFormData.last_name}
+                  onChange={(e) => setAdminFormData({ ...adminFormData, last_name: e.target.value })}
+                  placeholder="Ej: Pérez"
+                  required
+                />
+              </div>
+
+              {/* Email */}
+              <Input
+                label="Email *"
+                type="email"
+                value={adminFormData.email}
+                onChange={(e) => setAdminFormData({ ...adminFormData, email: e.target.value })}
+                placeholder="Ej: juan.perez@example.com"
+                required
+              />
+
+              {/* Contraseña */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Contraseña *
+                </label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={adminFormData.password}
+                    onChange={(e) => {
+                      setAdminFormData({ ...adminFormData, password: e.target.value });
+                      // Validar en tiempo real
+                      const validation = validatePassword(e.target.value);
+                      setPasswordError(validation);
+                    }}
+                    required
+                    className={passwordError ? 'border-destructive' : ''}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                    tabIndex={-1}
+                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+                {/* Lista de requisitos */}
+                <div className="mt-2 space-y-1">
+                  {(() => {
+                    const requirements = getPasswordRequirements(adminFormData.password);
+                    const allMet = requirements.minLength && requirements.hasUpperCase && requirements.hasNumber && requirements.hasSpecialChar;
+                    
+                    return (
+                      <>
+                        <div className={`flex items-center space-x-2 text-sm ${requirements.minLength ? 'text-success' : 'text-muted-foreground'}`}>
+                          {requirements.minLength ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
+                          )}
+                          <span>Al menos 6 caracteres</span>
+                        </div>
+                        <div className={`flex items-center space-x-2 text-sm ${requirements.hasUpperCase ? 'text-success' : 'text-muted-foreground'}`}>
+                          {requirements.hasUpperCase ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
+                          )}
+                          <span>Al menos una mayúscula</span>
+                        </div>
+                        <div className={`flex items-center space-x-2 text-sm ${requirements.hasNumber ? 'text-success' : 'text-muted-foreground'}`}>
+                          {requirements.hasNumber ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
+                          )}
+                          <span>Al menos un número</span>
+                        </div>
+                        <div className={`flex items-center space-x-2 text-sm ${requirements.hasSpecialChar ? 'text-success' : 'text-muted-foreground'}`}>
+                          {requirements.hasSpecialChar ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
+                          )}
+                          <span>Al menos un carácter especial</span>
+                        </div>
+                        {allMet && (
+                          <p className="text-xs text-success mt-2 font-medium">
+                            ✓ Contraseña válida
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Ubicaciones (selección múltiple) */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Ubicaciones * (Selecciona una o más)
+                </label>
+                <div className="border border-border rounded-md p-4 max-h-64 overflow-y-auto bg-muted/20">
+                  {dashboardData?.locations_performance && dashboardData.locations_performance.length > 0 ? (
+                    <div className="space-y-2">
+                      {dashboardData.locations_performance.map((location: any) => (
+                        <label
+                          key={location.location_id}
+                          className="flex items-center space-x-3 p-2 hover:bg-muted/40 rounded cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={adminFormData.location_ids.includes(location.location_id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setAdminFormData({
+                                  ...adminFormData,
+                                  location_ids: [...adminFormData.location_ids, location.location_id]
+                                });
+                              } else {
+                                setAdminFormData({
+                                  ...adminFormData,
+                                  location_ids: adminFormData.location_ids.filter(id => id !== location.location_id)
+                                });
+                              }
+                            }}
+                            className="w-4 h-4 text-primary border-border rounded focus:ring-primary"
+                          />
+                          <div className="flex items-center space-x-2 flex-1">
+                            {location.location_type === 'bodega' ? 
+                              <Warehouse className="h-5 w-5 text-primary" /> :
+                              <Store className="h-5 w-5 text-success" />
+                            }
+                            <div>
+                              <span className="font-medium">{location.location_name}</span>
+                              <span className="text-xs text-muted-foreground ml-2">
+                                ({location.location_type})
+                              </span>
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No hay ubicaciones disponibles
+                    </p>
+                  )}
+                </div>
+                {adminFormData.location_ids.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {adminFormData.location_ids.length} ubicación(es) seleccionada(s)
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setAdminFormData({
+                      email: '',
+                      password: '',
+                      first_name: '',
+                      last_name: '',
+                      location_ids: []
+                    });
+                    setPasswordError('');
+                    setShowPassword(false);
+                  }}
+                  disabled={createAdminLoading}
+                >
+                  Limpiar Formulario
+                </Button>
+                <Button
+                  onClick={handleCreateAdmin}
+                  disabled={
+                    !adminFormData.email || 
+                    !adminFormData.password || 
+                    !adminFormData.first_name || 
+                    !adminFormData.last_name ||
+                    adminFormData.location_ids.length === 0 ||
+                    !!passwordError ||
+                    createAdminLoading
+                  }
+                >
+                  {createAdminLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creando...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Crear Administrador
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   const renderCurrentView = () => {
     if (loading && !dashboardData) {
       return (
@@ -1167,6 +1504,7 @@ export const BossDashboard: React.FC = () => {
       case 'financial': return renderFinancialView();
       case 'sales': return renderSalesView();
       case 'analytics': return renderAnalyticsView();
+      case 'admins': return renderAdminsView();
       default: return renderDashboardView();
     }
   };
@@ -1178,6 +1516,7 @@ export const BossDashboard: React.FC = () => {
       currentView === 'inventory' ? 'Inventario Consolidado' :
       currentView === 'financial' ? 'Análisis Financiero' :
       currentView === 'sales' ? 'Reporte de Ventas' :
+      currentView === 'admins' ? 'Gestión de Administradores' :
       'Análisis y Métricas'
     }>
       <div className="min-h-screen bg-background">
@@ -1190,6 +1529,7 @@ export const BossDashboard: React.FC = () => {
               { key: 'inventory', label: 'Inventario', icon: <Package className="h-4 w-4" /> },
               { key: 'financial', label: 'Finanzas', icon: <DollarSign className="h-4 w-4" /> },
               { key: 'sales', label: 'Ventas', icon: <TrendingUp className="h-4 w-4" /> },
+              { key: 'admins', label: 'Administradores', icon: <Users className="h-4 w-4" /> },
               { key: 'analytics', label: 'Análisis', icon: <PieChart className="h-4 w-4" /> },
             ].map((tab) => (
               <button
@@ -1219,6 +1559,7 @@ export const BossDashboard: React.FC = () => {
                   { key: 'inventory', label: 'Inventario Consolidado', icon: <Package className="h-5 w-5" /> },
                   { key: 'financial', label: 'Análisis Financiero', icon: <DollarSign className="h-5 w-5" /> },
                   { key: 'sales', label: 'Reporte de Ventas', icon: <TrendingUp className="h-5 w-5" /> },
+                  { key: 'admins', label: 'Gestión de Administradores', icon: <Users className="h-5 w-5" /> },
                   { key: 'analytics', label: 'Análisis y Métricas', icon: <PieChart className="h-5 w-5" /> },
                 ].map((item) => (
                   <button
@@ -1384,6 +1725,7 @@ export const BossDashboard: React.FC = () => {
             </div>
           </div>
         )}
+
       </div>
     </DashboardLayout>
   );
