@@ -23,6 +23,7 @@ import { Input } from '../../components/ui/Input';
 
 // NUEVAS IMPORTACIONES
 import { useTransferNotifications } from '../../hooks/useTransferNotifications';
+import { vendorAPI } from '../../services/api';
 import { useTransferPolling } from '../../hooks/useTransferPolling';
 import { warehouseAPI } from '../../services/transfersAPI';
 import { inventoryAPI } from '../../services/inventoryAPI';
@@ -161,7 +162,7 @@ interface AcceptedRequest {
 
 export const WarehouseDashboard: React.FC = () => {
   // Estados principales
-  const [activeTab, setActiveTab] = useState<'pending' | 'accepted' | 'inventory' | 'stats' | 'returns'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'accepted' | 'inventory' | 'stats' | 'returns' | 'history'>('pending');
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [acceptedRequests, setAcceptedRequests] = useState<AcceptedRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -196,6 +197,54 @@ export const WarehouseDashboard: React.FC = () => {
 
   // HOOKS
   const { notifyNewTransferAvailable, addNotification } = useTransferNotifications();
+
+  // Estado para historial de transferencias del día
+  interface TransferHistoryItem {
+    id: number;
+    status: string;
+    sneaker_reference_code: string;
+    brand: string;
+    model: string;
+    size: string;
+    quantity: number;
+    purpose: string;
+    pickup_type: string;
+    requested_at: string;
+    accepted_at?: string | null;
+    picked_up_at?: string | null;
+    delivered_at?: string | null;
+    source_location_name?: string;
+    source_location_address?: string;
+    product_image?: string;
+  }
+
+  const [transferHistory, setTransferHistory] = useState<TransferHistoryItem[]>([]);
+  const [transferHistoryLoading, setTransferHistoryLoading] = useState(false);
+
+  const loadTransferHistory = async () => {
+    try {
+      setTransferHistoryLoading(true);
+      const resp = await vendorAPI.getWarehouseDailyTransferHistory();
+      if (resp && resp.transfers) {
+        setTransferHistory(resp.transfers);
+      } else if (resp && resp.success && resp.transfers === undefined && Array.isArray(resp)) {
+        // some endpoints return the array directly
+        setTransferHistory(resp as any);
+      } else {
+        setTransferHistory([]);
+      }
+    } catch (err) {
+      console.error('Error cargando historial de transferencias:', err);
+      setTransferHistory([]);
+    } finally {
+      setTransferHistoryLoading(false);
+    }
+  };
+
+  // Vendor API (lightweight endpoint added in src/services/api.ts)
+  // Importing here to fetch the warehouse daily transfer history
+  // Note: kept local to file to avoid changing other modules
+  // ...existing code...
 
   // Callback para manejar actualizaciones de polling
   const handlePollingUpdate = useCallback((data: any) => {
@@ -241,6 +290,13 @@ export const WarehouseDashboard: React.FC = () => {
       setError('Error de conexión con el servidor');
     }
   });
+
+  // Cargar historial cuando el usuario abre la pestaña 'history'
+  useEffect(() => {
+    if (activeTab === 'history') {
+      loadTransferHistory();
+    }
+  }, [activeTab]);
 
   // *** CARGAR DATOS INICIAL USANDO ENDPOINTS CORRECTOS ***
   useEffect(() => {
@@ -653,57 +709,6 @@ export const WarehouseDashboard: React.FC = () => {
       {/* Notificaciones removidas - botón eliminado según solicitud */}
 
       <div className="space-y-4 md:space-y-6">
-        {/* Header con estadísticas rápidas - RESPONSIVE */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
-          <Card>
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs md:text-sm text-muted-foreground">Total Solicitudes</p>
-                  <p className="text-lg md:text-2xl font-bold">{stats.totalRequests}</p>
-                </div>
-                <Package className="h-6 w-6 md:h-8 md:w-8 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs md:text-sm text-muted-foreground">🔥 Urgentes</p>
-                  <p className="text-lg md:text-2xl font-bold text-red-600">{stats.urgentRequests}</p>
-                </div>
-                <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-red-500" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs md:text-sm text-muted-foreground">⏱️ Tiempo Prom.</p>
-                  <p className="text-lg md:text-2xl font-bold">{stats.averageResponseTime}</p>
-                </div>
-                <Clock className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs md:text-sm text-muted-foreground">✅ Completación</p>
-                  <p className="text-lg md:text-2xl font-bold">{stats.completionRate}%</p>
-                </div>
-                <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Navigation Tabs - RESPONSIVE */}
         <Card>
           <CardContent className="p-2 md:p-4">
@@ -761,6 +766,17 @@ export const WarehouseDashboard: React.FC = () => {
                 <span className="sm:hidden">Returns</span>
                 ({pendingReturns.length})
               </Button>
+              <Button
+                variant={activeTab === 'history' ? 'primary' : 'outline'}
+                onClick={async () => { setActiveTab('history'); await loadTransferHistory(); }}
+                size="sm"
+                className="flex-1 md:flex-none text-xs md:text-sm"
+              >
+                <Truck className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">Historial</span>
+                <span className="sm:hidden">Hist.</span>
+                ({transferHistory.length})
+              </Button>
               <div className="flex-grow hidden md:block"></div>
               <Button
                 variant="ghost"
@@ -805,6 +821,80 @@ export const WarehouseDashboard: React.FC = () => {
         )}
 
         {/* Contenido según tab activo */}
+        {activeTab === 'history' && (
+          <Card>
+            <CardHeader>
+              <h2 className="text-lg md:text-xl font-semibold flex items-center">
+                <Truck className="h-5 w-5 md:h-6 md:w-6 text-primary mr-2" />
+                Historial de Transferencias (hoy)
+              </h2>
+            </CardHeader>
+            <CardContent>
+              {transferHistoryLoading ? (
+                <div className="flex items-center justify-center p-8">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mr-4"></div>
+                  <span className="text-muted-foreground">Cargando historial...</span>
+                </div>
+              ) : transferHistory.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground">No se encontraron transferencias para hoy.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {transferHistory.map(item => (
+                    <article key={item.id} className="border border-border rounded-md p-3 bg-card shadow-sm">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4">
+                        <div className="flex-shrink-0 self-center sm:self-start">
+                          <img
+                            src={item.product_image || '/logo.png'}
+                            alt={item.model}
+                            className="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-md shadow-sm"
+                          />
+                        </div>
+
+                        <div className="mt-3 sm:mt-0 flex-1 min-w-0">
+                          <div className="flex items-start justify-between">
+                            <div className="truncate">
+                              <div className="font-medium text-sm truncate">{item.brand} {item.model}</div>
+                              <div className="flex items-center flex-wrap gap-2 mt-1">
+                                <span className="text-xs text-muted-foreground truncate">{item.sneaker_reference_code}</span>
+                                <span className="inline-block text-xs px-2 py-0.5 rounded bg-card border border-border text-muted-foreground">Talla {item.size}</span>
+                                <span className={`inline-block text-xs px-2 py-0.5 rounded font-medium ${item.purpose === 'return' ? 'bg-warning/10 text-warning border-warning/20' : item.purpose === 'cliente' ? 'bg-success/10 text-success border-success/20' : 'bg-muted/10 text-muted-foreground border-muted/20'}`}>
+                                  {item.purpose === 'cliente' ? 'Transferencia' : item.purpose === 'return' ? 'devolucion' : item.purpose}
+                                </span>
+                                <span className="inline-block text-xs px-2 py-0.5 rounded bg-card border border-border text-muted-foreground">{item.pickup_type || '—'}</span>
+                              </div>
+                            </div>
+
+                            <div className="text-right ml-3 flex-shrink-0">
+                              <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${item.status === 'completed' ? 'bg-success/20 text-success' : 'bg-muted/20 text-muted-foreground'}`}>
+                                {item.status}
+                              </span>
+                              <div className="text-xs text-muted-foreground mt-1">{item.quantity} ud.</div>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
+                            <div>
+                              <div className="truncate"><strong>Origen (nombre):</strong> {item.source_location_name ? item.source_location_name : 'N/A'}</div>
+                              <div className="truncate"><strong>Origen (dirección):</strong> {item.source_location_address ? item.source_location_address : 'N/A'}</div>
+                              <div className="truncate"><strong>Solicitado:</strong> {item.requested_at ? new Date(item.requested_at).toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit' }) : 'N/A'}</div>
+                            </div>
+                            <div>
+                              <div><strong>Aceptado:</strong> {item.accepted_at ? new Date(item.accepted_at).toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit' }) : 'N/A'}</div>
+                              <div><strong>Recolectado (picked_up_at):</strong> {item.picked_up_at ? new Date(item.picked_up_at).toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit' }) : 'N/A'}</div>
+                              <div><strong>Entregado (delivered_at):</strong> {item.delivered_at ? new Date(item.delivered_at).toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit' }) : 'N/A'}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
         {activeTab === 'pending' && (
           <Card>
             <CardHeader>
@@ -1764,17 +1854,6 @@ export const WarehouseDashboard: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {/* Barra de búsqueda */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Buscar por marca, modelo, descripción, código, color, precio, talla, ID..."
-                      value={inventorySearchTerm}
-                      onChange={(e) => setInventorySearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-
                   {/* Resumen por ubicación */}
                   {selectedLocation === 'all' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1985,21 +2064,6 @@ export const WarehouseDashboard: React.FC = () => {
                                             *Naranja = unidades en exhibición
                                           </div>
                                         )}
-                                      </div>
-                                      
-                                      {/* Información adicional */}
-                                      <div className="pt-2 border-t">
-                                        <div className="text-xs text-muted-foreground">
-                                          <div className="flex justify-between">
-                                            <span>ID Producto:</span>
-                                            <span className="font-mono">{product.product_id}</span>
-                                          </div>
-                                          {product.video_url && (
-                                            <div className="mt-1">
-                                              <span className="text-blue-600">📹 Tiene video</span>
-                                            </div>
-                                          )}
-                                        </div>
                                       </div>
                                     </div>
                                   </div>

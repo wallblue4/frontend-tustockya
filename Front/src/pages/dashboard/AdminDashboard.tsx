@@ -30,7 +30,9 @@ import {
   Truck,
   RefreshCw,
   Settings,
-  Download
+  Download,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 // Import ALL correct adminAPI functions
@@ -74,8 +76,9 @@ import {
   fetchPendingDiscountRequests,
   approveDiscountRequest,
   
-  // Transfers (1 endpoint)
+  // Transfers (2 endpoints)
   fetchTransfersOverview,
+  fetchDailyTransfersTraceability,
   
   // Performance (1 endpoint)
   fetchUsersPerformance,
@@ -94,7 +97,7 @@ import {
   // Utilities (4 endpoints)
   testMicroserviceConnection
 } from '../../services/adminAPI';
-import type { DailySaleTraceability } from '../../services/adminAPI';
+import type { DailySaleTraceability, DailyTransferTraceability } from '../../services/adminAPI';
 
 // Import Mayoreo API functions
 import {
@@ -119,7 +122,7 @@ import { StatsCard } from '../../components/dashboard/StatsCard';
 import { FullScreenCameraCapture } from '../../components/admin/FullScreenCameraCapture';
 import { FullScreenPhotoCapture } from '../../components/admin/FullScreenPhotoCapture';
 
-type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics';
+type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics' | 'transfers';
 
 interface DashboardData {
   admin_name: string;
@@ -361,6 +364,15 @@ export const AdminDashboard: React.FC = () => {
   const [dailyTraceabilityError, setDailyTraceabilityError] = useState<string | null>(null);
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
 
+  // Transfers traceability states
+  const [transfersTraceabilityFilters, setTransfersTraceabilityFilters] = useState({
+    target_date: todayISO
+  });
+  const [transfersTraceabilityData, setTransfersTraceabilityData] = useState<DailyTransferTraceability[]>([]);
+  const [transfersTraceabilityLoading, setTransfersTraceabilityLoading] = useState(false);
+  const [transfersTraceabilityError, setTransfersTraceabilityError] = useState<string | null>(null);
+  const [expandedTransfers, setExpandedTransfers] = useState<Set<number>>(new Set());
+
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -534,6 +546,46 @@ export const AdminDashboard: React.FC = () => {
     } finally {
       setDailyTraceabilityLoading(false);
     }
+  };
+
+  const handleFetchTransfersTraceability = async () => {
+    if (!transfersTraceabilityFilters.target_date) {
+      setTransfersTraceabilityError('Por favor selecciona una fecha.');
+      return;
+    }
+
+    setTransfersTraceabilityLoading(true);
+    setTransfersTraceabilityError(null);
+
+    try {
+      const response = await fetchDailyTransfersTraceability({
+        target_date: transfersTraceabilityFilters.target_date
+      });
+
+      const normalizedData: DailyTransferTraceability[] = Array.isArray(response)
+        ? response
+        : response.data || response.transfers || [];
+
+      setTransfersTraceabilityData(normalizedData);
+    } catch (error: any) {
+      console.error('Error fetching daily transfers traceability:', error);
+      setTransfersTraceabilityError(error.message || 'Error al obtener la trazabilidad diaria de transferencias.');
+      setTransfersTraceabilityData([]);
+    } finally {
+      setTransfersTraceabilityLoading(false);
+    }
+  };
+
+  const toggleTransferExpansion = (transferId: number) => {
+    setExpandedTransfers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(transferId)) {
+        newSet.delete(transferId);
+      } else {
+        newSet.add(transferId);
+      }
+      return newSet;
+    });
   };
 
   const handleCreateUser = async (userData: any) => {
@@ -1202,10 +1254,8 @@ Por favor verifica que:
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                             {user.email}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge variant="secondary">
-                              {capitalize(user.role)}
-                            </Badge>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                            {user.role}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                             {user.location_name || 'Sin asignar'}
@@ -2769,7 +2819,7 @@ Por favor verifica que:
     return (
       <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <h2 className="text-2xl font-bold text-foreground">Reportes</h2>
+          <h2 className="text-2xl font-bold text-foreground">Ventas y Trazabilidad</h2>
         </div>
 
         {/* Report Types */}
@@ -2914,148 +2964,255 @@ Por favor verifica que:
               </div>
             </CardContent>
           </Card>
+        </div>
+      </div>
+    );
+  };
 
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardContent className="p-6 text-center">
-              <Truck className="h-12 w-12 text-success mx-auto mb-3" />
-              <h3 className="font-semibold mb-2">Reporte de Transferencias</h3>
-              <p className="text-sm text-gray-600 mb-4">Resumen de transferencias entre ubicaciones</p>
-              <Button 
-                size="sm" 
-                className="w-full"
-                onClick={async () => {
-                  try {
-                    const overview = await fetchTransfersOverview();
-                    console.log('Transfers overview:', overview);
-                    alert('Overview de transferencias obtenido - revisar consola');
-                  } catch (error) {
-                    console.error('Error fetching transfers overview:', error);
-                    alert('Error al obtener overview de transferencias');
-                  }
-                }}
-              >
-                Generar
-              </Button>
-            </CardContent>
-          </Card>
+  const renderTransfersTraceabilityView = () => {
+    return (
+      <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+          <h2 className="text-2xl font-bold text-foreground">Trazabilidad de Transferencias</h2>
         </div>
 
-        {/* Additional Tools */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold">Herramientas Adicionales</h3>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    const assignments = await fetchProductAssignments();
-                    console.log('Product assignments:', assignments);
-                    alert('Asignaciones de productos - revisar consola');
-                  } catch (error) {
-                    console.error('Error fetching product assignments:', error);
-                    alert('Error al obtener asignaciones');
-                  }
-                }}
-              >
-                <Package className="h-4 w-4 mr-2" />
-                Ver Asignaciones de Productos
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    const health = await fetchAdminModuleHealth();
-                    console.log('Admin module health:', health);
-                    alert('Estado del módulo admin - revisar consola');
-                  } catch (error) {
-                    console.error('Error checking admin health:', error);
-                    alert('Error al verificar estado del módulo');
-                  }
-                }}
-              >
-                <Activity className="h-4 w-4 mr-2" />
-                Estado del Sistema
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    const overview = await fetchSystemOverview();
-                    console.log('System overview:', overview);
-                    alert('Overview del sistema - revisar consola');
-                  } catch (error) {
-                    console.error('Error fetching system overview:', error);
-                    alert('Error al obtener overview del sistema');
-                  }
-                }}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Overview del Sistema
-              </Button>
-            </CardContent>
-          </Card>
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="p-6 space-y-6 text-left">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-success/10 rounded-full">
+                  <Truck className="h-6 w-6 text-success" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Trazabilidad diaria de transferencias</h3>
+                  <p className="text-sm text-gray-600">Consulta las transferencias detalladas por fecha</p>
+                </div>
+              </div>
+            </div>
 
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold">Configuración de Alertas</h3>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={() => {
-                  const alertData = {
-                    locationId: 1, // Example location
-                    alertType: 'inventario_minimo' as const,
-                    thresholdValue: 10,
-                    productReference: '',
-                    notificationEmails: ['admin@example.com'],
-                    isActive: true
-                  };
-                  handleCreateInventoryAlert(alertData);
-                }}
-              >
-                <AlertCircle className="h-4 w-4 mr-2" />
-                Crear Alerta de Stock Bajo
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    const connection = await testMicroserviceConnection();
-                    console.log('Microservice connection:', connection);
-                    alert('Conexión con microservicio - revisar consola');
-                  } catch (error) {
-                    console.error('Error testing microservice:', error);
-                    alert('Error al probar conexión con microservicio');
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-foreground flex items-center gap-1">
+                  <Calendar className="h-4 w-4 text-success" />
+                  Fecha
+                </label>
+                <Input
+                  type="date"
+                  value={transfersTraceabilityFilters.target_date}
+                  onChange={(e) =>
+                    setTransfersTraceabilityFilters(prev => ({ ...prev, target_date: e.target.value }))
                   }
-                }}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Probar Microservicios
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+                  max={todayISO}
+                />
+              </div>
 
-        {/* Reports Placeholder */}
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold">Reportes Generados</h3>
-          </CardHeader>
-          <CardContent>
-            <EmptyState
-              title="No hay reportes generados"
-              description="Los reportes aparecerán aquí una vez generados"
-              icon={<FileText className="h-12 w-12 text-gray-400" />}
-            />
+              <div className="flex items-end md:col-span-1 lg:col-span-3">
+                <Button
+                  className="w-full"
+                  onClick={handleFetchTransfersTraceability}
+                  disabled={transfersTraceabilityLoading || !transfersTraceabilityFilters.target_date}
+                >
+                  {transfersTraceabilityLoading ? 'Consultando...' : 'Consultar'}
+                </Button>
+              </div>
+            </div>
+
+            {transfersTraceabilityError && (
+              <div className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-md p-3">
+                {transfersTraceabilityError}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {transfersTraceabilityLoading ? (
+                <p className="text-sm text-muted-foreground">Obteniendo información del backend...</p>
+              ) : transfersTraceabilityData.length > 0 ? (
+                transfersTraceabilityData.map((transfer) => {
+                  const isExpanded = expandedTransfers.has(transfer.transfer_id);
+                  const productName = `${transfer.product.brand} ${transfer.product.model}`;
+                  
+                  return (
+                    <div key={transfer.transfer_id} className="border border-border rounded-lg bg-card/50 overflow-hidden">
+                      {/* Collapsed View */}
+                      <div 
+                        className="p-4 cursor-pointer hover:bg-card transition-colors"
+                        onClick={() => toggleTransferExpansion(transfer.transfer_id)}
+                      >
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-base font-semibold text-foreground truncate">
+                                {productName}
+                              </p>
+                              <Badge variant={transfer.status === 'completed' ? 'success' : 'secondary'}>
+                                {transfer.status}
+                              </Badge>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                Talla {transfer.product.size} · {transfer.product.quantity} uds
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                              <span>
+                                {transfer.pickup_type === 'corredor' ? 'Corredor' : 'Vendedor'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {isExpanded ? (
+                              <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                            ) : (
+                              <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expanded View */}
+                      {isExpanded && (
+                        <div className="border-t border-border bg-card/30 p-4 space-y-4">
+                          {/* Product Details */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs uppercase text-muted-foreground mb-1">Producto</p>
+                              <p className="font-medium text-foreground">{transfer.product.reference_code}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {transfer.product.brand} · {transfer.product.model}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                Talla {transfer.product.size} · Cantidad: {transfer.product.quantity}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase text-muted-foreground mb-1">Tipo de Inventario</p>
+                              <p className="text-sm text-foreground capitalize">{transfer.inventory_type}</p>
+                              <p className="text-xs uppercase text-muted-foreground mt-2 mb-1">Tipo de Solicitud</p>
+                              <p className="text-sm text-foreground capitalize">{transfer.request_type}</p>
+                            </div>
+                          </div>
+
+                          {/* Locations */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs uppercase text-muted-foreground mb-2">Origen</p>
+                              <div className="flex items-center gap-2">
+                                <Warehouse className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                  <p className="font-medium text-foreground">{transfer.source_location.name}</p>
+                                  <p className="text-xs text-muted-foreground capitalize">
+                                    {transfer.source_location.type} (ID: {transfer.source_location.id})
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase text-muted-foreground mb-2">Destino</p>
+                              <div className="flex items-center gap-2">
+                                <Store className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                  <p className="font-medium text-foreground">{transfer.destination_location.name}</p>
+                                  <p className="text-xs text-muted-foreground capitalize">
+                                    {transfer.destination_location.type} (ID: {transfer.destination_location.id})
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Participants */}
+                          <div>
+                            <p className="text-xs uppercase text-muted-foreground mb-2">Participantes</p>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Solicitante</p>
+                                <p className="text-sm font-medium text-foreground">
+                                  {transfer.participants.requester.name || 'N/A'}
+                                </p>
+                                {transfer.participants.requester.id && (
+                                  <p className="text-xs text-muted-foreground">ID: {transfer.participants.requester.id}</p>
+                                )}
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Corredor</p>
+                                <p className="text-sm font-medium text-foreground">
+                                  {transfer.participants.courier.name || 'N/A'}
+                                </p>
+                                {transfer.participants.courier.id && (
+                                  <p className="text-xs text-muted-foreground">ID: {transfer.participants.courier.id}</p>
+                                )}
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Bodeguero</p>
+                                <p className="text-sm font-medium text-foreground">
+                                  {transfer.participants.warehouse_keeper.name || 'N/A'}
+                                </p>
+                                {transfer.participants.warehouse_keeper.id && (
+                                  <p className="text-xs text-muted-foreground">ID: {transfer.participants.warehouse_keeper.id}</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Dates - Show all dates if pickup_type is "corredor" or "vendedor" */}
+                          {(transfer.pickup_type === 'corredor' || 'vendedor') && (
+                            <div>
+                              <p className="text-xs uppercase text-muted-foreground mb-2">Fechas del Proceso</p>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {transfer.dates.requested_at && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Solicitado</p>
+                                    <p className="text-sm text-foreground">{formatDate(transfer.dates.requested_at)}</p>
+                                  </div>
+                                )}
+                                {transfer.dates.accepted_at && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Aceptado</p>
+                                    <p className="text-sm text-foreground">{formatDate(transfer.dates.accepted_at)}</p>
+                                  </div>
+                                )}
+                                {transfer.dates.picked_up_at && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Recogido</p>
+                                    <p className="text-sm text-foreground">{formatDate(transfer.dates.picked_up_at)}</p>
+                                  </div>
+                                )}
+                                {transfer.dates.delivered_at && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Entregado</p>
+                                    <p className="text-sm text-foreground">{formatDate(transfer.dates.delivered_at)}</p>
+                                  </div>
+                                )}
+                                {transfer.dates.confirmed_reception_at && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Recepción Confirmada</p>
+                                    <p className="text-sm text-foreground">{formatDate(transfer.dates.confirmed_reception_at)}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Notes */}
+                          {transfer.notes && (
+                            <div>
+                              <p className="text-xs uppercase text-muted-foreground mb-1">Notas</p>
+                              <p className="text-sm text-foreground bg-muted/30 p-2 rounded">{transfer.notes}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <EmptyState
+                  title="Sin resultados"
+                  description="Selecciona una fecha y presiona consultar para ver la trazabilidad de transferencias del día."
+                  icon={<Truck className="h-10 w-10 text-gray-400" />}
+                />
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -3615,6 +3772,8 @@ Por favor verifica que:
         return renderNotificationsView();
       case 'reports':
         return renderReportsView();
+      case 'transfers':
+        return renderTransfersTraceabilityView();
       default:
         return renderDashboardView();
     }
@@ -3650,7 +3809,8 @@ Por favor verifica que:
               { key: 'inventory', label: 'Inventario', icon: <Package className="h-4 w-4" /> },
               { key: 'wholesale', label: 'Mayoreo', icon: <ShoppingBag className="h-4 w-4" /> },
               { key: 'costs', label: 'Costos', icon: <DollarSign className="h-4 w-4" /> },
-              { key: 'reports', label: 'Reportes', icon: <FileText className="h-4 w-4" /> },
+              { key: 'reports', label: 'Ventas', icon: <FileText className="h-4 w-4" /> },
+              { key: 'transfers', label: 'Transferencias', icon: <Truck className="h-4 w-4" /> },
               { key: 'analytics', label: 'Graficas', icon: <PieChart className="h-4 w-4" /> },
               { key: 'notifications', label: 'Notificaciones', icon: <Bell className="h-4 w-4" /> },
             ].map((tab) => (
@@ -3684,7 +3844,8 @@ Por favor verifica que:
                   { key: 'locations', label: 'Ubicaciones', icon: <MapPin className="h-5 w-5" /> },
                   { key: 'analytics', label: 'Análisis', icon: <PieChart className="h-5 w-5" /> },
                   { key: 'notifications', label: 'Notificaciones', icon: <Bell className="h-5 w-5" /> },
-                  { key: 'reports', label: 'Reportes', icon: <FileText className="h-5 w-5" /> },
+                  { key: 'reports', label: 'Ventas y Trazabilidad', icon: <FileText className="h-5 w-5" /> },
+                  { key: 'transfers', label: 'Transferencias y Trazabilidad', icon: <Truck className="h-5 w-5" /> },
                 ].map((item) => (
                   <button
                     key={item.key}

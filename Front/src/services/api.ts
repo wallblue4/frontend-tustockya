@@ -432,6 +432,9 @@ export const vendorAPI = {
   markReturnAsRead: (notificationId: string) => apiRequest(`/api/v1/notifications/returns/${notificationId}/mark-read`, {
     method: 'POST',
   }),
+
+  // Warehouse: daily transfer history for the warehouse keeper
+  getWarehouseDailyTransferHistory: () => apiRequest('/api/v1/warehouse/daily-transfer-history'),
   
   // Admin - CORREGIDO para coincidir con backend
   createTestData: () => apiRequest('/api/v1/admin/create-test-data', {

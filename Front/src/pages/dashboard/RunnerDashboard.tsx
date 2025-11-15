@@ -7,7 +7,6 @@ import {
   Truck, 
   CheckCircle,
   AlertCircle,
-  User,
   Navigation,
   Star,
   RefreshCw,
@@ -69,13 +68,18 @@ interface AvailableRequest {
 interface DeliveryHistoryItem {
   id: number;
   status: string;
-  product: string;
-  delivered_to: string;
+  sneaker_reference_code: string;
+  source_location_id: number;
+  source_location_name: string;
+  destination_location_id: number;
+  destination_location_name: string;
+  brand: string;
+  model: string;
+  size: string;
+  quantity: number;
   delivered_at: string;
-  total_time: string;
   delivery_successful: boolean;
-  distance?: string;
-  earnings?: number;
+  notes: string | null;
 }
 
 export const RunnerDashboard: React.FC = () => {
@@ -167,13 +171,18 @@ export const RunnerDashboard: React.FC = () => {
       const deliveries = (deliveriesResponse.recent_deliveries || []).map((item: any) => ({
         id: item.id,
         status: item.status,
-        product: `${item.brand} ${item.model} - Talla ${item.size}`,
-        delivered_to: 'Destino desconocido', // my-deliveries no incluye location info
+        sneaker_reference_code: item.sneaker_reference_code || '',
+        source_location_id: item.source_location_id,
+        source_location_name: item.source_location_name || 'Ubicación desconocida',
+        destination_location_id: item.destination_location_id,
+        destination_location_name: item.destination_location_name || 'Destino desconocido',
+        brand: item.brand || '',
+        model: item.model || '',
+        size: item.size || '',
+        quantity: item.quantity || 1,
         delivered_at: item.delivered_at,
-        total_time: '', // my-deliveries no incluye picked_up_at
         delivery_successful: item.delivery_successful || item.status === 'completed',
-        distance: undefined,
-        earnings: undefined
+        notes: item.notes || null
       }));
       setDeliveryHistory(deliveries);
 
@@ -710,14 +719,6 @@ export const RunnerDashboard: React.FC = () => {
                                   <p className="text-xs text-muted-foreground">
                                     📦 {request.quantity} • Talla {request.size} • 📍 {distance} km
                                   </p>
-                                </div>
-                                
-                                {/* Ganancia estimada compacta */}
-                                <div className="p-2 bg-success/10 rounded border border-success/20 text-center">
-                                  <div className="text-sm font-bold text-success">
-                                    {formatPrice(earnings)}
-                                  </div>
-                                  <div className="text-xs text-success/80">Ganancia estimada</div>
                                 </div>
                               </div>
                             </div>
@@ -1306,10 +1307,9 @@ export const RunnerDashboard: React.FC = () => {
                       <div className="md:hidden">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-sm truncate">{delivery.product}</h4>
+                            <h4 className="font-semibold text-sm truncate">{delivery.brand} {delivery.model}</h4>
                             <p className="text-xs text-gray-600">
-                              <User className="h-3 w-3 inline mr-1" />
-                              {delivery.delivered_to}
+                              Talla {delivery.size} • Cantidad: {delivery.quantity}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               <Clock className="h-3 w-3 inline mr-1" />
@@ -1323,29 +1323,34 @@ export const RunnerDashboard: React.FC = () => {
                             }`}>
                               {delivery.delivery_successful ? '✅' : '❌'}
                             </span>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {delivery.total_time}
-                            </p>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          {delivery.distance && (
-                            <div>
-                              <p className="text-muted-foreground">Distancia</p>
-                              <p className="font-medium">{delivery.distance}</p>
-                            </div>
-                          )}
-                          {delivery.earnings && (
-                            <div>
-                              <p className="text-muted-foreground">Ganancia</p>
-                              <p className="font-medium text-green-600">{formatPrice(delivery.earnings)}</p>
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-muted-foreground">Estado</p>
-                            <p className="font-medium text-xs">{delivery.status}</p>
+                        <div className="space-y-2 mt-3 pt-3 border-t">
+                          <div className="text-xs">
+                            <p className="text-muted-foreground mb-1">Origen:</p>
+                            <p className="font-medium flex items-center">
+                              <MapPin className="h-3 w-3 mr-1 text-primary" />
+                              {delivery.source_location_name}
+                            </p>
                           </div>
+                          <div className="text-xs">
+                            <p className="text-muted-foreground mb-1">Destino:</p>
+                            <p className="font-medium flex items-center">
+                              <Navigation className="h-3 w-3 mr-1 text-success" />
+                              {delivery.destination_location_name}
+                            </p>
+                          </div>
+                          <div className="text-xs">
+                            <p className="text-muted-foreground">Estado</p>
+                            <p className="font-medium">{delivery.status}</p>
+                          </div>
+                          {delivery.sneaker_reference_code && (
+                            <div className="text-xs">
+                              <p className="text-muted-foreground">Referencia</p>
+                              <p className="font-medium">{delivery.sneaker_reference_code}</p>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -1353,10 +1358,10 @@ export const RunnerDashboard: React.FC = () => {
                       <div className="hidden md:block">
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex-1">
-                            <h4 className="font-semibold text-lg">{delivery.product}</h4>
+                            <h4 className="font-semibold text-lg">{delivery.brand} {delivery.model}</h4>
                             <p className="text-sm text-gray-600">
-                              <User className="h-4 w-4 inline mr-1" />
-                              Entregado a: <strong>{delivery.delivered_to}</strong>
+                              Talla {delivery.size} • Cantidad: {delivery.quantity}
+                              {delivery.sneaker_reference_code && ` • Ref: ${delivery.sneaker_reference_code}`}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               <Clock className="h-4 w-4 inline mr-1" />
@@ -1370,29 +1375,34 @@ export const RunnerDashboard: React.FC = () => {
                             }`}>
                               {delivery.delivery_successful ? '✅ Exitosa' : '❌ Fallida'}
                             </span>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              ⏱️ {delivery.total_time}
-                            </p>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                          {delivery.distance && (
-                            <div>
-                              <p className="text-muted-foreground">Distancia</p>
-                              <p className="font-medium">{delivery.distance}</p>
-                            </div>
-                          )}
-                          {delivery.earnings && (
-                            <div>
-                              <p className="text-muted-foreground">Ganancia</p>
-                              <p className="font-medium text-green-600">{formatPrice(delivery.earnings)}</p>
-                            </div>
-                          )}
+                        <div className="grid grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t">
+                          <div>
+                            <p className="text-muted-foreground mb-1 flex items-center">
+                              <MapPin className="h-4 w-4 mr-1 text-primary" />
+                              Origen:
+                            </p>
+                            <p className="font-medium">{delivery.source_location_name}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground mb-1 flex items-center">
+                              <Navigation className="h-4 w-4 mr-1 text-success" />
+                              Destino:
+                            </p>
+                            <p className="font-medium">{delivery.destination_location_name}</p>
+                          </div>
                           <div>
                             <p className="text-muted-foreground">Estado</p>
                             <p className="font-medium">{delivery.status}</p>
                           </div>
+                          {delivery.notes && (
+                            <div>
+                              <p className="text-muted-foreground">Notas</p>
+                              <p className="font-medium text-xs">{delivery.notes}</p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

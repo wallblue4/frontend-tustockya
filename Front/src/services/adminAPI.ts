@@ -97,6 +97,53 @@ export interface DailySaleTraceability {
   receipt_image?: string | null;
 }
 
+export interface TransferLocation {
+  id: number;
+  name: string;
+  type: 'local' | 'bodega';
+}
+
+export interface TransferProduct {
+  reference_code: string;
+  brand: string;
+  model: string;
+  size: string;
+  quantity: number;
+}
+
+export interface TransferDates {
+  requested_at: string | null;
+  accepted_at: string | null;
+  picked_up_at: string | null;
+  delivered_at: string | null;
+  confirmed_reception_at: string | null;
+}
+
+export interface TransferParticipant {
+  id: number | null;
+  name: string | null;
+}
+
+export interface TransferParticipants {
+  requester: TransferParticipant;
+  courier: TransferParticipant;
+  warehouse_keeper: TransferParticipant;
+}
+
+export interface DailyTransferTraceability {
+  transfer_id: number;
+  source_location: TransferLocation;
+  destination_location: TransferLocation;
+  product: TransferProduct;
+  status: string;
+  dates: TransferDates;
+  participants: TransferParticipants;
+  notes: string;
+  pickup_type: 'seller' | 'corredor';
+  request_type: string;
+  inventory_type: string;
+}
+
 interface InventoryAlert {
   location_id: number;
   alert_type: 'inventario_minimo' | 'stock_agotado' | 'producto_vencido';
@@ -492,11 +539,24 @@ export const approveDiscountRequest = async (approvalData: DiscountApproval) => 
   return handleResponse(response);
 };
 
-// ========== 8. TRANSFERENCIAS (1 endpoint) ==========
+// ========== 8. TRANSFERENCIAS (2 endpoints) ==========
 
 // GET /api/v1/admin/admin/transfers/overview
 export const fetchTransfersOverview = async () => {
   const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/transfers/overview`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/transfers/daily-traceability
+export const fetchDailyTransfersTraceability = async (params: { target_date: string }) => {
+  const searchParams = new URLSearchParams({
+    target_date: params.target_date
+  });
+
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/transfers/daily-traceability?${searchParams.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
