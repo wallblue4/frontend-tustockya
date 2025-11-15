@@ -86,6 +86,7 @@ interface CompletedTransfer {
   duration: string;
   next_action: string;
   product_image?: string; // Campo opcional para la imagen
+  has_return_request?: boolean; // Nuevo campo que indica si ya existe una solicitud de devolución
 }
 
 export const TransfersView: React.FC<TransfersViewProps> = ({ 
@@ -1049,14 +1050,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             )}
           </CardHeader>
           <CardContent>
-            {completedTransfers.length === 0 ? (
+            {completedTransfers.filter((t) => !t.has_return_request).length === 0 ? (
               <div className="text-center py-8 md:py-12">
                 <CheckCircle className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground text-sm md:text-base">No hay transferencias completadas hoy</p>
               </div>
             ) : (
               <div className="space-y-3 md:space-y-4">
-                {completedTransfers.map((transfer) => (
+                {completedTransfers.filter((t) => !t.has_return_request).map((transfer) => (
                   <div key={transfer.id} className="border border-border rounded-lg p-3 md:p-4 bg-card shadow-sm hover:shadow-lg transition-all duration-300">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
                       <div className="flex-1 min-w-0">
