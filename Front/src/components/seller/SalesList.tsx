@@ -368,19 +368,12 @@ export const SalesList: React.FC = () => {
                           {sale.confirmed ? 'Confirmada' : 'Pendiente'}
                         </span>
                         <span className="text-sm text-muted-foreground">
-                          ID: {sale.id} • {formatSaleDate(sale.sale_date)}
+                          Fecha: {formatSaleDate(sale.sale_date)}
                         </span>
                         {sale.receipt_image && (
                           <Receipt className="h-4 w-4 text-primary" />
                         )}
-                      </div>
-                      
-                      <div className="text-sm text-muted-foreground mb-2">
-                        <span className="font-medium text-foreground">{sale.first_name || 'Usuario'} {sale.last_name || ''}</span>
-                        <span className="mx-2">•</span>
-                        <span>{sale.location_name || 'Ubicación no especificada'}</span>
-                      </div>
-                      
+                      </div>                      
                       {/* Items */}
                       <div className="space-y-1 mb-3">
                         {sale.items && sale.items.length > 0 ? (
@@ -404,8 +397,8 @@ export const SalesList: React.FC = () => {
                         {sale.payment_methods && sale.payment_methods.length > 0 ? (
                           sale.payment_methods.map((payment, index) => (
                             <div key={index} className="flex items-center space-x-1 text-xs bg-muted/30 px-2 py-1 rounded">
-                              {getPaymentMethodIcon(payment.payment_type)}
-                              <span className="text-foreground">{getPaymentMethodLabel(payment.payment_type)}: {formatCurrency(payment.amount)}</span>
+                              
+                              <span className="text-foreground">{getPaymentMethodLabel(payment.type)}</span>
                               {payment.reference && (
                                 <span className="text-muted-foreground">({payment.reference})</span>
                               )}
@@ -416,13 +409,7 @@ export const SalesList: React.FC = () => {
                             Método de pago no especificado
                           </div>
                         )}
-                      </div> 
-
-                      {sale.notes && (
-                        <div className="mt-2 p-2 bg-muted/20 rounded text-sm text-foreground">
-                          <strong>Notas:</strong> {sale.notes}
-                        </div>
-                      )}
+                      </div>
                     </div>
                     
                     <div className="text-right ml-4">
