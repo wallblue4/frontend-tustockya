@@ -2885,7 +2885,7 @@ Por favor verifica que:
                       { value: '', label: 'Selecciona un local' },
                       ...localLocations.map(location => ({
                         value: location.id.toString(),
-                        label: `${location.name} (ID ${location.id})`
+                        label: `${location.name}`
                       }))
                     ]}
                   />
@@ -2925,7 +2925,7 @@ Por favor verifica que:
                         <div className="text-right space-y-2 flex flex-col items-end">
                           <p className="text-sm text-muted-foreground">Total vendido</p>
                           <p className="text-xl font-bold text-primary">{formatCurrency(sale.total_amount)}</p>
-                          
+                          <p className="text-sm text-muted-foreground">{sale.payments?.[0]?.payment_type || 'N/A'}</p>
                           <p className="text-xs text-muted-foreground">{formatDate(sale.sale_date)}</p>
                         </div>
                       </div>
@@ -2933,8 +2933,7 @@ Por favor verifica que:
                         {sale.items.map((item, index) => (
                           <div key={`${sale.sale_id}-${index}`} className="flex flex-wrap justify-between text-sm gap-3">
                             <div>
-                              <p className="font-medium text-foreground">{item.product_reference}</p>
-                              <p className="text-muted-foreground">{item.brand} · {item.model}</p>
+                              <p className="font-medium text-foreground">{item.brand} · {item.model}</p>
                             </div>
                             <div className="text-right">
                               <p className="text-foreground">Talla {item.size} · {item.quantity} uds   ·  C/U = {formatCurrency(item.unit_price)}</p>

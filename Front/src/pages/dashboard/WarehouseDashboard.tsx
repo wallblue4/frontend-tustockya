@@ -826,7 +826,7 @@ export const WarehouseDashboard: React.FC = () => {
             <CardHeader>
               <h2 className="text-lg md:text-xl font-semibold flex items-center">
                 <Truck className="h-5 w-5 md:h-6 md:w-6 text-primary mr-2" />
-                Historial de Transferencias (hoy)
+                Historial de Transferencias de Hoy
               </h2>
             </CardHeader>
             <CardContent>
@@ -851,21 +851,17 @@ export const WarehouseDashboard: React.FC = () => {
                             className="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-md shadow-sm"
                           />
                         </div>
-
+                        
                         <div className="mt-3 sm:mt-0 flex-1 min-w-0">
                           <div className="flex items-start justify-between">
                             <div className="truncate">
                               <div className="font-medium text-sm truncate">{item.product_info?.brand} {item.product_info?.model}</div>
                               <div className="flex items-center flex-wrap gap-2 mt-1">
                                 <span className="text-xs text-muted-foreground truncate">{item.product_info?.reference_code}</span>
-                                {/* Si hay talla, mostrarla */}
-                                {item.size && (
-                                  <span className="inline-block text-xs px-2 py-0.5 rounded bg-card border border-border text-muted-foreground">Talla {item.size}</span>
-                                )}
-                                {/* Si hay status/purpose, mostrarlo */}
-                                {item.purpose && (
-                                  <span className={`inline-block text-xs px-2 py-0.5 rounded font-medium ${item.purpose === 'return' ? 'bg-warning/10 text-warning border-warning/20' : item.purpose === 'cliente' ? 'bg-success/10 text-success border-success/20' : 'bg-muted/10 text-muted-foreground border-muted/20'}`}>
-                                    {item.purpose === 'cliente' ? 'Transferencia' : item.purpose === 'return' ? 'devolucion' : item.purpose}
+                                {/* Si hay request_type, mostrarlo */}
+                                {item.request_type && (
+                                  <span className={`inline-block text-xs px-2 py-0.5 rounded font-medium ${item.request_type === 'return' ? 'bg-warning/10 text-warning border-warning/20' : item.request_type === 'transfer' ? 'bg-success/10 text-success border-success/20' : 'bg-muted/10 text-muted-foreground border-muted/20'}`}>
+                                    {item.request_type === 'transfer' ? 'Transferencia' : item.request_type === 'return' ? 'devolucion' : item.request_type}
                                   </span>
                                 )}
                                 <span className="inline-block text-xs px-2 py-0.5 rounded bg-card border border-border text-muted-foreground">{item.pickup_info?.type || '—'}</span>
@@ -878,7 +874,11 @@ export const WarehouseDashboard: React.FC = () => {
                               </span>
                               {typeof item.quantity !== 'undefined' && (
                                 <div className="text-xs text-muted-foreground mt-1">{item.quantity} ud.</div>
+                                
                               )}
+                              <p className={`inline-block px-2 py-0.5 rounded text-xs font-medium `}>
+                                Talla: {item.size}
+                              </p>
                             </div>
                           </div>
 
@@ -2246,19 +2246,13 @@ export const WarehouseDashboard: React.FC = () => {
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-2">
                             <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
-                              🔄 Devolución #{returnItem.id}
+                              🔄 Devolución
                             </span>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                               returnItem.pickup_type === 'corredor' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
                             }`}>
                               {returnItem.pickup_type === 'corredor' ? '🚚 Con Corredor' : '👤 Con Vendedor'}
                             </span>
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              ✅ {returnItem.status_info?.title || 'Entregado'}
-                            </span>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {new Date(returnItem.requested_at).toLocaleDateString()}
                           </div>
                         </div>
 
@@ -2276,7 +2270,7 @@ export const WarehouseDashboard: React.FC = () => {
                               {returnItem.product?.brand || returnItem.brand} {returnItem.product?.model || returnItem.model}
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              Talla {returnItem.product?.size || returnItem.size} • Cantidad: {returnItem.product?.quantity || returnItem.quantity} • Ref: {returnItem.product?.reference_code || returnItem.sneaker_reference_code}
+                              Talla {returnItem.product?.size || returnItem.size} • Cantidad: {returnItem.product?.quantity || returnItem.quantity} 
                             </p>
                             <p className="text-sm text-muted-foreground">
                               <strong>Tipo:</strong> {returnItem.request_type_display || 'Devolución'}
@@ -2328,9 +2322,6 @@ export const WarehouseDashboard: React.FC = () => {
                             {returnItem.picked_up_at && (
                               <div>📦 Recogido: {new Date(returnItem.picked_up_at).toLocaleString()}</div>
                             )}
-                            <div className="pt-1 border-t border-blue-300">
-                              <strong>⏱️ Tiempo desde aceptación:</strong> {returnItem.time_since_accepted || 'N/A'}
-                            </div>
                           </div>
                         </div>
 
