@@ -664,9 +664,6 @@ export const RunnerDashboard: React.FC = () => {
                                   {request.urgency}
                                 </span>
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                ID #{request.id}
-                              </div>
                             </div>
                             
                             {/* Layout horizontal: Imagen vertical a la izquierda, info a la derecha */}
@@ -796,9 +793,6 @@ export const RunnerDashboard: React.FC = () => {
                               <span className="text-sm text-muted-foreground">
                                 📦 {request.quantity} unidades • Talla {request.size}
                               </span>
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              ID #{request.id}
                             </div>
                           </div>
                           
@@ -969,9 +963,6 @@ export const RunnerDashboard: React.FC = () => {
                                  transport.purpose === 'return' ? '🔄 Devolución' : 'Restock'}
                               </span>
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              ID #{transport.id}
-                            </div>
                           </div>
                           
                           {/* Imagen más grande para mobile */}
@@ -1064,9 +1055,6 @@ export const RunnerDashboard: React.FC = () => {
                               {transport.purpose === 'cliente' ? 'Cliente' : 
                                transport.purpose === 'return' ? '🔄 Devolución' : 'Restock'}
                             </span>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            ID #{transport.id} • {transport.courier_accepted_at ? new Date(transport.courier_accepted_at).toLocaleDateString() : 'Sin fecha'}
                           </div>
                         </div>
                         
