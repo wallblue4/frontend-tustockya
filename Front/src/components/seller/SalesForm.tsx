@@ -222,15 +222,25 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
       console.log('💰 Total Amount:', totalAmount);
       console.log('💳 Payment Methods:', paymentMethods);
       
+      // Crear FormData para incluir el archivo del comprobante
+      const formData = new FormData();
+      formData.append('total_amount', String(totalAmount));
+      formData.append('payment_methods', JSON.stringify(paymentMethods.map(pm => ({
+        type: pm.type,
+        amount: pm.amount,
+        reference: pm.reference || null
+      }))));
+      formData.append('notes', notes || '');
+      
+      // Agregar el archivo del comprobante si existe
+      if (receiptFile) {
+        formData.append('receipt_image', receiptFile);
+        console.log('📎 Comprobante adjunto:', receiptFile.name);
+      }
+      
       const response = await transferVendorAPI.sellFromTransfer(
         transferId,
-        totalAmount,
-        paymentMethods.map(pm => ({
-          type: pm.type,
-          amount: pm.amount,
-          reference: pm.reference || null
-        })),
-        notes || ''
+        formData
       );
       
       console.log('✅ Venta desde transferencia registrada:', response);

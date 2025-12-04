@@ -69,20 +69,12 @@ export const vendorAPI = {
   // *** NUEVA FUNCIÓN - Registrar venta desde una transferencia ***
   async sellFromTransfer(
     transferId: number,
-    totalAmount: number,
-    payments: Array<{ type: 'efectivo' | 'tarjeta' | 'transferencia'; amount: number; reference?: string | null }>,
-    notes: string
+    formData: FormData
   ) {
-    console.log('🔄 Registrando venta desde transferencia...', { transferId, totalAmount, payments, notes });
+    console.log('🔄 Registrando venta desde transferencia...', { transferId });
 
     const backendCall = async () => {
-      // Usar multipart/form-data según especificación del backend
-      const formData = new FormData();
-      formData.append('total_amount', String(totalAmount));
-      formData.append('payment_methods', JSON.stringify(payments));
-      formData.append('notes', notes || '');
-
-      // Construir headers sin Content-Type para que el navegador agregue el boundary
+      // formData ya contiene: total_amount, payment_methods, notes y receipt_image (opcional)
       const token = localStorage.getItem('token');
       const headers: Record<string, string> = {
         'Authorization': `Bearer ${token || ''}`
@@ -105,14 +97,23 @@ export const vendorAPI = {
       console.log('📦 Usando respuesta mock para sellFromTransfer');
       await new Promise(resolve => setTimeout(resolve, 800));
       const saleId = Math.floor(Math.random() * 10000) + 1000;
+      
+      // Extraer datos del formData para el mock
+      const totalAmount = formData.get('total_amount');
+      const paymentMethods = JSON.parse(formData.get('payment_methods') as string);
+      
       return {
         success: true,
         sale_id: saleId,
         total_amount: totalAmount,
-        payments,
+        payments: paymentMethods,
         status: 'completed',
         sale_timestamp: new Date().toISOString(),
-        seller_info: { seller_name: 'Vendedor Mock' }
+        seller_info: { seller_name: 'Vendedor Mock' },
+        receipt_info: {
+          has_receipt: !!formData.get('receipt_image'),
+          stored_in: formData.get('receipt_image') ? 'cloud_storage' : 'none'
+        }
       };
     }
   },
