@@ -991,21 +991,11 @@ export const WarehouseDashboard: React.FC = () => {
                           {/* Header con etiquetas de prioridad */}
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center space-x-2">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(request.priority_level)}`}>
-                                {request.priority_level === 'URGENT' ? '🔥 URGENTE' : '📦 Normal'}
-                              </span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
-                                {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' : 
-                                 request.purpose === 'pair_formation' ? '🔗 Formar Par' : '📦 Restock'}
-                              </span>
                               {request.request_type && (
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRequestTypeColor(request.request_type)}`}>
                                   {request.request_type === 'transfer' ? '📦 Transferencia' : '↩️ Devolución'}
                                 </span>
                               )}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              ID #{request.id}
                             </div>
                           </div>
 
@@ -1018,11 +1008,6 @@ export const WarehouseDashboard: React.FC = () => {
                                    (request.inventory_type === 'left_only' ? '🦶 Pie Izquierdo' :
                                     request.inventory_type === 'right_only' ? '🦶 Pie Derecho' : '🦶 Pies Separados')}
                                 </span>
-                                {request.time_elapsed && (
-                                  <span className="text-xs text-muted-foreground">
-                                    ⏱️ {request.time_elapsed}
-                                  </span>
-                                )}
                               </div>
                               {request.preparation_instruction && (
                                 <p className="text-xs text-muted-foreground mt-2">
@@ -1101,45 +1086,7 @@ export const WarehouseDashboard: React.FC = () => {
                               </div>
                             </div>
                           </div>
-                          
-                          <Button
-                            onClick={() => toggleCardExpansion(request.id)}
-                            variant="ghost"
-                            size="sm"
-                            className="w-full text-sm mb-3"
-                          >
-                            {expandedCard === request.id ? (
-                              <>Menos detalles <ChevronUp className="h-4 w-4 ml-2" /></>
-                            ) : (
-                              <>Más detalles <ChevronDown className="h-4 w-4 ml-2" /></>
-                            )}
-                          </Button>
-                          
-                          {expandedCard === request.id && (
-                            <div className="mb-4 pt-4 border-t space-y-3">
-                              <div className="grid grid-cols-2 gap-3 text-sm">
-                                <div>
-                                  <p className="text-gray-500">Código</p>
-                                  <p className="font-medium text-xs">{request.sneaker_reference_code}</p>
-                                </div>
-                                {request.product_color && (
-                                  <div>
-                                    <p className="text-gray-500">Color</p>
-                                    <p className="font-medium text-xs">{request.product_color}</p>
-                                  </div>
-                                )}
-                              </div>
-                              
-                              {request.notes && (
-                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                  <p className="text-sm">
-                                    <strong>📝 Notas:</strong> {request.notes}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          
+
                           <div className="flex space-x-2">
                             <Button 
                               onClick={() => handleAcceptRequest(request.id)}
