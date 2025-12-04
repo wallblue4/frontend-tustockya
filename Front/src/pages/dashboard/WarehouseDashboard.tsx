@@ -332,7 +332,7 @@ export const WarehouseDashboard: React.FC = () => {
       
       // *** FILTRAR DEVOLUCIONES DE LAS ACCEPTED_REQUESTS ***
       const returns = (acceptedResponse.accepted_requests || []).filter(
-        (req: AcceptedRequest) => req.purpose === 'return' && req.status === 'delivered'
+        (req: AcceptedRequest) => req.purpose === 'return' && (req.status === 'delivered' ||req.status === 'accepted')
       );
       setPendingReturns(returns);
       console.log('✅ Devoluciones pendientes filtradas:', returns.length);
@@ -1144,7 +1144,11 @@ export const WarehouseDashboard: React.FC = () => {
                           <div className="flex space-x-2">
                             <Button 
                               onClick={() => handleAcceptRequest(request.id)}
-                              disabled={!((request.product_info?.stock_available ?? 0) > 0) || actionLoading === request.id}
+                              disabled={
+                                request.request_type === 'transfer' 
+                                  ? !((request.product_info?.stock_available ?? 0) > 0) || actionLoading === request.id
+                                  : actionLoading === request.id
+                              }
                               className="flex-1 bg-success hover:bg-success/90 disabled:opacity-50 text-sm"
                               size="sm"
                             >
@@ -1322,7 +1326,11 @@ export const WarehouseDashboard: React.FC = () => {
                               <div className="flex space-x-3">
                                 <Button 
                                   onClick={() => handleAcceptRequest(request.id)}
-                                  disabled={!((request.product_info?.stock_available ?? 0) > 0) || actionLoading === request.id}
+                                  disabled={
+                                    request.request_type === 'transfer' 
+                                      ? !((request.product_info?.stock_available ?? 0) > 0) || actionLoading === request.id
+                                      : actionLoading === request.id
+                                  }
                                   className="flex-1 bg-success hover:bg-success/90 disabled:opacity-50"
                                 >
                                   {actionLoading === request.id ? (

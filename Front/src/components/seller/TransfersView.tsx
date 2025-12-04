@@ -1113,12 +1113,6 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                           <div>
                             <strong>Solicitado:</strong> {new Date(transfer.requested_at).toLocaleString()}
                           </div>
-                          <div>
-                            <strong>Completado:</strong> {transfer.completed_at ? new Date(transfer.completed_at).toLocaleString() : 'N/A'}
-                          </div>
-                          <div>
-                            <strong>Duración:</strong> {transfer.duration}
-                          </div>
                         </div>
 
                         {/* Botones de acción - SOLO para transferencias completadas */}
