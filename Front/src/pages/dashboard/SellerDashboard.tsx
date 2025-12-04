@@ -560,7 +560,7 @@ export const SellerDashboard: React.FC = () => {
             {/* *** INFORMACIÓN ACTUALIZADA DE TRANSFERENCIAS *** */}
             {(apiData.pending_actions || transfersSummary) && (
               <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
                   {apiData.pending_actions && apiData.pending_actions.sale_confirmations > 0 && (
                     <div className="bg-blue-50 p-3 rounded-lg">
                       <p className="text-2xl font-bold text-blue-600">
@@ -610,27 +610,7 @@ export const SellerDashboard: React.FC = () => {
                     </button>
                   )}
 
-                  {/* Estadísticas adicionales de transferencias */}
-                  {transfersSummary && transfersSummary.completed_today > 0 && (
-                    <div className="bg-green-50 p-3 rounded-lg">
-                      <p className="text-2xl font-bold text-green-600">
-                        {transfersSummary.completed_today}
-                      </p>
-                      <p className="text-xs text-green-600">Completadas hoy</p>
-                      <p className="text-xs text-green-500 mt-1">
-                        {transfersSummary.success_rate.toFixed(1)}% éxito
-                      </p>
-                    </div>
-                  )}
                   
-                  {apiData.pending_actions && apiData.pending_actions.discount_requests && apiData.pending_actions.discount_requests.pending > 0 && (
-                    <div className="bg-orange-50 p-3 rounded-lg">
-                      <p className="text-2xl font-bold text-orange-600">
-                        {apiData.pending_actions.discount_requests.pending}
-                      </p>
-                      <p className="text-xs text-orange-600">Descuentos pendientes</p>
-                    </div>
-                  )}
                   
                   {apiData.pending_actions && apiData.pending_actions.return_notifications > 0 && (
                     <div className="bg-red-50 p-3 rounded-lg">

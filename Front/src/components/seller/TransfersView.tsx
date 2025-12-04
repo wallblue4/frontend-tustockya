@@ -1040,14 +1040,6 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         <Card>
           <CardHeader>
             <h3 className="text-base md:text-lg font-semibold">Transferencias Completadas</h3>
-            {todayStats && (
-              <div className="flex space-x-4 mt-2 text-sm text-muted-foreground">
-                <span>Total: {todayStats.total_transfers}</span>
-                <span>Completadas: {todayStats.completed}</span>
-                <span>Éxito: {todayStats.success_rate?.toFixed(1)}%</span>
-                <span>Promedio: {todayStats.average_duration}</span>
-              </div>
-            )}
           </CardHeader>
           <CardContent>
             {completedTransfers.filter((t) => !t.has_return_request).length === 0 ? (
