@@ -846,8 +846,8 @@ export const WarehouseDashboard: React.FC = () => {
                       <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4">
                         <div className="flex-shrink-0 self-center sm:self-start">
                           <img
-                            src={item.product_image || '/logo.png'}
-                            alt={item.model}
+                            src={item.product_info?.image_url || '/logo.png'}
+                            alt={item.product_info?.model || ''}
                             className="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-md shadow-sm"
                           />
                         </div>
@@ -855,14 +855,20 @@ export const WarehouseDashboard: React.FC = () => {
                         <div className="mt-3 sm:mt-0 flex-1 min-w-0">
                           <div className="flex items-start justify-between">
                             <div className="truncate">
-                              <div className="font-medium text-sm truncate">{item.brand} {item.model}</div>
+                              <div className="font-medium text-sm truncate">{item.product_info?.brand} {item.product_info?.model}</div>
                               <div className="flex items-center flex-wrap gap-2 mt-1">
-                                <span className="text-xs text-muted-foreground truncate">{item.sneaker_reference_code}</span>
-                                <span className="inline-block text-xs px-2 py-0.5 rounded bg-card border border-border text-muted-foreground">Talla {item.size}</span>
-                                <span className={`inline-block text-xs px-2 py-0.5 rounded font-medium ${item.purpose === 'return' ? 'bg-warning/10 text-warning border-warning/20' : item.purpose === 'cliente' ? 'bg-success/10 text-success border-success/20' : 'bg-muted/10 text-muted-foreground border-muted/20'}`}>
-                                  {item.purpose === 'cliente' ? 'Transferencia' : item.purpose === 'return' ? 'devolucion' : item.purpose}
-                                </span>
-                                <span className="inline-block text-xs px-2 py-0.5 rounded bg-card border border-border text-muted-foreground">{item.pickup_type || '—'}</span>
+                                <span className="text-xs text-muted-foreground truncate">{item.product_info?.reference_code}</span>
+                                {/* Si hay talla, mostrarla */}
+                                {item.size && (
+                                  <span className="inline-block text-xs px-2 py-0.5 rounded bg-card border border-border text-muted-foreground">Talla {item.size}</span>
+                                )}
+                                {/* Si hay status/purpose, mostrarlo */}
+                                {item.purpose && (
+                                  <span className={`inline-block text-xs px-2 py-0.5 rounded font-medium ${item.purpose === 'return' ? 'bg-warning/10 text-warning border-warning/20' : item.purpose === 'cliente' ? 'bg-success/10 text-success border-success/20' : 'bg-muted/10 text-muted-foreground border-muted/20'}`}>
+                                    {item.purpose === 'cliente' ? 'Transferencia' : item.purpose === 'return' ? 'devolucion' : item.purpose}
+                                  </span>
+                                )}
+                                <span className="inline-block text-xs px-2 py-0.5 rounded bg-card border border-border text-muted-foreground">{item.pickup_info?.type || '—'}</span>
                               </div>
                             </div>
 
@@ -870,20 +876,29 @@ export const WarehouseDashboard: React.FC = () => {
                               <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${item.status === 'completed' ? 'bg-success/20 text-success' : 'bg-muted/20 text-muted-foreground'}`}>
                                 {item.status}
                               </span>
-                              <div className="text-xs text-muted-foreground mt-1">{item.quantity} ud.</div>
+                              {typeof item.quantity !== 'undefined' && (
+                                <div className="text-xs text-muted-foreground mt-1">{item.quantity} ud.</div>
+                              )}
                             </div>
                           </div>
 
                           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
                             <div>
-                              <div className="truncate"><strong>Origen (nombre):</strong> {item.source_location_name ? item.source_location_name : 'N/A'}</div>
-                              <div className="truncate"><strong>Origen (dirección):</strong> {item.source_location_address ? item.source_location_address : 'N/A'}</div>
+                              <div className="truncate"><strong>Origen:</strong> {item.source_location || 'N/A'}</div>
+                              <div className="truncate"><strong>Destino:</strong> {item.destination_location || 'N/A'}</div>
                               <div className="truncate"><strong>Solicitado:</strong> {item.requested_at ? new Date(item.requested_at).toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit' }) : 'N/A'}</div>
                             </div>
                             <div>
-                              <div><strong>Aceptado:</strong> {item.accepted_at ? new Date(item.accepted_at).toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit' }) : 'N/A'}</div>
-                              <div><strong>Recolectado (picked_up_at):</strong> {item.picked_up_at ? new Date(item.picked_up_at).toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit' }) : 'N/A'}</div>
-                              <div><strong>Entregado (delivered_at):</strong> {item.delivered_at ? new Date(item.delivered_at).toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit' }) : 'N/A'}</div>
+                              {/* Si hay fechas adicionales, mostrarlas */}
+                              {item.accepted_at && (
+                                <div><strong>Aceptado:</strong> {new Date(item.accepted_at).toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit' })}</div>
+                              )}
+                              {item.picked_up_at && (
+                                <div><strong>Recolectado (picked_up_at):</strong> {new Date(item.picked_up_at).toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit' })}</div>
+                              )}
+                              {item.delivered_at && (
+                                <div><strong>Entregado (delivered_at):</strong> {new Date(item.delivered_at).toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit' })}</div>
+                              )}
                               {item.pickup_info?.type === 'corredor' && item.pickup_info?.name && (
                                 <div className="truncate"><strong>🚚 Corredor:</strong> {item.pickup_info.name}</div>
                               )}
