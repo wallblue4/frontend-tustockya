@@ -884,6 +884,12 @@ export const WarehouseDashboard: React.FC = () => {
                               <div><strong>Aceptado:</strong> {item.accepted_at ? new Date(item.accepted_at).toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit' }) : 'N/A'}</div>
                               <div><strong>Recolectado (picked_up_at):</strong> {item.picked_up_at ? new Date(item.picked_up_at).toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit' }) : 'N/A'}</div>
                               <div><strong>Entregado (delivered_at):</strong> {item.delivered_at ? new Date(item.delivered_at).toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit' }) : 'N/A'}</div>
+                              {item.pickup_info?.type === 'corredor' && item.pickup_info?.name && (
+                                <div className="truncate"><strong>🚚 Corredor:</strong> {item.pickup_info.name}</div>
+                              )}
+                              {item.requester_name && (
+                                <div className="truncate"><strong>👤 Receptor:</strong> {item.requester_name}</div>
+                              )}
                             </div>
                           </div>
                         </div>
