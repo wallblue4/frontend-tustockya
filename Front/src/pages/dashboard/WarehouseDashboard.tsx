@@ -2190,43 +2190,6 @@ export const WarehouseDashboard: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Card adicional con información de endpoints */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <h3 className="text-base md:text-lg font-semibold">🔧 Estado del Sistema</h3>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-green-600">✅ Endpoints Implementados:</h4>
-                    <ul className="text-sm space-y-1">
-                      <li>• <strong>WH001:</strong> GET /warehouse/pending-requests</li>
-                      <li>• <strong>WH002:</strong> POST /warehouse/accept-request</li>
-                      <li>• <strong>WH003:</strong> GET /warehouse/accepted-requests</li>
-                      <li>• <strong>WH004:</strong> POST /warehouse/deliver-to-courier</li>
-                      <li>• <strong>WH005:</strong> POST /warehouse/deliver-to-vendor</li>
-                    </ul>
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-blue-600">📊 Funcionalidades Activas:</h4>
-                    <ul className="text-sm space-y-1">
-                      <li>• Polling automático cada 15 segundos</li>
-                      <li>• Notificaciones en tiempo real</li>
-                      <li>• Filtros y búsqueda avanzada</li>
-                      <li>• Interface responsive mobile/desktop</li>
-                      <li>• Manejo de errores y fallback a mock data</li>
-                    </ul>
-                  </div>
-                </div>
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    <strong>ℹ️ Información:</strong> El sistema está configurado para trabajar con el backend en producción. 
-                    Si el servidor no está disponible, se utilizan datos de prueba para desarrollo.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         )}
 
