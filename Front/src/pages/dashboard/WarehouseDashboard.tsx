@@ -201,6 +201,7 @@ export const WarehouseDashboard: React.FC = () => {
 
   // Estado para historial de transferencias del día
   interface TransferHistoryItem {
+    inventory_type: ReactNode;
     id: number;
     status: string;
     sneaker_reference_code: string;
@@ -847,8 +848,8 @@ export const WarehouseDashboard: React.FC = () => {
                       <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4">
                         <div className="flex-shrink-0 self-center sm:self-start">
                           <img
-                            src={item.product_info?.image_url || '/logo.png'}
-                            alt={item.product_info?.model || ''}
+                            src={item.product_info?.image_url }
+                            alt={item.product_info?.model}
                             className="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-md shadow-sm"
                           />
                         </div>
@@ -858,7 +859,6 @@ export const WarehouseDashboard: React.FC = () => {
                             <div className="truncate">
                               <div className="font-medium text-sm truncate">{item.product_info?.brand} {item.product_info?.model}</div>
                               <div className="flex items-center flex-wrap gap-2 mt-1">
-                                <span className="text-xs text-muted-foreground truncate">{item.product_info?.reference_code}</span>
                                 {/* Si hay request_type, mostrarlo */}
                                 {item.request_type && (
                                   <span className={`inline-block text-xs px-2 py-0.5 rounded font-medium ${item.request_type === 'return' ? 'bg-warning/10 text-warning border-warning/20' : item.request_type === 'transfer' ? 'bg-success/10 text-success border-success/20' : 'bg-muted/10 text-muted-foreground border-muted/20'}`}>
@@ -874,8 +874,7 @@ export const WarehouseDashboard: React.FC = () => {
                                 {item.status}
                               </span>
                               {typeof item.quantity !== 'undefined' && (
-                                <div className="text-xs text-muted-foreground mt-1">{item.quantity} ud.</div>
-                                
+                                <div className="text-xs text-muted-foreground mt-1">{item.inventory_type === 'pair' ? 'Par' : item.inventory_type === 'left_only' ? 'Izquierdo' : item.inventory_type === 'right_only' ? 'Derecho' : item.inventory_type} {item.quantity} ud.</div>
                               )}
                               <p className={`inline-block px-2 py-0.5 rounded text-xs font-medium `}>
                                 Talla: {item.size}
