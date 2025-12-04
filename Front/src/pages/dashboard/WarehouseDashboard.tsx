@@ -142,6 +142,7 @@ interface AcceptedRequest {
   location: {
     source_id: number;
     source_name: string;
+    destination_name: string;
   };
   requested_at: string;
   accepted_at: string;
@@ -1446,7 +1447,7 @@ export const WarehouseDashboard: React.FC = () => {
                              </div>
                              <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-1">
                                <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
-                               <span className="font-medium">A: {request.requester_info?.name} (Local)</span>
+                               <span className="font-medium">A: {request.location.destination_name}</span>
                              </div>
                           </div>
                         </div>
@@ -1644,7 +1645,7 @@ export const WarehouseDashboard: React.FC = () => {
                                </p>
                                <p className="text-sm text-muted-foreground">
                                  <MapPin className="h-4 w-4 inline mr-1" />
-                                 <strong>A:</strong> {request.requester_info?.name} (Local)
+                                 <strong>A:</strong> {request.location.destination_name} (Local)
                                </p>
                              </div>
                             
@@ -2292,15 +2293,15 @@ export const WarehouseDashboard: React.FC = () => {
                         {returnItem.location && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
-                              <div className="text-sm font-medium text-primary mb-1">📍 Desde (Vendedor)</div>
+                              <div className="text-sm font-medium text-primary mb-1">📍 Desde</div>
                               <div className="text-sm font-medium text-card-foreground">
-                                {returnItem.location.source_name || 'N/A'}
+                                {returnItem.location.source_name}
                               </div>
                             </div>
                             <div className="p-3 bg-success/10 rounded-lg border border-success/20">
-                              <div className="text-sm font-medium text-success mb-1">🏪 Hacia (Bodega)</div>
+                              <div className="text-sm font-medium text-success mb-1">🏪 Hacia</div>
                               <div className="text-sm font-medium text-card-foreground">
-                                Bodega Principal
+                                {returnItem.location.destination_name}
                               </div>
                             </div>
                           </div>
