@@ -333,7 +333,7 @@ export const WarehouseDashboard: React.FC = () => {
       
       // *** FILTRAR DEVOLUCIONES DE LAS ACCEPTED_REQUESTS ***
       const returns = (acceptedResponse.accepted_requests || []).filter(
-        (req: AcceptedRequest) => req.purpose === 'return' && (req.status === 'delivered' ||req.status === 'accepted')
+        (req: AcceptedRequest) => req.request_type === 'return' && (req.status === 'delivered' || req.status === 'accepted')
       );
       setPendingReturns(returns);
       console.log('✅ Devoluciones pendientes filtradas:', returns.length);
