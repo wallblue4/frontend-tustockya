@@ -30,7 +30,23 @@ import { StatsCard } from '../../components/dashboard/StatsCard';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
 import bossAPI from '../../services/bossAPI';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  PieChart as RePieChart,
+  Pie,
+  Cell,
+  CartesianGrid,
+} from 'recharts';
 
 type BossView = 
   | 'dashboard' 
@@ -53,6 +69,11 @@ export const BossDashboard: React.FC = () => {
   const [inventoryData, setInventoryData] = useState<any>(null);
   const [financialData, setFinancialData] = useState<any>(null);
   const [salesReport, setSalesReport] = useState<any>(null);
+  // Analytics-specific states (for financial/analysis and financial/monthly)
+  const [analyticsAnalysis, setAnalyticsAnalysis] = useState<any>(null);
+  const [monthlyAnalysis, setMonthlyAnalysis] = useState<any>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('all');
 
   // Estados para modales y formularios
   const [showCreateLocationModal, setShowCreateLocationModal] = useState(false);
@@ -96,6 +117,30 @@ export const BossDashboard: React.FC = () => {
   useEffect(() => {
     loadViewData(currentView);
   }, [currentView]);
+
+  // Cargar datos específicos para la vista de Analytics (gráficas)
+  useEffect(() => {
+    if (currentView !== 'analytics') return;
+
+    const loadAnalytics = async () => {
+      setAnalyticsLoading(true);
+      try {
+        // financial/analysis (por rango de fechas)
+        const analysis = await bossAPI.getFinancialAnalysis(dateRange.start, dateRange.end);
+        setAnalyticsAnalysis(analysis);
+
+        // financial/monthly (atajo por año/mes)
+        const monthly = await bossAPI.getMonthlyFinancialAnalysis(selectedYear, selectedMonth);
+        setMonthlyAnalysis(monthly);
+      } catch (err: any) {
+        console.error('Error cargando analytics:', err);
+      } finally {
+        setAnalyticsLoading(false);
+      }
+    };
+
+    loadAnalytics();
+  }, [currentView, dateRange, selectedYear, selectedMonth]);
 
   const loadInitialData = async () => {
     setLoading(true);
@@ -1219,19 +1264,256 @@ export const BossDashboard: React.FC = () => {
 
   // Vista de Analytics
   const renderAnalyticsView = () => {
+    if (analyticsLoading) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    const source = analyticsAnalysis || monthlyAnalysis || {};
+    const totalRevenue = Number(source.total_revenue) || 0;
+    const totalCosts = Number(source.total_costs) || 0;
+    const netProfit = Number(source.net_profit) || 0;
+    const overallMargin = Number(source.overall_margin_percentage) || 0;
+
+    const costsData = Object.entries(source.costs_by_type || {}).map(([name, val]) => ({ name, value: Number(val) || 0 }));
+
+    const locs = (source.locations_financials || []).map((l: any) => ({
+      id: l.location_id,
+      name: l.location_name || `Loc ${l.location_id}`,
+      total_sales: Number(l.total_sales) || 0,
+      operational_costs: Number(l.operational_costs) || 0,
+      gross_profit: Number(l.gross_profit) || 0,
+      margin: Number(l.profit_margin_percentage) || 0
+    }));
+
+    const sortedLocs = [...locs].sort((a, b) => b.total_sales - a.total_sales);
+
+    const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#7C3AED'];
+
+    const tooltipFormatter = (value: any, name: any) => {
+      if (name === 'Margen %' || name === 'margin') return [`${Number(value).toFixed(2)}%`, name];
+      return [formatCurrency(Number(value) || 0), name];
+    };
+
+    const best = source.best_performing_location || null;
+    const worst = source.worst_performing_location || null;
+
     return (
       <div className="space-y-6 p-4 md:p-6">
         <h2 className="text-xl font-semibold">Análisis y Métricas</h2>
-        
+
+        {/* KPIs resumen */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-sm text-muted-foreground">Ingresos Totales</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalRevenue)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-sm text-muted-foreground">Costos Totales</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalCosts)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-sm text-muted-foreground">Utilidad Neta</p>
+              <p className={`text-2xl font-bold ${netProfit < 0 ? 'text-destructive' : 'text-success'}`}>{formatCurrency(netProfit)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-sm text-muted-foreground">Margen Global</p>
+              <p className={`text-2xl font-bold ${overallMargin < 0 ? 'text-destructive' : 'text-success'}`}>{Number(overallMargin).toFixed(2)}%</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <h3 className="text-lg font-semibold">Ventas y Costos por Local</h3>
+            </CardHeader>
+            <CardContent>
+              {sortedLocs.length === 0 ? (
+                <p className="text-muted-foreground">No hay datos por local.</p>
+              ) : (
+                <div className="space-y-3">
+                  <Select
+                    label="Seleccionar Local"
+                    options={[{ value: 'all', label: 'Todos los locales' }, ...sortedLocs.map((l:any) => ({ value: String(l.id), label: l.name }))]}
+                    value={selectedLocationId}
+                    onChange={(e) => setSelectedLocationId(e.target.value)}
+                    placeholder="Selecciona un local"
+                  />
+
+                  {selectedLocationId === 'all' ? (
+                    <div style={{ width: '100%', height: 320 }}>
+                      <ResponsiveContainer>
+                        <BarChart data={sortedLocs} margin={{ top: 10, right: 40, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis yAxisId="left" />
+                          <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${v}%`} />
+                          <Tooltip formatter={tooltipFormatter} />
+                          <Legend />
+                          <Bar yAxisId="left" dataKey="total_sales" fill="#4F46E5" name="Ventas" />
+                          <Bar yAxisId="left" dataKey="operational_costs" fill="#EF4444" name="Costos Operativos" />
+                          <Line type="monotone" dataKey="margin" stroke="#10B981" yAxisId="right" name="Margen %" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    (() => {
+                      const sel = sortedLocs.find((l:any) => String(l.id) === selectedLocationId);
+                      if (!sel) return <p className="text-muted-foreground">Local no encontrado.</p>;
+                      return (
+                        <div className="w-full">
+                          <table className="w-full text-sm">
+                            <tbody>
+                              <tr className="border-b">
+                                <td className="py-2 font-medium">Local</td>
+                                <td className="py-2 text-right">{sel.name}</td>
+                              </tr>
+                              <tr className="border-b">
+                                <td className="py-2 font-medium">Ventas Totales</td>
+                                <td className="py-2 text-right">{formatCurrency(sel.total_sales)}</td>
+                              </tr>
+                              <tr className="border-b">
+                                <td className="py-2 font-medium">Costos Operativos</td>
+                                <td className="py-2 text-right">{formatCurrency(sel.operational_costs)}</td>
+                              </tr>
+                              <tr className="border-b">
+                                <td className="py-2 font-medium">Utilidad Bruta</td>
+                                <td className="py-2 text-right">{formatCurrency(sel.gross_profit)}</td>
+                              </tr>
+                              <tr className="border-b">
+                                <td className="py-2 font-medium">Margen</td>
+                                <td className={`py-2 text-right ${sel.margin < 0 ? 'text-destructive' : 'text-success'}`}>{Number(sel.margin).toFixed(2)}%</td>
+                              </tr>
+                              {/** Show cost breakdown if available from source.locations_financials */}
+                              {(() => {
+                                const orig = (analyticsAnalysis || monthlyAnalysis || {}).locations_financials || [];
+                                const origSel = orig.find((o:any) => String(o.location_id) === selectedLocationId);
+                                if (!origSel || !origSel.cost_breakdown || Object.keys(origSel.cost_breakdown).length === 0) return null;
+                                return (
+                                  <tr className="border-t">
+                                    <td colSpan={2} className="pt-3">
+                                      <div className="text-sm font-medium mb-2">Desglose de Costos</div>
+                                      <div className="grid grid-cols-1 gap-1">
+                                        {Object.entries(origSel.cost_breakdown).map(([k,v]: any) => (
+                                          <div key={k} className="flex justify-between text-sm">
+                                            <div className="capitalize">{k}</div>
+                                            <div>{formatCurrency(Number(v) || 0)}</div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })()}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold">Costos por Tipo</h3>
+            </CardHeader>
+            <CardContent>
+              {costsData.length === 0 ? (
+                <p className="text-muted-foreground">No hay datos de costos.</p>
+              ) : (
+                <div style={{ width: '100%', height: 300 }}>
+                  <ResponsiveContainer>
+                    <RePieChart>
+                      <Pie data={costsData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={false}>
+                        {costsData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: any) => [formatCurrency(Number(value)), 'Costo']} />
+                    </RePieChart>
+                  </ResponsiveContainer>
+
+                  <div className="mt-3 grid grid-cols-1 gap-2">
+                    {costsData.map((c: any, i: number) => (
+                      <div key={c.name} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-2">
+                          <span style={{ width: 12, height: 12, background: COLORS[i % COLORS.length], display: 'inline-block' }} />
+                          <span className="capitalize">{c.name}</span>
+                        </div>
+                        <div>{formatCurrency(c.value)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Best / Worst */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {best && (
+            <Card className="border-success">
+              <CardHeader>
+                <h3 className="text-lg font-semibold text-success">Mejor Performance</h3>
+              </CardHeader>
+              <CardContent>
+                <p className="font-semibold">{best.location_name}</p>
+                <p className="text-sm text-muted-foreground">Ventas: {formatCurrency(Number(best.total_sales) || 0)}</p>
+                <p className="text-sm text-muted-foreground">Margen: {Number(best.profit_margin_percentage ?? 0).toFixed(2)}%</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {worst && (
+            <Card className="border-warning">
+              <CardHeader>
+                <h3 className="text-lg font-semibold text-warning">Peor Performance</h3>
+              </CardHeader>
+              <CardContent>
+                <p className="font-semibold">{worst.location_name}</p>
+                <p className="text-sm text-muted-foreground">Ventas: {formatCurrency(Number(worst.total_sales) || 0)}</p>
+                <p className="text-sm text-muted-foreground">Margen: {Number(worst.profit_margin_percentage ?? 0).toFixed(2)}%</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Margin trend */}
         <Card>
-          <CardContent className="p-8 text-center">
-            <PieChart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <p className="text-lg text-muted-foreground">
-              Funcionalidades de análisis avanzado disponibles próximamente
-            </p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Gráficos, tendencias y análisis predictivo
-            </p>
+          <CardHeader>
+            <h3 className="text-lg font-semibold">Tendencia de Margen</h3>
+          </CardHeader>
+          <CardContent>
+            {source.margin_trend == null || (Array.isArray(source.margin_trend) && source.margin_trend.length === 0) ? (
+              <p className="text-muted-foreground">No hay tendencia disponible para el periodo. Si quieres una tendencia, activa el muestreo por fechas o proporciona un rango mayor.</p>
+            ) : (
+              <div style={{ width: '100%', height: 260 }}>
+                <ResponsiveContainer>
+                  <LineChart data={source.margin_trend} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis unit="%" />
+                    <Tooltip formatter={(v:any) => `${Number(v).toFixed(2)}%`} />
+                    <Line type="monotone" dataKey="margin" stroke="#06B6D4" strokeWidth={2} dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
