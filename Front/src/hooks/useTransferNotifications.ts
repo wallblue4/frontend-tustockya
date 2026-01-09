@@ -18,30 +18,32 @@ export const useTransferNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const { user } = useAuth();
 
-  const addNotification = useCallback((
-    type: Notification['type'],
-    title: string,
-    message: string,
-    action?: Notification['action']
-  ) => {
-    const notification: Notification = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      type,
-      title,
-      message,
-      timestamp: new Date(),
-      action
-    };
+  // --- LÓGICA DE NOTIFICACIONES NATIVAS (SISTEMA OPERATIVO) ---
 
-    setNotifications(prev => [notification, ...prev].slice(0, 10)); // Máximo 10 notificaciones
-
-    // Auto-dismiss después de 8 segundos para notificaciones de éxito
-    if (type === 'success') {
-      setTimeout(() => {
-        dismissNotification(notification.id);
-      }, 8000);
+  // Solicitar permisos al cargar el componente
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      // Nota: Algunos navegadores requieren una acción del usuario para disparar esto
+      Notification.requestPermission();
     }
   }, []);
+
+  // Función para disparar la alerta visual del Sistema Operativo (Windows/macOS/Android)
+  const triggerOSNotification = useCallback((title: string, message: string) => {
+    if ("Notification" in window && Notification.permission === "granted") {
+      try {
+        new Notification(title, {
+          body: message,// Asegúrate de que esta ruta sea válida en tu carpeta public
+          tag: "transfer-update", // Agrupa notificaciones para no saturar el centro de actividades
+          silent: false,
+        });
+      } catch (err) {
+        console.error("Error al disparar notificación nativa:", err);
+      }
+    }
+  }, []);
+
+  // --- GESTIÓN DEL ESTADO INTERNO ---
 
   const dismissNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
@@ -51,7 +53,42 @@ export const useTransferNotifications = () => {
     setNotifications([]);
   }, []);
 
-  // Notificaciones específicas para transferencias
+  const addNotification = useCallback((
+    type: Notification['type'],
+    title: string,
+    message: string,
+    action?: Notification['action']
+  ) => {
+    const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+
+    const notification: Notification = {
+      id,
+      type,
+      title,
+      message,
+      timestamp: new Date(),
+      action
+    };
+
+    // 1. Actualizar estado interno (Máximo 10 para no saturar la UI)
+    setNotifications(prev => [notification, ...prev].slice(0, 10));
+
+    // 2. Disparar notificación de Sistema Operativo si es importante (Warning o Info)
+    // Esto es lo que permite que el usuario se entere aunque esté en otra pestaña
+    if (type === 'warning' || type === 'info') {
+      triggerOSNotification(title, message);
+    }
+
+    // 3. Auto-dismiss después de 8 segundos para notificaciones de éxito
+    if (type === 'success') {
+      setTimeout(() => {
+        dismissNotification(id);
+      }, 8000);
+    }
+  }, [dismissNotification, triggerOSNotification]);
+
+  // --- MÉTODOS ESPECÍFICOS DE NEGOCIO ---
+
   const notifyTransferRequested = useCallback((transferId: number, isUrgent: boolean) => {
     addNotification(
       isUrgent ? 'warning' : 'info',
@@ -59,10 +96,7 @@ export const useTransferNotifications = () => {
       `Solicitud #${transferId} ${isUrgent ? 'para cliente presente' : 'de restock'} enviada exitosamente`,
       {
         label: 'Ver Estado',
-        onClick: () => {
-          // Navegar a transferencias
-          console.log('Navegando a transferencias...');
-        }
+        onClick: () => console.log('Navegando a transferencias...')
       }
     );
   }, [addNotification]);
@@ -78,17 +112,14 @@ export const useTransferNotifications = () => {
     };
 
     const config = statusMessages[status] || { title: 'Estado Actualizado', type: 'info' };
-    
+
     addNotification(
       config.type,
       config.title,
       `Transferencia #${transferId}: ${details}`,
       status === 'delivered' ? {
         label: 'Confirmar Recepción',
-        onClick: () => {
-          // Navegar a confirmación
-          console.log('Navegando a confirmación...');
-        }
+        onClick: () => console.log('Navegando a confirmación...')
       } : undefined
     );
   }, [addNotification]);
@@ -98,13 +129,7 @@ export const useTransferNotifications = () => {
       addNotification(
         transferDetails.purpose === 'cliente' ? 'warning' : 'info',
         transferDetails.purpose === 'cliente' ? '🔥 Solicitud Urgente' : '📦 Nueva Solicitud',
-        `${transferDetails.product} solicitado por ${transferDetails.requester}`,
-        {
-          label: 'Revisar',
-          onClick: () => {
-            console.log('Navegando a solicitudes pendientes...');
-          }
-        }
+        `${transferDetails.product} solicitado por ${transferDetails.requester}`
       );
     }
   }, [addNotification, user?.role]);
@@ -114,13 +139,7 @@ export const useTransferNotifications = () => {
       addNotification(
         transportDetails.purpose === 'cliente' ? 'warning' : 'info',
         transportDetails.purpose === 'cliente' ? '🔥 Entrega Urgente Disponible' : '🚚 Nueva Entrega Disponible',
-        `${transportDetails.product} - ${transportDetails.distance}`,
-        {
-          label: 'Aceptar',
-          onClick: () => {
-            console.log('Navegando a entregas disponibles...');
-          }
-        }
+        `${transportDetails.product} - ${transportDetails.distance}`
       );
     }
   }, [addNotification, user?.role]);
@@ -130,7 +149,6 @@ export const useTransferNotifications = () => {
     addNotification,
     dismissNotification,
     dismissAllNotifications,
-    // Métodos específicos
     notifyTransferRequested,
     notifyTransferStatusChange,
     notifyNewTransferAvailable,

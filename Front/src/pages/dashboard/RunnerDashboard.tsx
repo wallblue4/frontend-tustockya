@@ -1,10 +1,10 @@
 // src/pages/dashboard/RunnerDashboard.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Package, 
-  MapPin, 
-  Clock, 
-  Truck, 
+import {
+  Package,
+  MapPin,
+  Clock,
+  Truck,
   CheckCircle,
   AlertCircle,
   Navigation,
@@ -107,28 +107,47 @@ export const RunnerDashboard: React.FC = () => {
 
   // Callback para manejar actualizaciones de polling
   const handlePollingUpdate = useCallback((data: any) => {
-    const newAvailable = data.available || [];
-    const newAssigned = data.assigned || [];
+    // 1. LOG DE DEPURACIÓN (Crucial para ver qué llega exactamente)
+    console.log("📡 Polling Data:", data);
 
-    // Detectar nuevas entregas disponibles
-    if (newAvailable.length > availableRequests.length) {
-      const newRequests = newAvailable.filter(
-        (req: AvailableRequest) => !availableRequests.find(existing => existing.id === req.id)
-      );
-      
-      newRequests.forEach((request: AvailableRequest) => {
-        notifyTransportAvailable({
-          product: request.cargo_description,
-          distance: '3.2 km',
-          purpose: request.purpose
-        });
-      });
+    // 2. Normalización de la data: intentamos buscar los transportes en varias rutas posibles
+    const newAvailable = data?.available?.transports || data?.available || [];
+
+    if (!Array.isArray(newAvailable)) {
+      console.error("❌ La data recibida no es un arreglo:", newAvailable);
+      return;
     }
 
-    setAvailableRequests(newAvailable);
-    setAssignedTransports(newAssigned);
-  }, [availableRequests, notifyTransportAvailable, deliveryHistory.length]);
+    // 3. Actualización con comparación de IDs
+    setAvailableRequests(prevAvailable => {
+      // Si la nueva data está vacía pero antes teníamos algo, 
+      // verificamos si realmente queremos borrarlo o si es un error de la API
+      if (newAvailable.length === 0 && prevAvailable.length > 0) {
+        console.warn("⚠️ El polling dice que no hay nada, pero el estado tenía datos.");
+      }
 
+      const reallyNewOnes = newAvailable.filter(
+        (newItem: AvailableRequest) => !prevAvailable.find(oldItem => oldItem.id === newItem.id)
+      );
+
+      if (reallyNewOnes.length > 0) {
+        reallyNewOnes.forEach((transport: AvailableRequest) => {
+          notifyTransportAvailable({
+            product: `${transport.brand} ${transport.model}`,
+            distance: transport.transport_info?.pickup_location?.name || 'Ubicación cercana',
+            purpose: transport.purpose
+          });
+        });
+      }
+      return newAvailable;
+    });
+
+    // 4. Actualizar asignados (con validación)
+    const myTransports = data?.my_transports?.assigned_transports || data?.assigned_transports;
+    if (myTransports) {
+      setAssignedTransports(myTransports);
+    }
+  }, [notifyTransportAvailable]);
   // POLLING para corredor
   const { error: pollingError, refetch } = useTransferPolling('corredor', {
     enabled: true,
@@ -157,15 +176,15 @@ export const RunnerDashboard: React.FC = () => {
       ]);
 
       setAvailableRequests(availableResponse.available_requests || []);
-      
+
       // my-transports son las entregas asignadas/pendientes
       const transportsData = assignedResponse as MyTransportsResponse;
       const pendingTransports = transportsData.my_transports || [];
       setAssignedTransports(pendingTransports);
-      
+
       // Estadísticas del corredor
       setCourierStats(transportsData.courier_stats || null);
-      
+
       // my-deliveries son las entregas completadas del día (historial)
       const deliveriesResponse = historyResponse as any;
       const deliveries = (deliveriesResponse.recent_deliveries || []).map((item: any) => ({
@@ -199,33 +218,33 @@ export const RunnerDashboard: React.FC = () => {
   const handleAcceptRequest = async (requestId: number) => {
     console.log('🚚 Aceptando entrega:', requestId);
     setActionLoading(requestId);
-    
+
     try {
       const request = availableRequests.find(r => r.id === requestId);
       const estimatedTime = request?.purpose === 'cliente' ? 15 : 20;
-      
+
       // Detectar si es una devolución
-      const isReturn = request?.cargo_description?.includes('devolución') || 
-                      request?.cargo_description?.includes('return') ||
-                      request?.purpose === 'return';
-      
+      const isReturn = request?.cargo_description?.includes('devolución') ||
+        request?.cargo_description?.includes('return') ||
+        request?.purpose === 'return';
+
       let response;
       if (isReturn) {
         response = await courierAPI.acceptReturnTransport(
-          requestId, 
-          estimatedTime, 
+          requestId,
+          estimatedTime,
           `En camino al punto de recolección para devolución. ETA: ${estimatedTime} minutos.`
         );
       } else {
         response = await courierAPI.acceptRequest(
-          requestId, 
-          estimatedTime, 
+          requestId,
+          estimatedTime,
           `En camino al punto de recolección. ETA: ${estimatedTime} minutos.`
         );
       }
-      
+
       console.log('✅ Entrega aceptada:', response);
-      
+
       addNotification(
         'success',
         '🚚 Entrega Aceptada',
@@ -235,9 +254,9 @@ export const RunnerDashboard: React.FC = () => {
           onClick: () => setActiveTab('assigned')
         }
       );
-      
+
       await refetch();
-      
+
     } catch (err) {
       console.error('❌ Error al aceptar:', err);
       addNotification(
@@ -253,34 +272,34 @@ export const RunnerDashboard: React.FC = () => {
   const handleConfirmPickup = async (requestId: number) => {
     console.log('📦 Confirmando recolección:', requestId);
     setActionLoading(requestId);
-    
+
     try {
       // Detectar si es una devolución
       const transport = assignedTransports.find(t => t.id === requestId);
-      const isReturn = transport?.courier_notes?.includes('return') || 
-                      transport?.purpose === 'return';
-      
+      const isReturn = transport?.courier_notes?.includes('return') ||
+        transport?.purpose === 'return';
+
       let response;
       if (isReturn) {
         response = await courierAPI.confirmReturnPickup(
-          requestId, 
+          requestId,
           'Producto de devolución recogido del vendedor - return en buen estado'
         );
       } else {
         response = await courierAPI.confirmPickup(
-          requestId, 
+          requestId,
           'Producto recogido en perfecto estado. En camino al destino.'
         );
       }
-      
+
       addNotification(
         'success',
         '📦 Recolección Confirmada',
         `${isReturn ? 'Devolución' : 'Transferencia'} #${requestId} recogida. ${response.message}`
       );
-      
+
       await refetch();
-      
+
     } catch (err) {
       console.error('❌ Error en recolección:', err);
       addNotification(
@@ -296,28 +315,28 @@ export const RunnerDashboard: React.FC = () => {
   const handleConfirmDelivery = async (requestId: number) => {
     console.log('✅ Confirmando entrega:', requestId);
     setActionLoading(requestId);
-    
+
     try {
       // Detectar si es una devolución
       const transport = assignedTransports.find(t => t.id === requestId);
-      const isReturn = transport?.courier_notes?.includes('return') || 
-                      transport?.purpose === 'return';
-      
+      const isReturn = transport?.courier_notes?.includes('return') ||
+        transport?.purpose === 'return';
+
       let response;
       if (isReturn) {
         response = await courierAPI.confirmReturnDelivery(
-          requestId, 
-          true, 
+          requestId,
+          true,
           'Producto devuelto entregado en bodega exitosamente'
         );
       } else {
         response = await courierAPI.confirmDelivery(
-          requestId, 
-          true, 
+          requestId,
+          true,
           'Entrega exitosa. Producto entregado en perfecto estado.'
         );
       }
-      
+
       addNotification(
         'success',
         '✅ Entrega Completada',
@@ -327,9 +346,9 @@ export const RunnerDashboard: React.FC = () => {
           onClick: () => setActiveTab('history')
         }
       );
-      
+
       await refetch();
-      
+
     } catch (err) {
       console.error('❌ Error en entrega:', err);
       addNotification(
@@ -345,27 +364,27 @@ export const RunnerDashboard: React.FC = () => {
   // Función para obtener la acción requerida basada en el estado
   const getActionRequired = (transport: AssignedTransport) => {
     const isReturn = transport.purpose === 'return';
-    
+
     switch (transport.status) {
       case 'courier_assigned':
-        return { 
-          action: 'confirm_pickup', 
-          description: isReturn ? '🔄 Devolución - Recibir de Vendedor' : 'Asignado - Confirmar Recolección' 
+        return {
+          action: 'confirm_pickup',
+          description: isReturn ? '🔄 Devolución - Recibir de Vendedor' : 'Asignado - Confirmar Recolección'
         };
       case 'in_transit':
-        return { 
-          action: 'confirm_delivery', 
-          description: isReturn ? '🔄 Devolución - Entregar a Bodeguero' : 'En Tránsito - Confirmar Entrega' 
+        return {
+          action: 'confirm_delivery',
+          description: isReturn ? '🔄 Devolución - Entregar a Bodeguero' : 'En Tránsito - Confirmar Entrega'
         };
       case 'delivered':
-        return { 
-          action: 'delivered', 
-          description: isReturn ? 'Devolución Entregada - Esperando confirmación del bodeguero' : 'Entregado - Esperando confirmación del vendedor' 
+        return {
+          action: 'delivered',
+          description: isReturn ? 'Devolución Entregada - Esperando confirmación del bodeguero' : 'Entregado - Esperando confirmación del vendedor'
         };
       default:
-        return { 
-          action: 'confirm_pickup', 
-          description: isReturn ? '🔄 Devolución - Recibir de Vendedor' : 'Asignado - Confirmar Recolección' 
+        return {
+          action: 'confirm_pickup',
+          description: isReturn ? '🔄 Devolución - Recibir de Vendedor' : 'Asignado - Confirmar Recolección'
         };
     }
   };
@@ -383,7 +402,7 @@ export const RunnerDashboard: React.FC = () => {
   // Funciones para obtener acciones según estado
   const getActionButton = (transport: AssignedTransport) => {
     const isReturn = transport.purpose === 'return';
-    
+
     // *** CASO ESPECIAL: DEVOLUCIONES ***
     if (isReturn) {
       // PASO 1: Si está "courier_assigned", mostrar "Recibir de Vendedor"
@@ -404,7 +423,7 @@ export const RunnerDashboard: React.FC = () => {
           </Button>
         );
       }
-      
+
       // PASO 2: Si está "in_transit", mostrar "Entregar a Bodeguero"
       if (transport.status === 'in_transit') {
         return (
@@ -424,7 +443,7 @@ export const RunnerDashboard: React.FC = () => {
         );
       }
     }
-    
+
     // *** CASO NORMAL: TRANSFERENCIAS REGULARES ***
     // Mostrar botón cuando el status sea "in_transit"
     if (transport.status === 'in_transit') {
@@ -444,7 +463,7 @@ export const RunnerDashboard: React.FC = () => {
         </Button>
       );
     }
-    
+
     // Para todos los otros status, no mostrar botón
     return (
       <div className="w-full text-center text-muted-foreground py-2 text-sm">
@@ -599,7 +618,7 @@ export const RunnerDashboard: React.FC = () => {
                   <Package className="h-5 w-5 md:h-6 md:w-6 text-primary mr-2" />
                   Entregas Disponibles
                 </h2>
-                
+
                 <div className="flex items-center space-x-2">
                   <Button
                     variant="outline"
@@ -611,7 +630,7 @@ export const RunnerDashboard: React.FC = () => {
                     Filtros
                     {showFilters ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
                   </Button>
-                  
+
                   <select
                     value={purposeFilter}
                     onChange={(e) => setPurposeFilter(e.target.value as any)}
@@ -630,7 +649,7 @@ export const RunnerDashboard: React.FC = () => {
                   <Package className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
                   <h3 className="text-base md:text-lg font-medium">No hay entregas disponibles</h3>
                   <p className="text-muted-foreground text-sm">
-                    {purposeFilter !== 'all' 
+                    {purposeFilter !== 'all'
                       ? 'No hay entregas que coincidan con el filtro'
                       : 'Revisa en unos minutos para nuevas solicitudes.'
                     }
@@ -641,36 +660,165 @@ export const RunnerDashboard: React.FC = () => {
                   {filteredAvailableRequests
                     .filter((request) => request.transport_info) // Filtrar requests sin transport_info
                     .map((request) => {
-                    const distance = formatDistance(
-                      request.transport_info!.pickup_location.name || 'Ubicación desconocida',
-                      request.transport_info!.delivery_location.name || 'Destino desconocido'
-                    );
-                    const earnings = calculateEarnings(distance, request.purpose === 'cliente');
-                    
-                    return (
-                      <div key={request.id} className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300">
-                        
-                        {/* MOBILE COMPACT VIEW */}
-                        <div className="md:hidden">
-                          <div className="p-4">
-                            {/* Header con etiquetas de prioridad */}
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center space-x-2">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  request.purpose === 'cliente' 
-                                    ? 'bg-error/20 text-error border border-error/30' 
+                      const distance = formatDistance(
+                        request.transport_info!.pickup_location.name || 'Ubicación desconocida',
+                        request.transport_info!.delivery_location.name || 'Destino desconocido'
+                      );
+                      const earnings = calculateEarnings(distance, request.purpose === 'cliente');
+
+                      return (
+                        <div key={request.id} className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300">
+
+                          {/* MOBILE COMPACT VIEW */}
+                          <div className="md:hidden">
+                            <div className="p-4">
+                              {/* Header con etiquetas de prioridad */}
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center space-x-2">
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${request.purpose === 'cliente'
+                                    ? 'bg-error/20 text-error border border-error/30'
                                     : 'bg-primary/20 text-primary border border-primary/30'
-                                }`}>
+                                    }`}>
+                                    {request.urgency}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Layout horizontal: Imagen vertical a la izquierda, info a la derecha */}
+                              <div className="flex space-x-4 mb-4">
+                                {/* Imagen vertical */}
+                                <div className="flex-shrink-0">
+                                  <div className="w-32 h-48 rounded-lg overflow-hidden border border-border bg-muted/20">
+                                    {request.product_image ? (
+                                      <img
+                                        src={request.product_image}
+                                        alt={request.cargo_description}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                        <div className="text-center">
+                                          <div className="text-2xl mb-1">📦</div>
+                                          <div className="text-xs">Sin imagen</div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Información del producto */}
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-bold text-base text-card-foreground mb-2 leading-tight">
+                                    {request.cargo_description}
+                                  </h3>
+
+                                  {/* Ruta: Origen → Destino */}
+                                  <div className="mb-3 p-2 bg-muted/30 rounded-lg border border-border/50">
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      <MapPin className="h-3 w-3 text-primary flex-shrink-0" />
+                                      <span className="text-xs font-medium text-primary">Origen:</span>
+                                      <span className="text-xs text-card-foreground truncate">
+                                        {request.transport_info.pickup_location.name}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      <Navigation className="h-3 w-3 text-success flex-shrink-0" />
+                                      <span className="text-xs font-medium text-success">Destino:</span>
+                                      <span className="text-xs text-card-foreground truncate">
+                                        {request.transport_info.delivery_location.name}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-1 mb-3">
+                                    <p className="text-xs text-muted-foreground">
+                                      📦 {request.quantity} • Talla {request.size} • 📍 {distance} km
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <Button
+                                onClick={() => toggleCardExpansion(request.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="w-full text-sm mb-3"
+                              >
+                                {expandedCard === request.id ? (
+                                  <>Menos detalles <ChevronUp className="h-4 w-4 ml-2" /></>
+                                ) : (
+                                  <>Ver detalles <ChevronDown className="h-4 w-4 ml-2" /></>
+                                )}
+                              </Button>
+
+                              {expandedCard === request.id && (
+                                <div className="mb-4 pt-4 border-t border-border space-y-3">
+                                  <div className="grid grid-cols-1 gap-3">
+                                    <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                                      <div className="flex items-center mb-1">
+                                        <MapPin className="h-4 w-4 text-primary mr-1" />
+                                        <span className="font-medium text-primary text-sm">Recoger</span>
+                                      </div>
+                                      <p className="text-sm font-medium text-card-foreground">{request.transport_info.pickup_location.name}</p>
+                                      <p className="text-xs text-muted-foreground">{request.transport_info.pickup_location.address}</p>
+                                    </div>
+                                    <div className="p-3 bg-success/10 rounded-lg border border-success/20">
+                                      <div className="flex items-center mb-1">
+                                        <Navigation className="h-4 w-4 text-success mr-1" />
+                                        <span className="font-medium text-success text-sm">Entregar</span>
+                                      </div>
+                                      <p className="text-sm font-medium text-card-foreground">{request.transport_info.delivery_location.name}</p>
+                                      <p className="text-xs text-muted-foreground">{request.transport_info.delivery_location.address}</p>
+                                    </div>
+                                  </div>
+
+                                  <div className="p-2 bg-muted/20 rounded-lg border border-border">
+                                    <p className="text-xs text-card-foreground">
+                                      <strong>📋 Siguiente:</strong> {request.action_required} - {request.status_description}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+
+                              <Button
+                                onClick={() => handleAcceptRequest(request.id)}
+                                disabled={actionLoading === request.id}
+                                className="w-full bg-success hover:bg-success/90 text-success-foreground text-sm"
+                                size="sm"
+                              >
+                                {actionLoading === request.id ? (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-success-foreground mr-2"></div>
+                                ) : (
+                                  <Truck className="h-4 w-4 mr-2" />
+                                )}
+                                Aceptar (ETA: {request.purpose === 'cliente' ? '15' : '20'} min)
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* DESKTOP FULL VIEW */}
+                          <div className="hidden md:block p-6">
+                            {/* Header con etiquetas */}
+                            <div className="flex items-center justify-between mb-6">
+                              <div className="flex items-center space-x-3">
+                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${request.purpose === 'cliente'
+                                  ? 'bg-error/20 text-error border border-error/30'
+                                  : 'bg-primary/20 text-primary border border-primary/30'
+                                  }`}>
                                   {request.urgency}
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  📦 {request.quantity} unidades • Talla {request.size}
                                 </span>
                               </div>
                             </div>
-                            
-                            {/* Layout horizontal: Imagen vertical a la izquierda, info a la derecha */}
-                            <div className="flex space-x-4 mb-4">
-                              {/* Imagen vertical */}
+
+                            {/* Layout horizontal: Imagen vertical a la izquierda, información a la derecha */}
+                            <div className="flex space-x-6">
+
+                              {/* Imagen del producto vertical */}
                               <div className="flex-shrink-0">
-                                <div className="w-32 h-48 rounded-lg overflow-hidden border border-border bg-muted/20">
+                                <div className="w-48 h-64 rounded-xl overflow-hidden border border-border shadow-sm bg-muted/20">
                                   {request.product_image ? (
                                     <img
                                       src={request.product_image}
@@ -680,225 +828,94 @@ export const RunnerDashboard: React.FC = () => {
                                   ) : (
                                     <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                                       <div className="text-center">
-                                        <div className="text-2xl mb-1">📦</div>
-                                        <div className="text-xs">Sin imagen</div>
+                                        <div className="text-6xl mb-2">📦</div>
+                                        <div className="text-sm">Sin imagen</div>
                                       </div>
                                     </div>
                                   )}
                                 </div>
-                              </div>
-                              
-                              {/* Información del producto */}
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-base text-card-foreground mb-2 leading-tight">
-                                  {request.cargo_description}
-                                </h3>
-                                
-                                {/* Ruta: Origen → Destino */}
-                                <div className="mb-3 p-2 bg-muted/30 rounded-lg border border-border/50">
-                                  <div className="flex items-center space-x-2 mb-1">
-                                    <MapPin className="h-3 w-3 text-primary flex-shrink-0" />
-                                    <span className="text-xs font-medium text-primary">Origen:</span>
-                                    <span className="text-xs text-card-foreground truncate">
-                                      {request.transport_info.pickup_location.name}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <Navigation className="h-3 w-3 text-success flex-shrink-0" />
-                                    <span className="text-xs font-medium text-success">Destino:</span>
-                                    <span className="text-xs text-card-foreground truncate">
-                                      {request.transport_info.delivery_location.name}
-                                    </span>
-                                  </div>
-                                </div>
-                                
-                                <div className="space-y-1 mb-3">
-                                  <p className="text-xs text-muted-foreground">
-                                    📦 {request.quantity} • Talla {request.size} • 📍 {distance} km
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <Button
-                              onClick={() => toggleCardExpansion(request.id)}
-                              variant="ghost"
-                              size="sm"
-                              className="w-full text-sm mb-3"
-                            >
-                              {expandedCard === request.id ? (
-                                <>Menos detalles <ChevronUp className="h-4 w-4 ml-2" /></>
-                              ) : (
-                                <>Ver detalles <ChevronDown className="h-4 w-4 ml-2" /></>
-                              )}
-                            </Button>
-                            
-                            {expandedCard === request.id && (
-                              <div className="mb-4 pt-4 border-t border-border space-y-3">
-                                <div className="grid grid-cols-1 gap-3">
-                                  <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
-                                    <div className="flex items-center mb-1">
-                                      <MapPin className="h-4 w-4 text-primary mr-1" />
-                                      <span className="font-medium text-primary text-sm">Recoger</span>
-                                    </div>
-                                    <p className="text-sm font-medium text-card-foreground">{request.transport_info.pickup_location.name}</p>
-                                    <p className="text-xs text-muted-foreground">{request.transport_info.pickup_location.address}</p>
-                                  </div>
-                                  <div className="p-3 bg-success/10 rounded-lg border border-success/20">
-                                    <div className="flex items-center mb-1">
-                                      <Navigation className="h-4 w-4 text-success mr-1" />
-                                      <span className="font-medium text-success text-sm">Entregar</span>
-                                    </div>
-                                    <p className="text-sm font-medium text-card-foreground">{request.transport_info.delivery_location.name}</p>
-                                    <p className="text-xs text-muted-foreground">{request.transport_info.delivery_location.address}</p>
-                                  </div>
-                                </div>
-                                
-                                <div className="p-2 bg-muted/20 rounded-lg border border-border">
-                                  <p className="text-xs text-card-foreground">
-                                    <strong>📋 Siguiente:</strong> {request.action_required} - {request.status_description}
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-                            
-                            <Button
-                              onClick={() => handleAcceptRequest(request.id)}
-                              disabled={actionLoading === request.id}
-                              className="w-full bg-success hover:bg-success/90 text-success-foreground text-sm"
-                              size="sm"
-                            >
-                              {actionLoading === request.id ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-success-foreground mr-2"></div>
-                              ) : (
-                                <Truck className="h-4 w-4 mr-2" />
-                              )}
-                              Aceptar (ETA: {request.purpose === 'cliente' ? '15' : '20'} min)
-                            </Button>
-                          </div>
-                        </div>
 
-                        {/* DESKTOP FULL VIEW */}
-                        <div className="hidden md:block p-6">
-                          {/* Header con etiquetas */}
-                          <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center space-x-3">
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                request.purpose === 'cliente' 
-                                  ? 'bg-error/20 text-error border border-error/30' 
-                                  : 'bg-primary/20 text-primary border border-primary/30'
-                              }`}>
-                                {request.urgency}
-                              </span>
-                              <span className="text-sm text-muted-foreground">
-                                📦 {request.quantity} unidades • Talla {request.size}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {/* Layout horizontal: Imagen vertical a la izquierda, información a la derecha */}
-                          <div className="flex space-x-6">
-                            
-                            {/* Imagen del producto vertical */}
-                            <div className="flex-shrink-0">
-                              <div className="w-48 h-64 rounded-xl overflow-hidden border border-border shadow-sm bg-muted/20">
-                                {request.product_image ? (
-                                  <img
-                                    src={request.product_image}
-                                    alt={request.cargo_description}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                    <div className="text-center">
-                                      <div className="text-6xl mb-2">📦</div>
-                                      <div className="text-sm">Sin imagen</div>
-                                    </div>
-                                  </div>
-                                )}
+                                {/* Ganancia estimada debajo de la imagen */}
+                                <div className="mt-3 bg-success/10 border border-success/20 rounded-lg p-3 text-center">
+                                  <p className="text-lg font-bold text-success">
+                                    {formatPrice(earnings)}
+                                  </p>
+                                  <p className="text-xs text-success/80">Ganancia estimada</p>
+                                </div>
                               </div>
-                              
-                              {/* Ganancia estimada debajo de la imagen */}
-                              <div className="mt-3 bg-success/10 border border-success/20 rounded-lg p-3 text-center">
-                                <p className="text-lg font-bold text-success">
-                                  {formatPrice(earnings)}
-                                </p>
-                                <p className="text-xs text-success/80">Ganancia estimada</p>
-                              </div>
-                            </div>
-                            
-                            {/* Información del producto */}
-                            <div className="flex-1 space-y-6">
-                              <div>
-                                <h3 className="text-3xl font-bold text-card-foreground mb-3 leading-tight">
-                                  {request.cargo_description}
-                                </h3>
-                                
-                                {/* Ruta de entrega - Mejorada con visualización de origen → destino */}
-                                <div className="mb-6 p-5 bg-gradient-to-r from-primary/5 via-muted/5 to-success/5 rounded-xl border-2 border-primary/20 shadow-sm">
-                                  <div className="grid grid-cols-12 gap-4 items-start">
-                                    {/* Origen */}
-                                    <div className="col-span-5">
-                                      <div className="flex items-center space-x-2 mb-2">
-                                        <MapPin className="h-5 w-5 text-primary" />
-                                        <h4 className="font-semibold text-primary text-base">Recoger en</h4>
+
+                              {/* Información del producto */}
+                              <div className="flex-1 space-y-6">
+                                <div>
+                                  <h3 className="text-3xl font-bold text-card-foreground mb-3 leading-tight">
+                                    {request.cargo_description}
+                                  </h3>
+
+                                  {/* Ruta de entrega - Mejorada con visualización de origen → destino */}
+                                  <div className="mb-6 p-5 bg-gradient-to-r from-primary/5 via-muted/5 to-success/5 rounded-xl border-2 border-primary/20 shadow-sm">
+                                    <div className="grid grid-cols-12 gap-4 items-start">
+                                      {/* Origen */}
+                                      <div className="col-span-5">
+                                        <div className="flex items-center space-x-2 mb-2">
+                                          <MapPin className="h-5 w-5 text-primary" />
+                                          <h4 className="font-semibold text-primary text-base">Recoger en</h4>
+                                        </div>
+                                        <p className="font-semibold text-card-foreground text-lg mb-1">{request.transport_info.pickup_location.name}</p>
+                                        <p className="text-sm text-muted-foreground mb-2">{request.transport_info.pickup_location.address}</p>
+                                        {request.transport_info.pickup_location.contact && (
+                                          <p className="text-xs text-primary">
+                                            📞 {request.transport_info.pickup_location.contact}
+                                          </p>
+                                        )}
                                       </div>
-                                      <p className="font-semibold text-card-foreground text-lg mb-1">{request.transport_info.pickup_location.name}</p>
-                                      <p className="text-sm text-muted-foreground mb-2">{request.transport_info.pickup_location.address}</p>
-                                      {request.transport_info.pickup_location.contact && (
-                                        <p className="text-xs text-primary">
-                                          📞 {request.transport_info.pickup_location.contact}
-                                        </p>
-                                      )}
-                                    </div>
-                                    
-                                    {/* Flecha visual */}
-                                    <div className="col-span-2 flex items-center justify-center pt-6">
-                                      <div className="flex flex-col items-center">
-                                        <Navigation className="h-6 w-6 text-primary animate-pulse" />
-                                        <div className="text-xs text-muted-foreground mt-1 font-medium">
-                                          ~{distance} km
+
+                                      {/* Flecha visual */}
+                                      <div className="col-span-2 flex items-center justify-center pt-6">
+                                        <div className="flex flex-col items-center">
+                                          <Navigation className="h-6 w-6 text-primary animate-pulse" />
+                                          <div className="text-xs text-muted-foreground mt-1 font-medium">
+                                            ~{distance} km
+                                          </div>
                                         </div>
                                       </div>
-                                    </div>
-                                    
-                                    {/* Destino */}
-                                    <div className="col-span-5">
-                                      <div className="flex items-center space-x-2 mb-2">
-                                        <Navigation className="h-5 w-5 text-success" />
-                                        <h4 className="font-semibold text-success text-base">Entregar en</h4>
+
+                                      {/* Destino */}
+                                      <div className="col-span-5">
+                                        <div className="flex items-center space-x-2 mb-2">
+                                          <Navigation className="h-5 w-5 text-success" />
+                                          <h4 className="font-semibold text-success text-base">Entregar en</h4>
+                                        </div>
+                                        <p className="font-semibold text-card-foreground text-lg mb-1">{request.transport_info.delivery_location.name}</p>
+                                        <p className="text-sm text-muted-foreground">{request.transport_info.delivery_location.address}</p>
                                       </div>
-                                      <p className="font-semibold text-card-foreground text-lg mb-1">{request.transport_info.delivery_location.name}</p>
-                                      <p className="text-sm text-muted-foreground">{request.transport_info.delivery_location.address}</p>
                                     </div>
                                   </div>
-                                </div>
 
-                                <div className="p-4 bg-muted/20 rounded-lg border border-border mb-6">
-                                  <p className="text-sm text-card-foreground">
-                                    <strong>📋 Siguiente paso:</strong> {request.action_required} - {request.status_description}
-                                  </p>
-                                </div>
+                                  <div className="p-4 bg-muted/20 rounded-lg border border-border mb-6">
+                                    <p className="text-sm text-card-foreground">
+                                      <strong>📋 Siguiente paso:</strong> {request.action_required} - {request.status_description}
+                                    </p>
+                                  </div>
 
-                                <Button
-                                  onClick={() => handleAcceptRequest(request.id)}
-                                  disabled={actionLoading === request.id}
-                                  className="w-full bg-success hover:bg-success/90 text-success-foreground py-3"
-                                >
-                                  {actionLoading === request.id ? (
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-success-foreground mr-2"></div>
-                                  ) : (
-                                    <Truck className="h-4 w-4 mr-2" />
-                                  )}
-                                  Aceptar Entrega (ETA: {request.purpose === 'cliente' ? '15' : '20'} min)
-                                </Button>
+                                  <Button
+                                    onClick={() => handleAcceptRequest(request.id)}
+                                    disabled={actionLoading === request.id}
+                                    className="w-full bg-success hover:bg-success/90 text-success-foreground py-3"
+                                  >
+                                    {actionLoading === request.id ? (
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-success-foreground mr-2"></div>
+                                    ) : (
+                                      <Truck className="h-4 w-4 mr-2" />
+                                    )}
+                                    Aceptar Entrega (ETA: {request.purpose === 'cliente' ? '15' : '20'} min)
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               )}
             </CardContent>
@@ -939,331 +956,327 @@ export const RunnerDashboard: React.FC = () => {
                   {activeTransports.map((transport) => {
                     const { description } = getActionRequired(transport);
                     return (
-                    <div key={transport.id} className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300">
-                      
-                      {/* MOBILE VIEW */}
-                      <div className="md:hidden">
-                        <div className="p-4">
-                          {/* Header con estado */}
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center space-x-2">
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                transport.status === 'courier_assigned' ? 'bg-warning/20 text-warning border border-warning/30' :
-                                transport.status === 'in_transit' ? 'bg-primary/20 text-primary border border-primary/30' :
-                                transport.status === 'delivered' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
-                                'bg-success/20 text-success border border-success/30'
-                              }`}>
-                                {description}
-                              </span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                transport.purpose === 'cliente' ? 'bg-blue-100 text-blue-800' : 
-                                transport.purpose === 'return' ? 'bg-orange-100 text-orange-800' : 'bg-purple-100 text-purple-800'
-                              }`}>
-                                {transport.purpose === 'cliente' ? 'Cliente' : 
-                                 transport.purpose === 'return' ? '🔄 Devolución' : 'Restock'}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {/* Imagen más grande para mobile */}
-                          <div className="mb-4">
-                            <div className="bg-gradient-to-br from-muted/20 to-muted/40 rounded-lg flex items-center justify-center p-4">
-                              {transport.product_image ? (
-                                <img
-                                  src={transport.product_image}
-                                  alt={`${transport.brand} ${transport.model}`}
-                                  className="w-32 h-48 object-cover rounded-lg border border-border"
-                                />
-                              ) : (
-                                <div className="text-muted-foreground text-center">
-                                  <div className="text-4xl mb-2">📦</div>
-                                  <div className="text-sm">Imagen no disponible</div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Información del producto */}
-                          <div className="mb-4">
-                            <h3 className="font-bold text-lg text-card-foreground mb-2 leading-tight">
-                              {transport.brand} {transport.model}
-                            </h3>
-                            <div className="flex items-center space-x-3 mb-3">
-                              <span className="text-sm font-medium text-primary">
-                                Talla {transport.size}
-                              </span>
-                              <span className="text-sm text-muted-foreground">
-                                Cantidad: {transport.quantity}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                Ref: {transport.sneaker_reference_code}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {/* Ruta */}
-                          <div className="mb-4 p-3 bg-muted/20 rounded-lg">
-                            <div className="space-y-2">
-                              <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-primary rounded-full"></div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-xs text-muted-foreground">DESDE</div>
-                                  <div className="text-sm font-medium text-card-foreground truncate">
-                                    {transport.source_location?.name || 'N/A'}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground truncate">
-                                    {transport.source_location?.address || 'N/A'}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="ml-2 border-l-2 border-dashed border-border h-4"></div>
-                              <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-success rounded-full"></div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-xs text-muted-foreground">HACIA</div>
-                                  <div className="text-sm font-medium text-card-foreground truncate">
-                                    {transport.destination_location?.name || 'N/A'}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground truncate">
-                                    {transport.destination_location?.address || 'N/A'}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          {getActionButton(transport)}
-                        </div>
-                      </div>
+                      <div key={transport.id} className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300">
 
-                      {/* DESKTOP VIEW */}
-                      <div className="hidden md:block p-6">
-                        {/* Header con estado */}
-                        <div className="flex items-center justify-between mb-6">
-                          <div className="flex items-center space-x-3">
-                            <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-                              transport.status === 'courier_assigned' ? 'bg-warning/20 text-warning border border-warning/30' :
-                              transport.status === 'in_transit' ? 'bg-primary/20 text-primary border border-primary/30' :
-                              transport.status === 'delivered' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
-                              'bg-success/20 text-success border border-success/30'
-                            }`}>
-                              {description}
-                            </span>
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                              transport.purpose === 'cliente' ? 'bg-blue-100 text-blue-800' : 
-                              transport.purpose === 'return' ? 'bg-orange-100 text-orange-800' : 'bg-purple-100 text-purple-800'
-                            }`}>
-                              {transport.purpose === 'cliente' ? 'Cliente' : 
-                               transport.purpose === 'return' ? '🔄 Devolución' : 'Restock'}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Contenido principal con imagen más grande */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                          
-                          {/* Imagen del producto - más grande */}
-                          <div className="lg:col-span-1">
-                            <div className="w-full h-80 bg-gradient-to-br from-muted/20 to-muted/40 rounded-xl flex items-center justify-center shadow-inner p-6">
-                              {transport.product_image ? (
-                                <img
-                                  src={transport.product_image}
-                                  alt={`${transport.brand} ${transport.model}`}
-                                  className="w-full h-full object-cover rounded-lg border border-border"
-                                />
-                              ) : (
-                                <div className="text-muted-foreground text-center">
-                                  <div className="text-8xl mb-4">📦</div>
-                                  <div className="text-lg">Imagen no disponible</div>
-                                </div>
-                              )}
+                        {/* MOBILE VIEW */}
+                        <div className="md:hidden">
+                          <div className="p-4">
+                            {/* Header con estado */}
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center space-x-2">
+                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${transport.status === 'courier_assigned' ? 'bg-warning/20 text-warning border border-warning/30' :
+                                  transport.status === 'in_transit' ? 'bg-primary/20 text-primary border border-primary/30' :
+                                    transport.status === 'delivered' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+                                      'bg-success/20 text-success border border-success/30'
+                                  }`}>
+                                  {description}
+                                </span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${transport.purpose === 'cliente' ? 'bg-blue-100 text-blue-800' :
+                                  transport.purpose === 'return' ? 'bg-orange-100 text-orange-800' : 'bg-purple-100 text-purple-800'
+                                  }`}>
+                                  {transport.purpose === 'cliente' ? 'Cliente' :
+                                    transport.purpose === 'return' ? '🔄 Devolución' : 'Restock'}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                          
-                          {/* Información del producto y cliente - ajustado para 2 columnas */}
-                          <div className="lg:col-span-2 space-y-6">
-                            <div>
-                              <h3 className="text-3xl font-bold text-card-foreground mb-3 leading-tight">
+
+                            {/* Imagen más grande para mobile */}
+                            <div className="mb-4">
+                              <div className="bg-gradient-to-br from-muted/20 to-muted/40 rounded-lg flex items-center justify-center p-4">
+                                {transport.product_image ? (
+                                  <img
+                                    src={transport.product_image}
+                                    alt={`${transport.brand} ${transport.model}`}
+                                    className="w-32 h-48 object-cover rounded-lg border border-border"
+                                  />
+                                ) : (
+                                  <div className="text-muted-foreground text-center">
+                                    <div className="text-4xl mb-2">📦</div>
+                                    <div className="text-sm">Imagen no disponible</div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Información del producto */}
+                            <div className="mb-4">
+                              <h3 className="font-bold text-lg text-card-foreground mb-2 leading-tight">
                                 {transport.brand} {transport.model}
                               </h3>
-                              
-                              <div className="grid grid-cols-4 gap-4 mb-6">
-                                <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/20">
-                                  <div className="text-xl font-bold text-primary">
-                                    {transport.size}
-                                  </div>
-                                  <div className="text-sm text-primary font-medium">Talla</div>
-                                </div>
-                                <div className="text-center p-4 bg-success/10 rounded-lg border border-success/20">
-                                  <div className="text-xl font-bold text-success">{transport.quantity}</div>
-                                  <div className="text-sm text-success font-medium">Cantidad</div>
-                                </div>
-                                <div className="text-center p-4 bg-accent/10 rounded-lg border border-accent/20">
-                                  <div className="text-xl font-bold text-accent">
-                                    {transport.purpose === 'cliente' ? '👤' : transport.purpose === 'return' ? '🔄' : '📦'}
-                                  </div>
-                                  <div className="text-sm text-accent font-medium">
-                                    {transport.purpose === 'cliente' ? 'Cliente' : 
-                                     transport.purpose === 'return' ? 'Devolución' : 'Restock'}
-                                  </div>
-                                </div>
-                                <div className="text-center p-4 bg-warning/10 rounded-lg border border-warning/20">
-                                  <div className="text-lg font-bold text-warning">{transport.sneaker_reference_code}</div>
-                                  <div className="text-sm text-warning font-medium">Referencia</div>
-                                </div>
+                              <div className="flex items-center space-x-3 mb-3">
+                                <span className="text-sm font-medium text-primary">
+                                  Talla {transport.size}
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  Cantidad: {transport.quantity}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  Ref: {transport.sneaker_reference_code}
+                                </span>
                               </div>
-                              
-                              {/* Información de propósito */}
-                              <div className="p-4 bg-muted/20 rounded-lg mb-6">
-                                <div className="flex items-center space-x-3">
-                                  <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
-                                    <Package className="h-6 w-6 text-primary-foreground" />
-                                  </div>
-                                  <div>
-                                    <div className="font-semibold text-card-foreground text-lg">
-                                      {transport.purpose === 'cliente' ? 'Entrega a Cliente' : 
-                                       transport.purpose === 'return' ? '🔄 Devolución a Bodega' : 'Restock'}
+                            </div>
+
+                            {/* Ruta */}
+                            <div className="mb-4 p-3 bg-muted/20 rounded-lg">
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs text-muted-foreground">DESDE</div>
+                                    <div className="text-sm font-medium text-card-foreground truncate">
+                                      {transport.source_location?.name || 'N/A'}
                                     </div>
-                                    <div className="text-sm text-muted-foreground">
-                                      {transport.purpose === 'cliente' ? 'Producto para cliente final' : 
-                                       transport.purpose === 'return' ? 'Producto devuelto - retornar a inventario' : 'Producto para restock'}
+                                    <div className="text-xs text-muted-foreground truncate">
+                                      {transport.source_location?.address || 'N/A'}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="ml-2 border-l-2 border-dashed border-border h-4"></div>
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-2 h-2 bg-success rounded-full"></div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs text-muted-foreground">HACIA</div>
+                                    <div className="text-sm font-medium text-card-foreground truncate">
+                                      {transport.destination_location?.name || 'N/A'}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground truncate">
+                                      {transport.destination_location?.address || 'N/A'}
                                     </div>
                                   </div>
                                 </div>
                               </div>
-                              
-                              {/* Ruta visual */}
-                              <div className="p-4 bg-muted/20 rounded-lg mb-6">
-                                <h4 className="font-semibold text-card-foreground mb-4">Ruta de Entrega</h4>
-                                
-                                <div className="space-y-4">
-                                  <div className="flex items-center space-x-4">
-                                    <div className="w-4 h-4 bg-primary rounded-full flex-shrink-0"></div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="text-sm text-muted-foreground">DESDE</div>
-                                      <div className="font-medium text-card-foreground">
-                                        {transport.source_location?.name || 'N/A'}
+                            </div>
+                            {getActionButton(transport)}
+                          </div>
+                        </div>
+
+                        {/* DESKTOP VIEW */}
+                        <div className="hidden md:block p-6">
+                          {/* Header con estado */}
+                          <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center space-x-3">
+                              <span className={`px-4 py-2 rounded-full text-sm font-medium ${transport.status === 'courier_assigned' ? 'bg-warning/20 text-warning border border-warning/30' :
+                                transport.status === 'in_transit' ? 'bg-primary/20 text-primary border border-primary/30' :
+                                  transport.status === 'delivered' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+                                    'bg-success/20 text-success border border-success/30'
+                                }`}>
+                                {description}
+                              </span>
+                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${transport.purpose === 'cliente' ? 'bg-blue-100 text-blue-800' :
+                                transport.purpose === 'return' ? 'bg-orange-100 text-orange-800' : 'bg-purple-100 text-purple-800'
+                                }`}>
+                                {transport.purpose === 'cliente' ? 'Cliente' :
+                                  transport.purpose === 'return' ? '🔄 Devolución' : 'Restock'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Contenido principal con imagen más grande */}
+                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                            {/* Imagen del producto - más grande */}
+                            <div className="lg:col-span-1">
+                              <div className="w-full h-80 bg-gradient-to-br from-muted/20 to-muted/40 rounded-xl flex items-center justify-center shadow-inner p-6">
+                                {transport.product_image ? (
+                                  <img
+                                    src={transport.product_image}
+                                    alt={`${transport.brand} ${transport.model}`}
+                                    className="w-full h-full object-cover rounded-lg border border-border"
+                                  />
+                                ) : (
+                                  <div className="text-muted-foreground text-center">
+                                    <div className="text-8xl mb-4">📦</div>
+                                    <div className="text-lg">Imagen no disponible</div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Información del producto y cliente - ajustado para 2 columnas */}
+                            <div className="lg:col-span-2 space-y-6">
+                              <div>
+                                <h3 className="text-3xl font-bold text-card-foreground mb-3 leading-tight">
+                                  {transport.brand} {transport.model}
+                                </h3>
+
+                                <div className="grid grid-cols-4 gap-4 mb-6">
+                                  <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/20">
+                                    <div className="text-xl font-bold text-primary">
+                                      {transport.size}
+                                    </div>
+                                    <div className="text-sm text-primary font-medium">Talla</div>
+                                  </div>
+                                  <div className="text-center p-4 bg-success/10 rounded-lg border border-success/20">
+                                    <div className="text-xl font-bold text-success">{transport.quantity}</div>
+                                    <div className="text-sm text-success font-medium">Cantidad</div>
+                                  </div>
+                                  <div className="text-center p-4 bg-accent/10 rounded-lg border border-accent/20">
+                                    <div className="text-xl font-bold text-accent">
+                                      {transport.purpose === 'cliente' ? '👤' : transport.purpose === 'return' ? '🔄' : '📦'}
+                                    </div>
+                                    <div className="text-sm text-accent font-medium">
+                                      {transport.purpose === 'cliente' ? 'Cliente' :
+                                        transport.purpose === 'return' ? 'Devolución' : 'Restock'}
+                                    </div>
+                                  </div>
+                                  <div className="text-center p-4 bg-warning/10 rounded-lg border border-warning/20">
+                                    <div className="text-lg font-bold text-warning">{transport.sneaker_reference_code}</div>
+                                    <div className="text-sm text-warning font-medium">Referencia</div>
+                                  </div>
+                                </div>
+
+                                {/* Información de propósito */}
+                                <div className="p-4 bg-muted/20 rounded-lg mb-6">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
+                                      <Package className="h-6 w-6 text-primary-foreground" />
+                                    </div>
+                                    <div>
+                                      <div className="font-semibold text-card-foreground text-lg">
+                                        {transport.purpose === 'cliente' ? 'Entrega a Cliente' :
+                                          transport.purpose === 'return' ? '🔄 Devolución a Bodega' : 'Restock'}
                                       </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        {transport.source_location?.address || 'N/A'}
+                                      <div className="text-sm text-muted-foreground">
+                                        {transport.purpose === 'cliente' ? 'Producto para cliente final' :
+                                          transport.purpose === 'return' ? 'Producto devuelto - retornar a inventario' : 'Producto para restock'}
                                       </div>
-                                      {transport.source_location?.phone && (
-                                        <div className="text-xs text-primary">
-                                          📞 {transport.source_location?.phone}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Ruta visual */}
+                                <div className="p-4 bg-muted/20 rounded-lg mb-6">
+                                  <h4 className="font-semibold text-card-foreground mb-4">Ruta de Entrega</h4>
+
+                                  <div className="space-y-4">
+                                    <div className="flex items-center space-x-4">
+                                      <div className="w-4 h-4 bg-primary rounded-full flex-shrink-0"></div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-sm text-muted-foreground">DESDE</div>
+                                        <div className="font-medium text-card-foreground">
+                                          {transport.source_location?.name || 'N/A'}
                                         </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="ml-2 border-l-2 border-dashed border-border h-8"></div>
-                                  
-                                  <div className="flex items-center space-x-4">
-                                    <div className="w-4 h-4 bg-success rounded-full flex-shrink-0"></div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="text-sm text-muted-foreground">HACIA</div>
-                                      <div className="font-medium text-card-foreground">
-                                        {transport.destination_location?.name || 'N/A'}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        {transport.destination_location?.address || 'N/A'}
-                                      </div>
-                                      {transport.destination_location?.phone && (
-                                        <div className="text-xs text-success">
-                                          📞 {transport.destination_location?.phone}
+                                        <div className="text-xs text-muted-foreground">
+                                          {transport.source_location?.address || 'N/A'}
                                         </div>
-                                      )}
+                                        {transport.source_location?.phone && (
+                                          <div className="text-xs text-primary">
+                                            📞 {transport.source_location?.phone}
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              {/* Tiempo estimado */}
-                              {transport.estimated_pickup_time && (
-                                <div className="p-3 bg-warning/10 rounded-lg border border-warning/20 mb-4">
-                                  <div className="flex items-center justify-center space-x-2">
-                                    <Clock className="h-5 w-5 text-warning" />
-                                    <span className="text-sm font-medium text-warning">
-                                      ETA: {transport.estimated_pickup_time} minutos
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
 
-                              {/* Notas del corredor */}
-                              {transport.courier_notes && (
-                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 mb-4">
-                                  <div className="flex items-start space-x-2">
-                                    <div className="text-blue-600">💬</div>
-                                    <div>
-                                      <div className="text-sm font-medium text-blue-800 mb-1">Notas del Corredor</div>
-                                      <div className="text-sm text-blue-700">{transport.courier_notes}</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
+                                    <div className="ml-2 border-l-2 border-dashed border-border h-8"></div>
 
-                              {/* Notas de recolección */}
-                              {transport.pickup_notes && (
-                                <div className="p-3 bg-green-50 rounded-lg border border-green-200 mb-4">
-                                  <div className="flex items-start space-x-2">
-                                    <div className="text-green-600">📝</div>
-                                    <div>
-                                      <div className="text-sm font-medium text-green-800 mb-1">Notas de Recolección</div>
-                                      <div className="text-sm text-green-700">{transport.pickup_notes}</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Nota especial para entregas pendientes de confirmación */}
-                              {transport.status === 'delivered' && (
-                                <div className="p-3 bg-orange-50 rounded-lg border border-orange-200 mb-4">
-                                  <div className="flex items-start space-x-2">
-                                    <div className="text-orange-600">⏳</div>
-                                    <div>
-                                      <div className="text-sm font-medium text-orange-800 mb-1">Esperando Confirmación</div>
-                                      <div className="text-sm text-orange-700">
-                                        El producto fue entregado al vendedor. Estamos esperando que confirme la recepción para completar la transferencia.
+                                    <div className="flex items-center space-x-4">
+                                      <div className="w-4 h-4 bg-success rounded-full flex-shrink-0"></div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-sm text-muted-foreground">HACIA</div>
+                                        <div className="font-medium text-card-foreground">
+                                          {transport.destination_location?.name || 'N/A'}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {transport.destination_location?.address || 'N/A'}
+                                        </div>
+                                        {transport.destination_location?.phone && (
+                                          <div className="text-xs text-success">
+                                            📞 {transport.destination_location?.phone}
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
                                 </div>
-                              )}
 
-                              {/* Timestamps */}
-                              <div className="p-3 bg-muted/20 rounded-lg border border-border mb-4">
-                                <div className="text-sm font-medium text-card-foreground mb-2">Historial de Estados</div>
-                                <div className="space-y-1 text-xs text-muted-foreground">
-                                  {transport.courier_accepted_at && (
-                                    <div className="flex items-center space-x-2">
-                                      <div className="w-2 h-2 bg-primary rounded-full"></div>
-                                      <span>✅ Aceptado: {new Date(transport.courier_accepted_at).toLocaleString()}</span>
+                                {/* Tiempo estimado */}
+                                {transport.estimated_pickup_time && (
+                                  <div className="p-3 bg-warning/10 rounded-lg border border-warning/20 mb-4">
+                                    <div className="flex items-center justify-center space-x-2">
+                                      <Clock className="h-5 w-5 text-warning" />
+                                      <span className="text-sm font-medium text-warning">
+                                        ETA: {transport.estimated_pickup_time} minutos
+                                      </span>
                                     </div>
-                                  )}
-                                  {transport.picked_up_at && (
-                                    <div className="flex items-center space-x-2">
-                                      <div className="w-2 h-2 bg-warning rounded-full"></div>
-                                      <span>📦 Recolectado: {new Date(transport.picked_up_at).toLocaleString()}</span>
+                                  </div>
+                                )}
+
+                                {/* Notas del corredor */}
+                                {transport.courier_notes && (
+                                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 mb-4">
+                                    <div className="flex items-start space-x-2">
+                                      <div className="text-blue-600">💬</div>
+                                      <div>
+                                        <div className="text-sm font-medium text-blue-800 mb-1">Notas del Corredor</div>
+                                        <div className="text-sm text-blue-700">{transport.courier_notes}</div>
+                                      </div>
                                     </div>
-                                  )}
-                                  {transport.delivered_at && (
-                                    <div className="flex items-center space-x-2">
-                                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                                      <span>🎯 Entregado: {new Date(transport.delivered_at).toLocaleString()}</span>
-                                      {transport.status === 'delivered' && (
-                                        <span className="text-orange-600 text-xs">(Esperando confirmación)</span>
-                                      )}
+                                  </div>
+                                )}
+
+                                {/* Notas de recolección */}
+                                {transport.pickup_notes && (
+                                  <div className="p-3 bg-green-50 rounded-lg border border-green-200 mb-4">
+                                    <div className="flex items-start space-x-2">
+                                      <div className="text-green-600">📝</div>
+                                      <div>
+                                        <div className="text-sm font-medium text-green-800 mb-1">Notas de Recolección</div>
+                                        <div className="text-sm text-green-700">{transport.pickup_notes}</div>
+                                      </div>
                                     </div>
-                                  )}
+                                  </div>
+                                )}
+
+                                {/* Nota especial para entregas pendientes de confirmación */}
+                                {transport.status === 'delivered' && (
+                                  <div className="p-3 bg-orange-50 rounded-lg border border-orange-200 mb-4">
+                                    <div className="flex items-start space-x-2">
+                                      <div className="text-orange-600">⏳</div>
+                                      <div>
+                                        <div className="text-sm font-medium text-orange-800 mb-1">Esperando Confirmación</div>
+                                        <div className="text-sm text-orange-700">
+                                          El producto fue entregado al vendedor. Estamos esperando que confirme la recepción para completar la transferencia.
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Timestamps */}
+                                <div className="p-3 bg-muted/20 rounded-lg border border-border mb-4">
+                                  <div className="text-sm font-medium text-card-foreground mb-2">Historial de Estados</div>
+                                  <div className="space-y-1 text-xs text-muted-foreground">
+                                    {transport.courier_accepted_at && (
+                                      <div className="flex items-center space-x-2">
+                                        <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                        <span>✅ Aceptado: {new Date(transport.courier_accepted_at).toLocaleString()}</span>
+                                      </div>
+                                    )}
+                                    {transport.picked_up_at && (
+                                      <div className="flex items-center space-x-2">
+                                        <div className="w-2 h-2 bg-warning rounded-full"></div>
+                                        <span>📦 Recolectado: {new Date(transport.picked_up_at).toLocaleString()}</span>
+                                      </div>
+                                    )}
+                                    {transport.delivered_at && (
+                                      <div className="flex items-center space-x-2">
+                                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                        <span>🎯 Entregado: {new Date(transport.delivered_at).toLocaleString()}</span>
+                                        {transport.status === 'delivered' && (
+                                          <span className="text-orange-600 text-xs">(Esperando confirmación)</span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
+
+                                {/* Botón de acción */}
+                                {getActionButton(transport)}
                               </div>
-                              
-                              {/* Botón de acción */}
-                              {getActionButton(transport)}
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
                     );
                   })}
                 </div>
@@ -1304,11 +1317,10 @@ export const RunnerDashboard: React.FC = () => {
                               {new Date(delivery.delivered_at).toLocaleDateString()}
                             </p>
                           </div>
-                          
+
                           <div className="text-right ml-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              delivery.delivery_successful ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                            }`}>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${delivery.delivery_successful ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
                               {delivery.delivery_successful ? '✅' : '❌'}
                             </span>
                           </div>
@@ -1356,11 +1368,10 @@ export const RunnerDashboard: React.FC = () => {
                               {new Date(delivery.delivered_at).toLocaleString()}
                             </p>
                           </div>
-                          
+
                           <div className="text-right">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              delivery.delivery_successful ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                            }`}>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${delivery.delivery_successful ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
                               {delivery.delivery_successful ? '✅ Exitosa' : '❌ Fallida'}
                             </span>
                           </div>
@@ -1483,7 +1494,7 @@ export const RunnerDashboard: React.FC = () => {
                       <div className="text-sm font-medium text-card-foreground mb-2">Rendimiento</div>
                       <div className="flex items-center space-x-2">
                         <div className="flex-1 bg-muted rounded-full h-2">
-                          <div 
+                          <div
                             className="bg-success h-2 rounded-full transition-all duration-300"
                             style={{ width: `${courierStats.completion_rate}%` }}
                           ></div>
