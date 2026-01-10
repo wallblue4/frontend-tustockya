@@ -3,11 +3,11 @@ import { useAuth } from '../../context/AuthContext';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { vendorAPI } from '../../services/transfersAPI';
-import { PendingTransferItem, PendingTransfersResponse } from '../../types';
+import { PendingTransferItem, PendingTransfersResponse, TransferHistoryItem, TransferHistoryResponse } from '../../types';
 import { ReturnModal } from './ReturnModal';
 
-import { 
-  Package, 
+import {
+  Package,
   Clock,
   CheckCircle,
   Truck,
@@ -89,29 +89,30 @@ interface CompletedTransfer {
   has_return_request?: boolean; // Nuevo campo que indica si ya existe una solicitud de devolución
 }
 
-export const TransfersView: React.FC<TransfersViewProps> = ({ 
+export const TransfersView: React.FC<TransfersViewProps> = ({
   onTransferRequested,
   prefilledProductData,
-  onSellProduct 
+  onSellProduct
 }) => {
   // Usar onSellProduct como prop, igual que en ProductScanner
-  const [activeTab, setActiveTab] = useState<'pending' | 'completed' | 'new'>('pending');
-  
+  const [activeTab, setActiveTab] = useState<'pending' | 'completed' | 'history' | 'new'>('pending');
+
   // *** ESTADOS ACTUALIZADOS PARA ENDPOINTS CORRECTOS ***
   const [pendingTransfers, setPendingTransfers] = useState<PendingTransferItem[]>([]);
   const [completedTransfers, setCompletedTransfers] = useState<CompletedTransfer[]>([]);
-  
+  const [transferHistory, setTransferHistory] = useState<TransferHistoryItem[]>([]);
+
   // *** NUEVOS ESTADOS PARA DEVOLUCIONES ***
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [selectedTransferForReturn, setSelectedTransferForReturn] = useState<any>(null);
   const [isCreatingReturn, setIsCreatingReturn] = useState(false);
-  
+
   // Estados de resumen
   const [urgentCount, setUrgentCount] = useState(0);
   const [normalCount, setNormalCount] = useState(0);
   const [totalPending, setTotalPending] = useState(0);
   const [todayStats, setTodayStats] = useState<any>(null);
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -187,11 +188,11 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     try {
       setError(null);
       setLoading(true);
-      
+
       // Cargar transferencias pendientes (recepciones por confirmar)
       console.log('🔄 Cargando transferencias pendientes...');
       const pendingResponse = await vendorAPI.getPendingTransfers(); // Usa /vendor/pending-transfers
-      
+
       if (pendingResponse.success) {
         const response = pendingResponse as PendingTransfersResponse;
         setPendingTransfers(response.pending_transfers || []);
@@ -201,21 +202,35 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         console.log('✅ Transferencias pendientes cargadas:', response.pending_transfers?.length || 0);
       }
 
-      // *** CARGAR TRANSFERENCIAS COMPLETADAS ***
+      // Cargar transferencias completadas (para acciones)
       console.log('🔄 Cargando transferencias completadas...');
       const completedResponse = await vendorAPI.getCompletedTransfers();
-      
+
       if (completedResponse.success) {
-        setCompletedTransfers(completedResponse.completed_transfers || []);
-        setTodayStats(completedResponse.today_stats || null);
-        console.log('✅ Transferencias completadas cargadas:', completedResponse.completed_transfers?.length || 0);
+        // Mapear la respuesta al tipo CompletedTransfer si es necesario
+        // Asumimos que el backend devuelve un array compatible
+        const completedData = (completedResponse as any).completed_transfers || [];
+        setCompletedTransfers(completedData);
+        console.log('✅ Transferencias completadas cargadas:', completedData.length);
       }
-      
+
+      // *** CARGAR HISTORIAL DEL DÍA ***
+      console.log('🔄 Cargando historial del día...');
+      const historyResponse = await vendorAPI.getTransferHistory();
+
+      if (historyResponse.success) {
+        const response = historyResponse as TransferHistoryResponse;
+        setTransferHistory(response.history || []);
+        // setTodayStats(response.stats || null); // Si el backend devuelve stats en el nuevo formato
+        console.log('✅ Historial cargado:', response.history?.length || 0);
+      }
+
     } catch (err: any) {
       console.error('Error loading transfers:', err);
       setError('Error conectando con el servidor');
       setPendingTransfers([]);
       setCompletedTransfers([]);
+      setTransferHistory([]);
       setUrgentCount(0);
       setNormalCount(0);
       setTotalPending(0);
@@ -226,7 +241,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
   const handleNewRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       // Si prefilledProductData tiene los IDs, usarlos
       let transferPayload = { ...requestForm };
@@ -236,7 +251,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       // destination siempre es el usuario actual
       transferPayload.destination_location_id = user?.location_id ?? undefined;
       let response;
-      
+
       // Determinar qué endpoint usar basado en el tipo de transferencia
       if (requestForm.transfer_type === 'single_foot' && requestForm.foot_side) {
         // Usar endpoint para pie individual
@@ -288,17 +303,17 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   };
 
   // *** NUEVA FUNCIÓN - Manejar devolución ***
-  const handleGenerateReturn = (transfer: CompletedTransfer) => {
-    // Convertir CompletedTransfer al formato que espera el modal
+  const handleGenerateReturn = (item: TransferHistoryItem | CompletedTransfer) => {
+    // Convertir TransferHistoryItem al formato que espera el modal
     const transferForReturn: any = {
-      id: transfer.id,
-      sneaker_reference_code: transfer.sneaker_reference_code,
-      brand: transfer.brand,
-      model: transfer.model,
-      size: transfer.size,
-      quantity: transfer.quantity,
-      inventory_type: transfer.inventory_type,
-      product_image: transfer.product_image
+      id: item.id,
+      sneaker_reference_code: item.sneaker_reference_code,
+      brand: item.brand,
+      model: item.model,
+      size: item.size,
+      quantity: item.quantity,
+      inventory_type: item.inventory_type || 'pair', // Use original inventory type or default to 'pair'
+      product_image: item.product_image
     };
     setSelectedTransferForReturn(transferForReturn);
     setShowReturnModal(true);
@@ -310,19 +325,19 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     setIsCreatingReturn(true);
     try {
       console.log('🔄 Creando devolución...', returnData);
-      
+
       const response = await vendorAPI.createReturn(returnData);
-      
+
       console.log('✅ Devolución creada:', response);
-      
+
       // Mostrar mensaje de éxito con detalles del flujo
       alert(`${response.message}\n\nID: ${response.return_id}\nTiempo estimado: ${response.estimated_return_time}\n\nPróxima acción: ${response.next_action}`);
-      
+
       // Cerrar modal y recargar datos
       setShowReturnModal(false);
       setSelectedTransferForReturn(null);
       loadTransfersData();
-      
+
     } catch (err: any) {
       console.error('❌ Error creando devolución:', err);
       alert('Error creando devolución: ' + (err instanceof Error ? err.message : 'Error desconocido'));
@@ -337,52 +352,61 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   };
 
   const handleConfirmReception = async (transfer: PendingTransferItem) => {
-  try {
-    // Confirmar recepción solamente
-    await vendorAPI.confirmReception(transfer.id, 1, true, 'Producto recibido correctamente');
-    
-    // Mensaje de éxito
-    alert('✅ Recepción confirmada exitosamente.\n\nEl producto ahora aparecerá en "Transferencias Completadas" donde podrás venderlo o generar una devolución si es necesario.');
-    
-    // Recargar datos para actualizar las listas
-    loadTransfersData();
-    
-  } catch (err: any) {
-    console.error('Error en confirmar recepción:', err);
-    alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));
-  }
-};
+    try {
+      // Confirmar recepción solamente
+      await vendorAPI.confirmReception(transfer.id, 1, true, 'Producto recibido correctamente');
+
+      // Mensaje de éxito
+      alert('✅ Recepción confirmada exitosamente.\n\nEl producto ahora aparecerá en "Transferencias Completadas" donde podrás venderlo o generar una devolución si es necesario.');
+
+      // Recargar datos para actualizar las listas
+      loadTransfersData();
+
+    } catch (err: any) {
+      console.error('Error en confirmar recepción:', err);
+      alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+    }
+  };
 
   // Nueva función para vender desde transferencias completadas
-  const handleSellFromCompletedTransfer = (transfer: CompletedTransfer) => {
-    console.log('📦 Transferencia seleccionada para venta:', transfer);
-    console.log('🔑 Transfer ID:', transfer.id);
-    
+  const handleSellFromHistory = (item: TransferHistoryItem) => {
+    console.log('📦 Item seleccionado para venta:', item);
+    console.log('🔑 Transfer ID:', item.id);
+
     // Preparar datos para SalesForm incluyendo el transfer_id
     const salesData = {
-      code: transfer.sneaker_reference_code,
-      brand: transfer.brand,
-      model: transfer.model,
-      size: transfer.size,
-      price: typeof transfer.unit_price === 'number' ? transfer.unit_price : 0,
-      location: 'Local Actual', // No disponible en el endpoint
+      code: item.sneaker_reference_code,
+      brand: item.brand,
+      model: item.model,
+      size: item.size,
+      price: 0, // No tenemos precio en el historial, el usuario lo pondrá
+      location: 'Local Actual',
       storage_type: 'display',
-      color: 'N/A', // No disponible en el endpoint
-      image: transfer.product_image || undefined,
-      transfer_id: transfer.id // Agregar el ID de la transferencia
+      color: 'N/A',
+      image: item.product_image || undefined,
+      transfer_id: item.id
     };
-    
+
     console.log('📤 Datos que se enviarán a SalesForm:', salesData);
-    console.log('🔑 Transfer ID en salesData:', salesData.transfer_id);
-    
-    // Llamar callback para abrir SalesForm
+
     if (onSellProduct) {
-      console.log('✅ Llamando a onSellProduct con transfer_id:', salesData.transfer_id);
       onSellProduct(salesData);
     } else {
       console.error('❌ onSellProduct no está definido');
-      alert('Error: No se puede abrir el formulario de ventas. onSellProduct no está definido.');
+      alert('Error: No se puede abrir el formulario de ventas.');
     }
+  };
+
+  const handleSellFromCompletedTransfer = (item: CompletedTransfer) => {
+    // Reutilizamos la lógica de venta, adaptando el tipo si es necesario
+    // Como CompletedTransfer y TransferHistoryItem comparten los campos necesarios, podemos castear o crear el objeto
+    const historyItem: TransferHistoryItem = {
+      ...item,
+      type: 'transfer', // Valor por defecto
+      timestamp: item.completed_at || new Date().toISOString(), // Valor por defecto
+      status: item.status === 'completed' ? 'completed' : 'cancelled' // Mapeo de status
+    };
+    handleSellFromHistory(historyItem);
   };
 
 
@@ -391,7 +415,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     if (!confirm('¿Estás seguro de que quieres cancelar esta transferencia?')) {
       return;
     }
-    
+
     try {
       await vendorAPI.cancelTransfer(transferId, reason || 'Cancelada por el vendedor');
       alert('Transferencia cancelada exitosamente');
@@ -407,17 +431,17 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     if (!confirm('¿Confirmas que entregarás este producto en la bodega?')) {
       return;
     }
-    
+
     try {
       console.log('🔄 Entregando devolución a bodega...', returnId);
       const response = await vendorAPI.deliverReturnToWarehouse(
-        returnId, 
+        returnId,
         'Producto entregado en perfecto estado para devolución'
       );
-      
+
       console.log('✅ Devolución entregada:', response);
       alert(`${response.message}\n\nEl bodeguero ahora debe confirmar la recepción y verificar el producto.`);
-      
+
       loadTransfersData();
     } catch (err: any) {
       console.error('❌ Error entregando devolución:', err);
@@ -427,7 +451,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
 
   // *** FUNCIONES HELPER ACTUALIZADAS ***
-  
+
   // Función para obtener el nombre del corredor
   const getCourierName = (transfer: PendingTransferItem): string => {
     return transfer.courier_name || 'Sin asignar';
@@ -583,7 +607,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   </p>
                 </div>
               </div>
-              
+
               {/* Información específica de transferencia */}
               {prefilledProductData.transfer_type && (
                 <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 border border-primary/20">
@@ -601,7 +625,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                       <span className="text-sm font-semibold text-info">🔗 Formar Pares</span>
                     )}
                   </div>
-                  
+
                   {/* Inventario disponible en origen */}
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div className="text-center p-2 bg-success/10 rounded">
@@ -617,7 +641,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                       <div className="text-muted-foreground">🦶 Der</div>
                     </div>
                   </div>
-                  
+
                   {/* Notas específicas */}
                   {prefilledProductData.request_notes && (
                     <div className="mt-2 text-xs text-muted-foreground bg-muted/20 p-2 rounded">
@@ -674,11 +698,12 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             >
               <div className="flex items-center space-x-2">
                 {activeTab === 'pending' && <Package className="h-4 w-4 text-primary" />}
-                {activeTab === 'completed' && <History className="h-4 w-4 text-primary" />}
+                {activeTab === 'completed' && <CheckCircle className="h-4 w-4 text-primary" />}
                 {activeTab === 'new' && <Plus className="h-4 w-4 text-primary" />}
                 <span className="font-medium">
                   {activeTab === 'pending' && `Recepciones por Confirmar (${totalPending})`}
-                  {activeTab === 'completed' && 'Historial del Día'}
+                  {activeTab === 'completed' && 'Transferencias Completadas'}
+                  {activeTab === 'history' && 'Historial del Día'}
                   {activeTab === 'new' && 'Nueva Solicitud'}
                   {prefilledProductData && activeTab === 'new' && (
                     <span className="ml-2 px-2 py-1 bg-primary text-primary-foreground text-xs rounded-full">
@@ -689,7 +714,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               </div>
               {showMobileMenu ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </button>
-            
+
             {showMobileMenu && (
               <div className="mt-2 border border-border rounded-lg bg-card shadow-lg">
                 <button
@@ -697,9 +722,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     setActiveTab('pending');
                     setShowMobileMenu(false);
                   }}
-                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/20 ${
-                    activeTab === 'pending' ? 'bg-primary/10 text-primary' : ''
-                  }`}
+                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/20 ${activeTab === 'pending' ? 'bg-primary/10 text-primary' : ''
+                    }`}
                 >
                   <Package className="h-4 w-4" />
                   <span>Recepciones por Confirmar ({totalPending})</span>
@@ -709,9 +733,19 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     setActiveTab('completed');
                     setShowMobileMenu(false);
                   }}
-                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/20 border-t ${
-                    activeTab === 'completed' ? 'bg-primary/10 text-primary' : ''
-                  }`}
+                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/20 border-t ${activeTab === 'completed' ? 'bg-primary/10 text-primary' : ''
+                    }`}
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  <span>Transferencias Completadas</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('history');
+                    setShowMobileMenu(false);
+                  }}
+                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/20 border-t ${activeTab === 'history' ? 'bg-primary/10 text-primary' : ''
+                    }`}
                 >
                   <History className="h-4 w-4" />
                   <span>Historial del Día</span>
@@ -721,9 +755,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     setActiveTab('new');
                     setShowMobileMenu(false);
                   }}
-                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/20 border-t ${
-                    activeTab === 'new' ? 'bg-primary/10 text-primary' : ''
-                  } ${prefilledProductData ? 'ring-2 ring-primary ring-opacity-50' : ''}`}
+                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/20 border-t ${activeTab === 'new' ? 'bg-primary/10 text-primary' : ''
+                    } ${prefilledProductData ? 'ring-2 ring-primary ring-opacity-50' : ''}`}
                 >
                   <Plus className="h-4 w-4" />
                   <span>
@@ -751,6 +784,13 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             <Button
               variant={activeTab === 'completed' ? 'primary' : 'outline'}
               onClick={() => setActiveTab('completed')}
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Transferencias Completadas
+            </Button>
+            <Button
+              variant={activeTab === 'history' ? 'primary' : 'outline'}
+              onClick={() => setActiveTab('history')}
             >
               <History className="h-4 w-4 mr-2" />
               Historial del Día
@@ -803,7 +843,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               className="flex-1 md:flex-none text-xs md:text-sm"
             >
               <CheckCircle className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-              Completadas 
+              Completadas
             </Button>
           </div>
         </CardContent>
@@ -831,205 +871,204 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     return progressB - progressA;
                   })
                   .map((transfer) => (
-                  <div key={transfer.id} className="border border-border rounded-lg p-3 md:p-4 bg-card shadow-sm hover:shadow-lg transition-all duration-300">
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
-                      <div className="flex-1 min-w-0">
-                        <div className="mb-4">
+                    <div key={transfer.id} className="border border-border rounded-lg p-3 md:p-4 bg-card shadow-sm hover:shadow-lg transition-all duration-300">
+                      <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
+                        <div className="flex-1 min-w-0">
+                          <div className="mb-4">
                             <div className="bg-gradient-to-br from-muted/20 to-muted/40 rounded-lg flex items-center justify-center">
                               <img
                                 src={transfer.product_image}
                                 className="w-32 h-48 object-cover rounded-lg border border-border"
                                 alt={`${transfer.brand} ${transfer.model}`}
                               />
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center space-x-2 mb-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(transfer)}`}>
-                            {getStatusIcon(transfer)}
-                            <span>{getStatusText(transfer)}</span>
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            transfer.pickup_type === 'corredor' ? 'bg-primary/10 text-primary' : 'bg-success/10 text-success'
-                          }`}>
-                            {transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}
-                          </span>
-                          {transfer.purpose === 'return' && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted/10 text-muted-foreground">
-                              🔄 Devolución
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(transfer)}`}>
+                              {getStatusIcon(transfer)}
+                              <span>{getStatusText(transfer)}</span>
                             </span>
-                          )}
-                          {transfer.purpose === 'pair_formation' && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                              🔗 Formar Par
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${transfer.pickup_type === 'corredor' ? 'bg-primary/10 text-primary' : 'bg-success/10 text-success'
+                              }`}>
+                              {transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}
                             </span>
-                          )}
+                            {transfer.purpose === 'return' && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted/10 text-muted-foreground">
+                                🔄 Devolución
+                              </span>
+                            )}
+                            {transfer.purpose === 'pair_formation' && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                                🔗 Formar Par
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Barra de progreso */}
+                          <div className="mb-3">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-xs font-medium text-muted-foreground">Progreso</span>
+                              <span className="text-xs font-bold text-primary">{getProgressPercentage(transfer)}%</span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(getProgressPercentage(transfer))}`}
+                                style={{ width: `${getProgressPercentage(transfer)}%` }}
+                              ></div>
+                            </div>
+                          </div>
+
+                          <h4 className="font-semibold text-sm md:text-lg truncate">
+                            {transfer.brand} {transfer.model}
+                          </h4>
+                          <p className="text-xs md:text-sm text-muted-foreground truncate">
+                            Código: {transfer.sneaker_reference_code} | Talla: {transfer.size} | Cantidad: {transfer.quantity}
+                          </p>
+                          <p className="text-xs md:text-sm text-muted-foreground">
+                            {getNextAction(transfer)}
+                          </p>
                         </div>
 
-                        {/* Barra de progreso */}
-                        <div className="mb-3">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-xs font-medium text-muted-foreground">Progreso</span>
-                            <span className="text-xs font-bold text-primary">{getProgressPercentage(transfer)}%</span>
-                          </div>
-                          <div className="w-full bg-muted rounded-full h-2">
-                            <div 
-                              className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(getProgressPercentage(transfer))}`}
-                              style={{ width: `${getProgressPercentage(transfer)}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                        
-                        <h4 className="font-semibold text-sm md:text-lg truncate">
-                          {transfer.brand} {transfer.model}
-                        </h4>
-                        <p className="text-xs md:text-sm text-muted-foreground truncate">
-                          Código: {transfer.sneaker_reference_code} | Talla: {transfer.size} | Cantidad: {transfer.quantity}
-                        </p>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          {getNextAction(transfer)}
-                        </p>
-                      </div>
-                      
-                      <div className="text-right flex-shrink-0">
-                        
-                        {/* Botones de acción */}
-                        <div className="flex flex-col space-y-2 mt-3">
-                          {/* Botones para pickup_type 'corredor' */}
-                          {transfer.pickup_type === 'corredor' && (
-                            <>
-                              {transfer.status === 'delivered' && (
-                                <Button
-                                  onClick={() => handleConfirmReception(transfer)}
-                                  className="bg-success hover:bg-success/90 text-success-foreground text-sm w-full"
-                                  size="sm"
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Confirmar Recepción
-                                </Button>
-                              )}
-                              
-                              {transfer.status === 'pending' && (
-                                <Button
-                                  onClick={() => handleCancelTransfer(transfer.id)}
-                                  className="bg-error hover:bg-error/90 text-error-foreground text-sm w-full"
-                                  size="sm"
-                                  variant="outline"
-                                >
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Cancelar
-                                </Button>
-                              )}
-                            </>
-                          )}
+                        <div className="text-right flex-shrink-0">
 
-                          {/* Botones para pickup_type 'vendedor' */}
-                          {transfer.pickup_type === 'vendedor' && (
-                            <>
-                              {/* CASO 1: Devolución - Status accepted - Debes llevar el producto a bodega */}
-                              {transfer.purpose === 'return' && transfer.status === 'accepted' && (
-                                <>
-                                  <div className="p-3 bg-muted/10 border border-muted/20 rounded-lg mb-2">
-                                    <div className="flex items-center space-x-2 mb-1">
-                                      <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                                      <span className="text-sm font-medium text-muted-foreground">
-                                        🔄 Devolución: Debes llevar el producto a la bodega
-                                      </span>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      Lleva el producto personalmente a la bodega para completar la devolución.
-                                    </p>
-                                  </div>
+                          {/* Botones de acción */}
+                          <div className="flex flex-col space-y-2 mt-3">
+                            {/* Botones para pickup_type 'corredor' */}
+                            {transfer.pickup_type === 'corredor' && (
+                              <>
+                                {transfer.status === 'delivered' && (
                                   <Button
-                                    onClick={() => handleDeliverReturnToWarehouse(transfer.id)}
-                                    className="bg-muted text-muted-foreground hover:bg-muted/80 text-sm w-full"
+                                    onClick={() => handleConfirmReception(transfer)}
+                                    className="bg-success hover:bg-success/90 text-success-foreground text-sm w-full"
                                     size="sm"
                                   >
-                                    <Package className="h-4 w-4 mr-2" />
-                                    Entregar a Bodeguero
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Confirmar Recepción
                                   </Button>
-                                </>
-                              )}
-                              
-                              {/* CASO 2: Transferencia normal - Status accepted - Debes ir a recoger */}
-                              {transfer.purpose !== 'return' && transfer.status === 'accepted' && (
-                                <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
-                                  <div className="flex items-center space-x-2">
-                                    <AlertCircle className="h-4 w-4 text-warning" />
-                                    <span className="text-sm font-medium text-warning">
-                                      Debes ir a recoger el producto a la bodega
-                                    </span>
+                                )}
+
+                                {transfer.status === 'pending' && (
+                                  <Button
+                                    onClick={() => handleCancelTransfer(transfer.id)}
+                                    className="bg-error hover:bg-error/90 text-error-foreground text-sm w-full"
+                                    size="sm"
+                                    variant="outline"
+                                  >
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                    Cancelar
+                                  </Button>
+                                )}
+                              </>
+                            )}
+
+                            {/* Botones para pickup_type 'vendedor' */}
+                            {transfer.pickup_type === 'vendedor' && (
+                              <>
+                                {/* CASO 1: Devolución - Status accepted - Debes llevar el producto a bodega */}
+                                {transfer.purpose === 'return' && transfer.status === 'accepted' && (
+                                  <>
+                                    <div className="p-3 bg-muted/10 border border-muted/20 rounded-lg mb-2">
+                                      <div className="flex items-center space-x-2 mb-1">
+                                        <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                                        <span className="text-sm font-medium text-muted-foreground">
+                                          🔄 Devolución: Debes llevar el producto a la bodega
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        Lleva el producto personalmente a la bodega para completar la devolución.
+                                      </p>
+                                    </div>
+                                    <Button
+                                      onClick={() => handleDeliverReturnToWarehouse(transfer.id)}
+                                      className="bg-muted text-muted-foreground hover:bg-muted/80 text-sm w-full"
+                                      size="sm"
+                                    >
+                                      <Package className="h-4 w-4 mr-2" />
+                                      Entregar a Bodeguero
+                                    </Button>
+                                  </>
+                                )}
+
+                                {/* CASO 2: Transferencia normal - Status accepted - Debes ir a recoger */}
+                                {transfer.purpose !== 'return' && transfer.status === 'accepted' && (
+                                  <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
+                                    <div className="flex items-center space-x-2">
+                                      <AlertCircle className="h-4 w-4 text-warning" />
+                                      <span className="text-sm font-medium text-warning">
+                                        Debes ir a recoger el producto a la bodega
+                                      </span>
+                                    </div>
                                   </div>
-                                </div>
-                              )}
-                              
-                              {/* CASO 3: Status delivered - Confirmar recepción */}
-                              {transfer.status === 'delivered' && transfer.purpose !== 'return' && (
-                                <Button
-                                  onClick={() => handleConfirmReception(transfer)}
-                                  className="bg-success hover:bg-success/90 text-success-foreground text-sm w-full"
-                                  size="sm"
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Confirmar Recepción
-                                </Button>
-                              )}
-                              
-                              {/* CASO 3.1: Status delivered Y purpose return - Ya entregado, nada más que hacer */}
-                              {transfer.status === 'delivered' && transfer.purpose === 'return' && (
-                                <div className="p-3 bg-muted/10 border border-muted/20 rounded-lg">
-                                  <div className="flex items-center space-x-2">
-                                    <Clock className="h-4 w-4 text-muted-foreground" />
-                                    <span className="text-sm font-medium text-card-foreground">
-                                      ⏳ Esperando que bodeguero confirme la recepción
-                                    </span>
+                                )}
+
+                                {/* CASO 3: Status delivered - Confirmar recepción */}
+                                {transfer.status === 'delivered' && transfer.purpose !== 'return' && (
+                                  <Button
+                                    onClick={() => handleConfirmReception(transfer)}
+                                    className="bg-success hover:bg-success/90 text-success-foreground text-sm w-full"
+                                    size="sm"
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Confirmar Recepción
+                                  </Button>
+                                )}
+
+                                {/* CASO 3.1: Status delivered Y purpose return - Ya entregado, nada más que hacer */}
+                                {transfer.status === 'delivered' && transfer.purpose === 'return' && (
+                                  <div className="p-3 bg-muted/10 border border-muted/20 rounded-lg">
+                                    <div className="flex items-center space-x-2">
+                                      <Clock className="h-4 w-4 text-muted-foreground" />
+                                      <span className="text-sm font-medium text-card-foreground">
+                                        ⏳ Esperando que bodeguero confirme la recepción
+                                      </span>
+                                    </div>
                                   </div>
-                                </div>
-                              )}
-                              
-                              {/* CASO 4: Status pending - Cancelar */}
-                              {transfer.status === 'pending' && (
-                                <Button
-                                  onClick={() => handleCancelTransfer(transfer.id)}
-                                  className="bg-error hover:bg-error/90 text-error-foreground text-sm w-full"
-                                  size="sm"
-                                  variant="outline"
-                                >
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Cancelar
-                                </Button>
-                              )}
+                                )}
+
+                                {/* CASO 4: Status pending - Cancelar */}
+                                {transfer.status === 'pending' && (
+                                  <Button
+                                    onClick={() => handleCancelTransfer(transfer.id)}
+                                    className="bg-error hover:bg-error/90 text-error-foreground text-sm w-full"
+                                    size="sm"
+                                    variant="outline"
+                                  >
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                    Cancelar
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Información de participantes */}
+                      <div className="mt-3 p-2 md:p-3 bg-muted/5 border border-border rounded-md">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs md:text-sm">
+                          {transfer.pickup_type === 'corredor' ? (
+                            <>
+                              <div>
+                                <strong>Corredor:</strong> {getCourierName(transfer)}
+                              </div>
+                              <div>
+                                <strong>Bodeguero:</strong> {transfer.warehouse_keeper_name || 'Sin asignar'}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div>
+                                <strong>Bodeguero:</strong> {transfer.warehouse_keeper_name || 'Sin asignar'}
+                              </div>
+                              <div>
+                                <strong>Tipo:</strong> Recogida por vendedor
+                              </div>
                             </>
                           )}
                         </div>
                       </div>
                     </div>
-
-                    {/* Información de participantes */}
-                    <div className="mt-3 p-2 md:p-3 bg-muted/5 border border-border rounded-md">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs md:text-sm">
-                        {transfer.pickup_type === 'corredor' ? (
-                          <>
-                            <div>
-                              <strong>Corredor:</strong> {getCourierName(transfer)}
-                            </div>
-                            <div>
-                              <strong>Bodeguero:</strong> {transfer.warehouse_keeper_name || 'Sin asignar'}
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div>
-                              <strong>Bodeguero:</strong> {transfer.warehouse_keeper_name || 'Sin asignar'}
-                            </div>
-                            <div>
-                              <strong>Tipo:</strong> Recogida por vendedor
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </CardContent>
@@ -1068,14 +1107,12 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
                         {/* Estado */}
                         <div className="flex items-center space-x-2 mb-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            transfer.status === 'completed' ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
-                          }`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${transfer.status === 'completed' ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
+                            }`}>
                             {transfer.status === 'completed' ? '✅ Completada' : '❌ Cancelada'}
                           </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            transfer.priority === 'high' ? 'bg-error/10 text-error' : 'bg-primary/10 text-primary'
-                          }`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${transfer.priority === 'high' ? 'bg-error/10 text-error' : 'bg-primary/10 text-primary'
+                            }`}>
                             {transfer.priority === 'high' ? '🔥 Urgente' : '📦 Normal'}
                           </span>
                           {transfer.purpose === 'pair_formation' && (
@@ -1102,9 +1139,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         <div className="text-xs md:text-sm mb-3">
                           <span className="text-muted-foreground">Propósito:</span>
                           <span className="font-medium ml-1">
-                            {String(transfer.purpose).toLowerCase().trim() === 'cliente' ? '🏃‍♂️ Cliente' : 
-                             String(transfer.purpose).toLowerCase().trim() === 'pair_formation' ? '🔗 Formar Par' : 
-                             String(transfer.purpose).toLowerCase().trim() === 'return' ? '🔄 Devolución' : '📦 Restock'}
+                            {String(transfer.purpose).toLowerCase().trim() === 'cliente' ? '🏃‍♂️ Cliente' :
+                              String(transfer.purpose).toLowerCase().trim() === 'pair_formation' ? '🔗 Formar Par' :
+                                String(transfer.purpose).toLowerCase().trim() === 'return' ? '🔄 Devolución' : '📦 Restock'}
                           </span>
                         </div>
 
@@ -1168,6 +1205,110 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         </Card>
       )}
 
+      {activeTab === 'history' && (
+        <Card>
+          <CardHeader>
+            <h3 className="text-base md:text-lg font-semibold">Historial del Día</h3>
+          </CardHeader>
+          <CardContent>
+            {transferHistory.length === 0 ? (
+              <div className="text-center py-8 md:py-12">
+                <History className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm md:text-base">No hay movimientos registrados hoy</p>
+              </div>
+            ) : (
+              <div className="space-y-3 md:space-y-4">
+                {transferHistory.map((item) => (
+                  <Card key={`${item.type}-${item.id}`} className="overflow-hidden border border-border">
+                    <CardContent className="p-0">
+                      <div className="flex flex-col md:flex-row">
+                        {/* Estado Visual */}
+                        <div className={`w-full md:w-2 flex-shrink-0 ${item.status === 'selled' ? 'bg-info' :
+                          item.status === 'completed' ? 'bg-success' :
+                            item.status === 'cancelled' ? 'bg-destructive' :
+                              item.status === 'returned' ? 'bg-warning' : 'bg-muted'
+                          }`} />
+
+                        <div className="flex-1 p-4">
+                          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            {/* Info Principal */}
+                            <div className="flex items-start space-x-4">
+                              <div className={`p-2 rounded-full flex-shrink-0 ${item.status === 'selled' ? 'bg-info/10 text-info' :
+                                item.status === 'completed' ? 'bg-success/10 text-success' :
+                                  item.status === 'cancelled' ? 'bg-destructive/10 text-destructive' :
+                                    'bg-warning/10 text-warning'
+                                }`}>
+                                {item.status === 'selled' ? <DollarSign className="h-5 w-5" /> :
+                                  item.status === 'completed' ? <CheckCircle className="h-5 w-5" /> :
+                                    item.status === 'cancelled' ? <XCircle className="h-5 w-5" /> :
+                                      <History className="h-5 w-5" />}
+                              </div>
+
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-bold text-lg">{item.brand} {item.model}</h3>
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${item.status === 'selled' ? 'bg-info/10 text-info border-info/20' :
+                                    item.status === 'completed' ? 'bg-success/10 text-success border-success/20' :
+                                      item.status === 'cancelled' ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                                        'bg-warning/10 text-warning border-warning/20'
+                                    }`}>
+                                    {item.status === 'selled' ? 'VENDIDO' :
+                                      item.status === 'completed' ? 'COMPLETADO' :
+                                        item.status === 'cancelled' ? 'CANCELADO' :
+                                          'DEVOLUCIÓN'}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  REF: {item.sneaker_reference_code} • Talla: {item.size} • Cant: {item.quantity}
+                                </p>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${item.type === 'return' ? 'bg-orange-100 text-orange-800 border-orange-200' : 'bg-blue-100 text-blue-800 border-blue-200'
+                                    }`}>
+                                    {item.type === 'return' ? '🔄 Devolución' : '📦 Transferencia'}
+                                  </span>
+                                  {item.purpose && (
+                                    <span className="px-2 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-800 border-gray-200">
+                                      🎯 {item.purpose === 'cliente' ? 'Cliente' :
+                                        item.purpose === 'restock' ? 'Restock' :
+                                          item.purpose === 'pair_formation' ? 'Formar Par' :
+                                            item.purpose}
+                                    </span>
+                                  )}
+                                  {item.inventory_type && item.inventory_type !== 'pair' && (
+                                    <span className="px-2 py-0.5 rounded-full text-xs font-medium border bg-purple-100 text-purple-800 border-purple-200">
+                                      👟 {item.inventory_type === 'left_only' ? 'Pie Izquierdo' : 'Pie Derecho'}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1 flex items-center">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  {item.notes && <span className="ml-2">• {item.notes}</span>}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Acciones ELIMINADAS para Historial - Solo lectura */}
+                            <div className="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
+                              {item.status === 'selled' && item.total_amount && (
+                                <div className="text-right">
+                                  <p className="text-xs text-muted-foreground">Venta Total</p>
+                                  <p className="font-bold text-success">${item.total_amount.toLocaleString()}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {activeTab === 'new' && (
         <Card>
           <CardHeader>
@@ -1190,15 +1331,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   <input
                     type="text"
                     value={requestForm.sneaker_reference_code}
-                    onChange={(e) => setRequestForm({...requestForm, sneaker_reference_code: e.target.value})}
+                    onChange={(e) => setRequestForm({ ...requestForm, sneaker_reference_code: e.target.value })}
                     placeholder="AD-UB22-BLK-001"
                     required
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${
-                      prefilledProductData?.sneaker_reference_code ? 'border-primary/30 bg-primary/10' : 'border-border'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${prefilledProductData?.sneaker_reference_code ? 'border-primary/30 bg-primary/10' : 'border-border'
+                      }`}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
                     Marca {prefilledProductData?.brand && '✅'}
@@ -1206,12 +1346,11 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   <input
                     type="text"
                     value={requestForm.brand}
-                    onChange={(e) => setRequestForm({...requestForm, brand: e.target.value})}
+                    onChange={(e) => setRequestForm({ ...requestForm, brand: e.target.value })}
                     placeholder="Adidas"
                     required
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${
-                      prefilledProductData?.brand ? 'border-primary/30 bg-primary/10' : 'border-border'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${prefilledProductData?.brand ? 'border-primary/30 bg-primary/10' : 'border-border'
+                      }`}
                   />
                 </div>
               </div>
@@ -1224,12 +1363,11 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   <input
                     type="text"
                     value={requestForm.model}
-                    onChange={(e) => setRequestForm({...requestForm, model: e.target.value})}
+                    onChange={(e) => setRequestForm({ ...requestForm, model: e.target.value })}
                     placeholder="Ultraboost 22"
                     required
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${
-                      prefilledProductData?.model ? 'border-primary/30 bg-primary/10' : 'border-border'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${prefilledProductData?.model ? 'border-primary/30 bg-primary/10' : 'border-border'
+                      }`}
                   />
                 </div>
                 <div>
@@ -1239,12 +1377,11 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   <input
                     type="text"
                     value={requestForm.size}
-                    onChange={(e) => setRequestForm({...requestForm, size: e.target.value})}
+                    onChange={(e) => setRequestForm({ ...requestForm, size: e.target.value })}
                     placeholder="9.5"
                     required
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${
-                      prefilledProductData?.size ? 'border-primary/30 bg-primary/10' : 'border-border'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${prefilledProductData?.size ? 'border-primary/30 bg-primary/10' : 'border-border'
+                      }`}
                   />
                 </div>
               </div>
@@ -1256,28 +1393,28 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   </label>
                   <select
                     value={requestForm.purpose}
-                    onChange={(e) => setRequestForm({...requestForm, purpose: e.target.value})}
+                    onChange={(e) => setRequestForm({ ...requestForm, purpose: e.target.value })}
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground"
                   >
                     <option value="cliente">🔥 Cliente Presente (Urgente)</option>
                     <option value="restock">📦 Restock (Normal)</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
                     Recoge
                   </label>
                   <select
                     value={requestForm.pickup_type}
-                    onChange={(e) => setRequestForm({...requestForm, pickup_type: e.target.value})}
+                    onChange={(e) => setRequestForm({ ...requestForm, pickup_type: e.target.value })}
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground"
                   >
                     <option value="vendedor">🏃‍♂️ Vendedor</option>
                     <option value="corredor">🚚 Corredor</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
                     Cantidad {prefilledProductData?.transfer_type && '✅'}
@@ -1285,7 +1422,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   <input
                     type="number"
                     value={requestForm.quantity}
-                    onChange={(e) => setRequestForm({...requestForm, quantity: parseInt(e.target.value) || 1})}
+                    onChange={(e) => setRequestForm({ ...requestForm, quantity: parseInt(e.target.value) || 1 })}
                     min="1"
                     required
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground border-border"
@@ -1299,7 +1436,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   <h4 className="text-sm font-semibold text-primary mb-3">
                     🎯 ¿Qué deseas solicitar desde {prefilledProductData.location_name}?
                   </h4>
-                  
+
                   <div className="space-y-3">
                     {/* Opción 1: Par Completo */}
                     {prefilledProductData.available_options.pairs_available && (
@@ -1408,11 +1545,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 </label>
                 <textarea
                   value={requestForm.notes}
-                  onChange={(e) => setRequestForm({...requestForm, notes: e.target.value})}
+                  onChange={(e) => setRequestForm({ ...requestForm, notes: e.target.value })}
                   rows={3}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${
-                    prefilledProductData ? 'border-primary/30 bg-primary/10' : 'border-border'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base bg-card text-foreground ${prefilledProductData ? 'border-primary/30 bg-primary/10' : 'border-border'
+                    }`}
                   placeholder="Información adicional sobre la transferencia..."
                 />
               </div>

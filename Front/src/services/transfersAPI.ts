@@ -35,7 +35,7 @@ const tryBackendFirst = async (apiCall: () => Promise<any>) => {
 export const vendorAPI = {
   async requestTransfer(transferData) {
     console.log('🔄 Solicitando transferencia...', transferData);
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/transfers/request`, {
         method: 'POST',
@@ -46,7 +46,7 @@ export const vendorAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -54,7 +54,7 @@ export const vendorAPI = {
       console.log('📦 Usando respuesta mock para requestTransfer');
       await new Promise(resolve => setTimeout(resolve, 1000));
       const transferId = Math.floor(Math.random() * 1000) + 100;
-      
+
       return {
         success: true,
         transfer_request_id: transferId,
@@ -97,11 +97,11 @@ export const vendorAPI = {
       console.log('📦 Usando respuesta mock para sellFromTransfer');
       await new Promise(resolve => setTimeout(resolve, 800));
       const saleId = Math.floor(Math.random() * 10000) + 1000;
-      
+
       // Extraer datos del formData para el mock
       const totalAmount = formData.get('total_amount');
       const paymentMethods = JSON.parse(formData.get('payment_methods') as string);
-      
+
       return {
         success: true,
         sale_id: saleId,
@@ -130,7 +130,7 @@ export const vendorAPI = {
     notes?: string | null;
   }) {
     console.log('🔄 Solicitando transferencia de pie individual...', singleFootData);
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/transfers/request-single-foot`, {
         method: 'POST',
@@ -141,7 +141,7 @@ export const vendorAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -149,7 +149,7 @@ export const vendorAPI = {
       console.log('📦 Usando respuesta mock para requestSingleFoot');
       await new Promise(resolve => setTimeout(resolve, 1000));
       const transferId = Math.floor(Math.random() * 1000) + 100;
-      
+
       return {
         success: true,
         transfer_request_id: transferId,
@@ -166,7 +166,7 @@ export const vendorAPI = {
   // *** ACTUALIZACIÓN - USAR ENDPOINT CORRECTO: /vendor/pending-transfers ***
   async getPendingTransfers() {
     console.log('🔄 Obteniendo transferencias pendientes (recepciones por confirmar)...');
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/vendor/pending-transfers`, {
         headers: getHeaders()
@@ -175,17 +175,17 @@ export const vendorAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       // El endpoint devuelve: { success: true, pending_transfers: [...], summary: {...}, attention_needed: [...] }
       console.log('✅ Transferencias pendientes cargadas del backend:', result.data.pending_transfers?.length || 0);
-      
+
       const transfers = result.data.pending_transfers || [];
-      
+
       // Contar transferencias que requieren atención (status = 'delivered')
       const deliveredCount = transfers.filter(t => t.status === 'delivered').length;
       const otherCount = transfers.filter(t => t.status !== 'delivered').length;
-      
+
       return {
         success: true,
         pending_transfers: transfers,
@@ -212,7 +212,7 @@ export const vendorAPI = {
   // *** NUEVA FUNCIÓN - USAR ENDPOINT CORRECTO: /vendor/completed-transfers ***
   async getCompletedTransfers() {
     console.log('🔄 Obteniendo transferencias completadas del día (historial)...');
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/vendor/completed-transfers`, {
         headers: getHeaders()
@@ -221,11 +221,11 @@ export const vendorAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       // El endpoint devuelve: { success: true, date: "2025-01-28", completed_transfers: [...], today_stats: {...} }
       console.log('✅ Transferencias completadas cargadas del backend:', result.data.completed_transfers?.length || 0);
-      
+
       return {
         success: true,
         completed_transfers: result.data.completed_transfers || [],
@@ -253,17 +253,105 @@ export const vendorAPI = {
     }
   },
 
+  // *** NUEVA FUNCIÓN - Obtener historial del día (completed, selled, cancelled, returned) ***
+  async getTransferHistory() {
+    console.log('🔄 Obteniendo historial del día...');
+
+    const backendCall = async () => {
+      const response = await fetch(`${BACKEND_URL}/api/v1/vendor/transfer-history`, {
+        headers: getHeaders()
+      });
+      return handleResponse(response);
+    };
+
+    const result = await tryBackendFirst(backendCall);
+
+    if (result.success) {
+      console.log('✅ Historial del día cargado del backend:', result.data.history?.length || 0);
+      return result.data;
+    } else {
+      // Fallback a mock
+      console.log('📦 Usando datos mock para transfer history');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      return {
+        success: true,
+        date: new Date().toISOString().split('T')[0],
+        history: [
+          {
+            id: 101,
+            type: 'transfer',
+            status: 'completed',
+            sneaker_reference_code: 'NK-AF1-001',
+            brand: 'Nike',
+            model: 'Air Force 1',
+            size: '9.0',
+            quantity: 1,
+            timestamp: new Date(Date.now() - 3600000).toISOString(), // hace 1 hora
+            notes: 'Transferencia completada'
+          },
+          {
+            id: 102,
+            type: 'transfer',
+            status: 'selled',
+            sneaker_reference_code: 'AD-SS-002',
+            brand: 'Adidas',
+            model: 'Superstar',
+            size: '8.5',
+            quantity: 1,
+            timestamp: new Date(Date.now() - 7200000).toISOString(), // hace 2 horas
+            total_amount: 120.00,
+            notes: 'Vendido inmediatamente'
+          },
+          {
+            id: 103,
+            type: 'transfer',
+            status: 'cancelled',
+            sneaker_reference_code: 'PU-RS-003',
+            brand: 'Puma',
+            model: 'RS-X',
+            size: '10.0',
+            quantity: 1,
+            timestamp: new Date(Date.now() - 10800000).toISOString(), // hace 3 horas
+            notes: 'Cliente canceló pedido'
+          },
+          {
+            id: 104,
+            type: 'return',
+            status: 'returned',
+            sneaker_reference_code: 'NK-JO-004',
+            brand: 'Jordan',
+            model: 'Retro 1',
+            size: '11.0',
+            quantity: 1,
+            timestamp: new Date(Date.now() - 14400000).toISOString(), // hace 4 horas
+            original_transfer_id: 99,
+            notes: 'Devolución por defecto'
+          }
+        ],
+        stats: {
+          total_items: 4,
+          completed_count: 1,
+          selled_count: 1,
+          cancelled_count: 1,
+          returned_count: 1,
+          total_sales_amount: 120.00
+        }
+      };
+    }
+  },
+
   // *** MANTENER - Confirmar recepción usando endpoint existente ***
   async confirmReception(requestId, quantity, conditionOk, notes) {
     console.log('🔄 Confirmando recepción...', { requestId, quantity, conditionOk });
-    
+
     const backendCall = async () => {
       const params = new URLSearchParams({
         received_quantity: quantity.toString(),
         condition_ok: conditionOk.toString(),
         notes: notes || ''
       });
-      
+
       const response = await fetch(`${BACKEND_URL}/api/v1/vendor/confirm-reception/${requestId}?${params}`, {
         method: 'POST',
         headers: getHeaders()
@@ -272,7 +360,7 @@ export const vendorAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -293,7 +381,7 @@ export const vendorAPI = {
   // *** NUEVA FUNCIÓN - Cancelar transferencia ***
   async cancelTransfer(transferId, reason) {
     console.log('🔄 Cancelando transferencia...', { transferId, reason });
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/vendor/cancel-transfer/${transferId}`, {
         method: 'POST',
@@ -306,7 +394,7 @@ export const vendorAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -326,7 +414,7 @@ export const vendorAPI = {
   // *** NUEVA FUNCIÓN - Obtener detalles de transferencia ***
   async getTransferDetails(transferId) {
     console.log('🔄 Obteniendo detalles de transferencia...', { transferId });
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/vendor/transfer-details/${transferId}`, {
         headers: getHeaders()
@@ -335,7 +423,7 @@ export const vendorAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -364,7 +452,7 @@ export const vendorAPI = {
 
   async getDashboard() {
     console.log('🔄 Obteniendo dashboard...');
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/vendor/dashboard`, {
         headers: getHeaders()
@@ -373,7 +461,7 @@ export const vendorAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -412,14 +500,14 @@ export const vendorAPI = {
   // *** NUEVA FUNCIÓN - Solicitar devolución ***
   async requestReturn(returnData: ReturnRequestCreate): Promise<ReturnResponse> {
     console.log('🔄 Solicitando devolución...', returnData);
-    
+
     try {
       const response = await fetch(`${BACKEND_URL}/api/v1/returns/request`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(returnData)
       });
-      
+
       const result = await handleResponse(response);
       console.log('✅ Devolución solicitada exitosamente');
       return result;
@@ -432,7 +520,7 @@ export const vendorAPI = {
   // *** NUEVA FUNCIÓN - Crear devolución (PASO 1) ***
   async createReturn(returnData) {
     console.log('🔄 Creando devolución...', returnData);
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/transfers/create-return`, {
         method: 'POST',
@@ -443,17 +531,17 @@ export const vendorAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
       // Fallback a mock según especificación
       console.log('📦 Usando respuesta mock para createReturn');
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       return {
         success: true,
-        message: returnData.pickup_type === 'corredor' 
+        message: returnData.pickup_type === 'corredor'
           ? 'Devolución creada - Un corredor recogerá el producto'
           : 'Devolución creada - Llevarás el producto tú mismo',
         return_id: Math.floor(Math.random() * 1000) + 135,
@@ -472,7 +560,7 @@ export const vendorAPI = {
           "3. 🏪 Bodeguero confirmará que recibió el producto",
           "4. 🔍 Bodeguero verificará condición y restaurará inventario"
         ],
-        next_action: returnData.pickup_type === 'corredor' 
+        next_action: returnData.pickup_type === 'corredor'
           ? 'Esperar que bodeguero acepte, luego corredor coordinará recogida'
           : 'Esperar que bodeguero acepte, luego ir a bodega con el producto'
       };
@@ -482,7 +570,7 @@ export const vendorAPI = {
   // *** NUEVA FUNCIÓN - Entregar devolución a bodega (PASO 3 - Vendedor) ***
   async deliverReturnToWarehouse(returnId, deliveryNotes) {
     console.log('🔄 Entregando devolución a bodega...', { returnId, deliveryNotes });
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/vendor/deliver-return-to-warehouse/${returnId}`, {
         method: 'POST',
@@ -493,14 +581,14 @@ export const vendorAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
       // Fallback a mock según especificación
       console.log('📦 Usando respuesta mock para deliver return to warehouse');
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       return {
         success: true,
         message: 'Entrega confirmada - Esperando que bodeguero valide recepción',
@@ -536,7 +624,7 @@ export const vendorAPI = {
 export const warehouseAPI = {
   async getPendingRequests() {
     console.log('🔄 Obteniendo solicitudes pendientes de bodega...');
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/pending-requests`, {
         headers: getHeaders()
@@ -545,7 +633,7 @@ export const warehouseAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -563,7 +651,7 @@ export const warehouseAPI = {
 
   async acceptRequest(requestData) {
     console.log('🔄 Aceptando solicitud...', requestData);
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/accept-request`, {
         method: 'POST',
@@ -574,7 +662,7 @@ export const warehouseAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -592,7 +680,7 @@ export const warehouseAPI = {
 
   async getAcceptedRequests() {
     console.log('🔄 Obteniendo solicitudes aceptadas...');
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/accepted-requests`, {
         headers: getHeaders()
@@ -601,7 +689,7 @@ export const warehouseAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -617,7 +705,7 @@ export const warehouseAPI = {
 
   async deliverToCourier(requestData) {
     console.log('🔄 Entregando a corredor...', requestData);
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/deliver-to-courier`, {
         method: 'POST',
@@ -628,7 +716,7 @@ export const warehouseAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -649,7 +737,7 @@ export const warehouseAPI = {
 
   async deliverToVendor(transferId, requestData) {
     console.log('🔄 Entregando a vendedor...', { transferId, requestData });
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/deliver-to-vendor/${transferId}`, {
         method: 'POST',
@@ -660,7 +748,7 @@ export const warehouseAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -681,7 +769,7 @@ export const warehouseAPI = {
   // *** NUEVA FUNCIÓN - Aceptar devolución (PASO 2) ***
   async acceptReturn(returnData) {
     console.log('🔄 Aceptando devolución...', returnData);
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/accept-request`, {
         method: 'POST',
@@ -697,14 +785,14 @@ export const warehouseAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
       // Fallback a mock según especificación
       console.log('📦 Usando respuesta mock para accept return');
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       return {
         success: true,
         message: 'Solicitud aceptada - Disponible para corredores',
@@ -719,7 +807,7 @@ export const warehouseAPI = {
   // *** NUEVA FUNCIÓN - Confirmar recepción de devolución (PASO 6) ***
   async confirmReturnReception(returnId, confirmationData) {
     console.log('🔄 Confirmando recepción de devolución...', { returnId, confirmationData });
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/confirm-return-reception/${returnId}`, {
         method: 'POST',
@@ -730,14 +818,14 @@ export const warehouseAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
       // Fallback a mock según especificación
       console.log('📦 Usando respuesta mock para confirm return reception');
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       return {
         success: true,
         message: 'Devolución recibida - Inventario restaurado automáticamente',
@@ -768,7 +856,7 @@ export const warehouseAPI = {
 export const courierAPI = {
   async getAvailableRequests() {
     console.log('🔄 Obteniendo entregas disponibles...');
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/available-requests`, {
         headers: getHeaders()
@@ -777,7 +865,7 @@ export const courierAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -793,7 +881,7 @@ export const courierAPI = {
 
   async acceptRequest(requestId, estimatedTime, notes) {
     console.log('🔄 Aceptando transporte...', { requestId, estimatedTime });
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/accept-request/${requestId}`, {
         method: 'POST',
@@ -807,7 +895,7 @@ export const courierAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -827,7 +915,7 @@ export const courierAPI = {
 
   async getMyAssignedTransports() {
     console.log('🔄 Obteniendo mis transportes asignados...');
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/my-transports`, {
         headers: getHeaders()
@@ -836,7 +924,7 @@ export const courierAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -852,7 +940,7 @@ export const courierAPI = {
 
   async confirmPickup(requestId, notes) {
     console.log('🔄 Confirmando recolección...', { requestId });
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/confirm-pickup/${requestId}`, {
         method: 'POST',
@@ -863,7 +951,7 @@ export const courierAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -882,13 +970,13 @@ export const courierAPI = {
 
   async confirmDelivery(requestId, successful, notes) {
     console.log('🔄 Confirmando entrega...', { requestId, successful });
-    
+
     const backendCall = async () => {
       const params = new URLSearchParams({
         delivery_successful: successful.toString(),
         notes: notes || ''
       });
-      
+
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/confirm-delivery/${requestId}?${params}`, {
         method: 'POST',
         headers: getHeaders()
@@ -897,7 +985,7 @@ export const courierAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -916,7 +1004,7 @@ export const courierAPI = {
 
   async getMyDeliveries() {
     console.log('🔄 Obteniendo historial de entregas...');
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/my-deliveries`, {
         headers: getHeaders()
@@ -925,7 +1013,7 @@ export const courierAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
@@ -942,7 +1030,7 @@ export const courierAPI = {
   // *** NUEVA FUNCIÓN - Aceptar transporte de devolución (PASO 3) ***
   async acceptReturnTransport(returnId, estimatedTime, notes) {
     console.log('🔄 Aceptando transporte de devolución...', { returnId, estimatedTime });
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/accept-request/${returnId}`, {
         method: 'POST',
@@ -956,14 +1044,14 @@ export const courierAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
       // Fallback a mock según especificación
       console.log('📦 Usando respuesta mock para accept return transport');
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       return {
         success: true,
         message: 'Return asignado exitosamente',
@@ -979,7 +1067,7 @@ export const courierAPI = {
   // *** NUEVA FUNCIÓN - Confirmar recolección de devolución (PASO 4) ***
   async confirmReturnPickup(returnId, pickupNotes) {
     console.log('🔄 Confirmando recolección de devolución...', { returnId });
-    
+
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/confirm-pickup/${returnId}`, {
         method: 'POST',
@@ -990,14 +1078,14 @@ export const courierAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
       // Fallback a mock según especificación
       console.log('📦 Usando respuesta mock para confirm return pickup');
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       return {
         success: true,
         message: 'Recolección confirmada - En tránsito a bodega',
@@ -1012,13 +1100,13 @@ export const courierAPI = {
   // *** NUEVA FUNCIÓN - Confirmar entrega de devolución (PASO 5) ***
   async confirmReturnDelivery(returnId, successful, notes) {
     console.log('🔄 Confirmando entrega de devolución...', { returnId, successful });
-    
+
     const backendCall = async () => {
       const params = new URLSearchParams({
         delivery_successful: successful.toString(),
         notes: notes || ''
       });
-      
+
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/confirm-delivery/${returnId}?${params}`, {
         method: 'POST',
         headers: getHeaders()
@@ -1027,14 +1115,14 @@ export const courierAPI = {
     };
 
     const result = await tryBackendFirst(backendCall);
-    
+
     if (result.success) {
       return result.data;
     } else {
       // Fallback a mock según especificación
       console.log('📦 Usando respuesta mock para confirm return delivery');
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       return {
         success: true,
         message: 'Entrega confirmada - Esperando confirmación de recepción',
