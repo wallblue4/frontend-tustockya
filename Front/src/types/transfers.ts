@@ -193,6 +193,11 @@ export interface TransferHistoryItem {
   original_transfer_id?: number; // Para devoluciones
   inventory_type?: 'pair' | 'left_only' | 'right_only';
   purpose?: string; // Propósito de la transferencia (cliente, restock, etc.)
+  source_location_name?: string;
+  destination_location_name?: string;
+  pickup_type?: string; // 'corredor' | 'vendedor'
+  courier_name?: string; // Nombre del corredor si aplica
+  unit_price?: number; // Precio unitario para ventas
 }
 
 export interface TransferHistoryResponse {

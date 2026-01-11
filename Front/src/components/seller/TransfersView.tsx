@@ -17,7 +17,8 @@ import {
   ChevronUp,
   XCircle,
   History,
-  DollarSign
+  DollarSign,
+  MapPin
 } from 'lucide-react';
 
 interface TransfersViewProps {
@@ -379,7 +380,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       brand: item.brand,
       model: item.model,
       size: item.size,
-      price: 0, // No tenemos precio en el historial, el usuario lo pondrá
+      price: item.unit_price || 0, // Usar precio unitario si existe, sino 0
       location: 'Local Actual',
       storage_type: 'display',
       color: 'N/A',
@@ -404,7 +405,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       ...item,
       type: 'transfer', // Valor por defecto
       timestamp: item.completed_at || new Date().toISOString(), // Valor por defecto
-      status: item.status === 'completed' ? 'completed' : 'cancelled' // Mapeo de status
+      status: item.status === 'completed' ? 'completed' : 'cancelled', // Mapeo de status
+      unit_price: item.unit_price // Pasar el precio unitario
     };
     handleSellFromHistory(historyItem);
   };
@@ -1285,6 +1287,25 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                   {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                   {item.notes && <span className="ml-2">• {item.notes}</span>}
                                 </p>
+                                {/* Información de Envío y Ubicación */}
+                                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                                  {(item.source_location_name || item.destination_location_name) && (
+                                    <div className="flex items-center text-muted-foreground">
+                                      <MapPin className="h-3 w-3 mr-1" />
+                                      <span className="truncate">
+                                        {item.source_location_name || 'Origen'} ➝ {item.destination_location_name || 'Destino'}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {item.pickup_type && (
+                                    <div className="flex items-center text-muted-foreground">
+                                      <Truck className="h-3 w-3 mr-1" />
+                                      <span className="capitalize">
+                                        Envío: {item.pickup_type === 'corredor' ? `🏃 Corredor${item.courier_name ? ` (${item.courier_name})` : ''}` : '👤 Vendedor'}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
