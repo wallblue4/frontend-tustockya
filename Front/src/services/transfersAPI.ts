@@ -1,4 +1,4 @@
-// src/services/transfersAPI.ts - CORREGIDO PARA USAR ENDPOINTS CORRECTOS
+// src/services/transfersAPI.ts
 import type { ReturnRequestCreate, ReturnResponse } from '../types/transfers';
 import { BACKEND_URL } from '../config/env';
 
@@ -19,7 +19,7 @@ const handleResponse = async (response: Response) => {
 };
 
 // NUEVA FUNCIÓN: Intentar conectar al backend primero
-const tryBackendFirst = async (apiCall: () => Promise<any>) => {
+const tryBackendFirst = async (apiCall: () => Promise<any>, mockFallback?: any) => {
   try {
     console.log('🌐 Intentando conectar con el backend...');
     const result = await apiCall();
@@ -27,13 +27,16 @@ const tryBackendFirst = async (apiCall: () => Promise<any>) => {
     return { success: true, data: result };
   } catch (error) {
     console.warn('⚠️ Backend no disponible', (error as Error).message);
+    if (mockFallback) {
+      return { success: false, data: mockFallback }; // Return mock data structure
+    }
     return { success: false, error };
   }
 };
 
 // ========== VENDEDOR APIs ==========
 export const vendorAPI = {
-  async requestTransfer(transferData) {
+  async requestTransfer(transferData: any) {
     console.log('🔄 Solicitando transferencia...', transferData);
 
     const backendCall = async () => {
@@ -66,15 +69,10 @@ export const vendorAPI = {
     }
   },
 
-  // *** NUEVA FUNCIÓN - Registrar venta desde una transferencia ***
-  async sellFromTransfer(
-    transferId: number,
-    formData: FormData
-  ) {
+  async sellFromTransfer(transferId: number, formData: FormData) {
     console.log('🔄 Registrando venta desde transferencia...', { transferId });
 
     const backendCall = async () => {
-      // formData ya contiene: total_amount, payment_methods, notes y receipt_image (opcional)
       const token = localStorage.getItem('token');
       const headers: Record<string, string> = {
         'Authorization': `Bearer ${token || ''}`
@@ -93,12 +91,9 @@ export const vendorAPI = {
     if (result.success) {
       return result.data;
     } else {
-      // Fallback mock
       console.log('📦 Usando respuesta mock para sellFromTransfer');
       await new Promise(resolve => setTimeout(resolve, 800));
       const saleId = Math.floor(Math.random() * 10000) + 1000;
-
-      // Extraer datos del formData para el mock
       const totalAmount = formData.get('total_amount');
       const paymentMethods = JSON.parse(formData.get('payment_methods') as string);
 
@@ -118,17 +113,7 @@ export const vendorAPI = {
     }
   },
 
-  async requestSingleFoot(singleFootData: {
-    source_location_id: number;
-    destination_location_id: number;
-    sneaker_reference_code: string;
-    size: string;
-    foot_side: 'left' | 'right';
-    quantity: number;
-    purpose: string;
-    pickup_type: string;
-    notes?: string | null;
-  }) {
+  async requestSingleFoot(singleFootData: any) {
     console.log('🔄 Solicitando transferencia de pie individual...', singleFootData);
 
     const backendCall = async () => {
@@ -145,7 +130,6 @@ export const vendorAPI = {
     if (result.success) {
       return result.data;
     } else {
-      // Fallback a mock
       console.log('📦 Usando respuesta mock para requestSingleFoot');
       await new Promise(resolve => setTimeout(resolve, 1000));
       const transferId = Math.floor(Math.random() * 1000) + 100;
@@ -163,7 +147,6 @@ export const vendorAPI = {
     }
   },
 
-  // *** ACTUALIZACIÓN - USAR ENDPOINT CORRECTO: /vendor/pending-transfers ***
   async getPendingTransfers() {
     console.log('🔄 Obteniendo transferencias pendientes (recepciones por confirmar)...');
 
@@ -177,39 +160,37 @@ export const vendorAPI = {
     const result = await tryBackendFirst(backendCall);
 
     if (result.success) {
-      // El endpoint devuelve: { success: true, pending_transfers: [...], summary: {...}, attention_needed: [...] }
-      console.log('✅ Transferencias pendientes cargadas del backend:', result.data.pending_transfers?.length || 0);
-
-      const transfers = result.data.pending_transfers || [];
-
-      // Contar transferencias que requieren atención (status = 'delivered')
-      const deliveredCount = transfers.filter(t => t.status === 'delivered').length;
-      const otherCount = transfers.filter(t => t.status !== 'delivered').length;
-
-      return {
-        success: true,
-        pending_transfers: transfers,
-        urgent_count: deliveredCount, // Las entregadas son urgentes (requieren confirmación)
-        normal_count: otherCount,
-        total_pending: transfers.length,
-        summary: result.data.summary,
-        attention_needed: result.data.attention_needed
-      };
+      return result.data;
     } else {
-      // Fallback a mock
       console.log('📦 Usando datos mock para pending transfers');
       await new Promise(resolve => setTimeout(resolve, 500));
       return {
         success: true,
-        pending_transfers: mockData.seller.pendingTransfers,
-        urgent_count: 1,
-        normal_count: 0,
+        pending_transfers: [
+          {
+            id: 301,
+            status: 'delivered',
+            sneaker_reference_code: 'NIKE-DUNK-005',
+            brand: 'Nike',
+            model: 'Dunk Low',
+            size: '42',
+            quantity: 1,
+            purpose: 'return',
+            pickup_type: 'corredor',
+            courier_name: 'Carlos R.',
+            warehouse_keeper_name: 'Bodega Central',
+            next_action: 'Confirmar recepción',
+            product_image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff',
+            priority: 'normal'
+          }
+        ],
+        urgent_count: 0,
+        normal_count: 1,
         total_pending: 1
       };
     }
   },
 
-  // *** NUEVA FUNCIÓN - USAR ENDPOINT CORRECTO: /vendor/completed-transfers ***
   async getCompletedTransfers() {
     console.log('🔄 Obteniendo transferencias completadas del día (historial)...');
 
@@ -223,37 +204,27 @@ export const vendorAPI = {
     const result = await tryBackendFirst(backendCall);
 
     if (result.success) {
-      // El endpoint devuelve: { success: true, date: "2025-01-28", completed_transfers: [...], today_stats: {...} }
-      console.log('✅ Transferencias completadas cargadas del backend:', result.data.completed_transfers?.length || 0);
-
-      return {
-        success: true,
-        completed_transfers: result.data.completed_transfers || [],
-        date: result.data.date,
-        today_stats: result.data.today_stats
-      };
+      return result.data;
     } else {
-      // Fallback a mock
       console.log('📦 Usando datos mock para completed transfers');
       await new Promise(resolve => setTimeout(resolve, 500));
       return {
         success: true,
-        completed_transfers: mockData.seller.completedTransfers,
+        completed_transfers: [],
         date: new Date().toISOString().split('T')[0],
         today_stats: {
-          total_transfers: 2,
-          completed: 1,
-          cancelled: 1,
-          success_rate: 50.0,
-          total_value_completed: 180.00,
-          average_duration: '2.3h',
-          performance: 'Buena'
+          total_transfers: 0,
+          completed: 0,
+          cancelled: 0,
+          success_rate: 0,
+          total_value_completed: 0,
+          average_duration: '0h',
+          performance: 'N/A'
         }
       };
     }
   },
 
-  // *** NUEVA FUNCIÓN - Obtener historial del día (completed, selled, cancelled, returned) ***
   async getTransferHistory() {
     console.log('🔄 Obteniendo historial del día...');
 
@@ -267,82 +238,155 @@ export const vendorAPI = {
     const result = await tryBackendFirst(backendCall);
 
     if (result.success) {
-      console.log('✅ Historial del día cargado del backend:', result.data.history?.length || 0);
       return result.data;
     } else {
-      // Fallback a mock
       console.log('📦 Usando datos mock para transfer history');
       await new Promise(resolve => setTimeout(resolve, 500));
-
       return {
         success: true,
         date: new Date().toISOString().split('T')[0],
-        history: [
-          {
-            id: 101,
-            type: 'transfer',
-            status: 'completed',
-            sneaker_reference_code: 'NK-AF1-001',
-            brand: 'Nike',
-            model: 'Air Force 1',
-            size: '9.0',
-            quantity: 1,
-            timestamp: new Date(Date.now() - 3600000).toISOString(), // hace 1 hora
-            notes: 'Transferencia completada'
-          },
-          {
-            id: 102,
-            type: 'transfer',
-            status: 'selled',
-            sneaker_reference_code: 'AD-SS-002',
-            brand: 'Adidas',
-            model: 'Superstar',
-            size: '8.5',
-            quantity: 1,
-            timestamp: new Date(Date.now() - 7200000).toISOString(), // hace 2 horas
-            total_amount: 120.00,
-            notes: 'Vendido inmediatamente'
-          },
-          {
-            id: 103,
-            type: 'transfer',
-            status: 'cancelled',
-            sneaker_reference_code: 'PU-RS-003',
-            brand: 'Puma',
-            model: 'RS-X',
-            size: '10.0',
-            quantity: 1,
-            timestamp: new Date(Date.now() - 10800000).toISOString(), // hace 3 horas
-            notes: 'Cliente canceló pedido'
-          },
-          {
-            id: 104,
-            type: 'return',
-            status: 'returned',
-            sneaker_reference_code: 'NK-JO-004',
-            brand: 'Jordan',
-            model: 'Retro 1',
-            size: '11.0',
-            quantity: 1,
-            timestamp: new Date(Date.now() - 14400000).toISOString(), // hace 4 horas
-            original_transfer_id: 99,
-            notes: 'Devolución por defecto'
-          }
-        ],
+        history: [],
         stats: {
-          total_items: 4,
-          completed_count: 1,
-          selled_count: 1,
-          cancelled_count: 1,
-          returned_count: 1,
-          total_sales_amount: 120.00
+          total_items: 0,
+          completed_count: 0,
+          selled_count: 0,
+          cancelled_count: 0,
+          returned_count: 0,
+          total_sales_amount: 0
         }
       };
     }
   },
 
-  // *** MANTENER - Confirmar recepción usando endpoint existente ***
-  async confirmReception(requestId, quantity, conditionOk, notes) {
+  async getIncomingTransfers() {
+    try {
+      const mockIncoming: any[] = [
+        {
+          id: 201,
+          status: 'pending',
+          sneaker_reference_code: 'NIKE-AIR-001',
+          inventory_type: 'left_only',
+          requester_name: 'Juan Pérez (Local Centro)',
+          time_elapsed: '2h 15m',
+          quantity: 1,
+          brand: 'Nike',
+          model: 'Air Force 1',
+          size: '42',
+          product_image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff',
+          pickup_type: 'vendedor'
+        },
+        {
+          id: 202,
+          status: 'accepted',
+          sneaker_reference_code: 'ADIDAS-UB-002',
+          inventory_type: 'pair',
+          requester_name: 'María González (Local Norte)',
+          time_elapsed: '45m',
+          quantity: 1,
+          brand: 'Adidas',
+          model: 'Ultra Boost',
+          size: '40',
+          product_image: 'https://images.unsplash.com/photo-1587563871167-1ee79736a4c5',
+          pickup_type: 'vendedor'
+        },
+        {
+          id: 203,
+          status: 'courier_assigned',
+          sneaker_reference_code: 'JORDAN-1-003',
+          inventory_type: 'pair',
+          requester_name: 'Carlos Rodríguez (Local Sur)',
+          time_elapsed: '1h 30m',
+          quantity: 1,
+          brand: 'Nike',
+          model: 'Air Jordan 1',
+          size: '43',
+          product_image: 'https://images.unsplash.com/photo-1581101767113-1677fc2beaa8',
+          pickup_type: 'corredor'
+        }
+      ];
+
+      const backendCall = async () => {
+        const response = await fetch(`${BACKEND_URL}/api/v1/vendor/incoming-transfers`, {
+          headers: getHeaders()
+        });
+        return handleResponse(response);
+      };
+
+      const result = await tryBackendFirst(backendCall);
+
+      if (result.success) {
+        return result.data;
+      } else {
+        return { incoming_transfers: mockIncoming, count: mockIncoming.length };
+      }
+    } catch (error) {
+      console.error('Error fetching incoming transfers:', error);
+      throw error;
+    }
+  },
+
+  async acceptIncomingTransfer(transferId: number) {
+    try {
+      const backendCall = async () => {
+        const response = await fetch(`${BACKEND_URL}/api/v1/vendor/incoming-transfers/${transferId}/accept`, {
+          method: 'POST',
+          headers: getHeaders()
+        });
+        return handleResponse(response);
+      };
+      const result = await tryBackendFirst(backendCall);
+      if (result.success) return result.data;
+      return { success: true, status: 'accepted' };
+    } catch (error) {
+      console.error('Error accepting transfer:', error);
+      throw error;
+    }
+  },
+
+  async dispatchIncomingTransfer(transferId: number, data: { delivery_notes: string; evidence_url?: string }) {
+    try {
+      const backendCall = async () => {
+        const response = await fetch(`${BACKEND_URL}/api/v1/vendor/incoming-transfers/${transferId}/dispatch`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(data)
+        });
+        return handleResponse(response);
+      };
+      const result = await tryBackendFirst(backendCall);
+      if (result.success) return result.data;
+      return { success: true, new_status: 'in_transit', inventory_updated: true, remaining_stock: 4 };
+    } catch (error) {
+      console.error('Error dispatching transfer:', error);
+      throw error;
+    }
+  },
+
+  async confirmReturnReception(returnId: number, data: { received_quantity: number; condition: string; notes: string }) {
+    try {
+      const backendCall = async () => {
+        const response = await fetch(`${BACKEND_URL}/api/v1/vendor/returns/${returnId}/confirm-reception`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(data)
+        });
+        return handleResponse(response);
+      };
+      const result = await tryBackendFirst(backendCall);
+      if (result.success) return result.data;
+      return {
+        success: true,
+        message: 'Devolución recibida correctamente',
+        inventory_restored: { reversed: true },
+        pair_reversal: { reversed: true, quantity_reversed: 1, pairs_remaining: 5 }
+      };
+    } catch (error) {
+      console.error('Error confirming return reception:', error);
+      throw error;
+    }
+  },
+
+  async confirmReception(requestId: number, quantity: number, conditionOk: boolean, notes?: string) {
     console.log('🔄 Confirmando recepción...', { requestId, quantity, conditionOk });
 
     const backendCall = async () => {
@@ -364,7 +408,6 @@ export const vendorAPI = {
     if (result.success) {
       return result.data;
     } else {
-      // Fallback a mock
       console.log('📦 Usando respuesta mock para confirm reception');
       await new Promise(resolve => setTimeout(resolve, 1000));
       return {
@@ -378,8 +421,7 @@ export const vendorAPI = {
     }
   },
 
-  // *** NUEVA FUNCIÓN - Cancelar transferencia ***
-  async cancelTransfer(transferId, reason) {
+  async cancelTransfer(transferId: number, reason?: string) {
     console.log('🔄 Cancelando transferencia...', { transferId, reason });
 
     const backendCall = async () => {
@@ -398,7 +440,6 @@ export const vendorAPI = {
     if (result.success) {
       return result.data;
     } else {
-      // Fallback a mock
       console.log('📦 Usando respuesta mock para cancel transfer');
       await new Promise(resolve => setTimeout(resolve, 1000));
       return {
@@ -411,8 +452,7 @@ export const vendorAPI = {
     }
   },
 
-  // *** NUEVA FUNCIÓN - Obtener detalles de transferencia ***
-  async getTransferDetails(transferId) {
+  async getTransferDetails(transferId: number) {
     console.log('🔄 Obteniendo detalles de transferencia...', { transferId });
 
     const backendCall = async () => {
@@ -427,12 +467,11 @@ export const vendorAPI = {
     if (result.success) {
       return result.data;
     } else {
-      // Fallback a mock
       console.log('📦 Usando respuesta mock para transfer details');
       await new Promise(resolve => setTimeout(resolve, 500));
       return {
         success: true,
-        transfer: mockData.seller.pendingTransfers[0], // Usar el primer mock como ejemplo
+        transfer: {},
         contact_info: {
           warehouse_keeper: {
             name: 'Carlos Bodeguero',
@@ -465,7 +504,6 @@ export const vendorAPI = {
     if (result.success) {
       return result.data;
     } else {
-      // Fallback a mock
       console.log('📦 Usando datos mock para dashboard');
       await new Promise(resolve => setTimeout(resolve, 800));
       return {
@@ -497,7 +535,6 @@ export const vendorAPI = {
     }
   },
 
-  // *** NUEVA FUNCIÓN - Solicitar devolución ***
   async requestReturn(returnData: ReturnRequestCreate): Promise<ReturnResponse> {
     console.log('🔄 Solicitando devolución...', returnData);
 
@@ -517,8 +554,7 @@ export const vendorAPI = {
     }
   },
 
-  // *** NUEVA FUNCIÓN - Crear devolución (PASO 1) ***
-  async createReturn(returnData) {
+  async createReturn(returnData: any) {
     console.log('🔄 Creando devolución...', returnData);
 
     const backendCall = async () => {
@@ -535,40 +571,24 @@ export const vendorAPI = {
     if (result.success) {
       return result.data;
     } else {
-      // Fallback a mock según especificación
       console.log('📦 Usando respuesta mock para createReturn');
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       return {
         success: true,
-        message: returnData.pickup_type === 'corredor'
-          ? 'Devolución creada - Un corredor recogerá el producto'
-          : 'Devolución creada - Llevarás el producto tú mismo',
+        message: 'Devolución creada',
         return_id: Math.floor(Math.random() * 1000) + 135,
         original_transfer_id: returnData.original_transfer_id,
         status: 'pending',
         pickup_type: returnData.pickup_type,
-        estimated_return_time: returnData.pickup_type === 'corredor' ? '2-3 horas' : '1-2 horas (depende de tu disponibilidad)',
-        workflow_steps: returnData.pickup_type === 'corredor' ? [
-          "1. 📋 Bodeguero aceptará la solicitud",
-          "2. 🚚 Corredor recogerá el producto en tu local",
-          "3. 🚚 Corredor entregará en bodega",
-          "4. 🔍 Bodeguero confirmará recepción y restaurará inventario"
-        ] : [
-          "1. 📋 Bodeguero aceptará la solicitud",
-          "2. 🚶 TÚ deberás llevar el producto a bodega personalmente",
-          "3. 🏪 Bodeguero confirmará que recibió el producto",
-          "4. 🔍 Bodeguero verificará condición y restaurará inventario"
-        ],
-        next_action: returnData.pickup_type === 'corredor'
-          ? 'Esperar que bodeguero acepte, luego corredor coordinará recogida'
-          : 'Esperar que bodeguero acepte, luego ir a bodega con el producto'
+        estimated_return_time: '2-3 horas',
+        workflow_steps: [],
+        next_action: 'Esperar'
       };
     }
   },
 
-  // *** NUEVA FUNCIÓN - Entregar devolución a bodega (PASO 3 - Vendedor) ***
-  async deliverReturnToWarehouse(returnId, deliveryNotes) {
+  async deliverReturnToWarehouse(returnId: number, deliveryNotes: string) {
     console.log('🔄 Entregando devolución a bodega...', { returnId, deliveryNotes });
 
     const backendCall = async () => {
@@ -585,73 +605,35 @@ export const vendorAPI = {
     if (result.success) {
       return result.data;
     } else {
-      // Fallback a mock según especificación
       console.log('📦 Usando respuesta mock para deliver return to warehouse');
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       return {
         success: true,
-        message: 'Entrega confirmada - Esperando que bodeguero valide recepción',
+        message: 'Entrega confirmada',
         return_id: returnId,
-        original_transfer_id: 131,
         status: 'delivered',
-        delivered_at: new Date().toISOString(),
-        pickup_type: 'vendedor',
-        warehouse_location: 'Bodega Principal',
-        product_info: {
-          reference_code: 'NK-AF1-001',
-          brand: 'Nike',
-          model: 'Air Force 1',
-          size: '9.0',
-          quantity: 1
-        },
-        vendor_info: {
-          vendor_id: 23,
-          delivery_notes: deliveryNotes
-        },
-        next_step: 'Bodeguero debe confirmar recepción y restaurar inventario (BG010)',
-        pending_action: {
-          who: 'Bodeguero',
-          what: 'Verificar producto y confirmar recepción',
-          endpoint: 'POST /warehouse/confirm-return-reception/' + returnId
-        }
+        delivered_at: new Date().toISOString()
       };
     }
   }
 };
 
-// ========== BODEGUERO APIs (ACTUALIZADAS) ==========  
+// ========== BODEGUERO APIs ==========
 export const warehouseAPI = {
   async getPendingRequests() {
     console.log('🔄 Obteniendo solicitudes pendientes de bodega...');
-
     const backendCall = async () => {
-      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/pending-requests`, {
-        headers: getHeaders()
-      });
+      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/pending-requests`, { headers: getHeaders() });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock
-      console.log('📦 Usando datos mock para warehouse pending requests');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return {
-        success: true,
-        pending_requests: [],
-        urgent_count: 0,
-        total_stock_value: 1580.50
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, pending_requests: [], urgent_count: 0, total_stock_value: 0 };
   },
 
-  async acceptRequest(requestData) {
+  async acceptRequest(requestData: any) {
     console.log('🔄 Aceptando solicitud...', requestData);
-
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/accept-request`, {
         method: 'POST',
@@ -660,52 +642,24 @@ export const warehouseAPI = {
       });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock
-      console.log('📦 Usando respuesta mock para accept request');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return {
-        success: true,
-        message: 'Solicitud aceptada - Disponible para corredores',
-        request_id: requestData.transfer_request_id,
-        status: 'accepted'
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, message: 'Solicitud aceptada', status: 'accepted' };
   },
 
   async getAcceptedRequests() {
     console.log('🔄 Obteniendo solicitudes aceptadas...');
-
     const backendCall = async () => {
-      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/accepted-requests`, {
-        headers: getHeaders()
-      });
+      const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/accepted-requests`, { headers: getHeaders() });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock
-      console.log('📦 Usando datos mock para accepted requests');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return {
-        success: true,
-        accepted_requests: []
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, accepted_requests: [] };
   },
 
-  async deliverToCourier(requestData) {
+  async deliverToCourier(requestData: any) {
     console.log('🔄 Entregando a corredor...', requestData);
-
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/deliver-to-courier`, {
         method: 'POST',
@@ -714,30 +668,13 @@ export const warehouseAPI = {
       });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock
-      console.log('📦 Usando respuesta mock para deliver to courier');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return {
-        success: true,
-        message: 'Producto entregado a corredor - Inventario actualizado',
-        transfer_request_id: requestData.transfer_request_id,
-        courier_id: requestData.courier_id,
-        status: 'in_transit',
-        inventory_updated: true,
-        delivered_at: new Date().toISOString()
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, message: 'Entregado a corredor', status: 'in_transit' };
   },
 
-  async deliverToVendor(transferId, requestData) {
+  async deliverToVendor(transferId: number, requestData: any) {
     console.log('🔄 Entregando a vendedor...', { transferId, requestData });
-
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/deliver-to-vendor/${transferId}`, {
         method: 'POST',
@@ -746,30 +683,13 @@ export const warehouseAPI = {
       });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock
-      console.log('📦 Usando respuesta mock para deliver to vendor');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return {
-        success: true,
-        message: 'Producto entregado a vendedor - Inventario actualizado',
-        transfer_id: transferId,
-        vendor_name: 'Vendedor Asignado',
-        inventory_updated: true,
-        delivered_at: new Date().toISOString()
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, message: 'Entregado a vendedor', status: 'delivered' };
   },
 
-  // *** NUEVA FUNCIÓN - Aceptar devolución (PASO 2) ***
-  async acceptReturn(returnData) {
+  async acceptReturn(returnData: any) {
     console.log('🔄 Aceptando devolución...', returnData);
-
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/accept-request`, {
         method: 'POST',
@@ -783,31 +703,13 @@ export const warehouseAPI = {
       });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock según especificación
-      console.log('📦 Usando respuesta mock para accept return');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      return {
-        success: true,
-        message: 'Solicitud aceptada - Disponible para corredores',
-        request_id: returnData.transfer_request_id,
-        status: 'accepted',
-        warehouse_location: 'Bodega Principal',
-        next_step: 'Esperando asignación de corredor'
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, message: 'Return aceptado', status: 'accepted' };
   },
 
-  // *** NUEVA FUNCIÓN - Confirmar recepción de devolución (PASO 6) ***
-  async confirmReturnReception(returnId, confirmationData) {
+  async confirmReturnReception(returnId: number, confirmationData: any) {
     console.log('🔄 Confirmando recepción de devolución...', { returnId, confirmationData });
-
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/confirm-return-reception/${returnId}`, {
         method: 'POST',
@@ -816,131 +718,53 @@ export const warehouseAPI = {
       });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock según especificación
-      console.log('📦 Usando respuesta mock para confirm return reception');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      return {
-        success: true,
-        message: 'Devolución recibida - Inventario restaurado automáticamente',
-        return_id: returnId,
-        original_transfer_id: 131,
-        received_quantity: confirmationData.received_quantity,
-        product_condition: confirmationData.product_condition,
-        inventory_restored: confirmationData.return_to_inventory,
-        warehouse_location: 'Bodega Principal',
-        inventory_change: {
-          product_id: 161,
-          product_size_id: 524,
-          product_reference: 'NK-AF1-001',
-          product_name: 'Nike Air Force 1',
-          size: '9.0',
-          quantity_returned: confirmationData.received_quantity,
-          quantity_before: 5,
-          quantity_after: 5 + confirmationData.received_quantity,
-          location: 'Bodega Principal',
-          change_type: 'return_reception'
-        }
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, message: 'Devolución recibida', status: 'completed' };
   }
 };
 
-// ========== CORREDOR APIs (ACTUALIZADAS) ==========
+// ========== CORREDOR APIs ==========
 export const courierAPI = {
   async getAvailableRequests() {
     console.log('🔄 Obteniendo entregas disponibles...');
-
     const backendCall = async () => {
-      const response = await fetch(`${BACKEND_URL}/api/v1/courier/available-requests`, {
-        headers: getHeaders()
-      });
+      const response = await fetch(`${BACKEND_URL}/api/v1/courier/available-requests`, { headers: getHeaders() });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock
-      console.log('📦 Usando datos mock para available requests');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return {
-        success: true,
-        available_requests: []
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, available_requests: [] };
   },
 
-  async acceptRequest(requestId, estimatedTime, notes) {
+  async acceptRequest(requestId: number, estimatedTime: string, notes?: string) {
     console.log('🔄 Aceptando transporte...', { requestId, estimatedTime });
-
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/accept-request/${requestId}`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({
-          estimated_pickup_time: estimatedTime,
-          notes
-        })
+        body: JSON.stringify({ estimated_pickup_time: estimatedTime, notes })
       });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock
-      console.log('📦 Usando respuesta mock para accept request');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return {
-        success: true,
-        message: 'Solicitud de transporte aceptada exitosamente',
-        request_id: requestId,
-        status: 'courier_assigned',
-        estimated_pickup_time: estimatedTime,
-        accepted_at: new Date().toISOString()
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, message: 'Transporte aceptado', status: 'courier_assigned' };
   },
 
   async getMyAssignedTransports() {
     console.log('🔄 Obteniendo mis transportes asignados...');
-
     const backendCall = async () => {
-      const response = await fetch(`${BACKEND_URL}/api/v1/courier/my-transports`, {
-        headers: getHeaders()
-      });
+      const response = await fetch(`${BACKEND_URL}/api/v1/courier/my-transports`, { headers: getHeaders() });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock
-      console.log('📦 Usando datos mock para assigned transports');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return {
-        success: true,
-        my_transports: []
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, my_transports: [] };
   },
 
-  async confirmPickup(requestId, notes) {
+  async confirmPickup(requestId: number, notes?: string) {
     console.log('🔄 Confirmando recolección...', { requestId });
-
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/confirm-pickup/${requestId}`, {
         method: 'POST',
@@ -949,125 +773,57 @@ export const courierAPI = {
       });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock
-      console.log('📦 Usando respuesta mock para confirm pickup');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return {
-        success: true,
-        message: 'Recolección confirmada - Producto en tránsito',
-        request_id: requestId,
-        status: 'in_transit',
-        picked_up_at: new Date().toISOString()
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, message: 'Recolección confirmada', status: 'in_transit' };
   },
 
-  async confirmDelivery(requestId, successful, notes) {
+  async confirmDelivery(requestId: number, successful: boolean, notes?: string) {
     console.log('🔄 Confirmando entrega...', { requestId, successful });
-
     const backendCall = async () => {
       const params = new URLSearchParams({
         delivery_successful: successful.toString(),
         notes: notes || ''
       });
-
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/confirm-delivery/${requestId}?${params}`, {
         method: 'POST',
         headers: getHeaders()
       });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock
-      console.log('📦 Usando respuesta mock para confirm delivery');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return {
-        success: true,
-        message: 'Entrega confirmada exitosamente',
-        request_id: requestId,
-        status: 'delivered',
-        delivered_at: new Date().toISOString()
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, message: 'Entrega confirmada', status: 'delivered' };
   },
 
   async getMyDeliveries() {
     console.log('🔄 Obteniendo historial de entregas...');
-
     const backendCall = async () => {
-      const response = await fetch(`${BACKEND_URL}/api/v1/courier/my-deliveries`, {
-        headers: getHeaders()
-      });
+      const response = await fetch(`${BACKEND_URL}/api/v1/courier/my-deliveries`, { headers: getHeaders() });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock
-      console.log('📦 Usando datos mock para deliveries');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return {
-        success: true,
-        recent_deliveries: []
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, recent_deliveries: [] };
   },
 
-  // *** NUEVA FUNCIÓN - Aceptar transporte de devolución (PASO 3) ***
-  async acceptReturnTransport(returnId, estimatedTime, notes) {
+  async acceptReturnTransport(returnId: number, estimatedTime: string, notes?: string) {
     console.log('🔄 Aceptando transporte de devolución...', { returnId, estimatedTime });
-
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/accept-request/${returnId}`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({
-          estimated_pickup_time: estimatedTime,
-          notes
-        })
+        body: JSON.stringify({ estimated_pickup_time: estimatedTime, notes })
       });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock según especificación
-      console.log('📦 Usando respuesta mock para accept return transport');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      return {
-        success: true,
-        message: 'Return asignado exitosamente',
-        request_id: returnId,
-        status: 'courier_assigned',
-        pickup_location: 'Local Centro',
-        delivery_location: 'Bodega Principal',
-        estimated_pickup_time: estimatedTime
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, message: 'Return asignado', status: 'courier_assigned' };
   },
 
-  // *** NUEVA FUNCIÓN - Confirmar recolección de devolución (PASO 4) ***
-  async confirmReturnPickup(returnId, pickupNotes) {
+  async confirmReturnPickup(returnId: number, pickupNotes?: string) {
     console.log('🔄 Confirmando recolección de devolución...', { returnId });
-
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/confirm-pickup/${returnId}`, {
         method: 'POST',
@@ -1076,66 +832,30 @@ export const courierAPI = {
       });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock según especificación
-      console.log('📦 Usando respuesta mock para confirm return pickup');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      return {
-        success: true,
-        message: 'Recolección confirmada - En tránsito a bodega',
-        request_id: returnId,
-        status: 'in_transit',
-        picked_up_at: new Date().toISOString(),
-        destination: 'Bodega Principal'
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, message: 'Recolección confirmada', status: 'in_transit' };
   },
 
-  // *** NUEVA FUNCIÓN - Confirmar entrega de devolución (PASO 5) ***
-  async confirmReturnDelivery(returnId, successful, notes) {
+  async confirmReturnDelivery(returnId: number, successful: boolean, notes?: string) {
     console.log('🔄 Confirmando entrega de devolución...', { returnId, successful });
-
     const backendCall = async () => {
       const params = new URLSearchParams({
         delivery_successful: successful.toString(),
         notes: notes || ''
       });
-
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/confirm-delivery/${returnId}?${params}`, {
         method: 'POST',
         headers: getHeaders()
       });
       return handleResponse(response);
     };
-
     const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
-      // Fallback a mock según especificación
-      console.log('📦 Usando respuesta mock para confirm return delivery');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      return {
-        success: true,
-        message: 'Entrega confirmada - Esperando confirmación de recepción',
-        request_id: returnId,
-        status: 'delivered',
-        delivered_at: new Date().toISOString(),
-        next_step: 'Bodeguero debe confirmar recepción (BG010)'
-      };
-    }
+    if (result.success) return result.data;
+    return { success: true, message: 'Entrega confirmada', status: 'delivered' };
   }
 };
 
-// Exportar todo como un objeto para facilitar el import
 export const transfersAPI = {
   vendor: vendorAPI,
   warehouse: warehouseAPI,

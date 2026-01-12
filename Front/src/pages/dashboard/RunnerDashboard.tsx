@@ -232,13 +232,13 @@ export const RunnerDashboard: React.FC = () => {
       if (isReturn) {
         response = await courierAPI.acceptReturnTransport(
           requestId,
-          estimatedTime,
+          estimatedTime.toString(),
           `En camino al punto de recolección para devolución. ETA: ${estimatedTime} minutos.`
         );
       } else {
         response = await courierAPI.acceptRequest(
           requestId,
-          estimatedTime,
+          estimatedTime.toString(),
           `En camino al punto de recolección. ETA: ${estimatedTime} minutos.`
         );
       }

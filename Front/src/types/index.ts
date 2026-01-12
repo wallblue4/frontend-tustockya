@@ -180,12 +180,15 @@ export interface MyTransportsResponse {
 export interface PendingTransferItem {
   id: number;
   status: 'pending' | 'accepted' | 'courier_assigned' | 'in_transit' | 'delivered' | 'completed' | 'selled';
+  request_type: 'transfer' | 'return';
+  is_return: boolean;
+  role_in_transfer: 'requester' | 'receiver';
   sneaker_reference_code: string;
   brand: string;
   model: string;
   size: string;
   quantity: number;
-  purpose: 'cliente' | 'return' | 'pair_formation';
+  purpose: 'cliente' | 'return' | 'pair_formation' | 'restock';
   priority: 'high' | 'normal';
   requested_at: string;
   time_elapsed: string;

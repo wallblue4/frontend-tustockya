@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { vendorAPI } from '../../services/transfersAPI';
-import { PendingTransferItem, PendingTransfersResponse, TransferHistoryItem, TransferHistoryResponse } from '../../types';
+import { PendingTransferItem, PendingTransfersResponse, TransferHistoryItem, TransferHistoryResponse, IncomingTransfer, IncomingTransfersResponse } from '../../types';
 import { ReturnModal } from './ReturnModal';
 
 import {
@@ -18,7 +18,9 @@ import {
   XCircle,
   History,
   DollarSign,
-  MapPin
+  MapPin,
+  ArrowDownCircle,
+  Send
 } from 'lucide-react';
 
 interface TransfersViewProps {
@@ -96,12 +98,13 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   onSellProduct
 }) => {
   // Usar onSellProduct como prop, igual que en ProductScanner
-  const [activeTab, setActiveTab] = useState<'pending' | 'completed' | 'history' | 'new'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'completed' | 'history' | 'new' | 'incoming'>('pending');
 
   // *** ESTADOS ACTUALIZADOS PARA ENDPOINTS CORRECTOS ***
   const [pendingTransfers, setPendingTransfers] = useState<PendingTransferItem[]>([]);
   const [completedTransfers, setCompletedTransfers] = useState<CompletedTransfer[]>([]);
   const [transferHistory, setTransferHistory] = useState<TransferHistoryItem[]>([]);
+  const [incomingTransfers, setIncomingTransfers] = useState<IncomingTransfer[]>([]);
 
   // *** NUEVOS ESTADOS PARA DEVOLUCIONES ***
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -112,7 +115,6 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   const [urgentCount, setUrgentCount] = useState(0);
   const [normalCount, setNormalCount] = useState(0);
   const [totalPending, setTotalPending] = useState(0);
-  const [todayStats, setTodayStats] = useState<any>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -226,12 +228,23 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         console.log('✅ Historial cargado:', response.history?.length || 0);
       }
 
+      // *** CARGAR SOLICITUDES ENTRANTES (Vendor to Vendor) ***
+      console.log('🔄 Cargando solicitudes entrantes...');
+      const incomingResponse = await vendorAPI.getIncomingTransfers();
+
+      if (incomingResponse.success) {
+        const response = incomingResponse as IncomingTransfersResponse;
+        setIncomingTransfers(response.incoming_transfers || []);
+        console.log('✅ Solicitudes entrantes cargadas:', response.incoming_transfers?.length || 0);
+      }
+
     } catch (err: any) {
       console.error('Error loading transfers:', err);
       setError('Error conectando con el servidor');
       setPendingTransfers([]);
       setCompletedTransfers([]);
       setTransferHistory([]);
+      setIncomingTransfers([]);
       setUrgentCount(0);
       setNormalCount(0);
       setTotalPending(0);
@@ -354,11 +367,24 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
   const handleConfirmReception = async (transfer: PendingTransferItem) => {
     try {
-      // Confirmar recepción solamente
-      await vendorAPI.confirmReception(transfer.id, 1, true, 'Producto recibido correctamente');
+      // Verificar si es una devolución
+      const isReturn = transfer.purpose === 'return';
+
+      if (isReturn) {
+        console.log('🔄 Confirmando recepción de devolución...', transfer.id);
+        await vendorAPI.confirmReturnReception(transfer.id, {
+          received_quantity: transfer.quantity,
+          condition: 'good',
+          notes: 'Devolución recibida correctamente'
+        });
+      } else {
+        // Confirmar recepción normal
+        console.log('🔄 Confirmando recepción de transferencia...', transfer.id);
+        await vendorAPI.confirmReception(transfer.id, 1, true, 'Producto recibido correctamente');
+      }
 
       // Mensaje de éxito
-      alert('✅ Recepción confirmada exitosamente.\n\nEl producto ahora aparecerá en "Transferencias Completadas" donde podrás venderlo o generar una devolución si es necesario.');
+      alert(`✅ Recepción de ${isReturn ? 'devolución' : 'transferencia'} confirmada exitosamente.\n\nEl inventario ha sido actualizado.`);
 
       // Recargar datos para actualizar las listas
       loadTransfersData();
@@ -447,6 +473,35 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       loadTransfersData();
     } catch (err: any) {
       console.error('❌ Error entregando devolución:', err);
+      alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+    }
+  };
+
+
+  // *** NUEVAS FUNCIONES PARA SOLICITUDES ENTRANTES ***
+  const handleAcceptIncomingTransfer = async (transferId: number) => {
+    try {
+      console.log('🔄 Aceptando solicitud entrante...', transferId);
+      await vendorAPI.acceptIncomingTransfer(transferId);
+      alert('✅ Solicitud aceptada. Ahora puedes despachar el producto.');
+      loadTransfersData();
+    } catch (err: any) {
+      console.error('❌ Error aceptando solicitud:', err);
+      alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+    }
+  };
+
+  const handleDispatchIncomingTransfer = async (transferId: number) => {
+    const notes = prompt('Notas de entrega (opcional):', 'Entregado a corredor');
+    if (notes === null) return; // Cancelado por usuario
+
+    try {
+      console.log('🔄 Despachando solicitud entrante...', transferId);
+      await vendorAPI.dispatchIncomingTransfer(transferId, { delivery_notes: notes });
+      alert('✅ Producto despachado. El inventario ha sido actualizado.');
+      loadTransfersData();
+    } catch (err: any) {
+      console.error('❌ Error despachando solicitud:', err);
       alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));
     }
   };
@@ -678,12 +733,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   <p className="text-xs text-success">✅ Normales</p>
                 </div>
               )}
-              {todayStats && (
-                <div className="bg-success/10 p-3 rounded-lg border border-success/20">
-                  <p className="text-2xl font-bold text-success">{todayStats.completed || 0}</p>
-                  <p className="text-xs text-success">Completadas Hoy</p>
-                </div>
-              )}
+
             </div>
           </CardContent>
         </Card>
@@ -701,10 +751,12 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               <div className="flex items-center space-x-2">
                 {activeTab === 'pending' && <Package className="h-4 w-4 text-primary" />}
                 {activeTab === 'completed' && <CheckCircle className="h-4 w-4 text-primary" />}
+                {activeTab === 'incoming' && <ArrowDownCircle className="h-4 w-4 text-primary" />}
                 {activeTab === 'new' && <Plus className="h-4 w-4 text-primary" />}
                 <span className="font-medium">
                   {activeTab === 'pending' && `Recepciones por Confirmar (${totalPending})`}
                   {activeTab === 'completed' && 'Transferencias Completadas'}
+                  {activeTab === 'incoming' && `Solicitudes Entrantes (${incomingTransfers.filter(t => t.status === 'pending').length})`}
                   {activeTab === 'history' && 'Historial del Día'}
                   {activeTab === 'new' && 'Nueva Solicitud'}
                   {prefilledProductData && activeTab === 'new' && (
@@ -740,6 +792,17 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 >
                   <CheckCircle className="h-4 w-4" />
                   <span>Transferencias Completadas</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('incoming');
+                    setShowMobileMenu(false);
+                  }}
+                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/20 border-t ${activeTab === 'incoming' ? 'bg-primary/10 text-primary' : ''
+                    }`}
+                >
+                  <ArrowDownCircle className="h-4 w-4" />
+                  <span>Solicitudes Entrantes ({incomingTransfers.filter(t => t.status === 'pending').length})</span>
                 </button>
                 <button
                   onClick={() => {
@@ -789,6 +852,13 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             >
               <CheckCircle className="h-4 w-4 mr-2" />
               Transferencias Completadas
+            </Button>
+            <Button
+              variant={activeTab === 'incoming' ? 'primary' : 'outline'}
+              onClick={() => setActiveTab('incoming')}
+            >
+              <ArrowDownCircle className="h-4 w-4 mr-2" />
+              Solicitudes Entrantes ({incomingTransfers.filter(t => t.status === 'pending').length})
             </Button>
             <Button
               variant={activeTab === 'history' ? 'primary' : 'outline'}
@@ -967,7 +1037,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                             {transfer.pickup_type === 'vendedor' && (
                               <>
                                 {/* CASO 1: Devolución - Status accepted - Debes llevar el producto a bodega */}
-                                {transfer.purpose === 'return' && transfer.status === 'accepted' && (
+                                {transfer.is_return && transfer.role_in_transfer === 'requester' && transfer.status === 'accepted' && (
                                   <>
                                     <div className="p-3 bg-muted/10 border border-muted/20 rounded-lg mb-2">
                                       <div className="flex items-center space-x-2 mb-1">
@@ -992,7 +1062,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                 )}
 
                                 {/* CASO 2: Transferencia normal - Status accepted - Debes ir a recoger */}
-                                {transfer.purpose !== 'return' && transfer.status === 'accepted' && (
+                                {!transfer.is_return && transfer.status === 'accepted' && (
                                   <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
                                     <div className="flex items-center space-x-2">
                                       <AlertCircle className="h-4 w-4 text-warning" />
@@ -1004,7 +1074,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                 )}
 
                                 {/* CASO 3: Status delivered - Confirmar recepción */}
-                                {transfer.status === 'delivered' && transfer.purpose !== 'return' && (
+                                {transfer.status === 'delivered' && !transfer.is_return && (
                                   <Button
                                     onClick={() => handleConfirmReception(transfer)}
                                     className="bg-success hover:bg-success/90 text-success-foreground text-sm w-full"
@@ -1015,16 +1085,16 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                   </Button>
                                 )}
 
-                                {/* CASO 3.1: Status delivered Y purpose return - Ya entregado, nada más que hacer */}
-                                {transfer.status === 'delivered' && transfer.purpose === 'return' && (
-                                  <div className="p-3 bg-muted/10 border border-muted/20 rounded-lg">
-                                    <div className="flex items-center space-x-2">
-                                      <Clock className="h-4 w-4 text-muted-foreground" />
-                                      <span className="text-sm font-medium text-card-foreground">
-                                        ⏳ Esperando que bodeguero confirme la recepción
-                                      </span>
-                                    </div>
-                                  </div>
+                                {/* CASO 3.1: Status delivered Y is_return Y soy el RECEIVER - Confirmar recepción de devolución */}
+                                {transfer.status === 'delivered' && transfer.is_return && transfer.role_in_transfer === 'receiver' && (
+                                  <Button
+                                    onClick={() => handleConfirmReception(transfer)}
+                                    className="bg-success hover:bg-success/90 text-success-foreground text-sm w-full"
+                                    size="sm"
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Confirmar Devolución
+                                  </Button>
                                 )}
 
                                 {/* CASO 4: Status pending - Cancelar */}
@@ -1584,6 +1654,106 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 )}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'incoming' && (
+        <Card>
+          <CardHeader>
+            <h3 className="text-base md:text-lg font-semibold">Solicitudes de Otros Vendedores</h3>
+          </CardHeader>
+          <CardContent>
+            {incomingTransfers.length === 0 ? (
+              <div className="text-center py-8 md:py-12">
+                <ArrowDownCircle className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm md:text-base">No tienes solicitudes entrantes</p>
+              </div>
+            ) : (
+              <div className="space-y-3 md:space-y-4">
+                {incomingTransfers.map((transfer) => (
+                  <div key={transfer.id} className="border border-border rounded-lg p-3 md:p-4 bg-card shadow-sm hover:shadow-lg transition-all duration-300">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
+                      <div className="flex-1 min-w-0">
+                        {/* Imagen del producto */}
+                        {transfer.product_image && (
+                          <div className="mb-3">
+                            <img
+                              src={transfer.product_image}
+                              alt={`${transfer.brand} ${transfer.model}`}
+                              className="w-32 h-48 object-cover rounded-lg border border-border"
+                            />
+                          </div>
+                        )}
+
+                        <div className="flex items-center space-x-2 mb-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${transfer.status === 'pending' ? 'bg-warning/10 text-warning' :
+                            transfer.status === 'accepted' ? 'bg-info/10 text-info' :
+                              transfer.status === 'courier_assigned' ? 'bg-primary/10 text-primary' :
+                                'bg-success/10 text-success'
+                            }`}>
+                            {transfer.status === 'pending' ? '⏳ Pendiente' :
+                              transfer.status === 'accepted' ? (transfer.pickup_type === 'corredor' ? '⏳ Esperando corredor' : '✅ Aceptada') :
+                                transfer.status === 'courier_assigned' ? '🚚 Corredor asignado' :
+                                  transfer.status === 'in_transit' ? '🚚 En Tránsito' : transfer.status}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3 inline mr-1" />
+                            Hace {transfer.time_elapsed}
+                          </span>
+                        </div>
+
+                        <h4 className="font-semibold text-sm md:text-lg truncate">
+                          {transfer.brand} {transfer.model}
+                        </h4>
+                        <p className="text-xs md:text-sm text-muted-foreground truncate">
+                          Código: {transfer.sneaker_reference_code} | Talla: {transfer.size}
+                        </p>
+
+                        <div className="mt-2 p-2 bg-muted/10 rounded-md border border-muted/20">
+                          <p className="text-xs md:text-sm">
+                            <strong>Solicitado por:</strong> {transfer.requester_name}
+                          </p>
+                          <p className="text-xs md:text-sm mt-1">
+                            <strong>Tipo:</strong> {transfer.inventory_type === 'pair' ? '👟 Par Completo' :
+                              transfer.inventory_type === 'left_only' ? '🦶 Pie Izquierdo' : '🦶 Pie Derecho'}
+                          </p>
+                          <p className="text-xs md:text-sm mt-1">
+                            <strong>Envío:</strong> {transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2 mt-3 md:mt-0 md:ml-4">
+                        {transfer.status === 'pending' && (
+                          <Button
+                            onClick={() => handleAcceptIncomingTransfer(transfer.id)}
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm w-full md:w-auto"
+                            size="sm"
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Aceptar Solicitud
+                          </Button>
+                        )}
+
+                        {/* Botón de Despacho: depende del pickup_type */}
+                        {((transfer.pickup_type === 'vendedor' && transfer.status === 'accepted') ||
+                          (transfer.pickup_type === 'corredor' && transfer.status === 'courier_assigned')) && (
+                            <Button
+                              onClick={() => handleDispatchIncomingTransfer(transfer.id)}
+                              className="bg-success hover:bg-success/90 text-success-foreground text-sm w-full md:w-auto"
+                              size="sm"
+                            >
+                              <Send className="h-4 w-4 mr-2" />
+                              Despachar Producto
+                            </Button>
+                          )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

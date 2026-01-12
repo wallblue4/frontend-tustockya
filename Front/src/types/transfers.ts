@@ -127,13 +127,13 @@ export interface ReturnDeliveryResponse {
 export interface ReturnReceptionResponse {
   success: boolean;
   message: string;
-  return_id: number;
-  original_transfer_id: number;
-  received_quantity: number;
-  product_condition: string;
-  inventory_restored: boolean;
-  warehouse_location: string;
-  inventory_change: {
+  return_id?: number;
+  original_transfer_id?: number;
+  received_quantity?: number;
+  product_condition?: string;
+  inventory_restored: any;
+  warehouse_location?: string;
+  inventory_change?: {
     product_id: number;
     product_size_id: number;
     product_reference: string;
@@ -144,6 +144,11 @@ export interface ReturnReceptionResponse {
     quantity_after: number;
     location: string;
     change_type: string;
+  };
+  pair_reversal?: {
+    reversed: boolean;
+    quantity_reversed: number;
+    pairs_remaining: number;
   };
 }
 
@@ -212,4 +217,43 @@ export interface TransferHistoryResponse {
     returned_count: number;
     total_sales_amount: number;
   };
+}
+
+// Interfaces para Transferencias Entrantes (Vendor to Vendor)
+export interface IncomingTransfer {
+  id: number;
+  status: 'pending' | 'accepted' | 'courier_assigned' | 'in_transit' | 'completed' | 'cancelled';
+  sneaker_reference_code: string;
+  inventory_type: 'pair' | 'left_only' | 'right_only';
+  requester_name: string;
+  time_elapsed: string;
+  quantity: number;
+  brand: string;
+  model: string;
+  size: string;
+  product_image: string;
+  pickup_type: 'vendedor' | 'corredor';
+}
+
+export interface IncomingTransfersResponse {
+  incoming_transfers: IncomingTransfer[];
+  count: number;
+}
+
+export interface DispatchTransferRequest {
+  delivery_notes: string;
+  evidence_url?: string;
+}
+
+export interface DispatchTransferResponse {
+  success: boolean;
+  new_status: string;
+  inventory_updated: boolean;
+  remaining_stock: number;
+}
+
+export interface ReturnReceptionRequest {
+  received_quantity: number;
+  condition: 'good' | 'damaged' | 'unusable';
+  notes: string;
 }
