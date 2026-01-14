@@ -29,16 +29,39 @@ export const useTransferNotifications = () => {
   }, []);
 
   // Función para disparar la alerta visual del Sistema Operativo (Windows/macOS/Android)
-  const triggerOSNotification = useCallback((title: string, message: string) => {
-    if ("Notification" in window && Notification.permission === "granted") {
+  const triggerOSNotification = useCallback(async (title: string, message: string) => {
+    if (!("Notification" in window) || Notification.permission !== "granted") {
+      return;
+    }
+
+    const options: any = {
+      body: message,
+      icon: '/src/Logo/Solo%20logo%20sin%20fondo.png',
+      badge: '/src/Logo/Solo%20logo%20sin%20fondo.png',
+      tag: "transfer-update",
+      renotify: true,
+      silent: false,
+    };
+
+    try {
+      // 1. Intentar vía Service Worker (Requerido para Android)
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        if (registration && 'showNotification' in registration) {
+          await registration.showNotification(title, options);
+          return;
+        }
+      }
+
+      // 2. Fallback a constructor tradicional (Desktop)
+      new Notification(title, options);
+    } catch (err) {
+      console.error("Error al disparar notificación nativa:", err);
+      // Último intento con constructor tradicional si SW falla
       try {
-        new Notification(title, {
-          body: message,// Asegúrate de que esta ruta sea válida en tu carpeta public
-          tag: "transfer-update", // Agrupa notificaciones para no saturar el centro de actividades
-          silent: false,
-        });
-      } catch (err) {
-        console.error("Error al disparar notificación nativa:", err);
+        new Notification(title, options);
+      } catch (e) {
+        console.error("Error en fallback de notificación:", e);
       }
     }
   }, []);
