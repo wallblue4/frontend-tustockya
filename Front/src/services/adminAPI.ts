@@ -240,7 +240,7 @@ export const createUser = async (userData: UserCreate) => {
 
 // GET /api/v1/admin/admin/users
 export const fetchManagedUsers = async (params?: {
-  role?: 'vendedor' | 'bodeguero' | 'corredor';
+  role?: 'seller' | 'bodeguero' | 'corredor';
   location_id?: number;
   is_active?: boolean;
 }) => {
@@ -576,7 +576,7 @@ export const fetchUsersPerformance = async (params: {
     start_date: params.start_date,
     end_date: params.end_date,
   });
-  
+
   if (params.user_ids?.length) {
     params.user_ids.forEach(id => searchParams.append('user_ids', id.toString()));
   }
@@ -689,34 +689,34 @@ export const processVideoInventoryEntry = async (inventoryData: {
   reference_image?: File | null;
 }) => {
   const formData = new FormData();
-  
+
   // ORDEN EXACTO según el curl que funciona:
-  
+
   // 1. product_brand (opcional pero siempre presente)
   const productBrand = inventoryData.product_brand?.trim() || '';
   formData.append('product_brand', productBrand);
-  
+
   // 2. product_model (opcional pero siempre presente)
   const productModel = inventoryData.product_model?.trim() || '';
   formData.append('product_model', productModel);
-  
+
   // 3. unit_price (obligatorio)
   formData.append('unit_price', inventoryData.unit_price.toString());
-  
+
   // 4. sizes_distribution_json (obligatorio)
   formData.append('sizes_distribution_json', inventoryData.sizes_distribution_json);
-  
+
   // 5. video_file (obligatorio)
   formData.append('video_file', inventoryData.video_file);
-  
+
   // 6. box_price (opcional pero siempre presente)
   const boxPrice = inventoryData.box_price || 0;
   formData.append('box_price', boxPrice.toString());
-  
+
   // 7. notes (opcional pero siempre presente)
   const notes = inventoryData.notes?.trim() || '';
   formData.append('notes', notes);
-  
+
   // 8. reference_image (siempre presente)
   if (inventoryData.reference_image && inventoryData.reference_image instanceof File) {
     formData.append('reference_image', inventoryData.reference_image);
@@ -741,14 +741,14 @@ export const processVideoInventoryEntry = async (inventoryData: {
   } else {
     console.log('8. reference_image: Archivo vacío (no se tomó foto)');
   }
-  
+
   // Log de FormData contents
   console.log('=== FORMDATA CONTENTS ===');
   const expectedFields = [
     'product_brand', 'product_model', 'unit_price', 'sizes_distribution_json',
     'video_file', 'box_price', 'notes', 'reference_image'
   ];
-  
+
   const actualFields: string[] = [];
   for (let [key, value] of formData.entries()) {
     actualFields.push(key);
@@ -758,11 +758,11 @@ export const processVideoInventoryEntry = async (inventoryData: {
       console.log(`${key}: ${value}`);
     }
   }
-  
+
   // Verificar que todos los campos esperados estén presentes
   const missingFields = expectedFields.filter(field => !actualFields.includes(field));
   const extraFields = actualFields.filter(field => !expectedFields.includes(field));
-  
+
   console.log('Campos esperados:', expectedFields.length);
   console.log('Campos actuales:', actualFields.length);
   if (missingFields.length > 0) {
@@ -801,18 +801,18 @@ export const processVideoInventoryEntry = async (inventoryData: {
     headers: headers,
     body: formData,
   });
-  
+
   console.log('=== RESPUESTA DEL SERVIDOR ===');
   console.log('Status:', response.status);
   console.log('Status Text:', response.statusText);
   console.log('Headers:', Object.fromEntries(response.headers.entries()));
-  
+
   // Clonar la respuesta para poder leerla dos veces
   const responseClone = response.clone();
   const responseText = await responseClone.text();
   console.log('Response Body (raw):', responseText);
   console.log('==============================');
-  
+
   return handleResponse(response);
 };
 
