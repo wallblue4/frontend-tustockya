@@ -5,16 +5,16 @@ import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import Select from '../../components/ui/Select';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
-import { 
-  Users, 
-  DollarSign, 
-  TrendingUp, 
-  BarChart3, 
-  Bell, 
-  AlertCircle, 
-  CheckCircle, 
-  FileText, 
-  MapPin, 
+import {
+  Users,
+  DollarSign,
+  TrendingUp,
+  BarChart3,
+  Bell,
+  AlertCircle,
+  CheckCircle,
+  FileText,
+  MapPin,
   Package,
   Plus,
   Edit,
@@ -40,17 +40,17 @@ import {
   // Dashboard & Metrics
   fetchAdminDashboard,
   fetchDashboardMetrics,
-  
+
   // Users Management (5 endpoints)
   createUser,
   fetchManagedUsers,
   fetchAvailableLocationsForUsers,
   updateUser,
-  
+
   // Locations Management (2 endpoints)
   fetchManagedLocations,
   fetchLocationStatistics,
-  
+
   // Costs Management (14 endpoints)
   createCostConfiguration,
   fetchCostConfigurations,
@@ -62,38 +62,38 @@ import {
   fetchOverdueAlerts,
   fetchUpcomingPayments,
   fetchCostsModuleHealth,
-  
+
   // Wholesale Sales (1 endpoint)
-  
+
   // Reports (1 endpoint)
   generateSalesReports,
   fetchDailySalesTraceability,
-  
+
   // Inventory Alerts (1 endpoint)
   configureInventoryAlert,
-  
+
   // Discounts (2 endpoints)
   fetchPendingDiscountRequests,
   approveDiscountRequest,
-  
+
   // Transfers (2 endpoints)
   fetchTransfersOverview,
   fetchDailyTransfersTraceability,
-  
+
   // Performance (1 endpoint)
   fetchUsersPerformance,
-  
+
   // Product Assignments (2 endpoints)
   fetchProductAssignments,
-  
+
   // Video Inventory (4 endpoints)
   processVideoInventoryEntry,
   fetchVideoProcessingHistory,
-  
+
   // System (4 endpoints)
   fetchAdminModuleHealth,
   fetchSystemOverview,
-  
+
   // Utilities (4 endpoints)
   testMicroserviceConnection
 } from '../../services/adminAPI';
@@ -288,11 +288,11 @@ export const AdminDashboard: React.FC = () => {
     reference_image: null as File | null,
     video_file: null as File | null
   });
-  
+
   // Estados para preview de archivos capturados
   const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
   const [capturedVideoUrl, setCapturedVideoUrl] = useState<string | null>(null);
-  
+
   // Limpiar URLs de blob al desmontar el componente para evitar memory leaks
   React.useEffect(() => {
     return () => {
@@ -307,7 +307,7 @@ export const AdminDashboard: React.FC = () => {
   const [currentView, setCurrentView] = useState<AdminView>('dashboard');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Data states with proper typing
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [metricsData, setMetricsData] = useState<MetricsData | null>(null);
@@ -400,7 +400,7 @@ export const AdminDashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       await Promise.all([
         loadDashboardData(),
         loadLocations(),
@@ -426,15 +426,15 @@ export const AdminDashboard: React.FC = () => {
           return null;
         })
       ]);
-      
+
       if (dashboardResponse) {
         setDashboardData(dashboardResponse);
       }
-      
+
       if (metricsResponse) {
         setMetricsData(metricsResponse);
       }
-      
+
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       // Set empty data on error
@@ -446,15 +446,15 @@ export const AdminDashboard: React.FC = () => {
   const loadUsers = async () => {
     try {
       const params: any = {};
-      
+
       if (userFilters.role) {
         params.role = userFilters.role;
       }
-      
+
       if (userFilters.location && userFilters.location !== '') {
         params.location_id = parseInt(userFilters.location);
       }
-      
+
       if (userFilters.status && userFilters.status !== '') {
         params.is_active = userFilters.status === 'active';
       }
@@ -503,7 +503,7 @@ export const AdminDashboard: React.FC = () => {
   const loadNotifications = async () => {
     try {
       const discountsResponse = await fetchPendingDiscountRequests();
-      
+
       setNotifications({
         discounts: Array.isArray(discountsResponse) ? discountsResponse : discountsResponse.requests || discountsResponse.data || [],
         returns: [], // No endpoint available yet
@@ -598,7 +598,7 @@ export const AdminDashboard: React.FC = () => {
         role: userData.role,
         location_id: userData.location_id ? parseInt(userData.location_id) : undefined
       });
-      
+
       await loadUsers();
       setShowCreateUserModal(false);
       alert('Usuario creado exitosamente');
@@ -634,7 +634,7 @@ export const AdminDashboard: React.FC = () => {
         approved: approved,
         admin_notes: notes
       });
-      
+
       await loadNotifications();
       alert(approved ? 'Descuento aprobado exitosamente' : 'Descuento rechazado');
     } catch (error: any) {
@@ -653,7 +653,7 @@ export const AdminDashboard: React.FC = () => {
         notification_emails: alertData.notificationEmails,
         is_active: alertData.isActive ?? true
       });
-      
+
       alert('Alerta de inventario configurada exitosamente');
     } catch (error: any) {
       console.error('Error creating inventory alert:', error);
@@ -681,11 +681,11 @@ export const AdminDashboard: React.FC = () => {
       };
 
       console.log('Enviando datos al API:', apiData);
-      
+
       const response = await createCostConfiguration(apiData);
-      
+
       console.log('Respuesta del API:', response);
-      
+
       // Verificar si la respuesta indica éxito
       if (response && (response.id || response.success !== false)) {
         await loadCosts();
@@ -750,7 +750,7 @@ export const AdminDashboard: React.FC = () => {
   const mapFrequencyToAPI = (frequency: string): 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual' => {
     const mapping: Record<string, typeof mapFrequencyToAPI extends (x: any) => infer R ? R : never> = {
       'diario': 'daily',
-      'semanal': 'weekly', 
+      'semanal': 'weekly',
       'mensual': 'monthly',
       'trimestral': 'quarterly',
       'anual': 'annual'
@@ -783,15 +783,15 @@ export const AdminDashboard: React.FC = () => {
       const validSizesDistribution = videoData.sizes_distribution.filter(sd => {
         // Verificar que la talla no esté vacía
         if (!sd.size.trim()) return false;
-        
+
         // Verificar que haya al menos una distribución válida
         const hasPairs = sd.pairs.some(p => p.location_id > 0 && p.quantity > 0);
         const hasLeftFeet = sd.left_feet.some(lf => lf.location_id > 0 && lf.quantity > 0);
         const hasRightFeet = sd.right_feet.some(rf => rf.location_id > 0 && rf.quantity > 0);
-        
+
         return hasPairs || (hasLeftFeet && hasRightFeet);
       });
-      
+
       if (validSizesDistribution.length === 0) {
         alert('❌ Por favor ingresa al menos una talla con distribución válida');
         return;
@@ -801,7 +801,7 @@ export const AdminDashboard: React.FC = () => {
       for (const sizeDistro of validSizesDistribution) {
         const totalLeftFeet = sizeDistro.left_feet.reduce((sum, lf) => sum + lf.quantity, 0);
         const totalRightFeet = sizeDistro.right_feet.reduce((sum, rf) => sum + rf.quantity, 0);
-        
+
         if (totalLeftFeet !== totalRightFeet) {
           alert(`❌ Error en talla ${sizeDistro.size}: El total de pies izquierdos (${totalLeftFeet}) debe ser igual al total de pies derechos (${totalRightFeet})`);
           return;
@@ -840,15 +840,15 @@ export const AdminDashboard: React.FC = () => {
 
       console.log('Enviando datos de inventario con distribución:', inventoryPayload);
       console.log('JSON de distribución:', sizesDistributionJson);
-      
+
       const response = await processVideoInventoryEntry(inventoryPayload);
-      
+
       console.log('Respuesta del servidor:', response);
-      
+
       // Verificar si la respuesta indica éxito
       if (response && (response.success || response.product_id)) {
         const distributionSummary = response.distribution_summary || [];
-        
+
         alert(`¡Inventario registrado exitosamente con distribución! 🎉
 
 📦 Producto: ${response.brand || videoData.product_brand || 'N/A'} ${response.model || videoData.product_model || 'N/A'}
@@ -867,10 +867,10 @@ ${response.processing_time_seconds ? `Procesado en ${response.processing_time_se
       }
     } catch (error: any) {
       console.error('Error processing video inventory:', error);
-      
+
       // Manejar diferentes tipos de errores
       let errorMessage = 'Error al procesar inventario por video';
-      
+
       if (error.message && error.message.includes('ValidationError')) {
         errorMessage = `⚠️ Error en el servidor: El backend procesó tu petición pero hay un problema en la respuesta.
         
@@ -898,7 +898,7 @@ Por favor verifica que:
       } else {
         errorMessage = `❌ Error al procesar inventario: ${error.message || 'Error desconocido'}`;
       }
-      
+
       alert(errorMessage);
     }
   };
@@ -998,7 +998,7 @@ Por favor verifica que:
       await loadMayoreoData();
       setShowRegistrarVentaMayoreoModal(false);
       setSelectedProductoMayoreo(null);
-      
+
       alert(`✅ Venta registrada exitosamente!
 
 📦 Cajas vendidas: ${response.cantidad_cajas_vendidas}
@@ -1015,7 +1015,7 @@ Por favor verifica que:
     try {
       const response = await obtenerVentasProductoMayoreo(mayoreoId);
       const ventas = Array.isArray(response) ? response : response.data || [];
-      
+
       if (ventas.length === 0) {
         alert('ℹ️ Este producto no tiene ventas registradas');
       } else {
@@ -1065,35 +1065,35 @@ Por favor verifica que:
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              <Button 
+              <Button
                 className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
                 onClick={() => setCurrentView('users')}
               >
                 <Users className="h-5 w-5" />
                 <span>Gestionar Usuarios</span>
               </Button>
-              <Button 
+              <Button
                 className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
                 onClick={() => setCurrentView('inventory')}
               >
                 <Package className="h-5 w-5" />
                 <span>Ver Inventario</span>
               </Button>
-              <Button 
+              <Button
                 className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
                 onClick={() => setCurrentView('wholesale')}
               >
                 <ShoppingBag className="h-5 w-5" />
                 <span>Ventas Mayoreo</span>
               </Button>
-              <Button 
+              <Button
                 className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
                 onClick={() => setCurrentView('analytics')}
               >
                 <BarChart3 className="h-5 w-5" />
                 <span>Análisis</span>
               </Button>
-              <Button 
+              <Button
                 className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
                 onClick={() => setCurrentView('costs')}
               >
@@ -1128,14 +1128,14 @@ Por favor verifica que:
                     ))}
                   </div>
                 ) : (
-                  <EmptyState 
+                  <EmptyState
                     title="No hay ubicaciones asignadas"
                     description="No tienes ubicaciones bajo tu gestión"
                     icon={<Store className="h-12 w-12 text-gray-400" />}
                   />
                 )}
               </CardContent>
-            </Card> 
+            </Card>
           </div>
         )}
 
@@ -1194,7 +1194,7 @@ Por favor verifica que:
                 }}
                 options={[
                   { value: '', label: 'Todos los roles' },
-                  { value: 'vendedor', label: 'Vendedor' },
+                  { value: 'seller', label: 'Vendedor' },
                   { value: 'bodeguero', label: 'Bodeguero' },
                   { value: 'corredor', label: 'Corredor' },
                 ]}
@@ -1231,56 +1231,56 @@ Por favor verifica que:
           <CardContent className="p-0">
             {users.length > 0 ? (
               <div className="overflow-x-auto">
-                  <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
-                    <thead className="bg-popover text-popover-foreground">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Usuario</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Email</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Rol</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Ubicación</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Estado</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Acciones</th>
+                <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
+                  <thead className="bg-popover text-popover-foreground">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Usuario</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Email</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Rol</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Ubicación</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Estado</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
+                      <tr key={user.id} className="border-b border-border last:border-b-0 bg-card hover:bg-muted/10 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <p className="font-medium text-foreground">{user.full_name}</p>
+                            <p className="text-sm text-muted-foreground">ID: {user.id}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                          {user.email}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                          {user.role}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                          {user.location_name || 'Sin asignar'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge variant={user.is_active ? 'success' : 'error'}>
+                            {user.is_active ? 'Activo' : 'Inactivo'}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingUser(user);
+                              setShowEditUserModal(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {users.map((user) => (
-                        <tr key={user.id} className="border-b border-border last:border-b-0 bg-card hover:bg-muted/10 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div>
-                              <p className="font-medium text-foreground">{user.full_name}</p>
-                              <p className="text-sm text-muted-foreground">ID: {user.id}</p>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                            {user.email}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                            {user.role}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                            {user.location_name || 'Sin asignar'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge variant={user.is_active ? 'success' : 'error'}>
-                              {user.is_active ? 'Activo' : 'Inactivo'}
-                            </Badge>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setEditingUser(user);
-                                setShowEditUserModal(true);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : (
               <EmptyState
@@ -1310,33 +1310,33 @@ Por favor verifica que:
         <Card>
           <CardContent className="p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-               <Select
-                 value={costFilters.category}
-                 onChange={(e) => {
-                   const category = e.target.value as typeof costFilters.category;
-                   setCostFilters(prev => ({ ...prev, category }));
-                 }}
-                 options={[
-                   { value: '', label: 'Todas las categorías' },
-                   { value: 'arriendo', label: 'Arriendo' },
-                   { value: 'servicios', label: 'Servicios' },
-                   { value: 'nomina', label: 'Nómina' },
-                   { value: 'mercancia', label: 'Mercancía' },
-                   { value: 'comisiones', label: 'Comisiones' },
-                   { value: 'transporte', label: 'Transporte' },
-                   { value: 'otros', label: 'Otros' },
-                 ]}
-               />
-               <Select
-                 value={costFilters.location}
-                 onChange={(e) => {
-                   setCostFilters(prev => ({ ...prev, location: e.target.value }));
-                 }}
-                 options={[
-                   { value: '', label: 'Todas las ubicaciones' },
-                   ...locations.map(location => ({ value: location.id.toString(), label: location.name }))
-                 ]}
-               />
+              <Select
+                value={costFilters.category}
+                onChange={(e) => {
+                  const category = e.target.value as typeof costFilters.category;
+                  setCostFilters(prev => ({ ...prev, category }));
+                }}
+                options={[
+                  { value: '', label: 'Todas las categorías' },
+                  { value: 'arriendo', label: 'Arriendo' },
+                  { value: 'servicios', label: 'Servicios' },
+                  { value: 'nomina', label: 'Nómina' },
+                  { value: 'mercancia', label: 'Mercancía' },
+                  { value: 'comisiones', label: 'Comisiones' },
+                  { value: 'transporte', label: 'Transporte' },
+                  { value: 'otros', label: 'Otros' },
+                ]}
+              />
+              <Select
+                value={costFilters.location}
+                onChange={(e) => {
+                  setCostFilters(prev => ({ ...prev, location: e.target.value }));
+                }}
+                options={[
+                  { value: '', label: 'Todas las ubicaciones' },
+                  ...locations.map(location => ({ value: location.id.toString(), label: location.name }))
+                ]}
+              />
               <Button onClick={() => loadCosts()} size="sm" variant="outline">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualizar
@@ -1345,56 +1345,56 @@ Por favor verifica que:
           </CardContent>
         </Card>
 
-         {/* Costs Summary */}
-         {operationalData && (
-           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-             <Card>
-               <CardContent className="p-4 text-center">
-                 <DollarSign className="h-8 w-8 text-primary mx-auto mb-2" />
-                 <p className="text-2xl font-bold">
-                   {formatCurrency(parseFloat(operationalData.monthly_summary.total_monthly_costs))}
-                 </p>
-                 <p className="text-sm text-gray-600">Costos Mensuales</p>
-               </CardContent>
-             </Card>
-             <Card>
-               <CardContent className="p-4 text-center">
-                 <AlertCircle className="h-8 w-8 text-error mx-auto mb-2" />
-                 <p className="text-2xl font-bold">
-                   {formatCurrency(parseFloat(operationalData.summary.total_overdue_amount))}
-                 </p>
-                 <p className="text-sm text-gray-600">Monto Vencido</p>
-               </CardContent>
-             </Card>
-             <Card>
-               <CardContent className="p-4 text-center">
-                 <BarChart3 className="h-8 w-8 text-warning mx-auto mb-2" />
-                 <p className="text-2xl font-bold">{operationalData.summary.critical_alerts_count}</p>
-                 <p className="text-sm text-gray-600">Alertas Críticas</p>
-               </CardContent>
-             </Card>
-             <Card>
-               <CardContent className="p-4 text-center">
-                 <Building className="h-8 w-8 text-success mx-auto mb-2" />
-                 <p className="text-2xl font-bold">{operationalData.summary.total_locations}</p>
-                 <p className="text-sm text-gray-600">Ubicaciones</p>
-               </CardContent>
-             </Card>
-           </div>
-         )}
+        {/* Costs Summary */}
+        {operationalData && (
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4 text-center">
+                <DollarSign className="h-8 w-8 text-primary mx-auto mb-2" />
+                <p className="text-2xl font-bold">
+                  {formatCurrency(parseFloat(operationalData.monthly_summary.total_monthly_costs))}
+                </p>
+                <p className="text-sm text-gray-600">Costos Mensuales</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <AlertCircle className="h-8 w-8 text-error mx-auto mb-2" />
+                <p className="text-2xl font-bold">
+                  {formatCurrency(parseFloat(operationalData.summary.total_overdue_amount))}
+                </p>
+                <p className="text-sm text-gray-600">Monto Vencido</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <BarChart3 className="h-8 w-8 text-warning mx-auto mb-2" />
+                <p className="text-2xl font-bold">{operationalData.summary.critical_alerts_count}</p>
+                <p className="text-sm text-gray-600">Alertas Críticas</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <Building className="h-8 w-8 text-success mx-auto mb-2" />
+                <p className="text-2xl font-bold">{operationalData.summary.total_locations}</p>
+                <p className="text-sm text-gray-600">Ubicaciones</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Estado por Ubicaciones */}
         {operationalData && (() => {
           // Aplicar filtro por ubicación si está seleccionado
           let filteredLocations = operationalData.locations_status;
-          
+
           if (costFilters.location) {
             const selectedLocation = locations.find(loc => loc.id.toString() === costFilters.location);
             if (selectedLocation) {
               filteredLocations = filteredLocations.filter(location => location.location_name === selectedLocation.name);
             }
           }
-          
+
           return filteredLocations.length > 0 ? (
             <Card>
               <CardHeader>
@@ -1410,11 +1410,10 @@ Por favor verifica que:
               <CardContent>
                 <div className="space-y-4">
                   {filteredLocations.map((location) => (
-                    <div key={location.location_id} className={`p-4 rounded-lg border-l-4 bg-card text-foreground border-border ${
-                      location.status === 'ok' ? 'border-success' :
-                      location.status === 'attention' ? 'border-warning' :
-                      'border-error'
-                    }`}>
+                    <div key={location.location_id} className={`p-4 rounded-lg border-l-4 bg-card text-foreground border-border ${location.status === 'ok' ? 'border-success' :
+                        location.status === 'attention' ? 'border-warning' :
+                          'border-error'
+                      }`}>
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <h4 className="font-semibold text-lg text-foreground">{location.location_name}</h4>
@@ -1439,10 +1438,10 @@ Por favor verifica que:
                         </div>
                         <Badge variant={
                           location.status === 'ok' ? 'success' :
-                          location.status === 'attention' ? 'warning' : 'error'
+                            location.status === 'attention' ? 'warning' : 'error'
                         }>
                           {location.status === 'ok' ? 'OK' :
-                           location.status === 'attention' ? 'Atención' : 'Crítico'}
+                            location.status === 'attention' ? 'Atención' : 'Crítico'}
                         </Badge>
                       </div>
                     </div>
@@ -1467,12 +1466,12 @@ Por favor verifica que:
         {operationalData && (() => {
           // Aplicar filtros a los pagos próximos
           let filteredUpcoming = operationalData.upcoming_week;
-          
+
           // Filtro por tipo de costo
           if (costFilters.category) {
             filteredUpcoming = filteredUpcoming.filter(payment => payment.cost_type === costFilters.category);
           }
-          
+
           // Filtro por ubicación
           if (costFilters.location) {
             const selectedLocation = locations.find(loc => loc.id.toString() === costFilters.location);
@@ -1480,7 +1479,7 @@ Por favor verifica que:
               filteredUpcoming = filteredUpcoming.filter(payment => payment.location_name === selectedLocation.name);
             }
           }
-          
+
           return filteredUpcoming.length > 0 ? (
             <Card>
               <CardHeader>
@@ -1506,9 +1505,9 @@ Por favor verifica que:
                       <div className="text-right">
                         <p className="font-semibold text-primary">{formatCurrency(parseFloat(payment.amount))}</p>
                         <p className="text-sm text-primary">
-                          {payment.days_until_due === 0 ? 'Hoy' : 
-                           payment.days_until_due === 1 ? 'Mañana' : 
-                           `En ${payment.days_until_due} días`}
+                          {payment.days_until_due === 0 ? 'Hoy' :
+                            payment.days_until_due === 1 ? 'Mañana' :
+                              `En ${payment.days_until_due} días`}
                         </p>
                       </div>
                     </div>
@@ -1523,12 +1522,12 @@ Por favor verifica que:
         {operationalData && (() => {
           // Aplicar filtros a las alertas críticas
           let filteredAlerts = operationalData.critical_alerts;
-          
+
           // Filtro por tipo de costo
           if (costFilters.category) {
             filteredAlerts = filteredAlerts.filter(alert => alert.cost_type === costFilters.category);
           }
-          
+
           // Filtro por ubicación
           if (costFilters.location) {
             const selectedLocation = locations.find(loc => loc.id.toString() === costFilters.location);
@@ -1536,7 +1535,7 @@ Por favor verifica que:
               filteredAlerts = filteredAlerts.filter(alert => alert.location_name === selectedLocation.name);
             }
           }
-          
+
           return filteredAlerts.length > 0 ? (
             <Card>
               <CardHeader>
@@ -1566,8 +1565,8 @@ Por favor verifica que:
                     <tbody>
                       {filteredAlerts.map((alert, index) => (
                         <tr key={index} className={
-                          alert.priority === 'high' ? 'bg-error/10' : 
-                          alert.priority === 'medium' ? 'bg-warning/10' : 'bg-muted/10'
+                          alert.priority === 'high' ? 'bg-error/10' :
+                            alert.priority === 'medium' ? 'bg-warning/10' : 'bg-muted/10'
                         }>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <p className="font-medium text-foreground">{alert.location_name}</p>
@@ -1587,10 +1586,10 @@ Por favor verifica que:
                           <td className="px-6 py-4 whitespace-nowrap">
                             <Badge variant={
                               alert.priority === 'high' ? 'error' :
-                              alert.priority === 'medium' ? 'warning' : 'secondary'
+                                alert.priority === 'medium' ? 'warning' : 'secondary'
                             }>
                               {alert.priority === 'high' ? 'Alta' :
-                               alert.priority === 'medium' ? 'Media' : 'Baja'}
+                                alert.priority === 'medium' ? 'Media' : 'Baja'}
                             </Badge>
                           </td>
                         </tr>
@@ -1606,7 +1605,7 @@ Por favor verifica que:
                 <EmptyState
                   title="No hay alertas críticas"
                   description={
-                    (costFilters.category || costFilters.location) 
+                    (costFilters.category || costFilters.location)
                       ? "No se encontraron alertas con los filtros aplicados"
                       : "No hay alertas críticas en este momento"
                   }
@@ -1680,11 +1679,10 @@ Por favor verifica que:
                 {locations.map((location) => (
                   <div key={location.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center space-x-4">
-                      <div className={`p-3 rounded-lg ${
-                        location.type === 'local' ? 'bg-primary/10' : 'bg-secondary/10'
-                      }`}>
-                        {location.type === 'local' ? 
-                          <Store className="h-6 w-6 text-primary" /> : 
+                      <div className={`p-3 rounded-lg ${location.type === 'local' ? 'bg-primary/10' : 'bg-secondary/10'
+                        }`}>
+                        {location.type === 'local' ?
+                          <Store className="h-6 w-6 text-primary" /> :
                           <Warehouse className="h-6 w-6 text-secondary" />
                         }
                       </div>
@@ -1708,13 +1706,13 @@ Por favor verifica que:
                       <p className="font-semibold">{formatCurrency(parseFloat(location.total_inventory_value))}</p>
                       <p className="text-xs text-gray-500">{location.total_products} productos</p>
                       <div className="flex space-x-2 mt-2">
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
                           onClick={async () => {
                             try {
                               const stats = await fetchLocationStatistics(
-                                location.id, 
+                                location.id,
                                 new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                                 new Date().toISOString().split('T')[0]
                               );
@@ -1803,11 +1801,10 @@ Por favor verifica que:
             ) : (
               <div className="space-y-4">
                 {allNotifications.map((notification: any) => (
-                  <div key={`${notification.type}-${notification.id}`} className={`p-4 rounded-lg border-l-4 ${
-                    notification.type === 'discount' 
-                      ? 'bg-warning/10 border-warning' 
+                  <div key={`${notification.type}-${notification.id}`} className={`p-4 rounded-lg border-l-4 ${notification.type === 'discount'
+                      ? 'bg-warning/10 border-warning'
                       : 'bg-error/10 border-error'
-                  }`}>
+                    }`}>
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
@@ -1821,10 +1818,10 @@ Por favor verifica que:
                           </span>
                           <Badge variant={
                             notification.status === 'pending' ? 'warning' :
-                            notification.status === 'approved' ? 'success' : 'error'
+                              notification.status === 'approved' ? 'success' : 'error'
                           }>
                             {notification.status === 'pending' ? 'Pendiente' :
-                             notification.status === 'approved' ? 'Aprobado' : 'Rechazado'}
+                              notification.status === 'approved' ? 'Aprobado' : 'Rechazado'}
                           </Badge>
                         </div>
                         <p className="text-sm text-gray-700 mb-2">
@@ -1845,18 +1842,18 @@ Por favor verifica que:
                       </div>
                       {notification.type === 'discount' && notification.status === 'pending' && (
                         <div className="flex space-x-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            size="sm"
+                            variant="outline"
                             className="text-success border-success hover:bg-success hover:text-white"
                             onClick={() => handleApproveDiscount(notification.id, true)}
                           >
                             <CheckCircle className="h-4 w-4 mr-1" />
                             Aprobar
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            size="sm"
+                            variant="outline"
                             className="text-error border-error hover:bg-error hover:text-white"
                             onClick={() => handleApproveDiscount(notification.id, false, 'Rechazado por administrador')}
                           >
@@ -1876,14 +1873,14 @@ Por favor verifica que:
   };
 
   const renderInventoryView = () => {
-  // ...el estado ahora está en el componente principal...
+    // ...el estado ahora está en el componente principal...
 
     return (
       <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <h2 className="text-xl font-semibold text-foreground">Gestión de Inventario</h2>
         </div>
-        
+
         <Card>
           <CardHeader>
             <h3 className="text-lg font-semibold">Registrar Inventario</h3>
@@ -1893,14 +1890,14 @@ Por favor verifica que:
               {/* Columna 1: Datos del Producto */}
               <div className="space-y-4">
                 <h4 className="font-semibold text-foreground mb-3">Datos del Producto</h4>
-                
-                
+
+
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
-                    Marca 
+                    Marca
                   </label>
-                  <Input 
-                    placeholder="Ej: Nike, Adidas" 
+                  <Input
+                    placeholder="Ej: Nike, Adidas"
                     value={videoInventoryForm.product_brand}
                     onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_brand: e.target.value }))}
                   />
@@ -1911,20 +1908,20 @@ Por favor verifica que:
                   <label className="block text-sm font-medium text-foreground mb-1">
                     Modelo
                   </label>
-                  <Input 
-                    placeholder="Ej: Air Max 90" 
+                  <Input
+                    placeholder="Ej: Air Max 90"
                     value={videoInventoryForm.product_model}
                     onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_model: e.target.value }))}
                   />
                   <p className="text-xs text-muted-foreground mt-1">Modelo del producto</p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
                     Precio Unitario <span className="text-error">*</span>
                   </label>
-                  <Input 
-                    placeholder="Ej: 45000" 
+                  <Input
+                    placeholder="Ej: 45000"
                     type="number"
                     value={videoInventoryForm.unit_price}
                     onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, unit_price: parseFloat(e.target.value) }))}
@@ -1933,7 +1930,7 @@ Por favor verifica que:
                   />
                   <p className="text-xs text-muted-foreground mt-1">Precio por unidad individual</p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
                     Distribución de Tallas <span className="text-error">*</span>
@@ -2189,7 +2186,7 @@ Por favor verifica que:
               {/* Columna 2: Foto del Producto */}
               <div className="space-y-4">
                 <h4 className="font-semibold text-foreground mb-3">Foto del Producto (Opcional)</h4>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
                     Capturar Foto de Referencia
@@ -2201,16 +2198,16 @@ Por favor verifica que:
                         if (capturedPhotoUrl) {
                           URL.revokeObjectURL(capturedPhotoUrl);
                         }
-                        
+
                         setCapturedPhotoUrl(url);
-                        
+
                         const fileType = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/jpeg';
                         const ext = fileType.split('/')[1] || 'jpg';
                         const imageFile = new File([blob], `reference-image.${ext}`, { type: fileType });
-                        
-                        setVideoInventoryForm(prev => ({ 
-                          ...prev, 
-                          reference_image: imageFile 
+
+                        setVideoInventoryForm(prev => ({
+                          ...prev,
+                          reference_image: imageFile
                         }));
                       }
                     }}
@@ -2219,14 +2216,14 @@ Por favor verifica que:
                     Toca el botón para abrir la cámara en pantalla completa
                   </p>
                 </div>
-                  
+
                 {/* Preview de la foto capturada */}
                 {capturedPhotoUrl && (
                   <div className="border border-border rounded-lg p-4 bg-muted/10">
                     <h4 className="text-sm font-medium text-foreground mb-2">📸 Foto Capturada</h4>
                     <div className="space-y-3">
-                      <img 
-                        src={capturedPhotoUrl} 
+                      <img
+                        src={capturedPhotoUrl}
                         alt="Foto del inventario"
                         className="w-full h-64 object-cover rounded-lg border shadow-sm"
                       />
@@ -2257,7 +2254,7 @@ Por favor verifica que:
               {/* Columna 3: Video del Producto */}
               <div className="space-y-4">
                 <h4 className="font-semibold text-foreground mb-3">Video del Producto <span className="text-error">*</span></h4>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
                     Grabar Video del Inventario
@@ -2269,16 +2266,16 @@ Por favor verifica que:
                         if (capturedVideoUrl) {
                           URL.revokeObjectURL(capturedVideoUrl);
                         }
-                        
+
                         setCapturedVideoUrl(url);
-                        
+
                         const fileType = blob.type && blob.type.startsWith('video/') ? blob.type : 'video/webm';
                         const ext = fileType.split('/')[1] || 'webm';
                         const videoFile = new File([blob], `inventory-video.${ext}`, { type: fileType });
-                        
-                        setVideoInventoryForm(prev => ({ 
-                          ...prev, 
-                          video_file: videoFile 
+
+                        setVideoInventoryForm(prev => ({
+                          ...prev,
+                          video_file: videoFile
                         }));
                       }
                     }}
@@ -2287,15 +2284,15 @@ Por favor verifica que:
                     Toca el botón para abrir la cámara en pantalla completa
                   </p>
                 </div>
-                  
+
                 {/* Preview del video grabado */}
                 {capturedVideoUrl && (
                   <div className="border border-border rounded-lg p-4 bg-muted/10">
                     <h4 className="text-sm font-medium text-foreground mb-2">📹 Video Grabado</h4>
                     <div className="space-y-3">
-                      <video 
-                        src={capturedVideoUrl} 
-                        controls 
+                      <video
+                        src={capturedVideoUrl}
+                        controls
                         className="w-full rounded-lg border shadow-sm"
                         preload="metadata"
                       />
@@ -2338,8 +2335,8 @@ Por favor verifica que:
                   Asegúrate de haber completado todos los campos requeridos y grabado el video antes de enviar.
                 </p>
               </div>
-              
-              <Button 
+
+              <Button
                 onClick={async () => {
                   // Validaciones completas
                   if (videoInventoryForm.unit_price <= 0) {
@@ -2389,9 +2386,9 @@ Por favor verifica que:
                       reference_image: videoInventoryForm.reference_image ? `File(${videoInventoryForm.reference_image.size} bytes)` : 'null'
                     });
                     console.log('=======================');
-                    
+
                     await handleVideoInventoryEntry(videoInventoryForm);
-                    
+
                     // Reset form después del envío exitoso
                     setVideoInventoryForm({
                       product_brand: '',
@@ -2409,7 +2406,7 @@ Por favor verifica que:
                       reference_image: null,
                       video_file: null
                     });
-                    
+
                     // Limpiar las URLs de preview y liberar memoria
                     if (capturedPhotoUrl) {
                       URL.revokeObjectURL(capturedPhotoUrl);
@@ -2427,10 +2424,10 @@ Por favor verifica que:
                 disabled={!videoInventoryForm.video_file || videoInventoryForm.unit_price <= 0}
               >
                 {!videoInventoryForm.video_file ? '📹 Graba un video primero' :
-                 videoInventoryForm.unit_price <= 0 ? '💰 Ingresa el precio' :
-                 '🚀 Registrar Inventario con Distribución'}
+                  videoInventoryForm.unit_price <= 0 ? '💰 Ingresa el precio' :
+                    '🚀 Registrar Inventario con Distribución'}
               </Button>
-              
+
               {/* Indicadores de estado */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                 <div className={`flex items-center space-x-2 ${videoInventoryForm.unit_price > 0 ? 'text-success' : 'text-muted-foreground'}`}>
@@ -2701,9 +2698,9 @@ Por favor verifica que:
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <h2 className="text-2xl font-bold">Análisis y Métricas</h2>
           <div className="flex space-x-2">
-            <Button 
-              size="sm" 
-              variant="outline" 
+            <Button
+              size="sm"
+              variant="outline"
               onClick={async () => {
                 try {
                   const report = await generateSalesReports({
@@ -2721,8 +2718,8 @@ Por favor verifica que:
               <Download className="h-4 w-4 mr-2" />
               Exportar
             </Button>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant="outline"
               onClick={async () => {
                 try {
@@ -2739,8 +2736,8 @@ Por favor verifica que:
             >
               Performance
             </Button>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant="outline"
               onClick={async () => {
                 try {
@@ -3029,11 +3026,11 @@ Por favor verifica que:
                 transfersTraceabilityData.map((transfer) => {
                   const isExpanded = expandedTransfers.has(transfer.transfer_id);
                   const productName = `${transfer.product.brand} ${transfer.product.model}`;
-                  
+
                   return (
                     <div key={transfer.transfer_id} className="border border-border rounded-lg bg-card/50 overflow-hidden">
                       {/* Collapsed View */}
-                      <div 
+                      <div
                         className="p-4 cursor-pointer hover:bg-card transition-colors"
                         onClick={() => toggleTransferExpansion(transfer.transfer_id)}
                       >
@@ -3269,7 +3266,7 @@ Por favor verifica que:
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
         <div className="bg-card rounded-lg max-w-2xl w-full p-6 my-8">
           <h3 className="text-xl font-bold text-foreground mb-4">Crear Producto de Mayoreo</h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Columna izquierda - Datos del producto */}
             <div className="space-y-4">
@@ -3355,16 +3352,16 @@ Por favor verifica que:
                       if (fotoPreviewUrl) {
                         URL.revokeObjectURL(fotoPreviewUrl);
                       }
-                      
+
                       setFotoPreviewUrl(url);
-                      
+
                       const fileType = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/jpeg';
                       const ext = fileType.split('/')[1] || 'jpg';
                       const fotoFile = new File([blob], `producto-mayoreo.${ext}`, { type: fileType });
-                      
-                      setFormData(prev => ({ 
-                        ...prev, 
-                        foto: fotoFile 
+
+                      setFormData(prev => ({
+                        ...prev,
+                        foto: fotoFile
                       }));
                     }
                   }}
@@ -3377,8 +3374,8 @@ Por favor verifica que:
               {/* Preview de la foto */}
               {fotoPreviewUrl && (
                 <div className="space-y-2">
-                  <img 
-                    src={fotoPreviewUrl} 
+                  <img
+                    src={fotoPreviewUrl}
                     alt="Preview del producto"
                     className="w-full rounded-lg border shadow-sm object-cover"
                     style={{ maxHeight: '300px' }}
@@ -3441,7 +3438,7 @@ Por favor verifica que:
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
         <div className="bg-card rounded-lg max-w-2xl w-full p-6 my-8">
           <h3 className="text-xl font-bold text-foreground mb-4">Editar Producto de Mayoreo</h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Columna izquierda - Datos del producto */}
             <div className="space-y-4">
@@ -3466,9 +3463,9 @@ Por favor verifica que:
                   value={formData.cantidad_cajas_disponibles}
                   onChange={(e) => {
                     const value = e.target.value;
-                    setFormData({ 
-                      ...formData, 
-                      cantidad_cajas_disponibles: value === '' ? producto.cantidad_cajas_disponibles : parseInt(value) || 0 
+                    setFormData({
+                      ...formData,
+                      cantidad_cajas_disponibles: value === '' ? producto.cantidad_cajas_disponibles : parseInt(value) || 0
                     });
                   }}
                 />
@@ -3484,9 +3481,9 @@ Por favor verifica que:
                   value={formData.pares_por_caja}
                   onChange={(e) => {
                     const value = e.target.value;
-                    setFormData({ 
-                      ...formData, 
-                      pares_por_caja: value === '' ? producto.pares_por_caja : parseInt(value) || 0 
+                    setFormData({
+                      ...formData,
+                      pares_por_caja: value === '' ? producto.pares_por_caja : parseInt(value) || 0
                     });
                   }}
                 />
@@ -3503,9 +3500,9 @@ Por favor verifica que:
                   value={formData.precio}
                   onChange={(e) => {
                     const value = e.target.value;
-                    setFormData({ 
-                      ...formData, 
-                      precio: value === '' ? producto.precio : parseFloat(value) || 0 
+                    setFormData({
+                      ...formData,
+                      precio: value === '' ? producto.precio : parseFloat(value) || 0
                     });
                   }}
                 />
@@ -3547,17 +3544,17 @@ Por favor verifica que:
                       if (fotoPreviewUrl && fotoPreviewUrl.startsWith('blob:')) {
                         URL.revokeObjectURL(fotoPreviewUrl);
                       }
-                      
+
                       setFotoPreviewUrl(url);
                       setFotoChanged(true);
-                      
+
                       const fileType = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/jpeg';
                       const ext = fileType.split('/')[1] || 'jpg';
                       const fotoFile = new File([blob], `producto-mayoreo-${producto.id}.${ext}`, { type: fileType });
-                      
-                      setFormData(prev => ({ 
-                        ...prev, 
-                        foto: fotoFile 
+
+                      setFormData(prev => ({
+                        ...prev,
+                        foto: fotoFile
                       }));
                     }
                   }}
@@ -3570,8 +3567,8 @@ Por favor verifica que:
               {/* Preview de la foto */}
               {fotoPreviewUrl && (
                 <div className="space-y-2">
-                  <img 
-                    src={fotoPreviewUrl} 
+                  <img
+                    src={fotoPreviewUrl}
                     alt="Preview del producto"
                     className="w-full rounded-lg border shadow-sm object-cover"
                     style={{ maxHeight: '300px' }}
@@ -3604,7 +3601,7 @@ Por favor verifica que:
               <Button onClick={() => {
                 // Solo enviar campos que han cambiado
                 const changedData: any = {};
-                
+
                 if (formData.modelo !== producto.modelo) {
                   changedData.modelo = formData.modelo;
                 }
@@ -3626,7 +3623,7 @@ Por favor verifica que:
                 if (formData.foto !== null) {
                   changedData.foto = formData.foto;
                 }
-                
+
                 console.log('Datos del formulario antes de enviar:', formData);
                 console.log('Solo campos cambiados:', changedData);
                 onSubmit(changedData);
@@ -3658,7 +3655,7 @@ Por favor verifica que:
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-card rounded-lg max-w-md w-full p-6">
           <h3 className="text-xl font-bold text-foreground mb-4">Registrar Venta de Mayoreo</h3>
-          
+
           <div className="bg-muted p-4 rounded-lg mb-4">
             <p className="font-semibold text-foreground">Producto: {producto.modelo}</p>
             <p className="text-sm text-muted-foreground">Cajas disponibles: {producto.cantidad_cajas_disponibles}</p>
@@ -3718,7 +3715,7 @@ Por favor verifica que:
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-card rounded-lg max-w-3xl w-full p-6 max-h-[80vh] overflow-y-auto">
           <h3 className="text-xl font-bold text-foreground mb-4">Historial de Ventas del Producto</h3>
-          
+
           {ventas.length > 0 ? (
             <div className="space-y-3">
               {ventas.map((venta) => (
@@ -3789,7 +3786,7 @@ Por favor verifica que:
   if (error) {
     return (
       <DashboardLayout title="Panel de Administración">
-        <ErrorState 
+        <ErrorState
           message={error}
         />
       </DashboardLayout>
@@ -3816,11 +3813,10 @@ Por favor verifica que:
               <button
                 key={tab.key}
                 onClick={() => setCurrentView(tab.key as AdminView)}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${
-                  currentView === tab.key
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${currentView === tab.key
                     ? 'bg-primary text-primary-foreground shadow-lg'
                     : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground'
-                }`}
+                  }`}
               >
                 {tab.icon}
                 <span>{tab.label}</span>
@@ -3849,11 +3845,10 @@ Por favor verifica que:
                   <button
                     key={item.key}
                     onClick={() => setCurrentView(item.key as AdminView)}
-                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left ${
-                      currentView === item.key
+                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left ${currentView === item.key
                         ? 'bg-primary text-primary-foreground'
                         : 'text-foreground hover:bg-muted/20'
-                    }`}
+                      }`}
                   >
                     {item.icon}
                     <span>{item.label}</span>
@@ -3896,7 +3891,7 @@ Por favor verifica que:
 
         {/* Modals */}
         {showCreateUserModal && (
-          <CreateUserModal 
+          <CreateUserModal
             onClose={() => setShowCreateUserModal(false)}
             onSubmit={handleCreateUser}
             locations={availableLocations}
@@ -3904,7 +3899,7 @@ Por favor verifica que:
         )}
 
         {showEditUserModal && editingUser && (
-          <EditUserModal 
+          <EditUserModal
             user={editingUser}
             onClose={() => {
               setEditingUser(null);
@@ -3916,7 +3911,7 @@ Por favor verifica que:
         )}
 
         {showCreateCostModal && (
-          <CreateCostModal 
+          <CreateCostModal
             onClose={() => setShowCreateCostModal(false)}
             onSubmit={handleCreateCost}
             locations={locations}
