@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Building2, 
-  DollarSign, 
-  FileText, 
+import {
+  Users,
+  Building2,
+  DollarSign,
+  FileText,
   TrendingUp,
   Settings,
   Plus,
   Edit,
-  Trash2, 
+  Trash2,
   Ban,
   CheckCircle,
   Search,
@@ -112,17 +112,17 @@ export const SuperuserDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Estado para métricas globales (Endpoint 15)
   const [globalMetrics, setGlobalMetrics] = useState<GlobalMetrics | null>(null);
-  
+
   // Estado para empresas (Endpoints 2, 3, 4, 5, 6, 7, 8)
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companyMetrics, setCompanyMetrics] = useState<CompanyMetrics | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
-  
+
   // Estado para crear empresa
   const [showCreateCompany, setShowCreateCompany] = useState(false);
   const [showEditCompany, setShowEditCompany] = useState(false);
@@ -139,7 +139,7 @@ export const SuperuserDashboard: React.FC = () => {
     max_employees: 10,
     price_per_location: 50
   });
-  
+
   // Estado para Boss (Endpoints 21, 22, 23)
   const [newBoss, setNewBoss] = useState({
     email: '',
@@ -157,11 +157,11 @@ export const SuperuserDashboard: React.FC = () => {
     hasSpecialChar: false,
     isValid: false
   });
-  
+
   // Estado para empresas con Boss
   const [companiesWithBoss, setCompaniesWithBoss] = useState<any[]>([]);
   const [loadingBosses, setLoadingBosses] = useState(false);
-  
+
   // Estado para suscripciones (Endpoints 9, 10)
   const [subscriptionHistory, setSubscriptionHistory] = useState<any[]>([]);
   const [showChangeSubscription, setShowChangeSubscription] = useState(false);
@@ -174,11 +174,11 @@ export const SuperuserDashboard: React.FC = () => {
     effective_date: new Date().toISOString().split('T')[0],
     reason: ''
   });
-  
+
   // Estado para facturas (Endpoints 11, 12, 13, 14)
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<string>('');
-  
+
   // Estado para planes (Endpoints 18, 19)
   const [plans, setPlans] = useState<Plan[]>([]);
   const [showCreatePlan, setShowCreatePlan] = useState(false);
@@ -192,17 +192,17 @@ export const SuperuserDashboard: React.FC = () => {
     features: {},
     sort_order: 0
   });
-  
+
   // Estado para planes disponibles para empresas
   const [availablePlans, setAvailablePlans] = useState<Plan[]>([]);
-  
+
   // Estado para reportes (Endpoint 17)
   const [financialReport, setFinancialReport] = useState<any>(null);
   const [reportDates, setReportDates] = useState({
     start_date: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
     end_date: new Date().toISOString().split('T')[0]
   });
-  
+
   // Estado para setup primer superadmin (Endpoint 1)
   const [setupData, setSetupData] = useState({
     email: '',
@@ -211,9 +211,21 @@ export const SuperuserDashboard: React.FC = () => {
     last_name: '',
     secret_key: ''
   });
-  
+
   // Health check (Endpoint 20)
   const [healthStatus, setHealthStatus] = useState<any>(null);
+
+  // Mapeo de códigos de plan del backend a enums esperados por la API
+  const mapPlanCodeToEnum = (planCode: string): 'basic' | 'professional' | 'enterprise' | 'custom' => {
+    const mapping: Record<string, 'basic' | 'professional' | 'enterprise' | 'custom'> = {
+      'basic': 'basic',
+      'pro': 'professional',
+      'professional': 'professional',
+      'enterprise': 'enterprise',
+      'custom': 'custom'
+    };
+    return mapping[planCode] || 'basic';
+  };
 
   // Cargar métricas globales al iniciar (Endpoint 15)
   useEffect(() => {
@@ -294,7 +306,12 @@ export const SuperuserDashboard: React.FC = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      await superadminAPI.createCompany(newCompany);
+      // Mapear el plan antes de enviar a la API
+      const companyData = {
+        ...newCompany,
+        subscription_plan: mapPlanCodeToEnum(newCompany.subscription_plan)
+      };
+      await superadminAPI.createCompany(companyData);
       setShowCreateCompany(false);
       setNewCompany({
         name: '',
@@ -303,7 +320,7 @@ export const SuperuserDashboard: React.FC = () => {
         legal_name: '',
         tax_id: '',
         phone: '',
-        subscription_plan: 'basic',
+        subscription_plan: mapPlanCodeToEnum(newCompany.subscription_plan),
         max_locations: 3,
         max_employees: 10,
         price_per_location: 50
@@ -368,7 +385,7 @@ export const SuperuserDashboard: React.FC = () => {
     const hasNumber = /\d/.test(password);
     const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
     const isValid = hasUpperCase && hasNumber && hasSpecialChar && password.length >= 8;
-    
+
     setPasswordValidation({
       hasUpperCase,
       hasNumber,
@@ -380,12 +397,12 @@ export const SuperuserDashboard: React.FC = () => {
   const createBoss = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCompanyForBoss) return;
-    
+
     if (!passwordValidation.isValid) {
       alert('La contraseña debe tener al menos 8 caracteres, una letra mayúscula, un número y un carácter especial');
       return;
     }
-    
+
     try {
       setLoading(true);
       await superadminAPI.createBoss(selectedCompanyForBoss, newBoss);
@@ -433,11 +450,11 @@ export const SuperuserDashboard: React.FC = () => {
     try {
       setLoadingBosses(true);
       setError(null);
-      
+
       // Cargar todas las empresas primero
       const companiesData = await superadminAPI.getCompanies({ limit: 100 });
       const companiesList = Array.isArray(companiesData) ? companiesData : [];
-      
+
       // Para cada empresa, intentar obtener su Boss
       const companiesWithBossData = await Promise.allSettled(
         companiesList.map(async (company: any) => {
@@ -458,12 +475,12 @@ export const SuperuserDashboard: React.FC = () => {
           }
         })
       );
-      
+
       // Procesar resultados exitosos
       const successfulResults = companiesWithBossData
         .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
         .map(result => result.value);
-      
+
       setCompaniesWithBoss(successfulResults);
     } catch (err: any) {
       console.error('Error loading companies with boss:', err);
@@ -477,7 +494,7 @@ export const SuperuserDashboard: React.FC = () => {
   const updateCompany = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCompany) return;
-    
+
     try {
       setLoading(true);
       await superadminAPI.updateCompany(editingCompany.id, {
@@ -486,7 +503,7 @@ export const SuperuserDashboard: React.FC = () => {
         legal_name: editingCompany.legal_name || '',
         tax_id: editingCompany.tax_id || '',
         phone: editingCompany.phone || '',
-        subscription_plan: editingCompany.subscription_plan as any,
+        subscription_plan: mapPlanCodeToEnum(editingCompany.subscription_plan),
         max_locations: editingCompany.max_locations || 3,
         max_employees: editingCompany.max_employees || 10,
         price_per_location: editingCompany.monthly_cost || '50'
@@ -506,7 +523,10 @@ export const SuperuserDashboard: React.FC = () => {
   const changeSubscription = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await superadminAPI.changeSubscription(subscriptionChange);
+      await superadminAPI.changeSubscription({
+        ...subscriptionChange,
+        new_plan: mapPlanCodeToEnum(subscriptionChange.new_plan)
+      });
       setShowChangeSubscription(false);
       alert('Plan de suscripción cambiado exitosamente');
       loadCompanies();
@@ -535,7 +555,7 @@ export const SuperuserDashboard: React.FC = () => {
       });
       console.log('📄 Datos recibidos del endpoint de facturas:', data);
       console.log('📄 Es array?:', Array.isArray(data));
-      
+
       // El endpoint retorna directamente un array de facturas
       const invoicesData = Array.isArray(data) ? data : (data.invoices || []);
       console.log('📄 Facturas procesadas:', invoicesData);
@@ -749,8 +769,8 @@ export const SuperuserDashboard: React.FC = () => {
       </div>
 
       {/* Alertas y Notificaciones */}
-        <Card>
-          <CardHeader>
+      <Card>
+        <CardHeader>
           <h2 className="text-xl font-semibold">Alertas y Notificaciones</h2>
         </CardHeader>
         <CardContent>
@@ -766,7 +786,7 @@ export const SuperuserDashboard: React.FC = () => {
                 </div>
               </div>
             ) : null}
-            
+
             {globalMetrics?.subscriptions_expiring_soon ? (
               <div className="flex items-center gap-3 p-3 bg-warning/10 rounded-md">
                 <AlertCircle className="h-5 w-5 text-warning" />
@@ -932,10 +952,10 @@ export const SuperuserDashboard: React.FC = () => {
               <div className="md:col-span-2 flex gap-2">
                 <Button type="submit" disabled={loading}>
                   {loading ? 'Creando...' : 'Crear Empresa'}
-              </Button>
+                </Button>
                 <Button type="button" variant="outline" onClick={() => setShowCreateCompany(false)}>
                   Cancelar
-              </Button>
+                </Button>
               </div>
             </form>
           </CardContent>
@@ -1073,9 +1093,9 @@ export const SuperuserDashboard: React.FC = () => {
               </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <Button 
-                size="sm" 
-                variant="outline" 
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => setBossInfo(null)}
               >
                 Cerrar
@@ -1115,14 +1135,13 @@ export const SuperuserDashboard: React.FC = () => {
                           {company.email}
                         </p>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <span className={`text-xs px-2 py-1 rounded font-medium ${
-                            company.subscription_status === 'active' ? 'bg-success/20 text-success' :
+                          <span className={`text-xs px-2 py-1 rounded font-medium ${company.subscription_status === 'active' ? 'bg-success/20 text-success' :
                             company.subscription_status === 'suspended' ? 'bg-error/20 text-error' :
-                            'bg-warning/20 text-warning'
-                          }`}>
+                              'bg-warning/20 text-warning'
+                            }`}>
                             {company.subscription_status === 'active' ? 'Activo' :
-                             company.subscription_status === 'suspended' ? 'Suspendido' : 
-                             company.subscription_status}
+                              company.subscription_status === 'suspended' ? 'Suspendido' :
+                                company.subscription_status}
                           </span>
                           <span className="text-xs px-2 py-1 rounded bg-primary/20 text-primary font-medium">
                             {company.subscription_plan}
@@ -1130,7 +1149,7 @@ export const SuperuserDashboard: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Información financiera */}
                     <div className="text-left md:text-right flex-shrink-0">
                       <p className="text-2xl font-bold text-primary">${parseFloat(company.monthly_cost).toFixed(2)}</p>
@@ -1157,9 +1176,9 @@ export const SuperuserDashboard: React.FC = () => {
 
                   {/* Botones de acción principales */}
                   <div className="flex flex-wrap gap-2 mb-3">
-                    <Button 
-                      size="sm" 
-                      variant="primary" 
+                    <Button
+                      size="sm"
+                      variant="primary"
                       onClick={() => {
                         setEditingCompany(company);
                         setShowEditCompany(true);
@@ -1169,18 +1188,18 @@ export const SuperuserDashboard: React.FC = () => {
                       <Edit className="h-4 w-4 mr-1" />
                       <span className="hidden sm:inline">Editar</span>
                     </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => viewCompanyDetails(company.id)}
                       className="flex-1 sm:flex-initial"
                     >
                       <Activity className="h-4 w-4 mr-1" />
                       <span className="hidden sm:inline">Métricas</span>
                     </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => loadCompanyInvoices(company.id)}
                       className="flex-1 sm:flex-initial"
                     >
@@ -1191,9 +1210,9 @@ export const SuperuserDashboard: React.FC = () => {
 
                   {/* Botones de gestión financiera */}
                   <div className="flex flex-wrap gap-2 mb-3">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => generateInvoice(company.id)}
                       className="flex-1 sm:flex-initial"
                     >
@@ -1205,9 +1224,9 @@ export const SuperuserDashboard: React.FC = () => {
                   {/* Botones de estado */}
                   <div className="flex flex-wrap gap-2">
                     {company.subscription_status === 'suspended' ? (
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
+                      <Button
+                        size="sm"
+                        variant="outline"
                         onClick={() => activateCompany(company.id)}
                         className="flex-1 sm:flex-initial bg-success/10 text-success hover:bg-success/20"
                       >
@@ -1215,9 +1234,9 @@ export const SuperuserDashboard: React.FC = () => {
                         <span className="hidden sm:inline">Activar</span>
                       </Button>
                     ) : (
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
+                      <Button
+                        size="sm"
+                        variant="outline"
                         onClick={() => suspendCompany(company.id)}
                         className="flex-1 sm:flex-initial bg-warning/10 text-warning hover:bg-warning/20"
                       >
@@ -1225,9 +1244,9 @@ export const SuperuserDashboard: React.FC = () => {
                         <span className="hidden sm:inline">Suspender</span>
                       </Button>
                     )}
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => deleteCompany(company.id)}
                       className="flex-1 sm:flex-initial bg-error/10 text-error hover:bg-error/20"
                     >
@@ -1235,23 +1254,23 @@ export const SuperuserDashboard: React.FC = () => {
                       <span className="hidden sm:inline">Eliminar</span>
                     </Button>
                   </div>
-                  </div>
-                ))}
-              </div>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="text-center py-12">
               <Building2 className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium text-muted-foreground">No hay empresas para mostrar</p>
               <p className="text-sm text-muted-foreground mt-2">
-                {searchTerm || statusFilter 
-                  ? 'Intenta cambiar los filtros de búsqueda' 
+                {searchTerm || statusFilter
+                  ? 'Intenta cambiar los filtros de búsqueda'
                   : 'Crea tu primera empresa para comenzar'}
               </p>
             </div>
           )}
-          </CardContent>
-        </Card>
-        
+        </CardContent>
+      </Card>
+
       {/* Detalles y métricas de empresa seleccionada */}
       {selectedCompany && companyMetrics && (
         <Card>
@@ -1264,8 +1283,8 @@ export const SuperuserDashboard: React.FC = () => {
                 <p className="text-sm text-muted-foreground">Uso de Ubicaciones</p>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 bg-muted rounded-full h-2">
-                    <div 
-                      className="bg-primary h-2 rounded-full" 
+                    <div
+                      className="bg-primary h-2 rounded-full"
                       style={{ width: `${companyMetrics.locations_usage_percent}%` }}
                     />
                   </div>
@@ -1274,12 +1293,12 @@ export const SuperuserDashboard: React.FC = () => {
                   </span>
                 </div>
               </div>
-                    <div>
+              <div>
                 <p className="text-sm text-muted-foreground">Uso de Empleados</p>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 bg-muted rounded-full h-2">
-                    <div 
-                      className="bg-success h-2 rounded-full" 
+                    <div
+                      className="bg-success h-2 rounded-full"
                       style={{ width: `${companyMetrics.employees_usage_percent}%` }}
                     />
                   </div>
@@ -1287,8 +1306,8 @@ export const SuperuserDashboard: React.FC = () => {
                     {companyMetrics.employees_count}/{companyMetrics.employees_limit}
                   </span>
                 </div>
-                    </div>
-                    <div>
+              </div>
+              <div>
                 <p className="text-sm text-muted-foreground">Costo Mensual</p>
                 <p className="text-2xl font-bold">${companyMetrics.monthly_cost}</p>
               </div>
@@ -1309,9 +1328,9 @@ export const SuperuserDashboard: React.FC = () => {
             <Button onClick={() => setShowChangeSubscription(!showChangeSubscription)}>
               <Plus className="h-4 w-4 mr-2" /> Cambiar Plan
             </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+        </CardHeader>
+        <CardContent>
           {showChangeSubscription && (
             <form onSubmit={changeSubscription} className="grid grid-cols-2 gap-4 mb-6 p-4 border rounded-lg">
               <Input
@@ -1407,10 +1426,10 @@ export const SuperuserDashboard: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    return date.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     });
   };
 
@@ -1429,11 +1448,11 @@ export const SuperuserDashboard: React.FC = () => {
   };
 
   const renderInvoicesTab = () => (
-            <div className="space-y-6">
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-              <div>
+            <div>
               <h2 className="text-xl font-semibold">Gestión de Facturas</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 {invoices.length} factura{invoices.length !== 1 ? 's' : ''} encontrada{invoices.length !== 1 ? 's' : ''}
@@ -1461,52 +1480,51 @@ export const SuperuserDashboard: React.FC = () => {
               {invoices.map((invoice) => {
                 const statusBadge = getStatusBadge(invoice.status);
                 const isOverdue = invoice.status === 'overdue' || (invoice.status === 'pending' && new Date(invoice.due_date) < new Date());
-                
+
                 return (
-                  <div 
-                    key={invoice.id} 
-                    className={`p-4 border rounded-lg hover:shadow-md transition-shadow ${
-                      isOverdue ? 'border-error/50 bg-error/5' : ''
-                    }`}
+                  <div
+                    key={invoice.id}
+                    className={`p-4 border rounded-lg hover:shadow-md transition-shadow ${isOverdue ? 'border-error/50 bg-error/5' : ''
+                      }`}
                   >
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                       {/* Información principal */}
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <FileText className="h-5 w-5 text-primary" />
-                    <div>
+                          <div>
                             <h3 className="font-semibold text-lg">{invoice.invoice_number}</h3>
                             <p className="text-sm text-muted-foreground">{invoice.company_name}</p>
-                    </div>
+                          </div>
                         </div>
-                        
+
                         {/* Detalles de la factura */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-sm">
-                    <div>
+                          <div>
                             <p className="text-muted-foreground">Período</p>
                             <p className="font-medium">
                               {new Date(invoice.billing_period_start).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
                             </p>
-                    </div>
-                    <div>
+                          </div>
+                          <div>
                             <p className="text-muted-foreground">Monto Total</p>
                             <p className="font-semibold text-lg text-primary">
                               ${invoice.total_amount.toFixed(2)}
                             </p>
-                    </div>
-                    <div>
+                          </div>
+                          <div>
                             <p className="text-muted-foreground">Vencimiento</p>
                             <p className={`font-medium ${isOverdue ? 'text-error' : ''}`}>
                               {formatDate(invoice.due_date)}
                             </p>
-                    </div>
+                          </div>
                           <div>
                             <p className="text-muted-foreground">Estado</p>
                             <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${statusBadge.class}`}>
                               {statusBadge.label}
                             </span>
-                  </div>
-                </div>
+                          </div>
+                        </div>
 
                         {/* Información de pago si existe */}
                         {invoice.paid_at && (
@@ -1516,7 +1534,7 @@ export const SuperuserDashboard: React.FC = () => {
                               {invoice.payment_method && ` • Método: ${invoice.payment_method}`}
                               {invoice.payment_reference && ` • Ref: ${invoice.payment_reference}`}
                             </p>
-              </div>
+                          </div>
                         )}
 
                         {/* Advertencia si está vencida */}
@@ -1532,7 +1550,7 @@ export const SuperuserDashboard: React.FC = () => {
                       {/* Acciones */}
                       <div className="flex flex-col gap-2">
                         {invoice.status !== 'paid' && (
-                          <Button 
+                          <Button
                             size="sm"
                             variant="primary"
                             onClick={() => {
@@ -1545,10 +1563,10 @@ export const SuperuserDashboard: React.FC = () => {
                           >
                             <CheckCircle className="h-4 w-4 mr-2" />
                             Marcar Pagada
-                </Button>
+                          </Button>
                         )}
-                        
-                        <Button 
+
+                        <Button
                           size="sm"
                           variant="outline"
                           onClick={() => {
@@ -1559,10 +1577,10 @@ export const SuperuserDashboard: React.FC = () => {
                         >
                           <Building2 className="h-4 w-4 mr-2" />
                           Ver Empresa
-                </Button>
+                        </Button>
                       </div>
-              </div>
-              
+                    </div>
+
                     {/* Footer con fechas */}
                     <div className="mt-3 pt-3 border-t text-xs text-muted-foreground flex justify-between">
                       <span>Creada: {formatDate(invoice.created_at)}</span>
@@ -1577,8 +1595,8 @@ export const SuperuserDashboard: React.FC = () => {
               <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium text-muted-foreground">No hay facturas para mostrar</p>
               <p className="text-sm text-muted-foreground mt-2">
-                {invoiceStatusFilter 
-                  ? 'Intenta cambiar el filtro de estado' 
+                {invoiceStatusFilter
+                  ? 'Intenta cambiar el filtro de estado'
                   : 'Las facturas aparecerán aquí cuando se generen'}
               </p>
             </div>
@@ -1592,7 +1610,7 @@ export const SuperuserDashboard: React.FC = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-              <div>
+                <div>
                   <p className="text-sm text-muted-foreground">Total Pendiente</p>
                   <p className="text-2xl font-bold text-warning">
                     ${invoices
@@ -1625,9 +1643,9 @@ export const SuperuserDashboard: React.FC = () => {
                   </p>
                 </div>
                 <CheckCircle className="h-8 w-8 text-success" />
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardContent className="pt-6">
@@ -1827,7 +1845,7 @@ export const SuperuserDashboard: React.FC = () => {
                 required
               />
             </div>
-            
+
             {selectedCompanyForBoss && (
               <form onSubmit={createBoss} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
@@ -1867,7 +1885,7 @@ export const SuperuserDashboard: React.FC = () => {
                       )}
                     </button>
                   </div>
-                  
+
                   {/* Validaciones de contraseña */}
                   <div className="space-y-1 text-xs">
                     <div className={`flex items-center gap-2 ${passwordValidation.hasUpperCase ? 'text-success' : 'text-muted-foreground'}`}>
@@ -1944,14 +1962,13 @@ export const SuperuserDashboard: React.FC = () => {
                         <h3 className="font-semibold text-lg">{item.company.name}</h3>
                         <p className="text-sm text-muted-foreground">{item.company.subdomain}</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className={`text-xs px-2 py-1 rounded font-medium ${
-                            item.company.subscription_status === 'active' ? 'bg-success/20 text-success' :
+                          <span className={`text-xs px-2 py-1 rounded font-medium ${item.company.subscription_status === 'active' ? 'bg-success/20 text-success' :
                             item.company.subscription_status === 'suspended' ? 'bg-error/20 text-error' :
-                            'bg-warning/20 text-warning'
-                          }`}>
+                              'bg-warning/20 text-warning'
+                            }`}>
                             {item.company.subscription_status === 'active' ? 'Activo' :
-                             item.company.subscription_status === 'suspended' ? 'Suspendido' : 
-                             item.company.subscription_status}
+                              item.company.subscription_status === 'suspended' ? 'Suspendido' :
+                                item.company.subscription_status}
                           </span>
                           <span className="text-xs px-2 py-1 rounded bg-primary/20 text-primary font-medium">
                             {item.company.subscription_plan}
@@ -1959,7 +1976,7 @@ export const SuperuserDashboard: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Información del Boss */}
                     <div className="text-right">
                       {item.hasBoss ? (
@@ -2004,9 +2021,9 @@ export const SuperuserDashboard: React.FC = () => {
                   <div className="flex flex-wrap gap-2">
                     {item.hasBoss ? (
                       <>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={() => {
                             setBossInfo(item.boss);
                             setSelectedCompanyForBoss(item.company.id);
@@ -2016,9 +2033,9 @@ export const SuperuserDashboard: React.FC = () => {
                           <Shield className="h-4 w-4 mr-1" />
                           Ver Boss
                         </Button>
-                        <Button 
-                          size="sm" 
-                          variant="primary" 
+                        <Button
+                          size="sm"
+                          variant="primary"
                           onClick={() => {
                             setSelectedCompanyForBoss(item.company.id);
                             setShowCreateBoss(true);
@@ -2030,9 +2047,9 @@ export const SuperuserDashboard: React.FC = () => {
                         </Button>
                       </>
                     ) : (
-                      <Button 
-                        size="sm" 
-                        variant="primary" 
+                      <Button
+                        size="sm"
+                        variant="primary"
                         onClick={() => {
                           setSelectedCompanyForBoss(item.company.id);
                           setShowCreateBoss(true);
@@ -2065,9 +2082,9 @@ export const SuperuserDashboard: React.FC = () => {
                 <Shield className="h-6 w-6 text-primary" />
                 <h2 className="text-xl font-semibold">Información del Boss</h2>
               </div>
-              <Button 
-                size="sm" 
-                variant="outline" 
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => setBossInfo(null)}
               >
                 Cerrar
@@ -2137,9 +2154,9 @@ export const SuperuserDashboard: React.FC = () => {
 
               {/* Acciones */}
               <div className="pt-4 border-t flex gap-2">
-                <Button 
-                  size="sm" 
-                  variant="outline" 
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => {
                     setSelectedCompanyForBoss(bossInfo.company_id || selectedCompanyForBoss);
                     setShowCreateBoss(true);
@@ -2149,9 +2166,9 @@ export const SuperuserDashboard: React.FC = () => {
                   <Plus className="h-4 w-4 mr-1" />
                   Cambiar Boss
                 </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => setBossInfo(null)}
                 >
                   Cerrar
@@ -2219,8 +2236,8 @@ export const SuperuserDashboard: React.FC = () => {
               Crear Primer Superadmin
             </Button>
           </form>
-          </CardContent>
-        </Card>
+        </CardContent>
+      </Card>
     </div>
   );
 
