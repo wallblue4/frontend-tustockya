@@ -17,10 +17,12 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const openFullScreenCamera = async () => {
     setError(null);
     setIsFullScreen(true);
-    
+
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" }, // Usar cámara trasera por defecto
@@ -30,6 +32,15 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
       if (videoRef.current) videoRef.current.srcObject = mediaStream;
     } catch (err: any) {
       setError("No se pudo acceder a la cámara: " + err.message);
+    }
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setVideoUrl(url);
+      onVideoRecorded?.(url, file);
     }
   };
 
@@ -72,19 +83,35 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
   if (!isFullScreen) {
     return (
       <div className="space-y-2">
-        <Button 
-          onClick={openFullScreenCamera}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
-        >
-          📹 Abrir camara
-        </Button>
-        
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          accept="video/*"
+          className="hidden"
+        />
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            onClick={openFullScreenCamera}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
+          >
+            📹 Abrir camara
+          </Button>
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            className="w-full py-3"
+          >
+            📁 Subir video
+          </Button>
+        </div>
+
         {videoUrl && (
           <div className="mt-3">
-            <p className="text-sm text-gray-600 mb-2">Video grabado:</p>
-            <video 
-              src={videoUrl} 
-              controls 
+            <p className="text-sm text-gray-600 mb-2">Video seleccionado:</p>
+            <video
+              src={videoUrl}
+              controls
               className="w-full max-w-xs rounded-lg shadow border"
             />
           </div>
@@ -99,8 +126,8 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
       {/* Header con botón cerrar */}
       <div className="flex justify-between items-center p-4 bg-black/90 backdrop-blur-sm">
         <h2 className="text-lg font-semibold text-white">Grabar Video</h2>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           onClick={closeFullScreen}
           className="text-white hover:bg-white/10 border-white/20"
         >
@@ -128,16 +155,16 @@ export const FullScreenCameraCapture: React.FC<Props> = ({ onVideoRecorded }) =>
         {/* Controls overlayed at the bottom center */}
         <div className="absolute left-0 w-full flex justify-center z-10" style={{ bottom: 'env(safe-area-inset-bottom, 0px)', paddingBottom: 'calc(7% + env(safe-area-inset-bottom, 80px))' }}>
           {stream && !recording && (
-            <Button 
-              onClick={startRecording} 
+            <Button
+              onClick={startRecording}
               className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-full text-lg font-semibold shadow-lg"
             >
               ● REC
             </Button>
           )}
           {recording && (
-            <Button 
-              onClick={stopRecording} 
+            <Button
+              onClick={stopRecording}
               className="bg-white hover:bg-gray-200 text-black px-8 py-4 rounded-full text-lg font-semibold animate-pulse shadow-lg"
             >
               ■ Parar

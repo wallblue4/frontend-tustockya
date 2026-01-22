@@ -17,10 +17,12 @@ export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken, hideInte
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const openFullScreenCamera = async () => {
     setError(null);
     setIsFullScreen(true);
-    
+
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" }, // Usar cámara trasera por defecto
@@ -30,6 +32,15 @@ export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken, hideInte
       if (videoRef.current) videoRef.current.srcObject = mediaStream;
     } catch (err: any) {
       setError("No se pudo acceder a la cámara: " + err.message);
+    }
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPhotoUrl(url);
+      onPhotoTaken?.(url, file);
     }
   };
 
@@ -70,18 +81,34 @@ export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken, hideInte
   if (!isFullScreen) {
     return (
       <div className="space-y-2">
-        <Button 
-          onClick={openFullScreenCamera}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
-        >
-          📸 Abrir camara
-        </Button>
-        
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          accept="image/*"
+          className="hidden"
+        />
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            onClick={openFullScreenCamera}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
+          >
+            📸 Abrir camara
+          </Button>
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            className="w-full py-3"
+          >
+            📁 Subir imagen
+          </Button>
+        </div>
+
         {!hideInternalPreview && photoUrl && (
           <div className="mt-3">
-            <p className="text-sm text-gray-600 mb-2">Foto tomada:</p>
-            <img 
-              src={photoUrl} 
+            <p className="text-sm text-gray-600 mb-2">Foto seleccionada:</p>
+            <img
+              src={photoUrl}
               alt="Foto del producto"
               className="w-full max-w-xs rounded-lg shadow border object-cover"
             />
@@ -96,12 +123,12 @@ export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken, hideInte
     <div className="fixed inset-0 bg-black flex flex-col" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100dvh', zIndex: 999999 }}>
       {/* Canvas oculto para capturar la foto */}
       <canvas ref={canvasRef} style={{ display: 'none' }} />
-      
+
       {/* Header con botón cerrar */}
       <div className="flex justify-between items-center p-4 bg-black/90 backdrop-blur-sm">
         <h2 className="text-lg font-semibold text-white">Tomar Foto</h2>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           onClick={closeFullScreen}
           className="text-white hover:bg-white/10 border-white/20"
         >
