@@ -1002,3 +1002,50 @@ export const fetchJobLogs = async (jobId: number) => {
   });
   return handleResponse(response);
 };
+
+// ========== 18. AJUSTES DE INVENTARIO ADMINISTRATIVO ==========
+
+interface InventoryAdjustmentRequest {
+  location_id: number;
+  product_reference: string;
+  size: string;
+  adjustment_type: 'set_quantity' | 'increment' | 'decrement';
+  quantity: number;
+  reason: string;
+  inventory_type: 'pair' | 'left_only' | 'right_only';
+}
+
+interface PriceAdjustmentRequest {
+  product_reference: string;
+  new_unit_price: number;
+  update_all_locations: boolean;
+}
+
+// POST /api/v1/admin/admin/inventory/adjust - Ajustar inventario por talla
+export const adjustInventory = async (adjustmentData: InventoryAdjustmentRequest) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/inventory/adjust`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(adjustmentData),
+  });
+  return handleResponse(response);
+};
+
+// POST /api/v1/admin/admin/inventory/price - Ajustar precio de producto
+export const adjustProductPrice = async (priceData: PriceAdjustmentRequest) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/inventory/price`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(priceData),
+  });
+  return handleResponse(response);
+};
+
+// GET /api/v1/admin/admin/inventory/all - Obtener todo el inventario administrativo
+export const fetchAdminInventory = async () => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/inventory/admin/inventory/all`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};

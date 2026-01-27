@@ -219,3 +219,43 @@ export interface PendingTransfersResponse {
 }
 
 export * from './transfers';
+
+// ========== ADMIN INVENTORY TYPES ==========
+
+export interface AdminInventorySize {
+  size: string;
+  quantity: number;
+  quantity_exhibition?: number;
+  inventory_type: 'pair' | 'left_only' | 'right_only';
+}
+
+export interface AdminInventoryProduct {
+  product_id: number;
+  reference_code: string;
+  brand: string;
+  model: string;
+  description?: string;
+  color_info?: string | null;
+  unit_price: string;
+  box_price?: string;
+  total_quantity: number;
+  image_url?: string;
+  video_url?: string | null;
+  is_active: number;
+  sizes: AdminInventorySize[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AdminInventoryLocation {
+  location_id: number;
+  location_name: string;
+  location_type?: 'local' | 'bodega';
+  products: AdminInventoryProduct[];
+}
+
+export interface AdminInventoryResponse {
+  success: boolean;
+  message: string;
+  locations: AdminInventoryLocation[];
+}

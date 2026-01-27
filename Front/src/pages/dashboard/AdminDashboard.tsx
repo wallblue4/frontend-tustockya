@@ -121,6 +121,12 @@ import { CreateCostModal } from '../../components/admin/CreateCostModal';
 import { StatsCard } from '../../components/dashboard/StatsCard';
 import { FullScreenCameraCapture } from '../../components/admin/FullScreenCameraCapture';
 import { FullScreenPhotoCapture } from '../../components/admin/FullScreenPhotoCapture';
+import { AdjustInventoryModal } from '../../components/admin/AdjustInventoryModal';
+import { AdjustPriceModal } from '../../components/admin/AdjustPriceModal';
+
+// Import inventory types and API
+import type { AdminInventoryLocation, AdminInventoryProduct, AdminInventorySize } from '../../types';
+import { adjustInventory, adjustProductPrice, fetchAdminInventory } from '../../services/adminAPI';
 
 type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics' | 'transfers';
 
@@ -328,6 +334,35 @@ export const AdminDashboard: React.FC = () => {
   const [estadisticasMayoreo, setEstadisticasMayoreo] = useState<EstadisticasMayoreo | null>(null);
   const [selectedProductoMayoreo, setSelectedProductoMayoreo] = useState<ProductoMayoreo | null>(null);
 
+  // Admin Inventory states
+  const [adminInventory, setAdminInventory] = useState<AdminInventoryLocation[]>([]);
+  const [adminInventoryLoading, setAdminInventoryLoading] = useState(false);
+  const [adminInventoryError, setAdminInventoryError] = useState<string | null>(null);
+  const [selectedAdminLocation, setSelectedAdminLocation] = useState<number | 'all'>('all');
+  const [adminInventorySearchTerm, setAdminInventorySearchTerm] = useState('');
+  const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
+
+  // Inventory adjustment modal states
+  const [showAdjustInventoryModal, setShowAdjustInventoryModal] = useState(false);
+  const [showAdjustPriceModal, setShowAdjustPriceModal] = useState(false);
+  const [selectedSizeForAdjustment, setSelectedSizeForAdjustment] = useState<{
+    brand: string;
+    model: string;
+    reference_code: string;
+    location_id: number;
+    location_name: string;
+    size: string;
+    inventory_type: 'pair' | 'left_only' | 'right_only';
+    current_quantity: number;
+  } | null>(null);
+  const [selectedProductForPriceAdjustment, setSelectedProductForPriceAdjustment] = useState<{
+    brand: string;
+    model: string;
+    reference_code: string;
+    current_price: number;
+    image_url?: string;
+  } | null>(null);
+
   // Modal states
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
@@ -386,6 +421,8 @@ export const AdminDashboard: React.FC = () => {
       loadNotifications();
     } else if (currentView === 'wholesale') {
       loadMayoreoData();
+    } else if (currentView === 'inventory') {
+      loadAdminInventory();
     }
   }, [currentView]);
 
@@ -1028,6 +1065,196 @@ Por favor verifica que:
     }
   };
 
+  // ========== ADMIN INVENTORY FUNCTIONS ==========
+
+  const loadAdminInventory = async () => {
+    try {
+      setAdminInventoryLoading(true);
+      setAdminInventoryError(null);
+      console.log('Cargando inventario administrativo...');
+
+      const response = await fetchAdminInventory();
+      console.log('Inventario administrativo cargado:', response);
+
+      const inventoryLocations = response.locations || [];
+      setAdminInventory(inventoryLocations);
+
+      // Set first location as selected if none selected
+      if (inventoryLocations.length > 0 && selectedAdminLocation === 'all') {
+        // Keep 'all' as default for admin view
+      }
+    } catch (error: any) {
+      console.error('Error cargando inventario administrativo:', error);
+      setAdminInventoryError(error.message || 'Error al cargar el inventario');
+      setAdminInventory([]);
+    } finally {
+      setAdminInventoryLoading(false);
+    }
+  };
+
+  const getFilteredAdminInventory = () => {
+    let filteredLocations = adminInventory;
+
+    // Filter by selected location
+    if (selectedAdminLocation !== 'all') {
+      filteredLocations = adminInventory.filter(location => location.location_id === selectedAdminLocation);
+    }
+
+    // Filter products by search term
+    if (adminInventorySearchTerm) {
+      const searchTerm = adminInventorySearchTerm.toLowerCase();
+      filteredLocations = filteredLocations.map(location => ({
+        ...location,
+        products: location.products.filter(product =>
+          product.brand.toLowerCase().includes(searchTerm) ||
+          product.model.toLowerCase().includes(searchTerm) ||
+          product.reference_code.toLowerCase().includes(searchTerm) ||
+          (product.description && product.description.toLowerCase().includes(searchTerm)) ||
+          (product.color_info && product.color_info.toLowerCase().includes(searchTerm))
+        )
+      }));
+    }
+
+    // Filter out empty locations
+    return filteredLocations.filter(location => location.products.length > 0);
+  };
+
+  const toggleProductExpansion = (productKey: string) => {
+    setExpandedProducts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(productKey)) {
+        newSet.delete(productKey);
+      } else {
+        newSet.add(productKey);
+      }
+      return newSet;
+    });
+  };
+
+  const handleOpenAdjustInventoryModal = (
+    product: AdminInventoryProduct,
+    size: AdminInventorySize,
+    locationId: number,
+    locationName: string
+  ) => {
+    setSelectedSizeForAdjustment({
+      brand: product.brand,
+      model: product.model,
+      reference_code: product.reference_code,
+      location_id: locationId,
+      location_name: locationName,
+      size: size.size,
+      inventory_type: size.inventory_type || 'pair',
+      current_quantity: size.quantity
+    });
+    setShowAdjustInventoryModal(true);
+  };
+
+  const handleOpenAdjustPriceModal = (product: AdminInventoryProduct) => {
+    setSelectedProductForPriceAdjustment({
+      brand: product.brand,
+      model: product.model,
+      reference_code: product.reference_code,
+      current_price: parseFloat(product.unit_price),
+      image_url: product.image_url
+    });
+    setShowAdjustPriceModal(true);
+  };
+
+  const handleAdjustInventory = async (data: {
+    location_id: number;
+    product_reference: string;
+    size: string;
+    adjustment_type: 'set_quantity' | 'increment' | 'decrement';
+    quantity: number;
+    reason: string;
+    inventory_type: 'pair' | 'left_only' | 'right_only';
+  }) => {
+    try {
+      const response = await adjustInventory(data);
+      console.log('Inventario ajustado:', response);
+
+      // Reload inventory after adjustment
+      await loadAdminInventory();
+
+      alert(`Inventario ajustado exitosamente.
+
+Producto: ${data.product_reference}
+Talla: ${data.size}
+Ajuste: ${data.adjustment_type === 'set_quantity' ? 'Establecido a' : data.adjustment_type === 'increment' ? 'Incrementado en' : 'Decrementado en'} ${data.quantity}
+Motivo: ${data.reason}`);
+
+      setShowAdjustInventoryModal(false);
+      setSelectedSizeForAdjustment(null);
+    } catch (error: any) {
+      console.error('Error ajustando inventario:', error);
+      alert('Error al ajustar inventario: ' + (error.message || 'Error desconocido'));
+      throw error;
+    }
+  };
+
+  const handleAdjustPrice = async (data: {
+    product_reference: string;
+    new_unit_price: number;
+    update_all_locations: boolean;
+    location_id: number | null;
+  }) => {
+    try {
+      const response = await adjustProductPrice(data);
+      console.log('Precio ajustado:', response);
+
+      // Reload inventory after adjustment
+      await loadAdminInventory();
+
+      alert(`Precio actualizado exitosamente.
+
+Producto: ${data.product_reference}
+Nuevo precio: ${formatCurrency(data.new_unit_price)}
+Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion especifica'}`);
+
+      setShowAdjustPriceModal(false);
+      setSelectedProductForPriceAdjustment(null);
+    } catch (error: any) {
+      console.error('Error ajustando precio:', error);
+      alert('Error al ajustar precio: ' + (error.message || 'Error desconocido'));
+      throw error;
+    }
+  };
+
+  const getInventoryTypeLabel = (type: string) => {
+    switch (type) {
+      case 'pair': return 'Par';
+      case 'left_only': return 'Izq.';
+      case 'right_only': return 'Der.';
+      default: return type;
+    }
+  };
+
+  const getInventoryTypeBadgeColor = (type: string) => {
+    switch (type) {
+      case 'pair': return 'bg-success/10 text-success border-success/20';
+      case 'left_only': return 'bg-warning/10 text-warning border-warning/20';
+      case 'right_only': return 'bg-info/10 text-info border-info/20';
+      default: return 'bg-primary/10 text-primary border-primary/20';
+    }
+  };
+
+  const getAdminInventoryStats = (locations: AdminInventoryLocation[]) => {
+    let totalProducts = 0;
+    let totalUnits = 0;
+    let totalValue = 0;
+
+    locations.forEach(location => {
+      location.products.forEach(product => {
+        totalProducts++;
+        totalUnits += product.total_quantity;
+        totalValue += parseFloat(product.unit_price) * product.total_quantity;
+      });
+    });
+
+    return { totalProducts, totalUnits, totalValue };
+  };
+
   const renderDashboardView = () => {
     return (
       <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
@@ -1411,8 +1638,8 @@ Por favor verifica que:
                 <div className="space-y-4">
                   {filteredLocations.map((location) => (
                     <div key={location.location_id} className={`p-4 rounded-lg border-l-4 bg-card text-foreground border-border ${location.status === 'ok' ? 'border-success' :
-                        location.status === 'attention' ? 'border-warning' :
-                          'border-error'
+                      location.status === 'attention' ? 'border-warning' :
+                        'border-error'
                       }`}>
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
@@ -1802,8 +2029,8 @@ Por favor verifica que:
               <div className="space-y-4">
                 {allNotifications.map((notification: any) => (
                   <div key={`${notification.type}-${notification.id}`} className={`p-4 rounded-lg border-l-4 ${notification.type === 'discount'
-                      ? 'bg-warning/10 border-warning'
-                      : 'bg-error/10 border-error'
+                    ? 'bg-warning/10 border-warning'
+                    : 'bg-error/10 border-error'
                     }`}>
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
@@ -1872,21 +2099,316 @@ Por favor verifica que:
     );
   };
 
+  // Estado local para tabs de inventario
+  const [inventoryActiveTab, setInventoryActiveTab] = useState<'view' | 'entry'>('view');
+
   const renderInventoryView = () => {
-    // ...el estado ahora está en el componente principal...
+    const filteredInventory = getFilteredAdminInventory();
+    const stats = getAdminInventoryStats(adminInventory);
 
     return (
       <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <h2 className="text-xl font-semibold text-foreground">Gestión de Inventario</h2>
+          <h2 className="text-2xl font-bold text-foreground">Gestion de Inventario</h2>
+          <div className="flex space-x-2">
+            <Button onClick={() => loadAdminInventory()} size="sm" variant="outline" disabled={adminInventoryLoading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${adminInventoryLoading ? 'animate-spin' : ''}`} />
+              Actualizar
+            </Button>
+          </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold">Registrar Inventario</h3>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Tabs para cambiar entre Ver Inventario y Registrar Nuevo */}
+        <div className="flex space-x-2 border-b border-border">
+          <button
+            onClick={() => setInventoryActiveTab('view')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              inventoryActiveTab === 'view'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Package className="h-4 w-4 inline mr-2" />
+            Ver Inventario
+          </button>
+          <button
+            onClick={() => setInventoryActiveTab('entry')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              inventoryActiveTab === 'entry'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Video className="h-4 w-4 inline mr-2" />
+            Registrar con Video
+          </button>
+        </div>
+
+        {inventoryActiveTab === 'view' && (
+          <>
+            {/* Estadisticas generales */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <Package className="h-8 w-8 text-primary mx-auto mb-2" />
+                  <p className="text-2xl font-bold">{stats.totalProducts}</p>
+                  <p className="text-sm text-muted-foreground">Productos Totales</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <Activity className="h-8 w-8 text-success mx-auto mb-2" />
+                  <p className="text-2xl font-bold">{stats.totalUnits}</p>
+                  <p className="text-sm text-muted-foreground">Unidades en Stock</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <DollarSign className="h-8 w-8 text-warning mx-auto mb-2" />
+                  <p className="text-2xl font-bold">{formatCurrency(stats.totalValue)}</p>
+                  <p className="text-sm text-muted-foreground">Valor Total</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Filtros */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Ubicacion</label>
+                    <select
+                      value={selectedAdminLocation === 'all' ? 'all' : selectedAdminLocation.toString()}
+                      onChange={(e) => setSelectedAdminLocation(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground"
+                    >
+                      <option value="all">Todas las ubicaciones</option>
+                      {adminInventory.map((location) => (
+                        <option key={location.location_id} value={location.location_id}>
+                          {location.location_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Buscar producto</label>
+                    <Input
+                      placeholder="Buscar por marca, modelo o referencia..."
+                      value={adminInventorySearchTerm}
+                      onChange={(e) => setAdminInventorySearchTerm(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Loading state */}
+            {adminInventoryLoading && (
+              <div className="flex items-center justify-center h-32">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                  <p className="text-muted-foreground">Cargando inventario...</p>
+                </div>
+              </div>
+            )}
+
+            {/* Error state */}
+            {adminInventoryError && !adminInventoryLoading && (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-center">
+                    <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-3" />
+                    <h3 className="text-lg font-medium text-destructive">Error al cargar inventario</h3>
+                    <p className="text-muted-foreground text-sm mt-2">{adminInventoryError}</p>
+                    <Button onClick={() => loadAdminInventory()} className="mt-4" variant="outline">
+                      Reintentar
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Inventario por ubicacion */}
+            {!adminInventoryLoading && !adminInventoryError && (
+              <div className="space-y-6">
+                {filteredInventory.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-6">
+                      <EmptyState
+                        title={adminInventorySearchTerm ? 'No se encontraron productos' : 'No hay inventario disponible'}
+                        description={adminInventorySearchTerm ? 'Intenta con otros terminos de busqueda' : 'El inventario se cargara automaticamente'}
+                        icon={<Package className="h-12 w-12 text-muted-foreground" />}
+                      />
+                    </CardContent>
+                  </Card>
+                ) : (
+                  filteredInventory.map((location) => (
+                    <Card key={location.location_id}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <MapPin className="h-5 w-5 text-primary" />
+                            <h3 className="text-xl font-semibold text-foreground">{location.location_name}</h3>
+                            <Badge variant="secondary">{location.products.length} productos</Badge>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {location.products.map((product) => {
+                            const productKey = `${location.location_id}-${product.product_id}`;
+                            const isExpanded = expandedProducts.has(productKey);
+
+                            return (
+                              <Card key={product.product_id} className="border border-border overflow-hidden">
+                                <CardContent className="p-4">
+                                  {/* Product Summary - Always visible */}
+                                  <div className="flex space-x-3">
+                                    {/* Imagen del producto */}
+                                    <div className="flex-shrink-0">
+                                      <div className="w-20 h-28 rounded-lg overflow-hidden border border-border bg-muted">
+                                        <img
+                                          src={product.image_url || `https://via.placeholder.com/80x112/e5e7eb/6b7280?text=${encodeURIComponent(product.brand)}`}
+                                          alt={`${product.brand} ${product.model}`}
+                                          className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            if (!e.currentTarget.dataset.fallback) {
+                                              e.currentTarget.dataset.fallback = 'true';
+                                              e.currentTarget.src = `https://via.placeholder.com/80x112/f3f4f6/9ca3af?text=${encodeURIComponent(product.brand)}`;
+                                            }
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+
+                                    {/* Info del producto */}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-start justify-between mb-1">
+                                        <h4 className="font-semibold text-sm leading-tight text-foreground">
+                                          {product.brand} {product.model}
+                                        </h4>
+                                        <span className="bg-primary text-primary-foreground px-2 py-1 rounded-full text-xs font-medium">
+                                          {product.total_quantity}
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground font-mono mb-2">
+                                        {product.reference_code}
+                                      </p>
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-sm font-bold text-success">
+                                          {formatCurrency(parseFloat(product.unit_price))}
+                                        </span>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleOpenAdjustPriceModal(product)}
+                                          className="text-xs h-7 px-2"
+                                        >
+                                          <Edit className="h-3 w-3 mr-1" />
+                                          Precio
+                                        </Button>
+                                      </div>
+                                      <div className="flex items-center space-x-2 mt-2">
+                                        <span className="text-xs text-muted-foreground">
+                                          {product.sizes.length} tallas
+                                        </span>
+                                        {product.total_quantity === 0 && (
+                                          <Badge variant="error" className="text-xs">Sin stock</Badge>
+                                        )}
+                                        {product.total_quantity > 0 && product.total_quantity <= 5 && (
+                                          <Badge variant="warning" className="text-xs">Stock bajo</Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Expand/Collapse button */}
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleProductExpansion(productKey)}
+                                    className="w-full mt-3 text-sm"
+                                  >
+                                    {isExpanded ? (
+                                      <>
+                                        <ChevronUp className="h-4 w-4 mr-2" />
+                                        Ocultar tallas
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ChevronDown className="h-4 w-4 mr-2" />
+                                        Ver tallas ({product.sizes.length})
+                                      </>
+                                    )}
+                                  </Button>
+
+                                  {/* Expanded view - Sizes */}
+                                  {isExpanded && (
+                                    <div className="mt-4 pt-4 border-t border-border">
+                                      <h5 className="text-sm font-medium text-foreground mb-3">Tallas disponibles</h5>
+                                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                                        {product.sizes.map((size, sizeIdx) => (
+                                          <div
+                                            key={sizeIdx}
+                                            className={`flex items-center justify-between p-2 rounded-lg border ${
+                                              size.quantity > 0 ? 'bg-card border-border' : 'bg-muted/50 border-border/50'
+                                            }`}
+                                          >
+                                            <div className="flex items-center space-x-3">
+                                              <span className="font-medium text-foreground w-10">{size.size}</span>
+                                              <span className={`px-2 py-0.5 rounded text-xs border ${getInventoryTypeBadgeColor(size.inventory_type || 'pair')}`}>
+                                                {getInventoryTypeLabel(size.inventory_type || 'pair')}
+                                              </span>
+                                              <span className={`font-semibold ${size.quantity > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                {size.quantity} uds
+                                              </span>
+                                              {size.quantity_exhibition && size.quantity_exhibition > 0 && (
+                                                <span className="text-xs text-warning">
+                                                  (+{size.quantity_exhibition} exhib.)
+                                                </span>
+                                              )}
+                                            </div>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => handleOpenAdjustInventoryModal(
+                                                product,
+                                                size,
+                                                location.location_id,
+                                                location.location_name
+                                              )}
+                                              className="text-xs h-7 px-2"
+                                            >
+                                              <Edit className="h-3 w-3 mr-1" />
+                                              Ajustar
+                                            </Button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {inventoryActiveTab === 'entry' && (
+          <>
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold">Registrar Inventario con Video</h3>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Columna 1: Datos del Producto */}
               <div className="space-y-4">
                 <h4 className="font-semibold text-foreground mb-3">Datos del Producto</h4>
@@ -2212,47 +2734,49 @@ Por favor verifica que:
                       }
                     }}
                   />
-                  <p className="text-xs text-muted-foreground mt-2">
+                  < p className="text-xs text-muted-foreground mt-2" >
                     Toca el botón para abrir la cámara en pantalla completa
-                  </p>
-                </div>
+                  </p >
+                </div >
 
                 {/* Preview de la foto capturada */}
-                {capturedPhotoUrl && (
-                  <div className="border border-border rounded-lg p-4 bg-muted/10">
-                    <h4 className="text-sm font-medium text-foreground mb-2">📸 Foto Capturada</h4>
-                    <div className="space-y-3">
-                      <img
-                        src={capturedPhotoUrl}
-                        alt="Foto del inventario"
-                        className="w-full h-64 object-cover rounded-lg border shadow-sm"
-                      />
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground">
-                          Foto de referencia del producto
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (capturedPhotoUrl) {
-                              URL.revokeObjectURL(capturedPhotoUrl);
-                            }
-                            setCapturedPhotoUrl(null);
-                            setVideoInventoryForm(prev => ({ ...prev, reference_image: null }));
-                          }}
-                          className="text-destructive hover:text-destructive/80"
-                        >
-                          🗑️ Eliminar
-                        </Button>
+                {
+                  capturedPhotoUrl && (
+                    <div className="border border-border rounded-lg p-4 bg-muted/10">
+                      <h4 className="text-sm font-medium text-foreground mb-2">📸 Foto Capturada</h4>
+                      <div className="space-y-3">
+                        <img
+                          src={capturedPhotoUrl}
+                          alt="Foto del inventario"
+                          className="w-full h-64 object-cover rounded-lg border shadow-sm"
+                        />
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-muted-foreground">
+                            Foto de referencia del producto
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (capturedPhotoUrl) {
+                                URL.revokeObjectURL(capturedPhotoUrl);
+                              }
+                              setCapturedPhotoUrl(null);
+                              setVideoInventoryForm(prev => ({ ...prev, reference_image: null }));
+                            }}
+                            className="text-destructive hover:text-destructive/80"
+                          >
+                            🗑️ Eliminar
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )
+                }
+              </div >
 
               {/* Columna 3: Video del Producto */}
-              <div className="space-y-4">
+              < div className="space-y-4" >
                 <h4 className="font-semibold text-foreground mb-3">Video del Producto <span className="text-error">*</span></h4>
 
                 <div>
@@ -2286,38 +2810,40 @@ Por favor verifica que:
                 </div>
 
                 {/* Preview del video grabado */}
-                {capturedVideoUrl && (
-                  <div className="border border-border rounded-lg p-4 bg-muted/10">
-                    <h4 className="text-sm font-medium text-foreground mb-2">📹 Video Grabado</h4>
-                    <div className="space-y-3">
-                      <video
-                        src={capturedVideoUrl}
-                        controls
-                        className="w-full rounded-lg border shadow-sm"
-                        preload="metadata"
-                      />
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground">
-                          Video del inventario del producto
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (capturedVideoUrl) {
-                              URL.revokeObjectURL(capturedVideoUrl);
-                            }
-                            setCapturedVideoUrl(null);
-                            setVideoInventoryForm(prev => ({ ...prev, video_file: null }));
-                          }}
-                          className="text-destructive hover:text-destructive/80"
-                        >
-                          🗑️ Eliminar
-                        </Button>
+                {
+                  capturedVideoUrl && (
+                    <div className="border border-border rounded-lg p-4 bg-muted/10">
+                      <h4 className="text-sm font-medium text-foreground mb-2">📹 Video Grabado</h4>
+                      <div className="space-y-3">
+                        <video
+                          src={capturedVideoUrl}
+                          controls
+                          className="w-full rounded-lg border shadow-sm"
+                          preload="metadata"
+                        />
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-muted-foreground">
+                            Video del inventario del producto
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (capturedVideoUrl) {
+                                URL.revokeObjectURL(capturedVideoUrl);
+                              }
+                              setCapturedVideoUrl(null);
+                              setVideoInventoryForm(prev => ({ ...prev, video_file: null }));
+                            }}
+                            className="text-destructive hover:text-destructive/80"
+                          >
+                            🗑️ Eliminar
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )
+                }
               </div>
             </div>
           </CardContent>
@@ -2446,6 +2972,8 @@ Por favor verifica que:
             </div>
           </CardContent>
         </Card>
+        </>
+        )}
       </div>
     );
   };
@@ -3814,8 +4342,8 @@ Por favor verifica que:
                 key={tab.key}
                 onClick={() => setCurrentView(tab.key as AdminView)}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${currentView === tab.key
-                    ? 'bg-primary text-primary-foreground shadow-lg'
-                    : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground'
+                  ? 'bg-primary text-primary-foreground shadow-lg'
+                  : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground'
                   }`}
               >
                 {tab.icon}
@@ -3846,8 +4374,8 @@ Por favor verifica que:
                     key={item.key}
                     onClick={() => setCurrentView(item.key as AdminView)}
                     className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left ${currentView === item.key
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-foreground hover:bg-muted/20'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-foreground hover:bg-muted/20'
                       }`}
                   >
                     {item.icon}
@@ -3915,6 +4443,30 @@ Por favor verifica que:
             onClose={() => setShowCreateCostModal(false)}
             onSubmit={handleCreateCost}
             locations={locations}
+          />
+        )}
+
+        {/* Inventory Adjustment Modal */}
+        {showAdjustInventoryModal && selectedSizeForAdjustment && (
+          <AdjustInventoryModal
+            onClose={() => {
+              setShowAdjustInventoryModal(false);
+              setSelectedSizeForAdjustment(null);
+            }}
+            onSubmit={handleAdjustInventory}
+            productData={selectedSizeForAdjustment}
+          />
+        )}
+
+        {/* Price Adjustment Modal */}
+        {showAdjustPriceModal && selectedProductForPriceAdjustment && (
+          <AdjustPriceModal
+            onClose={() => {
+              setShowAdjustPriceModal(false);
+              setSelectedProductForPriceAdjustment(null);
+            }}
+            onSubmit={handleAdjustPrice}
+            productData={selectedProductForPriceAdjustment}
           />
         )}
       </div>
