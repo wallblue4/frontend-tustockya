@@ -100,6 +100,35 @@ export const BossDashboard: React.FC = () => {
     location_ids: [] as number[]
   });
 
+  // Estados para lista y edicion de admins
+  const [adminsList, setAdminsList] = useState<any[]>([]);
+  const [adminsLoading, setAdminsLoading] = useState(false);
+  const [includeInactiveAdmins, setIncludeInactiveAdmins] = useState(false);
+  const [showEditAdminModal, setShowEditAdminModal] = useState(false);
+  const [editingAdmin, setEditingAdmin] = useState<any>(null);
+  const [editAdminLoading, setEditAdminLoading] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [editPasswordError, setEditPasswordError] = useState<string>('');
+  const [editAdminFormData, setEditAdminFormData] = useState({
+    first_name: '',
+    last_name: '',
+    password: '',
+    location_ids: [] as number[],
+    is_active: true
+  });
+
+  // Estados para editar ubicaciones
+  const [showEditLocationModal, setShowEditLocationModal] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<any>(null);
+  const [editLocationLoading, setEditLocationLoading] = useState(false);
+  const [editLocationFormData, setEditLocationFormData] = useState({
+    name: '',
+    type: 'local' as 'local' | 'bodega',
+    address: '',
+    phone: '',
+    is_active: true
+  });
+
   // Estados para selectores de fecha
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -117,6 +146,13 @@ export const BossDashboard: React.FC = () => {
   useEffect(() => {
     loadViewData(currentView);
   }, [currentView]);
+
+  // Recargar admins cuando cambia el filtro de inactivos
+  useEffect(() => {
+    if (currentView === 'admins') {
+      loadAdmins();
+    }
+  }, [includeInactiveAdmins]);
 
   // Cargar datos específicos para la vista de Analytics (gráficas)
   useEffect(() => {
@@ -181,9 +217,25 @@ export const BossDashboard: React.FC = () => {
           const sales = await bossAPI.getDailySalesReport();
           setSalesReport(sales);
           break;
+        case 'admins':
+          await loadAdmins();
+          break;
       }
     } catch (err: any) {
       console.error(`Error cargando datos de ${view}:`, err);
+    }
+  };
+
+  // Cargar lista de administradores
+  const loadAdmins = async () => {
+    setAdminsLoading(true);
+    try {
+      const admins = await bossAPI.getAdmins(includeInactiveAdmins);
+      setAdminsList(admins);
+    } catch (err: any) {
+      console.error('Error cargando administradores:', err);
+    } finally {
+      setAdminsLoading(false);
     }
   };
 
@@ -245,6 +297,89 @@ export const BossDashboard: React.FC = () => {
       alert('Error al crear ubicación: ' + (err.message || 'Error desconocido'));
     } finally {
       setCreateLocationLoading(false);
+    }
+  };
+
+  // Función para abrir el modal de edición de ubicación
+  const handleOpenEditLocationModal = (location: any) => {
+    setEditingLocation(location);
+    setEditLocationFormData({
+      name: location.name || '',
+      type: location.type || 'local',
+      address: location.address || '',
+      phone: location.phone || '',
+      is_active: location.is_active !== false
+    });
+    setShowEditLocationModal(true);
+  };
+
+  // Función para actualizar ubicación
+  const handleUpdateLocation = async () => {
+    if (!editingLocation) return;
+
+    setEditLocationLoading(true);
+    try {
+      const dataToSend: any = {};
+
+      if (editLocationFormData.name !== editingLocation.name) {
+        dataToSend.name = editLocationFormData.name;
+      }
+      if (editLocationFormData.type !== editingLocation.type) {
+        dataToSend.type = editLocationFormData.type;
+      }
+      if (editLocationFormData.address !== (editingLocation.address || '')) {
+        dataToSend.address = editLocationFormData.address || null;
+      }
+      if (editLocationFormData.phone !== (editingLocation.phone || '')) {
+        dataToSend.phone = editLocationFormData.phone || null;
+      }
+      if (editLocationFormData.is_active !== editingLocation.is_active) {
+        dataToSend.is_active = editLocationFormData.is_active;
+      }
+
+      // Solo enviar si hay cambios
+      if (Object.keys(dataToSend).length === 0) {
+        alert('No hay cambios para guardar');
+        setEditLocationLoading(false);
+        return;
+      }
+
+      await bossAPI.updateLocation(editingLocation.id, dataToSend);
+
+      // Recargar ubicaciones
+      const locs = await bossAPI.getLocations(false);
+      setLocations(locs);
+
+      // Cerrar modal
+      setShowEditLocationModal(false);
+      setEditingLocation(null);
+
+      alert('Ubicación actualizada exitosamente');
+    } catch (err: any) {
+      console.error('Error actualizando ubicación:', err);
+      alert('Error al actualizar ubicación: ' + (err.message || 'Error desconocido'));
+    } finally {
+      setEditLocationLoading(false);
+    }
+  };
+
+  // Función para desactivar ubicación
+  const handleDeactivateLocation = async (locationId: number) => {
+    if (!confirm('¿Estás seguro de que deseas desactivar esta ubicación? Esta acción no se puede deshacer fácilmente.')) {
+      return;
+    }
+
+    try {
+      await bossAPI.deactivateLocation(locationId);
+
+      // Recargar ubicaciones
+      const locs = await bossAPI.getLocations(false);
+      setLocations(locs);
+
+      alert('Ubicación desactivada exitosamente');
+    } catch (err: any) {
+      console.error('Error desactivando ubicación:', err);
+      alert('Error al desactivar ubicación: ' + (err.message || 'Error desconocido'));
     }
   };
 
@@ -324,11 +459,83 @@ export const BossDashboard: React.FC = () => {
       setShowPassword(false);
       
       alert('Administrador creado exitosamente');
+      // Recargar lista de admins
+      await loadAdmins();
     } catch (err: any) {
       console.error('Error creando administrador:', err);
       alert('Error al crear administrador: ' + (err.message || 'Error desconocido'));
     } finally {
       setCreateAdminLoading(false);
+    }
+  };
+
+  // Función para abrir modal de edicion de admin
+  const handleOpenEditAdminModal = (admin: any) => {
+    setEditingAdmin(admin);
+    setEditAdminFormData({
+      first_name: admin.first_name,
+      last_name: admin.last_name,
+      password: '',
+      location_ids: admin.assigned_locations?.map((loc: any) => loc.id) || [],
+      is_active: admin.is_active
+    });
+    setEditPasswordError('');
+    setShowEditPassword(false);
+    setShowEditAdminModal(true);
+  };
+
+  // Función para actualizar administrador
+  const handleUpdateAdmin = async () => {
+    if (!editingAdmin) return;
+
+    setEditAdminLoading(true);
+    try {
+      // Validar contraseña solo si se proporciona una nueva
+      if (editAdminFormData.password) {
+        const passwordValidation = validatePassword(editAdminFormData.password);
+        if (passwordValidation) {
+          setEditPasswordError(passwordValidation);
+          setEditAdminLoading(false);
+          return;
+        }
+      }
+      setEditPasswordError('');
+
+      // Construir payload solo con campos modificados
+      const dataToSend: any = {
+        first_name: editAdminFormData.first_name,
+        last_name: editAdminFormData.last_name,
+        location_ids: editAdminFormData.location_ids,
+        is_active: editAdminFormData.is_active
+      };
+
+      // Solo incluir password si se proporciona
+      if (editAdminFormData.password) {
+        dataToSend.password = editAdminFormData.password;
+      }
+
+      await bossAPI.updateAdmin(editingAdmin.id, dataToSend);
+
+      // Recargar lista de admins
+      await loadAdmins();
+
+      // Cerrar modal y resetear
+      setShowEditAdminModal(false);
+      setEditingAdmin(null);
+      setEditAdminFormData({
+        first_name: '',
+        last_name: '',
+        password: '',
+        location_ids: [],
+        is_active: true
+      });
+
+      alert('Administrador actualizado exitosamente');
+    } catch (err: any) {
+      console.error('Error actualizando administrador:', err);
+      alert('Error al actualizar administrador: ' + (err.message || 'Error desconocido'));
+    } finally {
+      setEditAdminLoading(false);
     }
   };
 
@@ -582,20 +789,43 @@ export const BossDashboard: React.FC = () => {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center space-x-3">
-                      {location.type === 'bodega' ? 
+                      {location.type === 'bodega' ?
                         <Warehouse className="h-8 w-8 text-primary" /> :
                         <Store className="h-8 w-8 text-success" />
                       }
-                    <div>
+                      <div>
                         <h3 className="font-semibold">{location.name}</h3>
-                        <span className="text-xs px-2 py-1 bg-primary/10 rounded-full">
-                          {location.type}
-                        </span>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span className="text-xs px-2 py-1 bg-primary/10 rounded-full">
+                            {location.type}
+                          </span>
+                          {location.is_active === false && (
+                            <span className="text-xs px-2 py-1 bg-destructive/20 text-destructive rounded-full">
+                              Inactivo
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    </div>
-                      <Button size="sm" variant="outline">
-                      <Edit className="h-3 w-3" />
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenEditLocationModal(location)}
+                      >
+                        <Edit className="h-3 w-3" />
                       </Button>
+                      {location.is_active !== false && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeactivateLocation(location.id)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-2 text-sm">
@@ -609,21 +839,21 @@ export const BossDashboard: React.FC = () => {
                       <div className="text-center">
                         <p className="font-bold">{location.total_users}</p>
                         <p className="text-xs text-muted-foreground">Usuarios</p>
-                        </div>
+                      </div>
                       <div className="text-center">
                         <p className="font-bold">{location.total_products}</p>
                         <p className="text-xs text-muted-foreground">Productos</p>
-                          </div>
+                      </div>
                       <div className="text-center">
                         <p className="font-bold text-xs">{formatCurrency(location.total_inventory_value)}</p>
                         <p className="text-xs text-muted-foreground">Inventario</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
     </div>
   );
@@ -1525,13 +1755,113 @@ export const BossDashboard: React.FC = () => {
     return (
       <div className="space-y-6 p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <h2 className="text-2xl font-bold text-foreground">Gestión de Administradores</h2>
+          <h2 className="text-2xl font-bold text-foreground">Gestion de Administradores</h2>
+          <Button onClick={() => loadAdmins()} variant="outline" size="sm">
+            <RefreshCw className={`h-4 w-4 mr-2 ${adminsLoading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </Button>
         </div>
 
+        {/* Lista de Administradores */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
+              <h3 className="text-lg font-semibold flex items-center">
+                <Users className="h-5 w-5 mr-2" />
+                Administradores ({adminsList.length})
+              </h3>
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeInactiveAdmins}
+                  onChange={(e) => setIncludeInactiveAdmins(e.target.checked)}
+                  className="w-4 h-4 text-primary border-border rounded focus:ring-primary"
+                />
+                <span className="text-sm text-muted-foreground">Incluir inactivos</span>
+              </label>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {adminsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : adminsList.length === 0 ? (
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">No hay administradores registrados</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {adminsList.map((admin: any) => (
+                  <div
+                    key={admin.id}
+                    className={`p-4 border rounded-lg ${admin.is_active ? 'border-border bg-card' : 'border-destructive/30 bg-destructive/5'}`}
+                  >
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <h4 className="font-semibold text-foreground">
+                            {admin.first_name} {admin.last_name}
+                          </h4>
+                          {!admin.is_active && (
+                            <span className="px-2 py-0.5 bg-destructive/20 text-destructive text-xs rounded-full">
+                              Inactivo
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{admin.email}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Creado: {new Date(admin.created_at).toLocaleDateString('es-CO')}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenEditAdminModal(admin)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Editar
+                      </Button>
+                    </div>
+
+                    {/* Ubicaciones asignadas */}
+                    {admin.assigned_locations && admin.assigned_locations.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">Ubicaciones asignadas:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {admin.assigned_locations.map((loc: any) => (
+                            <span
+                              key={loc.id}
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                loc.type === 'bodega'
+                                  ? 'bg-warning/20 text-warning'
+                                  : 'bg-primary/20 text-primary'
+                              }`}
+                            >
+                              {loc.type === 'bodega' ? (
+                                <Warehouse className="h-3 w-3 mr-1" />
+                              ) : (
+                                <Store className="h-3 w-3 mr-1" />
+                              )}
+                              {loc.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Formulario Crear Admin */}
         <Card>
           <CardHeader>
             <h3 className="text-lg font-semibold flex items-center">
-              <Users className="h-5 w-5 mr-2" />
+              <Plus className="h-5 w-5 mr-2" />
               Crear Nuevo Administrador
             </h3>
           </CardHeader>
@@ -1550,7 +1880,7 @@ export const BossDashboard: React.FC = () => {
                   label="Apellido *"
                   value={adminFormData.last_name}
                   onChange={(e) => setAdminFormData({ ...adminFormData, last_name: e.target.value })}
-                  placeholder="Ej: Pérez"
+                  placeholder="Ej: Perez"
                   required
                 />
               </div>
@@ -1565,10 +1895,10 @@ export const BossDashboard: React.FC = () => {
                 required
               />
 
-              {/* Contraseña */}
+              {/* Contrasena */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  Contraseña *
+                  Contrasena *
                 </label>
                 <div className="relative">
                   <Input
@@ -1576,7 +1906,6 @@ export const BossDashboard: React.FC = () => {
                     value={adminFormData.password}
                     onChange={(e) => {
                       setAdminFormData({ ...adminFormData, password: e.target.value });
-                      // Validar en tiempo real
                       const validation = validatePassword(e.target.value);
                       setPasswordError(validation);
                     }}
@@ -1588,122 +1917,76 @@ export const BossDashboard: React.FC = () => {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
                     tabIndex={-1}
-                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
-                {/* Lista de requisitos */}
                 <div className="mt-2 space-y-1">
                   {(() => {
                     const requirements = getPasswordRequirements(adminFormData.password);
                     const allMet = requirements.minLength && requirements.hasUpperCase && requirements.hasNumber && requirements.hasSpecialChar;
-                    
                     return (
                       <>
                         <div className={`flex items-center space-x-2 text-sm ${requirements.minLength ? 'text-success' : 'text-muted-foreground'}`}>
-                          {requirements.minLength ? (
-                            <Check className="h-4 w-4" />
-                          ) : (
-                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
-                          )}
+                          {requirements.minLength ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
                           <span>Al menos 6 caracteres</span>
                         </div>
                         <div className={`flex items-center space-x-2 text-sm ${requirements.hasUpperCase ? 'text-success' : 'text-muted-foreground'}`}>
-                          {requirements.hasUpperCase ? (
-                            <Check className="h-4 w-4" />
-                          ) : (
-                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
-                          )}
-                          <span>Al menos una mayúscula</span>
+                          {requirements.hasUpperCase ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
+                          <span>Al menos una mayuscula</span>
                         </div>
                         <div className={`flex items-center space-x-2 text-sm ${requirements.hasNumber ? 'text-success' : 'text-muted-foreground'}`}>
-                          {requirements.hasNumber ? (
-                            <Check className="h-4 w-4" />
-                          ) : (
-                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
-                          )}
-                          <span>Al menos un número</span>
+                          {requirements.hasNumber ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
+                          <span>Al menos un numero</span>
                         </div>
                         <div className={`flex items-center space-x-2 text-sm ${requirements.hasSpecialChar ? 'text-success' : 'text-muted-foreground'}`}>
-                          {requirements.hasSpecialChar ? (
-                            <Check className="h-4 w-4" />
-                          ) : (
-                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
-                          )}
-                          <span>Al menos un carácter especial</span>
+                          {requirements.hasSpecialChar ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
+                          <span>Al menos un caracter especial</span>
                         </div>
-                        {allMet && (
-                          <p className="text-xs text-success mt-2 font-medium">
-                            ✓ Contraseña válida
-                          </p>
-                        )}
+                        {allMet && <p className="text-xs text-success mt-2 font-medium">Contrasena valida</p>}
                       </>
                     );
                   })()}
                 </div>
               </div>
 
-              {/* Ubicaciones (selección múltiple) */}
+              {/* Ubicaciones */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  Ubicaciones * (Selecciona una o más)
+                  Ubicaciones * (Selecciona una o mas)
                 </label>
-                <div className="border border-border rounded-md p-4 max-h-64 overflow-y-auto bg-muted/20">
+                <div className="border border-border rounded-md p-4 max-h-48 overflow-y-auto bg-muted/20">
                   {dashboardData?.locations_performance && dashboardData.locations_performance.length > 0 ? (
                     <div className="space-y-2">
                       {dashboardData.locations_performance.map((location: any) => (
-                        <label
-                          key={location.location_id}
-                          className="flex items-center space-x-3 p-2 hover:bg-muted/40 rounded cursor-pointer"
-                        >
+                        <label key={location.location_id} className="flex items-center space-x-3 p-2 hover:bg-muted/40 rounded cursor-pointer">
                           <input
                             type="checkbox"
                             checked={adminFormData.location_ids.includes(location.location_id)}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setAdminFormData({
-                                  ...adminFormData,
-                                  location_ids: [...adminFormData.location_ids, location.location_id]
-                                });
+                                setAdminFormData({ ...adminFormData, location_ids: [...adminFormData.location_ids, location.location_id] });
                               } else {
-                                setAdminFormData({
-                                  ...adminFormData,
-                                  location_ids: adminFormData.location_ids.filter(id => id !== location.location_id)
-                                });
+                                setAdminFormData({ ...adminFormData, location_ids: adminFormData.location_ids.filter(id => id !== location.location_id) });
                               }
                             }}
                             className="w-4 h-4 text-primary border-border rounded focus:ring-primary"
                           />
                           <div className="flex items-center space-x-2 flex-1">
-                            {location.location_type === 'bodega' ? 
-                              <Warehouse className="h-5 w-5 text-primary" /> :
-                              <Store className="h-5 w-5 text-success" />
-                            }
-                            <div>
-                              <span className="font-medium">{location.location_name}</span>
-                              <span className="text-xs text-muted-foreground ml-2">
-                                ({location.location_type})
-                              </span>
-                            </div>
+                            {location.location_type === 'bodega' ? <Warehouse className="h-5 w-5 text-primary" /> : <Store className="h-5 w-5 text-success" />}
+                            <span className="font-medium">{location.location_name}</span>
+                            <span className="text-xs text-muted-foreground">({location.location_type})</span>
                           </div>
                         </label>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No hay ubicaciones disponibles
-                    </p>
+                    <p className="text-sm text-muted-foreground text-center py-4">No hay ubicaciones disponibles</p>
                   )}
                 </div>
                 {adminFormData.location_ids.length > 0 && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {adminFormData.location_ids.length} ubicación(es) seleccionada(s)
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">{adminFormData.location_ids.length} ubicacion(es) seleccionada(s)</p>
                 )}
               </div>
 
@@ -1711,13 +1994,7 @@ export const BossDashboard: React.FC = () => {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setAdminFormData({
-                      email: '',
-                      password: '',
-                      first_name: '',
-                      last_name: '',
-                      location_ids: []
-                    });
+                    setAdminFormData({ email: '', password: '', first_name: '', last_name: '', location_ids: [] });
                     setPasswordError('');
                     setShowPassword(false);
                   }}
@@ -1728,13 +2005,8 @@ export const BossDashboard: React.FC = () => {
                 <Button
                   onClick={handleCreateAdmin}
                   disabled={
-                    !adminFormData.email || 
-                    !adminFormData.password || 
-                    !adminFormData.first_name || 
-                    !adminFormData.last_name ||
-                    adminFormData.location_ids.length === 0 ||
-                    !!passwordError ||
-                    createAdminLoading
+                    !adminFormData.email || !adminFormData.password || !adminFormData.first_name || !adminFormData.last_name ||
+                    adminFormData.location_ids.length === 0 || !!passwordError || createAdminLoading
                   }
                 >
                   {createAdminLoading ? (
@@ -1999,6 +2271,353 @@ export const BossDashboard: React.FC = () => {
                       <>
                         <Check className="h-4 w-4 mr-2" />
                         Crear Ubicación
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal para editar ubicación */}
+        {showEditLocationModal && editingLocation && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold">Editar Ubicación</h2>
+                  <button
+                    onClick={() => {
+                      setShowEditLocationModal(false);
+                      setEditingLocation(null);
+                    }}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Nombre */}
+                  <Input
+                    label="Nombre *"
+                    value={editLocationFormData.name}
+                    onChange={(e) => setEditLocationFormData({ ...editLocationFormData, name: e.target.value })}
+                    placeholder="Ej: Local Centro"
+                    required
+                  />
+
+                  {/* Tipo */}
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Tipo de Ubicación *
+                    </label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setEditLocationFormData({ ...editLocationFormData, type: 'local' })}
+                        className={`p-4 border-2 rounded-lg flex flex-col items-center space-y-2 ${
+                          editLocationFormData.type === 'local'
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <Store className="h-8 w-8" />
+                        <span className="font-medium">Local de Venta</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditLocationFormData({ ...editLocationFormData, type: 'bodega' })}
+                        className={`p-4 border-2 rounded-lg flex flex-col items-center space-y-2 ${
+                          editLocationFormData.type === 'bodega'
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <Warehouse className="h-8 w-8" />
+                        <span className="font-medium">Bodega</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Dirección */}
+                  <Input
+                    label="Dirección"
+                    value={editLocationFormData.address}
+                    onChange={(e) => setEditLocationFormData({ ...editLocationFormData, address: e.target.value })}
+                    placeholder="Ej: Calle 123 #45-67"
+                  />
+
+                  {/* Teléfono */}
+                  <Input
+                    label="Teléfono"
+                    value={editLocationFormData.phone}
+                    onChange={(e) => setEditLocationFormData({ ...editLocationFormData, phone: e.target.value })}
+                    placeholder="Ej: +57 300 1234567"
+                  />
+
+                  {/* Estado */}
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Estado de la Ubicación
+                    </label>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        id="location_is_active"
+                        checked={editLocationFormData.is_active}
+                        onChange={(e) => setEditLocationFormData({ ...editLocationFormData, is_active: e.target.checked })}
+                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                      />
+                      <label htmlFor="location_is_active" className="text-sm text-foreground">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          editLocationFormData.is_active
+                            ? 'bg-success/20 text-success'
+                            : 'bg-destructive/20 text-destructive'
+                        }`}>
+                          {editLocationFormData.is_active ? 'Activa' : 'Inactiva'}
+                        </span>
+                      </label>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {editLocationFormData.is_active
+                        ? 'La ubicación está activa y disponible'
+                        : 'La ubicación está inactiva y no se mostrará en las listas'
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowEditLocationModal(false);
+                      setEditingLocation(null);
+                    }}
+                    disabled={editLocationLoading}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleUpdateLocation}
+                    disabled={!editLocationFormData.name || editLocationLoading}
+                  >
+                    {editLocationLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Guardando...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Guardar Cambios
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal para editar administrador */}
+        {showEditAdminModal && editingAdmin && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold">Editar Administrador</h2>
+                  <button
+                    onClick={() => {
+                      setShowEditAdminModal(false);
+                      setEditingAdmin(null);
+                    }}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Info del admin (readonly) */}
+                  <div className="bg-muted/30 rounded-lg p-4">
+                    <p className="text-sm text-muted-foreground">Email</p>
+                    <p className="font-medium">{editingAdmin.email}</p>
+                  </div>
+
+                  {/* Nombre y Apellido */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Nombre *"
+                      value={editAdminFormData.first_name}
+                      onChange={(e) => setEditAdminFormData({ ...editAdminFormData, first_name: e.target.value })}
+                      required
+                    />
+                    <Input
+                      label="Apellido *"
+                      value={editAdminFormData.last_name}
+                      onChange={(e) => setEditAdminFormData({ ...editAdminFormData, last_name: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  {/* Nueva Contrasena (opcional) */}
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Nueva Contrasena (dejar vacio para mantener la actual)
+                    </label>
+                    <div className="relative">
+                      <Input
+                        type={showEditPassword ? "text" : "password"}
+                        value={editAdminFormData.password}
+                        onChange={(e) => {
+                          setEditAdminFormData({ ...editAdminFormData, password: e.target.value });
+                          if (e.target.value) {
+                            const validation = validatePassword(e.target.value);
+                            setEditPasswordError(validation);
+                          } else {
+                            setEditPasswordError('');
+                          }
+                        }}
+                        placeholder="Dejar vacio para no cambiar"
+                        className={editPasswordError ? 'border-destructive' : ''}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowEditPassword(!showEditPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                        tabIndex={-1}
+                      >
+                        {showEditPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
+                    {editAdminFormData.password && (
+                      <div className="mt-2 space-y-1">
+                        {(() => {
+                          const requirements = getPasswordRequirements(editAdminFormData.password);
+                          return (
+                            <>
+                              <div className={`flex items-center space-x-2 text-sm ${requirements.minLength ? 'text-success' : 'text-muted-foreground'}`}>
+                                {requirements.minLength ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
+                                <span>Al menos 6 caracteres</span>
+                              </div>
+                              <div className={`flex items-center space-x-2 text-sm ${requirements.hasUpperCase ? 'text-success' : 'text-muted-foreground'}`}>
+                                {requirements.hasUpperCase ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
+                                <span>Al menos una mayuscula</span>
+                              </div>
+                              <div className={`flex items-center space-x-2 text-sm ${requirements.hasNumber ? 'text-success' : 'text-muted-foreground'}`}>
+                                {requirements.hasNumber ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
+                                <span>Al menos un numero</span>
+                              </div>
+                              <div className={`flex items-center space-x-2 text-sm ${requirements.hasSpecialChar ? 'text-success' : 'text-muted-foreground'}`}>
+                                {requirements.hasSpecialChar ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
+                                <span>Al menos un caracter especial</span>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
+                    {editPasswordError && <p className="text-sm text-destructive mt-1">{editPasswordError}</p>}
+                  </div>
+
+                  {/* Ubicaciones */}
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Ubicaciones Asignadas
+                    </label>
+                    <div className="border border-border rounded-md p-4 max-h-48 overflow-y-auto bg-muted/20">
+                      {dashboardData?.locations_performance && dashboardData.locations_performance.length > 0 ? (
+                        <div className="space-y-2">
+                          {dashboardData.locations_performance.map((location: any) => (
+                            <label key={location.location_id} className="flex items-center space-x-3 p-2 hover:bg-muted/40 rounded cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={editAdminFormData.location_ids.includes(location.location_id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setEditAdminFormData({ ...editAdminFormData, location_ids: [...editAdminFormData.location_ids, location.location_id] });
+                                  } else {
+                                    setEditAdminFormData({ ...editAdminFormData, location_ids: editAdminFormData.location_ids.filter(id => id !== location.location_id) });
+                                  }
+                                }}
+                                className="w-4 h-4 text-primary border-border rounded focus:ring-primary"
+                              />
+                              <div className="flex items-center space-x-2 flex-1">
+                                {location.location_type === 'bodega' ? <Warehouse className="h-5 w-5 text-primary" /> : <Store className="h-5 w-5 text-success" />}
+                                <span className="font-medium">{location.location_name}</span>
+                                <span className="text-xs text-muted-foreground">({location.location_type})</span>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">No hay ubicaciones disponibles</p>
+                      )}
+                    </div>
+                    {editAdminFormData.location_ids.length > 0 && (
+                      <p className="text-xs text-muted-foreground mt-2">{editAdminFormData.location_ids.length} ubicacion(es) seleccionada(s)</p>
+                    )}
+                  </div>
+
+                  {/* Estado */}
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Estado del Administrador
+                    </label>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        id="edit_is_active"
+                        checked={editAdminFormData.is_active}
+                        onChange={(e) => setEditAdminFormData({ ...editAdminFormData, is_active: e.target.checked })}
+                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                      />
+                      <label htmlFor="edit_is_active" className="text-sm text-foreground">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          editAdminFormData.is_active ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'
+                        }`}>
+                          {editAdminFormData.is_active ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </label>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {editAdminFormData.is_active ? 'El administrador puede acceder al sistema' : 'El administrador no puede acceder al sistema'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowEditAdminModal(false);
+                      setEditingAdmin(null);
+                    }}
+                    disabled={editAdminLoading}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleUpdateAdmin}
+                    disabled={
+                      !editAdminFormData.first_name ||
+                      !editAdminFormData.last_name ||
+                      (editAdminFormData.password && !!editPasswordError) ||
+                      editAdminLoading
+                    }
+                  >
+                    {editAdminLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Guardando...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Guardar Cambios
                       </>
                     )}
                   </Button>

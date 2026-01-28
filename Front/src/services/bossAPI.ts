@@ -164,6 +164,59 @@ export const bossAPI = {
       body: JSON.stringify(adminData)
     });
     return handleResponse(response);
+  },
+
+  // 13. Listar administradores
+  async getAdmins(includeInactive: boolean = false) {
+    const params = new URLSearchParams({
+      include_inactive: includeInactive.toString()
+    });
+
+    const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/admin?${params}`, {
+      headers: getHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  // 14. Actualizar administrador
+  async updateAdmin(adminId: number, adminData: {
+    first_name?: string;
+    last_name?: string;
+    password?: string;
+    location_ids?: number[];
+    is_active?: boolean;
+  }) {
+    const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/admin/${adminId}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(adminData)
+    });
+    return handleResponse(response);
+  },
+
+  // 15. Actualizar ubicacion
+  async updateLocation(locationId: number, locationData: {
+    name?: string;
+    type?: 'local' | 'bodega';
+    address?: string;
+    phone?: string;
+    is_active?: boolean;
+  }) {
+    const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/locations/${locationId}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(locationData)
+    });
+    return handleResponse(response);
+  },
+
+  // 16. Desactivar ubicacion
+  async deactivateLocation(locationId: number) {
+    const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/locations/${locationId}/deactivate`, {
+      method: 'PATCH',
+      headers: getHeaders()
+    });
+    return handleResponse(response);
   }
 };
 
