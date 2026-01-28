@@ -33,15 +33,15 @@ interface UserCreate {
   password: string;
   first_name: string;
   last_name: string;
-  role: 'vendedor' | 'bodeguero' | 'corredor';
-  location_id?: number;
+  role: 'vendedor' | 'bodeguero' | 'corredor' | 'seller';
+  location_ids?: number[];
 }
 
 interface UserUpdate {
   first_name?: string;
   last_name?: string;
   is_active?: boolean;
-  location_id?: number;
+  location_ids?: number[];
 }
 
 interface UserAssignment {
@@ -221,14 +221,13 @@ interface CostPaymentCreate {
 
 // POST /api/v1/admin/admin/users
 export const createUser = async (userData: UserCreate) => {
-  // location_id debe ser número o undefined
   const payload = {
     email: userData.email,
     password: userData.password,
     first_name: userData.first_name,
     last_name: userData.last_name,
     role: userData.role,
-    location_id: typeof userData.location_id === 'string' ? parseInt(userData.location_id) : userData.location_id
+    location_ids: userData.location_ids || []
   };
   const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/users`, {
     method: 'POST',

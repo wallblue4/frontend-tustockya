@@ -123,6 +123,7 @@ import { FullScreenCameraCapture } from '../../components/admin/FullScreenCamera
 import { FullScreenPhotoCapture } from '../../components/admin/FullScreenPhotoCapture';
 import { AdjustInventoryModal } from '../../components/admin/AdjustInventoryModal';
 import { AdjustPriceModal } from '../../components/admin/AdjustPriceModal';
+import { AddSizeModal } from '../../components/admin/AddSizeModal';
 
 // Import inventory types and API
 import type { AdminInventoryLocation, AdminInventoryProduct, AdminInventorySize } from '../../types';
@@ -140,6 +141,12 @@ interface DashboardData {
   recent_activities: any[];
 }
 
+interface AssignedLocation {
+  id: number;
+  name: string;
+  type: string;
+}
+
 interface User {
   id: number;
   email: string;
@@ -147,8 +154,7 @@ interface User {
   last_name: string;
   full_name: string;
   role: string;
-  location_id: number | null;
-  location_name: string | null;
+  assigned_locations: AssignedLocation[];
   is_active: boolean;
   created_at: string;
 }
@@ -361,6 +367,15 @@ export const AdminDashboard: React.FC = () => {
     reference_code: string;
     current_price: number;
     image_url?: string;
+  } | null>(null);
+  const [showAddSizeModal, setShowAddSizeModal] = useState(false);
+  const [selectedProductForAddSize, setSelectedProductForAddSize] = useState<{
+    brand: string;
+    model: string;
+    reference_code: string;
+    location_id: number;
+    location_name: string;
+    existing_sizes: string[];
   } | null>(null);
 
   // Modal states
@@ -633,7 +648,7 @@ export const AdminDashboard: React.FC = () => {
         first_name: userData.first_name,
         last_name: userData.last_name,
         role: userData.role,
-        location_id: userData.location_id ? parseInt(userData.location_id) : undefined
+        location_ids: userData.location_ids || []
       });
 
       await loadUsers();
@@ -651,7 +666,7 @@ export const AdminDashboard: React.FC = () => {
         first_name: userData.first_name,
         last_name: userData.last_name,
         is_active: userData.is_active,
-        location_id: userData.location_id ? parseInt(userData.location_id) : undefined
+        location_ids: userData.location_ids || []
       });
       await loadUsers();
       setEditingUser(null);
@@ -1161,6 +1176,50 @@ Por favor verifica que:
     setShowAdjustPriceModal(true);
   };
 
+  const handleOpenAddSizeModal = (product: AdminInventoryProduct, locationId: number, locationName: string) => {
+    setSelectedProductForAddSize({
+      brand: product.brand,
+      model: product.model,
+      reference_code: product.reference_code,
+      location_id: locationId,
+      location_name: locationName,
+      existing_sizes: product.sizes.map(s => s.size)
+    });
+    setShowAddSizeModal(true);
+  };
+
+  const handleAddSize = async (data: {
+    location_id: number;
+    product_reference: string;
+    size: string;
+    adjustment_type: 'set_quantity';
+    quantity: number;
+    reason: string;
+    inventory_type: 'pair' | 'left_only' | 'right_only';
+  }) => {
+    try {
+      const response = await adjustInventory(data);
+      console.log('Talla agregada:', response);
+
+      // Reload inventory after adding size
+      await loadAdminInventory();
+
+      alert(`Talla agregada exitosamente.
+
+Producto: ${data.product_reference}
+Nueva Talla: ${data.size}
+Cantidad: ${data.quantity}
+Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type === 'left_only' ? 'Pie izquierdo' : 'Pie derecho'}`);
+
+      setShowAddSizeModal(false);
+      setSelectedProductForAddSize(null);
+    } catch (error: any) {
+      console.error('Error agregando talla:', error);
+      alert('Error al agregar talla: ' + (error.message || 'Error desconocido'));
+      throw error;
+    }
+  };
+
   const handleAdjustInventory = async (data: {
     location_id: number;
     product_reference: string;
@@ -1464,7 +1523,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Usuario</th>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Email</th>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Rol</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Ubicación</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Ubicaciones</th>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Estado</th>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Acciones</th>
                     </tr>
@@ -1484,8 +1543,25 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                           {user.role}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                          {user.location_name || 'Sin asignar'}
+                        <td className="px-6 py-4">
+                          {user.assigned_locations && user.assigned_locations.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 max-w-xs">
+                              {user.assigned_locations.map((loc) => (
+                                <span
+                                  key={loc.id}
+                                  className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                    loc.type === 'bodega'
+                                      ? 'bg-warning/20 text-warning'
+                                      : 'bg-primary/20 text-primary'
+                                  }`}
+                                >
+                                  {loc.name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Sin asignar</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <Badge variant={user.is_active ? 'success' : 'error'}>
@@ -2385,6 +2461,20 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                           </div>
                                         ))}
                                       </div>
+                                      {/* Add Size Button */}
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleOpenAddSizeModal(
+                                          product,
+                                          location.location_id,
+                                          location.location_name
+                                        )}
+                                        className="w-full mt-3 text-sm border-dashed"
+                                      >
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Agregar Talla
+                                      </Button>
                                     </div>
                                   )}
                                 </CardContent>
@@ -4428,7 +4518,11 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
 
         {showEditUserModal && editingUser && (
           <EditUserModal
-            user={editingUser}
+            user={{
+              ...editingUser,
+              // Extract location_ids from assigned_locations array
+              location_ids: editingUser.assigned_locations?.map(loc => loc.id) || []
+            }}
             onClose={() => {
               setEditingUser(null);
               setShowEditUserModal(false);
@@ -4467,6 +4561,18 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             }}
             onSubmit={handleAdjustPrice}
             productData={selectedProductForPriceAdjustment}
+          />
+        )}
+
+        {/* Add Size Modal */}
+        {showAddSizeModal && selectedProductForAddSize && (
+          <AddSizeModal
+            onClose={() => {
+              setShowAddSizeModal(false);
+              setSelectedProductForAddSize(null);
+            }}
+            onSubmit={handleAddSize}
+            productData={selectedProductForAddSize}
           />
         )}
       </div>
