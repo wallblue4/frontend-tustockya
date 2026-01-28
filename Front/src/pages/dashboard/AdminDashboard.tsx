@@ -305,6 +305,9 @@ export const AdminDashboard: React.FC = () => {
   const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
   const [capturedVideoUrl, setCapturedVideoUrl] = useState<string | null>(null);
 
+  // Estado para prevenir doble envío del formulario de inventario
+  const [isSubmittingVideoInventory, setIsSubmittingVideoInventory] = useState(false);
+
   // Limpiar URLs de blob al desmontar el componente para evitar memory leaks
   React.useEffect(() => {
     return () => {
@@ -905,7 +908,6 @@ export const AdminDashboard: React.FC = () => {
 
 📦 Producto: ${response.brand || videoData.product_brand || 'N/A'} ${response.model || videoData.product_model || 'N/A'}
 🏷️ Código: ${response.reference_code}
-📊 Total de Zapatos: ${response.total_shoes || 0}
 📍 Ubicaciones: ${response.locations_count || distributionSummary.length}
 💰 Precio Unitario: ${formatCurrency(response.unit_price || videoData.unit_price)}
 ${response.box_price ? `📦 Precio por Caja: ${formatCurrency(response.box_price)}` : ''}
@@ -1549,11 +1551,10 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                               {user.assigned_locations.map((loc) => (
                                 <span
                                   key={loc.id}
-                                  className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                    loc.type === 'bodega'
+                                  className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${loc.type === 'bodega'
                                       ? 'bg-warning/20 text-warning'
                                       : 'bg-primary/20 text-primary'
-                                  }`}
+                                    }`}
                                 >
                                   {loc.name}
                                 </span>
@@ -2198,22 +2199,20 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
         <div className="flex space-x-2 border-b border-border">
           <button
             onClick={() => setInventoryActiveTab('view')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              inventoryActiveTab === 'view'
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${inventoryActiveTab === 'view'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+              }`}
           >
             <Package className="h-4 w-4 inline mr-2" />
             Ver Inventario
           </button>
           <button
             onClick={() => setInventoryActiveTab('entry')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              inventoryActiveTab === 'entry'
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${inventoryActiveTab === 'entry'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+              }`}
           >
             <Video className="h-4 w-4 inline mr-2" />
             Registrar con Video
@@ -2426,9 +2425,8 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                         {product.sizes.map((size, sizeIdx) => (
                                           <div
                                             key={sizeIdx}
-                                            className={`flex items-center justify-between p-2 rounded-lg border ${
-                                              size.quantity > 0 ? 'bg-card border-border' : 'bg-muted/50 border-border/50'
-                                            }`}
+                                            className={`flex items-center justify-between p-2 rounded-lg border ${size.quantity > 0 ? 'bg-card border-border' : 'bg-muted/50 border-border/50'
+                                              }`}
                                           >
                                             <div className="flex items-center space-x-3">
                                               <span className="font-medium text-foreground w-10">{size.size}</span>
@@ -2493,576 +2491,586 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
 
         {inventoryActiveTab === 'entry' && (
           <>
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold">Registrar Inventario con Video</h3>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Columna 1: Datos del Producto */}
-              <div className="space-y-4">
-                <h4 className="font-semibold text-foreground mb-3">Datos del Producto</h4>
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-semibold">Registrar Inventario con Video</h3>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Columna 1: Datos del Producto */}
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-foreground mb-3">Datos del Producto</h4>
 
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Marca
-                  </label>
-                  <Input
-                    placeholder="Ej: Nike, Adidas"
-                    value={videoInventoryForm.product_brand}
-                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_brand: e.target.value }))}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Marca del producto</p>
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1">
+                        Marca
+                      </label>
+                      <Input
+                        placeholder="Ej: Nike, Adidas"
+                        value={videoInventoryForm.product_brand}
+                        onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_brand: e.target.value }))}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Marca del producto</p>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Modelo
-                  </label>
-                  <Input
-                    placeholder="Ej: Air Max 90"
-                    value={videoInventoryForm.product_model}
-                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_model: e.target.value }))}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Modelo del producto</p>
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1">
+                        Modelo
+                      </label>
+                      <Input
+                        placeholder="Ej: Air Max 90"
+                        value={videoInventoryForm.product_model}
+                        onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_model: e.target.value }))}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Modelo del producto</p>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Precio Unitario <span className="text-error">*</span>
-                  </label>
-                  <Input
-                    placeholder="Ej: 45000"
-                    type="number"
-                    value={videoInventoryForm.unit_price}
-                    onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, unit_price: parseFloat(e.target.value) }))}
-                    min="0"
-                    step="1000"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Precio por unidad individual</p>
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1">
+                        Precio Unitario <span className="text-error">*</span>
+                      </label>
+                      <Input
+                        placeholder="Ej: 45000"
+                        type="number"
+                        value={videoInventoryForm.unit_price}
+                        onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, unit_price: parseFloat(e.target.value) }))}
+                        min="0"
+                        step="1000"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Precio por unidad individual</p>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Distribución de Tallas <span className="text-error">*</span>
-                  </label>
-                  <div className="space-y-4 max-h-96 overflow-y-auto p-3 border border-border rounded-md bg-muted/5">
-                    {videoInventoryForm.sizes_distribution.map((sizeDistro, sizeIdx) => (
-                      <div key={sizeIdx} className="border border-border rounded-lg p-4 bg-card space-y-3">
-                        {/* Talla Header */}
-                        <div className="flex items-center gap-2">
-                          <Input
-                            placeholder="Talla (ej: 42)"
-                            value={sizeDistro.size}
-                            onChange={e => {
-                              const newDistro = [...videoInventoryForm.sizes_distribution];
-                              newDistro[sizeIdx].size = e.target.value;
-                              setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
-                            }}
-                            className="w-32"
-                          />
-                          <div className="flex-1 text-sm text-muted-foreground">
-                            Balance: {sizeDistro.left_feet.reduce((s, lf) => s + lf.quantity, 0)} izq / {sizeDistro.right_feet.reduce((s, rf) => s + rf.quantity, 0)} der
-                            {sizeDistro.left_feet.reduce((s, lf) => s + lf.quantity, 0) !== sizeDistro.right_feet.reduce((s, rf) => s + rf.quantity, 0) && (
-                              <span className="text-error ml-2">⚠️ Desbalanceado</span>
-                            )}
-                          </div>
-                          {videoInventoryForm.sizes_distribution.length > 1 && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setVideoInventoryForm(prev => ({
-                                  ...prev,
-                                  sizes_distribution: prev.sizes_distribution.filter((_, i) => i !== sizeIdx)
-                                }));
-                              }}
-                              className="text-destructive"
-                            >
-                              🗑️
-                            </Button>
-                          )}
-                        </div>
-
-                        {/* Pares Completos */}
-                        <div className="space-y-2">
-                          <label className="text-xs font-medium text-foreground">👟 Pares Completos</label>
-                          {sizeDistro.pairs.map((pair, pairIdx) => (
-                            <div key={pairIdx} className="flex items-center gap-2">
-                              <Select
-                                value={pair.location_id.toString()}
-                                onChange={(e) => {
-                                  const newDistro = [...videoInventoryForm.sizes_distribution];
-                                  newDistro[sizeIdx].pairs[pairIdx].location_id = parseInt(e.target.value);
-                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
-                                }}
-                                options={[
-                                  { value: '0', label: 'Seleccionar ubicación' },
-                                  ...locations.map(loc => ({ value: loc.id.toString(), label: loc.name }))
-                                ]}
-                                className="flex-1"
-                              />
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Distribución de Tallas <span className="text-error">*</span>
+                      </label>
+                      <div className="space-y-4 max-h-96 overflow-y-auto p-3 border border-border rounded-md bg-muted/5">
+                        {videoInventoryForm.sizes_distribution.map((sizeDistro, sizeIdx) => (
+                          <div key={sizeIdx} className="border border-border rounded-lg p-4 bg-card space-y-3">
+                            {/* Talla Header */}
+                            <div className="flex items-center gap-2">
                               <Input
-                                placeholder="Cant"
-                                type="number"
-                                value={pair.quantity || ''}
+                                placeholder="Talla (ej: 42)"
+                                value={sizeDistro.size}
                                 onChange={e => {
                                   const newDistro = [...videoInventoryForm.sizes_distribution];
-                                  newDistro[sizeIdx].pairs[pairIdx].quantity = parseInt(e.target.value) || 0;
+                                  newDistro[sizeIdx].size = e.target.value;
                                   setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
                                 }}
-                                className="w-20"
+                                className="w-32"
                               />
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  const newDistro = [...videoInventoryForm.sizes_distribution];
-                                  newDistro[sizeIdx].pairs.push({ location_id: 0, quantity: 0 });
-                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
-                                }}
-                              >
-                                +
-                              </Button>
-                              {sizeDistro.pairs.length > 1 && (
+                              <div className="flex-1 text-sm text-muted-foreground">
+                                Balance: {sizeDistro.left_feet.reduce((s, lf) => s + lf.quantity, 0)} izq / {sizeDistro.right_feet.reduce((s, rf) => s + rf.quantity, 0)} der
+                                {sizeDistro.left_feet.reduce((s, lf) => s + lf.quantity, 0) !== sizeDistro.right_feet.reduce((s, rf) => s + rf.quantity, 0) && (
+                                  <span className="text-error ml-2">⚠️ Desbalanceado</span>
+                                )}
+                              </div>
+                              {videoInventoryForm.sizes_distribution.length > 1 && (
                                 <Button
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => {
-                                    const newDistro = [...videoInventoryForm.sizes_distribution];
-                                    newDistro[sizeIdx].pairs = newDistro[sizeIdx].pairs.filter((_, i) => i !== pairIdx);
-                                    setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    setVideoInventoryForm(prev => ({
+                                      ...prev,
+                                      sizes_distribution: prev.sizes_distribution.filter((_, i) => i !== sizeIdx)
+                                    }));
                                   }}
                                   className="text-destructive"
                                 >
-                                  -
+                                  🗑️
                                 </Button>
                               )}
                             </div>
-                          ))}
-                        </div>
 
-                        {/* Pies Izquierdos */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <label className="text-xs font-medium text-foreground">🦶 Izquierdos</label>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                const newDistro = [...videoInventoryForm.sizes_distribution];
-                                newDistro[sizeIdx].left_feet.push({ location_id: 0, quantity: 0 });
-                                setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
-                              }}
-                            >
-                              +
-                            </Button>
-                          </div>
-                          {sizeDistro.left_feet.map((leftFoot, lfIdx) => (
-                            <div key={lfIdx} className="flex items-center gap-2">
-                              <Select
-                                value={leftFoot.location_id.toString()}
-                                onChange={(e) => {
-                                  const newDistro = [...videoInventoryForm.sizes_distribution];
-                                  newDistro[sizeIdx].left_feet[lfIdx].location_id = parseInt(e.target.value);
-                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
-                                }}
-                                options={[
-                                  { value: '0', label: 'Seleccionar ubicación' },
-                                  ...locations.map(loc => ({ value: loc.id.toString(), label: loc.name }))
-                                ]}
-                                className="flex-1"
-                              />
-                              <Input
-                                placeholder="Cant"
-                                type="number"
-                                value={leftFoot.quantity || ''}
-                                onChange={e => {
-                                  const newDistro = [...videoInventoryForm.sizes_distribution];
-                                  newDistro[sizeIdx].left_feet[lfIdx].quantity = parseInt(e.target.value) || 0;
-                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
-                                }}
-                                className="w-20"
-                              />
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  const newDistro = [...videoInventoryForm.sizes_distribution];
-                                  newDistro[sizeIdx].left_feet = newDistro[sizeIdx].left_feet.filter((_, i) => i !== lfIdx);
-                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
-                                }}
-                                className="text-destructive"
-                              >
-                                -
-                              </Button>
+                            {/* Pares Completos */}
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium text-foreground">👟 Pares Completos</label>
+                              {sizeDistro.pairs.map((pair, pairIdx) => (
+                                <div key={pairIdx} className="flex items-center gap-2">
+                                  <Select
+                                    value={pair.location_id.toString()}
+                                    onChange={(e) => {
+                                      const newDistro = [...videoInventoryForm.sizes_distribution];
+                                      newDistro[sizeIdx].pairs[pairIdx].location_id = parseInt(e.target.value);
+                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    }}
+                                    options={[
+                                      { value: '0', label: 'Seleccionar ubicación' },
+                                      ...locations.map(loc => ({ value: loc.id.toString(), label: loc.name }))
+                                    ]}
+                                    className="flex-1"
+                                  />
+                                  <Input
+                                    placeholder="Cant"
+                                    type="number"
+                                    value={pair.quantity || ''}
+                                    onChange={e => {
+                                      const newDistro = [...videoInventoryForm.sizes_distribution];
+                                      newDistro[sizeIdx].pairs[pairIdx].quantity = parseInt(e.target.value) || 0;
+                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    }}
+                                    className="w-20"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      const newDistro = [...videoInventoryForm.sizes_distribution];
+                                      newDistro[sizeIdx].pairs.push({ location_id: 0, quantity: 0 });
+                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    }}
+                                  >
+                                    +
+                                  </Button>
+                                  {sizeDistro.pairs.length > 1 && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        const newDistro = [...videoInventoryForm.sizes_distribution];
+                                        newDistro[sizeIdx].pairs = newDistro[sizeIdx].pairs.filter((_, i) => i !== pairIdx);
+                                        setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                      }}
+                                      className="text-destructive"
+                                    >
+                                      -
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                          {sizeDistro.left_feet.length === 0 && (
-                            <p className="text-xs text-muted-foreground italic">Sin pies izquierdos separados</p>
-                          )}
-                        </div>
 
-                        {/* Pies Derechos */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <label className="text-xs font-medium text-foreground">🦶 Derechos</label>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                const newDistro = [...videoInventoryForm.sizes_distribution];
-                                newDistro[sizeIdx].right_feet.push({ location_id: 0, quantity: 0 });
-                                setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
-                              }}
-                            >
-                              +
-                            </Button>
-                          </div>
-                          {sizeDistro.right_feet.map((rightFoot, rfIdx) => (
-                            <div key={rfIdx} className="flex items-center gap-2">
-                              <Select
-                                value={rightFoot.location_id.toString()}
-                                onChange={(e) => {
-                                  const newDistro = [...videoInventoryForm.sizes_distribution];
-                                  newDistro[sizeIdx].right_feet[rfIdx].location_id = parseInt(e.target.value);
-                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
-                                }}
-                                options={[
-                                  { value: '0', label: 'Seleccionar ubicación' },
-                                  ...locations.map(loc => ({ value: loc.id.toString(), label: loc.name }))
-                                ]}
-                                className="flex-1"
-                              />
-                              <Input
-                                placeholder="Cant"
-                                type="number"
-                                value={rightFoot.quantity || ''}
-                                onChange={e => {
-                                  const newDistro = [...videoInventoryForm.sizes_distribution];
-                                  newDistro[sizeIdx].right_feet[rfIdx].quantity = parseInt(e.target.value) || 0;
-                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
-                                }}
-                                className="w-20"
-                              />
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  const newDistro = [...videoInventoryForm.sizes_distribution];
-                                  newDistro[sizeIdx].right_feet = newDistro[sizeIdx].right_feet.filter((_, i) => i !== rfIdx);
-                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
-                                }}
-                                className="text-destructive"
-                              >
-                                -
-                              </Button>
+                            {/* Pies Izquierdos */}
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-medium text-foreground">🦶 Izquierdos</label>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    const newDistro = [...videoInventoryForm.sizes_distribution];
+                                    newDistro[sizeIdx].left_feet.push({ location_id: 0, quantity: 0 });
+                                    setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                  }}
+                                >
+                                  +
+                                </Button>
+                              </div>
+                              {sizeDistro.left_feet.map((leftFoot, lfIdx) => (
+                                <div key={lfIdx} className="flex items-center gap-2">
+                                  <Select
+                                    value={leftFoot.location_id.toString()}
+                                    onChange={(e) => {
+                                      const newDistro = [...videoInventoryForm.sizes_distribution];
+                                      newDistro[sizeIdx].left_feet[lfIdx].location_id = parseInt(e.target.value);
+                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    }}
+                                    options={[
+                                      { value: '0', label: 'Seleccionar ubicación' },
+                                      ...locations.map(loc => ({ value: loc.id.toString(), label: loc.name }))
+                                    ]}
+                                    className="flex-1"
+                                  />
+                                  <Input
+                                    placeholder="Cant"
+                                    type="number"
+                                    value={leftFoot.quantity || ''}
+                                    onChange={e => {
+                                      const newDistro = [...videoInventoryForm.sizes_distribution];
+                                      newDistro[sizeIdx].left_feet[lfIdx].quantity = parseInt(e.target.value) || 0;
+                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    }}
+                                    className="w-20"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      const newDistro = [...videoInventoryForm.sizes_distribution];
+                                      newDistro[sizeIdx].left_feet = newDistro[sizeIdx].left_feet.filter((_, i) => i !== lfIdx);
+                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    }}
+                                    className="text-destructive"
+                                  >
+                                    -
+                                  </Button>
+                                </div>
+                              ))}
+                              {sizeDistro.left_feet.length === 0 && (
+                                <p className="text-xs text-muted-foreground italic">Sin pies izquierdos separados</p>
+                              )}
                             </div>
-                          ))}
-                          {sizeDistro.right_feet.length === 0 && (
-                            <p className="text-xs text-muted-foreground italic">Sin pies derechos separados</p>
-                          )}
-                        </div>
+
+                            {/* Pies Derechos */}
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-medium text-foreground">🦶 Derechos</label>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    const newDistro = [...videoInventoryForm.sizes_distribution];
+                                    newDistro[sizeIdx].right_feet.push({ location_id: 0, quantity: 0 });
+                                    setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                  }}
+                                >
+                                  +
+                                </Button>
+                              </div>
+                              {sizeDistro.right_feet.map((rightFoot, rfIdx) => (
+                                <div key={rfIdx} className="flex items-center gap-2">
+                                  <Select
+                                    value={rightFoot.location_id.toString()}
+                                    onChange={(e) => {
+                                      const newDistro = [...videoInventoryForm.sizes_distribution];
+                                      newDistro[sizeIdx].right_feet[rfIdx].location_id = parseInt(e.target.value);
+                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    }}
+                                    options={[
+                                      { value: '0', label: 'Seleccionar ubicación' },
+                                      ...locations.map(loc => ({ value: loc.id.toString(), label: loc.name }))
+                                    ]}
+                                    className="flex-1"
+                                  />
+                                  <Input
+                                    placeholder="Cant"
+                                    type="number"
+                                    value={rightFoot.quantity || ''}
+                                    onChange={e => {
+                                      const newDistro = [...videoInventoryForm.sizes_distribution];
+                                      newDistro[sizeIdx].right_feet[rfIdx].quantity = parseInt(e.target.value) || 0;
+                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    }}
+                                    className="w-20"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      const newDistro = [...videoInventoryForm.sizes_distribution];
+                                      newDistro[sizeIdx].right_feet = newDistro[sizeIdx].right_feet.filter((_, i) => i !== rfIdx);
+                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    }}
+                                    className="text-destructive"
+                                  >
+                                    -
+                                  </Button>
+                                </div>
+                              ))}
+                              {sizeDistro.right_feet.length === 0 && (
+                                <p className="text-xs text-muted-foreground italic">Sin pies derechos separados</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Botón para agregar nueva talla */}
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setVideoInventoryForm(prev => ({
+                              ...prev,
+                              sizes_distribution: [
+                                ...prev.sizes_distribution,
+                                {
+                                  size: '',
+                                  pairs: [{ location_id: 0, quantity: 0 }],
+                                  left_feet: [],
+                                  right_feet: []
+                                }
+                              ]
+                            }));
+                          }}
+                          className="w-full"
+                        >
+                          + Agregar Talla
+                        </Button>
                       </div>
-                    ))}
+                      <p className="text-xs text-muted-foreground mt-2">
+                        💡 Puedes distribuir el inventario entre múltiples ubicaciones. Los pies izquierdos y derechos deben estar balanceados.
+                      </p>
+                    </div>
+                  </div>
 
-                    {/* Botón para agregar nueva talla */}
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setVideoInventoryForm(prev => ({
-                          ...prev,
+                  {/* Columna 2: Foto del Producto */}
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-foreground mb-3">Foto del Producto (Opcional)</h4>
+
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Capturar Foto de Referencia
+                      </label>
+                      <FullScreenPhotoCapture
+                        onPhotoTaken={async (url, blob) => {
+                          if (blob && url) {
+                            // Limpiar URL anterior si existe
+                            if (capturedPhotoUrl) {
+                              URL.revokeObjectURL(capturedPhotoUrl);
+                            }
+
+                            setCapturedPhotoUrl(url);
+
+                            const fileType = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/jpeg';
+                            const ext = fileType.split('/')[1] || 'jpg';
+                            const imageFile = new File([blob], `reference-image.${ext}`, { type: fileType });
+
+                            setVideoInventoryForm(prev => ({
+                              ...prev,
+                              reference_image: imageFile
+                            }));
+                          }
+                        }}
+                      />
+                      < p className="text-xs text-muted-foreground mt-2" >
+                        Toca el botón para abrir la cámara en pantalla completa
+                      </p >
+                    </div >
+
+                    {/* Preview de la foto capturada */}
+                    {
+                      capturedPhotoUrl && (
+                        <div className="border border-border rounded-lg p-4 bg-muted/10">
+                          <h4 className="text-sm font-medium text-foreground mb-2">📸 Foto Capturada</h4>
+                          <div className="space-y-3">
+                            <img
+                              src={capturedPhotoUrl}
+                              alt="Foto del inventario"
+                              className="w-full h-64 object-cover rounded-lg border shadow-sm"
+                            />
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm text-muted-foreground">
+                                Foto de referencia del producto
+                              </p>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (capturedPhotoUrl) {
+                                    URL.revokeObjectURL(capturedPhotoUrl);
+                                  }
+                                  setCapturedPhotoUrl(null);
+                                  setVideoInventoryForm(prev => ({ ...prev, reference_image: null }));
+                                }}
+                                className="text-destructive hover:text-destructive/80"
+                              >
+                                🗑️ Eliminar
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+                  </div >
+
+                  {/* Columna 3: Video del Producto */}
+                  < div className="space-y-4" >
+                    <h4 className="font-semibold text-foreground mb-3">Video del Producto <span className="text-error">*</span></h4>
+
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Grabar Video del Inventario
+                      </label>
+                      <FullScreenCameraCapture
+                        onVideoRecorded={async (url, blob) => {
+                          if (blob && url) {
+                            // Limpiar URL anterior si existe
+                            if (capturedVideoUrl) {
+                              URL.revokeObjectURL(capturedVideoUrl);
+                            }
+
+                            setCapturedVideoUrl(url);
+
+                            const fileType = blob.type && blob.type.startsWith('video/') ? blob.type : 'video/webm';
+                            const ext = fileType.split('/')[1] || 'webm';
+                            const videoFile = new File([blob], `inventory-video.${ext}`, { type: fileType });
+
+                            setVideoInventoryForm(prev => ({
+                              ...prev,
+                              video_file: videoFile
+                            }));
+                          }
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Toca el botón para abrir la cámara en pantalla completa
+                      </p>
+                    </div>
+
+                    {/* Preview del video grabado */}
+                    {
+                      capturedVideoUrl && (
+                        <div className="border border-border rounded-lg p-4 bg-muted/10">
+                          <h4 className="text-sm font-medium text-foreground mb-2">📹 Video Grabado</h4>
+                          <div className="space-y-3">
+                            <video
+                              src={capturedVideoUrl}
+                              controls
+                              className="w-full rounded-lg border shadow-sm"
+                              preload="metadata"
+                            />
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm text-muted-foreground">
+                                Video del inventario del producto
+                              </p>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (capturedVideoUrl) {
+                                    URL.revokeObjectURL(capturedVideoUrl);
+                                  }
+                                  setCapturedVideoUrl(null);
+                                  setVideoInventoryForm(prev => ({ ...prev, video_file: null }));
+                                }}
+                                className="text-destructive hover:text-destructive/80"
+                              >
+                                🗑️ Eliminar
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Submit Button */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex flex-col space-y-4">
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Enviar Inventario
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Asegúrate de haber completado todos los campos requeridos y grabado el video antes de enviar.
+                    </p>
+                  </div>
+
+                  <Button
+                    onClick={async () => {
+                      // Prevenir doble envío
+                      if (isSubmittingVideoInventory) return;
+
+                      // Validaciones completas
+                      if (videoInventoryForm.unit_price <= 0) {
+                        alert('❌ Por favor ingresa un precio unitario válido');
+                        return;
+                      }
+
+                      // Validar que haya al menos una distribución de tallas válida
+                      const hasValidDistribution = videoInventoryForm.sizes_distribution.some(sd => {
+                        if (!sd.size.trim()) return false;
+                        const hasPairs = sd.pairs.some(p => p.location_id > 0 && p.quantity > 0);
+                        const hasLeftFeet = sd.left_feet.some(lf => lf.location_id > 0 && lf.quantity > 0);
+                        const hasRightFeet = sd.right_feet.some(rf => rf.location_id > 0 && rf.quantity > 0);
+                        return hasPairs || (hasLeftFeet && hasRightFeet);
+                      });
+
+                      if (!hasValidDistribution) {
+                        alert('❌ Por favor ingresa al menos una talla con distribución válida');
+                        return;
+                      }
+
+                      // Validar balance de pies
+                      for (const sd of videoInventoryForm.sizes_distribution) {
+                        if (!sd.size.trim()) continue;
+                        const totalLeft = sd.left_feet.reduce((sum, lf) => sum + lf.quantity, 0);
+                        const totalRight = sd.right_feet.reduce((sum, rf) => sum + rf.quantity, 0);
+                        if (totalLeft !== totalRight) {
+                          alert(`❌ Error en talla ${sd.size}: Pies izquierdos (${totalLeft}) debe ser igual a pies derechos (${totalRight})`);
+                          return;
+                        }
+                      }
+
+                      if (!videoInventoryForm.video_file) {
+                        alert('❌ Por favor graba un video del producto antes de enviar');
+                        return;
+                      }
+
+                      // Activar estado de carga
+                      setIsSubmittingVideoInventory(true);
+
+                      try {
+                        console.log('=== ANTES DE ENVIAR ===');
+                        console.log('Estado del formulario:', {
+                          unit_price: videoInventoryForm.unit_price,
+                          product_brand: videoInventoryForm.product_brand,
+                          product_model: videoInventoryForm.product_model,
+                          box_price: videoInventoryForm.box_price,
+                          sizes_distribution: videoInventoryForm.sizes_distribution,
+                          video_file: videoInventoryForm.video_file ? `File(${videoInventoryForm.video_file.size} bytes)` : 'null',
+                          reference_image: videoInventoryForm.reference_image ? `File(${videoInventoryForm.reference_image.size} bytes)` : 'null'
+                        });
+                        console.log('=======================');
+
+                        await handleVideoInventoryEntry(videoInventoryForm);
+
+                        // Reset form después del envío exitoso
+                        setVideoInventoryForm({
+                          product_brand: '',
+                          product_model: '',
+                          unit_price: 0,
+                          box_price: 0,
                           sizes_distribution: [
-                            ...prev.sizes_distribution,
                             {
                               size: '',
                               pairs: [{ location_id: 0, quantity: 0 }],
                               left_feet: [],
                               right_feet: []
                             }
-                          ]
-                        }));
-                      }}
-                      className="w-full"
-                    >
-                      + Agregar Talla
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    💡 Puedes distribuir el inventario entre múltiples ubicaciones. Los pies izquierdos y derechos deben estar balanceados.
-                  </p>
-                </div>
-              </div>
+                          ],
+                          reference_image: null,
+                          video_file: null
+                        });
 
-              {/* Columna 2: Foto del Producto */}
-              <div className="space-y-4">
-                <h4 className="font-semibold text-foreground mb-3">Foto del Producto (Opcional)</h4>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Capturar Foto de Referencia
-                  </label>
-                  <FullScreenPhotoCapture
-                    onPhotoTaken={async (url, blob) => {
-                      if (blob && url) {
-                        // Limpiar URL anterior si existe
+                        // Limpiar las URLs de preview y liberar memoria
                         if (capturedPhotoUrl) {
                           URL.revokeObjectURL(capturedPhotoUrl);
                         }
-
-                        setCapturedPhotoUrl(url);
-
-                        const fileType = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/jpeg';
-                        const ext = fileType.split('/')[1] || 'jpg';
-                        const imageFile = new File([blob], `reference-image.${ext}`, { type: fileType });
-
-                        setVideoInventoryForm(prev => ({
-                          ...prev,
-                          reference_image: imageFile
-                        }));
-                      }
-                    }}
-                  />
-                  < p className="text-xs text-muted-foreground mt-2" >
-                    Toca el botón para abrir la cámara en pantalla completa
-                  </p >
-                </div >
-
-                {/* Preview de la foto capturada */}
-                {
-                  capturedPhotoUrl && (
-                    <div className="border border-border rounded-lg p-4 bg-muted/10">
-                      <h4 className="text-sm font-medium text-foreground mb-2">📸 Foto Capturada</h4>
-                      <div className="space-y-3">
-                        <img
-                          src={capturedPhotoUrl}
-                          alt="Foto del inventario"
-                          className="w-full h-64 object-cover rounded-lg border shadow-sm"
-                        />
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-muted-foreground">
-                            Foto de referencia del producto
-                          </p>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (capturedPhotoUrl) {
-                                URL.revokeObjectURL(capturedPhotoUrl);
-                              }
-                              setCapturedPhotoUrl(null);
-                              setVideoInventoryForm(prev => ({ ...prev, reference_image: null }));
-                            }}
-                            className="text-destructive hover:text-destructive/80"
-                          >
-                            🗑️ Eliminar
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                }
-              </div >
-
-              {/* Columna 3: Video del Producto */}
-              < div className="space-y-4" >
-                <h4 className="font-semibold text-foreground mb-3">Video del Producto <span className="text-error">*</span></h4>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Grabar Video del Inventario
-                  </label>
-                  <FullScreenCameraCapture
-                    onVideoRecorded={async (url, blob) => {
-                      if (blob && url) {
-                        // Limpiar URL anterior si existe
                         if (capturedVideoUrl) {
                           URL.revokeObjectURL(capturedVideoUrl);
                         }
-
-                        setCapturedVideoUrl(url);
-
-                        const fileType = blob.type && blob.type.startsWith('video/') ? blob.type : 'video/webm';
-                        const ext = fileType.split('/')[1] || 'webm';
-                        const videoFile = new File([blob], `inventory-video.${ext}`, { type: fileType });
-
-                        setVideoInventoryForm(prev => ({
-                          ...prev,
-                          video_file: videoFile
-                        }));
+                        setCapturedPhotoUrl(null);
+                        setCapturedVideoUrl(null);
+                      } catch (error) {
+                        console.error('Error processing inventory:', error);
+                      } finally {
+                        // Desactivar estado de carga siempre
+                        setIsSubmittingVideoInventory(false);
                       }
                     }}
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Toca el botón para abrir la cámara en pantalla completa
-                  </p>
-                </div>
+                    className="w-full bg-success hover:bg-success/90 text-white py-4 text-lg font-semibold"
+                    disabled={!videoInventoryForm.video_file || videoInventoryForm.unit_price <= 0 || isSubmittingVideoInventory}
+                  >
+                    {isSubmittingVideoInventory ? '⏳ Enviando inventario...' :
+                      !videoInventoryForm.video_file ? '📹 Graba un video primero' :
+                        videoInventoryForm.unit_price <= 0 ? '💰 Ingresa el precio' :
+                          '🚀 Registrar Inventario con Distribución'}
+                  </Button>
 
-                {/* Preview del video grabado */}
-                {
-                  capturedVideoUrl && (
-                    <div className="border border-border rounded-lg p-4 bg-muted/10">
-                      <h4 className="text-sm font-medium text-foreground mb-2">📹 Video Grabado</h4>
-                      <div className="space-y-3">
-                        <video
-                          src={capturedVideoUrl}
-                          controls
-                          className="w-full rounded-lg border shadow-sm"
-                          preload="metadata"
-                        />
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-muted-foreground">
-                            Video del inventario del producto
-                          </p>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (capturedVideoUrl) {
-                                URL.revokeObjectURL(capturedVideoUrl);
-                              }
-                              setCapturedVideoUrl(null);
-                              setVideoInventoryForm(prev => ({ ...prev, video_file: null }));
-                            }}
-                            className="text-destructive hover:text-destructive/80"
-                          >
-                            🗑️ Eliminar
-                          </Button>
-                        </div>
-                      </div>
+                  {/* Indicadores de estado */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                    <div className={`flex items-center space-x-2 ${videoInventoryForm.unit_price > 0 ? 'text-success' : 'text-muted-foreground'}`}>
+                      <div className={`w-3 h-3 rounded-full ${videoInventoryForm.unit_price > 0 ? 'bg-success' : 'bg-muted'}`}></div>
+                      <span>Precio</span>
                     </div>
-                  )
-                }
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Submit Button */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col space-y-4">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  Enviar Inventario
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Asegúrate de haber completado todos los campos requeridos y grabado el video antes de enviar.
-                </p>
-              </div>
-
-              <Button
-                onClick={async () => {
-                  // Validaciones completas
-                  if (videoInventoryForm.unit_price <= 0) {
-                    alert('❌ Por favor ingresa un precio unitario válido');
-                    return;
-                  }
-
-                  // Validar que haya al menos una distribución de tallas válida
-                  const hasValidDistribution = videoInventoryForm.sizes_distribution.some(sd => {
-                    if (!sd.size.trim()) return false;
-                    const hasPairs = sd.pairs.some(p => p.location_id > 0 && p.quantity > 0);
-                    const hasLeftFeet = sd.left_feet.some(lf => lf.location_id > 0 && lf.quantity > 0);
-                    const hasRightFeet = sd.right_feet.some(rf => rf.location_id > 0 && rf.quantity > 0);
-                    return hasPairs || (hasLeftFeet && hasRightFeet);
-                  });
-
-                  if (!hasValidDistribution) {
-                    alert('❌ Por favor ingresa al menos una talla con distribución válida');
-                    return;
-                  }
-
-                  // Validar balance de pies
-                  for (const sd of videoInventoryForm.sizes_distribution) {
-                    if (!sd.size.trim()) continue;
-                    const totalLeft = sd.left_feet.reduce((sum, lf) => sum + lf.quantity, 0);
-                    const totalRight = sd.right_feet.reduce((sum, rf) => sum + rf.quantity, 0);
-                    if (totalLeft !== totalRight) {
-                      alert(`❌ Error en talla ${sd.size}: Pies izquierdos (${totalLeft}) debe ser igual a pies derechos (${totalRight})`);
-                      return;
-                    }
-                  }
-
-                  if (!videoInventoryForm.video_file) {
-                    alert('❌ Por favor graba un video del producto antes de enviar');
-                    return;
-                  }
-
-                  try {
-                    console.log('=== ANTES DE ENVIAR ===');
-                    console.log('Estado del formulario:', {
-                      unit_price: videoInventoryForm.unit_price,
-                      product_brand: videoInventoryForm.product_brand,
-                      product_model: videoInventoryForm.product_model,
-                      box_price: videoInventoryForm.box_price,
-                      sizes_distribution: videoInventoryForm.sizes_distribution,
-                      video_file: videoInventoryForm.video_file ? `File(${videoInventoryForm.video_file.size} bytes)` : 'null',
-                      reference_image: videoInventoryForm.reference_image ? `File(${videoInventoryForm.reference_image.size} bytes)` : 'null'
-                    });
-                    console.log('=======================');
-
-                    await handleVideoInventoryEntry(videoInventoryForm);
-
-                    // Reset form después del envío exitoso
-                    setVideoInventoryForm({
-                      product_brand: '',
-                      product_model: '',
-                      unit_price: 0,
-                      box_price: 0,
-                      sizes_distribution: [
-                        {
-                          size: '',
-                          pairs: [{ location_id: 0, quantity: 0 }],
-                          left_feet: [],
-                          right_feet: []
-                        }
-                      ],
-                      reference_image: null,
-                      video_file: null
-                    });
-
-                    // Limpiar las URLs de preview y liberar memoria
-                    if (capturedPhotoUrl) {
-                      URL.revokeObjectURL(capturedPhotoUrl);
-                    }
-                    if (capturedVideoUrl) {
-                      URL.revokeObjectURL(capturedVideoUrl);
-                    }
-                    setCapturedPhotoUrl(null);
-                    setCapturedVideoUrl(null);
-                  } catch (error) {
-                    console.error('Error processing inventory:', error);
-                  }
-                }}
-                className="w-full bg-success hover:bg-success/90 text-white py-4 text-lg font-semibold"
-                disabled={!videoInventoryForm.video_file || videoInventoryForm.unit_price <= 0}
-              >
-                {!videoInventoryForm.video_file ? '📹 Graba un video primero' :
-                  videoInventoryForm.unit_price <= 0 ? '💰 Ingresa el precio' :
-                    '🚀 Registrar Inventario con Distribución'}
-              </Button>
-
-              {/* Indicadores de estado */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                <div className={`flex items-center space-x-2 ${videoInventoryForm.unit_price > 0 ? 'text-success' : 'text-muted-foreground'}`}>
-                  <div className={`w-3 h-3 rounded-full ${videoInventoryForm.unit_price > 0 ? 'bg-success' : 'bg-muted'}`}></div>
-                  <span>Precio</span>
+                    <div className={`flex items-center space-x-2 ${videoInventoryForm.sizes_distribution.some(sd => sd.size.trim() && (sd.pairs.some(p => p.location_id > 0 && p.quantity > 0) || (sd.left_feet.length > 0 && sd.right_feet.length > 0))) ? 'text-success' : 'text-muted-foreground'}`}>
+                      <div className={`w-3 h-3 rounded-full ${videoInventoryForm.sizes_distribution.some(sd => sd.size.trim() && (sd.pairs.some(p => p.location_id > 0 && p.quantity > 0) || (sd.left_feet.length > 0 && sd.right_feet.length > 0))) ? 'bg-success' : 'bg-muted'}`}></div>
+                      <span>Distribución</span>
+                    </div>
+                    <div className={`flex items-center space-x-2 ${videoInventoryForm.video_file ? 'text-success' : 'text-muted-foreground'}`}>
+                      <div className={`w-3 h-3 rounded-full ${videoInventoryForm.video_file ? 'bg-success' : 'bg-muted'}`}></div>
+                      <span>Video</span>
+                    </div>
+                  </div>
                 </div>
-                <div className={`flex items-center space-x-2 ${videoInventoryForm.sizes_distribution.some(sd => sd.size.trim() && (sd.pairs.some(p => p.location_id > 0 && p.quantity > 0) || (sd.left_feet.length > 0 && sd.right_feet.length > 0))) ? 'text-success' : 'text-muted-foreground'}`}>
-                  <div className={`w-3 h-3 rounded-full ${videoInventoryForm.sizes_distribution.some(sd => sd.size.trim() && (sd.pairs.some(p => p.location_id > 0 && p.quantity > 0) || (sd.left_feet.length > 0 && sd.right_feet.length > 0))) ? 'bg-success' : 'bg-muted'}`}></div>
-                  <span>Distribución</span>
-                </div>
-                <div className={`flex items-center space-x-2 ${videoInventoryForm.video_file ? 'text-success' : 'text-muted-foreground'}`}>
-                  <div className={`w-3 h-3 rounded-full ${videoInventoryForm.video_file ? 'bg-success' : 'bg-muted'}`}></div>
-                  <span>Video</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        </>
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
     );

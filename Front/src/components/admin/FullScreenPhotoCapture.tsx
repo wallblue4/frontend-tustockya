@@ -16,6 +16,7 @@ export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken, hideInte
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false); // Estado para prevenir doble clic
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -36,12 +37,17 @@ export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken, hideInte
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (isProcessing) return; // Prevenir doble procesamiento
     const file = event.target.files?.[0];
     if (file) {
+      setIsProcessing(true);
       const url = URL.createObjectURL(file);
       setPhotoUrl(url);
       onPhotoTaken?.(url, file);
+      setIsProcessing(false);
     }
+    // Limpiar el input para permitir seleccionar el mismo archivo de nuevo
+    event.target.value = '';
   };
 
   const closeFullScreen = () => {
@@ -52,13 +58,19 @@ export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken, hideInte
   };
 
   const takePhoto = () => {
-    if (!stream || !videoRef.current || !canvasRef.current) return;
+    if (!stream || !videoRef.current || !canvasRef.current || isProcessing) return;
+
+    // Activar estado de procesamiento inmediatamente para prevenir doble clic
+    setIsProcessing(true);
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
 
-    if (!context) return;
+    if (!context) {
+      setIsProcessing(false);
+      return;
+    }
 
     // Configurar el canvas con las dimensiones del video
     canvas.width = video.videoWidth;
@@ -73,7 +85,10 @@ export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken, hideInte
         const url = URL.createObjectURL(blob);
         setPhotoUrl(url);
         onPhotoTaken?.(url, blob);
+        setIsProcessing(false);
         closeFullScreen();
+      } else {
+        setIsProcessing(false);
       }
     }, 'image/jpeg', 0.9);
   };
@@ -92,15 +107,17 @@ export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken, hideInte
           <Button
             onClick={openFullScreenCamera}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
+            disabled={isProcessing}
           >
-            📸 Abrir camara
+            {isProcessing ? '⏳ Procesando...' : '📸 Abrir camara'}
           </Button>
           <Button
             onClick={() => fileInputRef.current?.click()}
             variant="outline"
             className="w-full py-3"
+            disabled={isProcessing}
           >
-            📁 Subir imagen
+            {isProcessing ? '⏳ Procesando...' : '📁 Subir imagen'}
           </Button>
         </div>
 
@@ -154,12 +171,20 @@ export const FullScreenPhotoCapture: React.FC<Props> = ({ onPhotoTaken, hideInte
         />
         {/* Controls overlayed at the bottom center */}
         <div className="absolute left-0 w-full flex justify-center z-10" style={{ bottom: 'env(safe-area-inset-bottom, 0px)', paddingBottom: 'calc(7% + env(safe-area-inset-bottom, 80px))' }}>
-          {stream && (
+          {stream && !isProcessing && (
             <Button
               onClick={takePhoto}
               className="bg-card text-foreground border border-border hover:bg-card/80 px-8 py-4 rounded-full text-lg font-semibold shadow-lg"
             >
               📸 Tomar Foto
+            </Button>
+          )}
+          {isProcessing && (
+            <Button
+              disabled
+              className="bg-gray-500 text-white px-8 py-4 rounded-full text-lg font-semibold shadow-lg"
+            >
+              ⏳ Procesando...
             </Button>
           )}
         </div>
