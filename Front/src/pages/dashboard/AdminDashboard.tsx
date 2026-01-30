@@ -56,8 +56,10 @@ import {
   fetchCostConfigurations,
   fetchOperationalDashboard,
   fetchCostConfiguration,
+  updateCostConfiguration,
   deleteCostConfiguration,
   deactivateCostConfiguration,
+  createCostPayment,
   fetchLocationCostDashboard,
   fetchOverdueAlerts,
   fetchUpcomingPayments,
@@ -407,6 +409,35 @@ export const AdminDashboard: React.FC = () => {
     dateTo: ''
   });
 
+  // Estados para lista de configuraciones de costos
+  const [costConfigurations, setCostConfigurations] = useState<any[]>([]);
+  const [costConfigurationsLoading, setCostConfigurationsLoading] = useState(false);
+  const [showCostsList, setShowCostsList] = useState(false);
+
+  // Estados para modal de edición de costo
+  const [showEditCostModal, setShowEditCostModal] = useState(false);
+  const [editingCost, setEditingCost] = useState<any>(null);
+  const [editCostLoading, setEditCostLoading] = useState(false);
+  const [editCostFormData, setEditCostFormData] = useState({
+    amount: '',
+    frequency: '' as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual',
+    description: '',
+    is_active: true
+  });
+
+  // Estados para modal de registro de pago
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [payingCost, setPayingCost] = useState<any>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentFormData, setPaymentFormData] = useState({
+    due_date: '',
+    payment_amount: '',
+    payment_date: '',
+    payment_method: 'efectivo' as 'efectivo' | 'transferencia' | 'tarjeta' | 'cheque',
+    payment_reference: '',
+    notes: ''
+  });
+
   const todayISO = new Date().toISOString().split('T')[0];
   const [dailyTraceabilityFilters, setDailyTraceabilityFilters] = useState({
     target_date: todayISO,
@@ -435,6 +466,7 @@ export const AdminDashboard: React.FC = () => {
       loadUsers();
     } else if (currentView === 'costs') {
       loadCosts();
+      loadCostConfigurations();
     } else if (currentView === 'notifications') {
       loadNotifications();
     } else if (currentView === 'wholesale') {
@@ -450,6 +482,13 @@ export const AdminDashboard: React.FC = () => {
       loadUsers();
     }
   }, [userFilters, currentView]);
+
+  // Actualiza costos cuando cambian los filtros
+  useEffect(() => {
+    if (currentView === 'costs' && showCostsList) {
+      loadCostConfigurations();
+    }
+  }, [costFilters.category, costFilters.location]);
 
   const loadInitialData = async () => {
     try {
@@ -772,13 +811,158 @@ export const AdminDashboard: React.FC = () => {
 
   const handleDeactivateCost = async (costId: number, endDate?: string) => {
     try {
+      const confirmation = window.confirm('¿Estás seguro de que deseas desactivar este costo?');
+      if (!confirmation) return;
+
       await deactivateCostConfiguration(costId, endDate);
       await loadCosts();
+      await loadCostConfigurations();
       alert('Costo desactivado exitosamente');
     } catch (error: any) {
       console.error('Error deactivating cost:', error);
       alert('Error al desactivar costo: ' + (error.message || 'Error desconocido'));
     }
+  };
+
+  // Cargar lista de configuraciones de costos
+  const loadCostConfigurations = async () => {
+    setCostConfigurationsLoading(true);
+    try {
+      const params: any = {};
+      if (costFilters.location) {
+        params.location_id = parseInt(costFilters.location);
+      }
+      if (costFilters.category) {
+        params.cost_type = costFilters.category;
+      }
+
+      const response = await fetchCostConfigurations(params);
+      console.log('📋 Respuesta de fetchCostConfigurations:', response);
+      const configs = Array.isArray(response) ? response : response.data || response.configurations || [];
+      console.log('📋 Configuraciones procesadas:', configs);
+      setCostConfigurations(configs);
+    } catch (error: any) {
+      console.error('Error loading cost configurations:', error);
+      setCostConfigurations([]);
+    } finally {
+      setCostConfigurationsLoading(false);
+    }
+  };
+
+  // Abrir modal de edición de costo
+  const handleOpenEditCostModal = (cost: any) => {
+    setEditingCost(cost);
+    setEditCostFormData({
+      amount: cost.amount?.toString() || '',
+      frequency: cost.frequency || 'monthly',
+      description: cost.description || '',
+      is_active: cost.is_active !== false
+    });
+    setShowEditCostModal(true);
+  };
+
+  // Actualizar costo
+  const handleUpdateCost = async () => {
+    if (!editingCost) return;
+
+    setEditCostLoading(true);
+    try {
+      const updateData: any = {};
+
+      if (editCostFormData.amount && editCostFormData.amount !== editingCost.amount?.toString()) {
+        updateData.amount = parseFloat(editCostFormData.amount);
+      }
+      if (editCostFormData.frequency && editCostFormData.frequency !== editingCost.frequency) {
+        updateData.frequency = editCostFormData.frequency;
+      }
+      if (editCostFormData.description && editCostFormData.description !== editingCost.description) {
+        updateData.description = editCostFormData.description;
+      }
+      if (editCostFormData.is_active !== editingCost.is_active) {
+        updateData.is_active = editCostFormData.is_active;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        alert('No hay cambios para guardar');
+        setEditCostLoading(false);
+        return;
+      }
+
+      await updateCostConfiguration(editingCost.id, updateData);
+      await loadCosts();
+      await loadCostConfigurations();
+
+      setShowEditCostModal(false);
+      setEditingCost(null);
+      alert('Costo actualizado exitosamente');
+    } catch (error: any) {
+      console.error('Error updating cost:', error);
+      alert('Error al actualizar costo: ' + (error.message || 'Error desconocido'));
+    } finally {
+      setEditCostLoading(false);
+    }
+  };
+
+  // Abrir modal de registro de pago
+  const handleOpenPaymentModal = (cost: any) => {
+    setPayingCost(cost);
+    setPaymentFormData({
+      due_date: todayISO,
+      payment_amount: cost.amount?.toString() || '',
+      payment_date: todayISO,
+      payment_method: 'efectivo',
+      payment_reference: '',
+      notes: ''
+    });
+    setShowPaymentModal(true);
+  };
+
+  // Registrar pago
+  const handleRegisterPayment = async () => {
+    if (!payingCost) return;
+
+    if (!paymentFormData.payment_amount || parseFloat(paymentFormData.payment_amount) <= 0) {
+      alert('Por favor ingresa un monto de pago válido');
+      return;
+    }
+
+    setPaymentLoading(true);
+    try {
+      const paymentData = {
+        cost_configuration_id: payingCost.id,
+        due_date: paymentFormData.due_date || todayISO,
+        payment_amount: parseFloat(paymentFormData.payment_amount),
+        payment_date: paymentFormData.payment_date || todayISO,
+        payment_method: paymentFormData.payment_method,
+        payment_reference: paymentFormData.payment_reference || undefined,
+        notes: paymentFormData.notes || undefined
+      };
+
+      await createCostPayment(paymentData);
+      await loadCosts();
+      await loadCostConfigurations();
+
+      setShowPaymentModal(false);
+      setPayingCost(null);
+      alert(`Pago registrado exitosamente!\n\nMonto: ${formatCurrency(parseFloat(paymentFormData.payment_amount))}\nMétodo: ${paymentFormData.payment_method}`);
+    } catch (error: any) {
+      console.error('Error registering payment:', error);
+      alert('Error al registrar pago: ' + (error.message || 'Error desconocido'));
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  // Helper para mostrar frecuencia en español
+  const getFrequencyLabel = (frequency: string) => {
+    const labels: Record<string, string> = {
+      'daily': 'Diario',
+      'weekly': 'Semanal',
+      'monthly': 'Mensual',
+      'quarterly': 'Trimestral',
+      'annual': 'Anual'
+    };
+    return labels[frequency] || frequency;
   };
 
   // Helper functions para mapear datos del modal a la API
@@ -1604,10 +1788,24 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
       <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <h2 className="text-2xl font-bold text-foreground">Gestión de Costos</h2>
-          <Button onClick={() => setShowCreateCostModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Registrar Costo
-          </Button>
+          <div className="flex space-x-2">
+            <Button
+              variant={showCostsList ? 'default' : 'outline'}
+              onClick={() => {
+                setShowCostsList(!showCostsList);
+                if (!showCostsList) {
+                  loadCostConfigurations();
+                }
+              }}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              {showCostsList ? 'Ocultar Lista' : 'Ver Costos Configurados'}
+            </Button>
+            <Button onClick={() => setShowCreateCostModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Registrar Costo
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -1641,13 +1839,132 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   ...locations.map(location => ({ value: location.id.toString(), label: location.name }))
                 ]}
               />
-              <Button onClick={() => loadCosts()} size="sm" variant="outline">
+              <Button onClick={() => { loadCosts(); loadCostConfigurations(); }} size="sm" variant="outline">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualizar
               </Button>
             </div>
           </CardContent>
         </Card>
+
+        {/* Lista de Configuraciones de Costos */}
+        {showCostsList && (
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold text-foreground flex items-center">
+                <FileText className="h-5 w-5 mr-2 text-primary" />
+                Costos Configurados
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  ({costConfigurations.length} registros)
+                </span>
+              </h3>
+            </CardHeader>
+            <CardContent>
+              {costConfigurationsLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+                  <span className="ml-2 text-muted-foreground">Cargando configuraciones...</span>
+                </div>
+              ) : costConfigurations.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
+                    <thead className="bg-popover text-popover-foreground">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">ID</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Ubicación</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Tipo</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Descripción</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Monto</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Frecuencia</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Estado</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {costConfigurations.map((cost) => (
+                        <tr key={cost.id} className={!cost.is_active ? 'bg-muted/30 opacity-60' : ''}>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm font-mono">
+                            #{cost.id}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="font-medium">{cost.location_name || `Ubicación ${cost.location_id}`}</span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <Badge className="bg-accent text-accent-foreground border border-border">
+                              {capitalize(cost.cost_type)}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 max-w-xs truncate" title={cost.description}>
+                            {cost.description || '-'}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap font-semibold text-primary">
+                            {formatCurrency(parseFloat(cost.amount))}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm">
+                            {getFrequencyLabel(cost.frequency)}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <Badge variant={cost.is_active ? 'success' : 'secondary'}>
+                              {cost.is_active ? 'Activo' : 'Inactivo'}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="flex space-x-1 flex-wrap gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenEditCostModal(cost)}
+                                title="Editar costo"
+                                className="p-2"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-success border-success hover:bg-success/10 p-2"
+                                onClick={() => handleOpenPaymentModal(cost)}
+                                title="Registrar pago"
+                              >
+                                <DollarSign className="h-4 w-4" />
+                              </Button>
+                              {cost.is_active && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-warning border-warning hover:bg-warning/10 p-2"
+                                  onClick={() => handleDeactivateCost(cost.id)}
+                                  title="Desactivar costo"
+                                >
+                                  <Settings className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-error border-error hover:bg-error/10 p-2"
+                                onClick={() => handleDeleteCost(cost.id)}
+                                title="Eliminar costo"
+                              >
+                                <AlertCircle className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <EmptyState
+                  title="No hay costos configurados"
+                  description="Registra tu primer costo usando el botón 'Registrar Costo'"
+                  icon={<DollarSign className="h-12 w-12 text-gray-400" />}
+                />
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Costs Summary */}
         {operationalData && (
@@ -4582,6 +4899,218 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             onSubmit={handleAddSize}
             productData={selectedProductForAddSize}
           />
+        )}
+
+        {/* Edit Cost Modal */}
+        {showEditCostModal && editingCost && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-card rounded-lg shadow-xl w-full max-w-md mx-4 border border-border">
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <h3 className="text-lg font-semibold text-foreground">Editar Costo</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowEditCostModal(false);
+                    setEditingCost(null);
+                  }}
+                >
+                  ×
+                </Button>
+              </div>
+              <div className="p-4 space-y-4">
+                <div className="bg-muted/30 p-3 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Costo #{editingCost.id}</p>
+                  <p className="font-medium">{editingCost.location_name || `Ubicación ${editingCost.location_id}`}</p>
+                  <p className="text-sm">{capitalize(editingCost.cost_type)}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Monto</label>
+                  <Input
+                    type="number"
+                    value={editCostFormData.amount}
+                    onChange={(e) => setEditCostFormData(prev => ({ ...prev, amount: e.target.value }))}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Frecuencia</label>
+                  <Select
+                    value={editCostFormData.frequency}
+                    onChange={(e) => setEditCostFormData(prev => ({
+                      ...prev,
+                      frequency: e.target.value as typeof editCostFormData.frequency
+                    }))}
+                    options={[
+                      { value: 'daily', label: 'Diario' },
+                      { value: 'weekly', label: 'Semanal' },
+                      { value: 'monthly', label: 'Mensual' },
+                      { value: 'quarterly', label: 'Trimestral' },
+                      { value: 'annual', label: 'Anual' }
+                    ]}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Descripción</label>
+                  <Input
+                    type="text"
+                    value={editCostFormData.description}
+                    onChange={(e) => setEditCostFormData(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Descripción del costo"
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="is_active"
+                    checked={editCostFormData.is_active}
+                    onChange={(e) => setEditCostFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                    className="rounded border-border"
+                  />
+                  <label htmlFor="is_active" className="text-sm text-foreground">Costo activo</label>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-2 p-4 border-t border-border">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowEditCostModal(false);
+                    setEditingCost(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleUpdateCost}
+                  disabled={editCostLoading}
+                >
+                  {editCostLoading ? 'Guardando...' : 'Guardar Cambios'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Payment Registration Modal */}
+        {showPaymentModal && payingCost && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-card rounded-lg shadow-xl w-full max-w-md mx-4 border border-border">
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <h3 className="text-lg font-semibold text-foreground">Registrar Pago</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowPaymentModal(false);
+                    setPayingCost(null);
+                  }}
+                >
+                  ×
+                </Button>
+              </div>
+              <div className="p-4 space-y-4">
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Pago para:</p>
+                  <p className="font-medium">{payingCost.location_name || `Ubicación ${payingCost.location_id}`}</p>
+                  <p className="text-sm">{capitalize(payingCost.cost_type)} - {payingCost.description}</p>
+                  <p className="text-lg font-bold text-primary mt-1">
+                    {formatCurrency(parseFloat(payingCost.amount))}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Fecha de Vencimiento</label>
+                  <Input
+                    type="date"
+                    value={paymentFormData.due_date}
+                    onChange={(e) => setPaymentFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Monto del Pago</label>
+                  <Input
+                    type="number"
+                    value={paymentFormData.payment_amount}
+                    onChange={(e) => setPaymentFormData(prev => ({ ...prev, payment_amount: e.target.value }))}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Fecha de Pago</label>
+                  <Input
+                    type="date"
+                    value={paymentFormData.payment_date}
+                    onChange={(e) => setPaymentFormData(prev => ({ ...prev, payment_date: e.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Método de Pago</label>
+                  <Select
+                    value={paymentFormData.payment_method}
+                    onChange={(e) => setPaymentFormData(prev => ({
+                      ...prev,
+                      payment_method: e.target.value as typeof paymentFormData.payment_method
+                    }))}
+                    options={[
+                      { value: 'efectivo', label: 'Efectivo' },
+                      { value: 'transferencia', label: 'Transferencia' },
+                      { value: 'tarjeta', label: 'Tarjeta' },
+                      { value: 'cheque', label: 'Cheque' }
+                    ]}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Referencia de Pago (opcional)</label>
+                  <Input
+                    type="text"
+                    value={paymentFormData.payment_reference}
+                    onChange={(e) => setPaymentFormData(prev => ({ ...prev, payment_reference: e.target.value }))}
+                    placeholder="Ej: Número de transferencia, recibo, etc."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Notas (opcional)</label>
+                  <Input
+                    type="text"
+                    value={paymentFormData.notes}
+                    onChange={(e) => setPaymentFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Notas adicionales del pago"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-2 p-4 border-t border-border">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowPaymentModal(false);
+                    setPayingCost(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleRegisterPayment}
+                  disabled={paymentLoading}
+                  className="bg-success hover:bg-success/90"
+                >
+                  {paymentLoading ? 'Registrando...' : 'Registrar Pago'}
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </DashboardLayout>
