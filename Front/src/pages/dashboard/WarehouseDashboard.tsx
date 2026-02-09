@@ -770,7 +770,7 @@ export const WarehouseDashboard: React.FC = () => {
               >
                 <Package className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                 <span className="hidden sm:inline">Devoluciones</span>
-                <span className="sm:hidden">Returns</span>
+                <span className="sm:hidden">Devol.</span>
                 ({pendingReturns.length})
               </Button>
               <Button
@@ -1073,8 +1073,8 @@ export const WarehouseDashboard: React.FC = () => {
 
                               {/* Estado de disponibilidad compacto */}
                               <div className={`p-2 rounded text-center ${((request.product_info?.stock_available ?? 0) > 0)
-                                  ? 'bg-success/10 text-success border border-success/20'
-                                  : 'bg-error/10 text-error border border-error/20'
+                                ? 'bg-success/10 text-success border border-success/20'
+                                : 'bg-error/10 text-error border border-error/20'
                                 }`}>
                                 <div className="text-xs font-medium">
                                   {((request.product_info?.stock_available ?? 0) > 0) ? '✅ Disponible' : '❌ Sin stock'}
@@ -1247,13 +1247,13 @@ export const WarehouseDashboard: React.FC = () => {
 
                               {/* Estado de disponibilidad */}
                               <div className={`p-4 rounded-lg border-2 mb-6 ${((request.product_info?.stock_available ?? 0) > 0)
-                                  ? 'bg-green-50 border-green-200'
-                                  : 'bg-red-50 border-red-200'
+                                ? 'bg-green-50 border-green-200'
+                                : 'bg-red-50 border-red-200'
                                 }`}>
                                 <div className="flex justify-between items-center">
                                   <span className={`text-lg font-medium ${((request.product_info?.stock_available ?? 0) > 0)
-                                      ? 'text-green-700'
-                                      : 'text-red-700'
+                                    ? 'text-green-700'
+                                    : 'text-red-700'
                                     }`}>
                                     {((request.product_info?.stock_available ?? 0) > 0) ? '✅ Disponible' : '❌ No disponible'}
                                   </span>
@@ -1977,8 +1977,8 @@ export const WarehouseDashboard: React.FC = () => {
                                       <div className="flex items-center justify-between">
                                         <span className="text-xs text-muted-foreground">Estado:</span>
                                         <span className={`text-xs font-medium px-2 py-1 rounded-full ${product.is_active === 1
-                                            ? 'bg-green-100 text-green-800'
-                                            : 'bg-red-100 text-red-800'
+                                          ? 'bg-green-100 text-green-800'
+                                          : 'bg-red-100 text-red-800'
                                           }`}>
                                           {product.is_active === 1 ? 'Activo' : 'Inactivo'}
                                         </span>
@@ -2013,8 +2013,8 @@ export const WarehouseDashboard: React.FC = () => {
                                             <div
                                               key={size.size}
                                               className={`p-1 rounded text-center text-xs ${size.quantity > 0
-                                                  ? 'bg-green-50 text-green-800 border border-green-200'
-                                                  : 'bg-gray-50 text-gray-600 border border-gray-200'
+                                                ? 'bg-green-50 text-green-800 border border-green-200'
+                                                : 'bg-gray-50 text-gray-600 border border-gray-200'
                                                 }`}
                                             >
                                               <div className="font-medium">{size.size}</div>
