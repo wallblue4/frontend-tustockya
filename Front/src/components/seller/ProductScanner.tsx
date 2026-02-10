@@ -729,6 +729,21 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       default:
         return 'text-gray-600 bg-gray-100';
     }
+  };
+
+  const getConfidenceCircleStyles = (level: string) => {
+    switch (level) {
+      case 'very_high':
+        return 'border-lime-500 text-lime-600';
+      case 'high':
+        return 'border-green-500 text-green-600';
+      case 'medium':
+        return 'border-yellow-500 text-yellow-600';
+      case 'low':
+        return 'border-red-500 text-red-600';
+      default:
+        return 'border-gray-400 text-gray-600';
+    }
   }; 
 
   const getConfidenceLevelText = (level: string) => {
@@ -768,20 +783,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* API Integration Notice */}
-      <Card className="border-success/30 bg-success/10">
-        <CardContent className="p-4">
-          <div className="flex items-center space-x-3">
-            <Camera className="h-5 w-5 text-success" />
-            <div>
-              <p className="text-sm font-medium text-success">Escáner IA - Sistema Actualizado</p>
-              <p className="text-sm text-success">
-                Conectado a nueva API de clasificación con información de disponibilidad
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Scan Info */}
       {scanInfo && (
@@ -790,9 +791,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-primary">
-                    Escaneado por: {scanInfo.scanned_by.name} - {scanInfo.user_location}
-                  </p>
                   <p className="text-xs text-primary">
                     Procesado en {scanInfo.processing_time.toFixed(0)}ms
                   </p>
@@ -802,28 +800,12 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                 </div>
               </div>
               
-              {/* Show total matches */}
-              {(scanInfo as any).total_matches > 0 && (
-                <div className="text-xs text-primary bg-primary/20 p-2 rounded">
-                  <strong>Productos similares encontrados: {(scanInfo as any).total_matches}</strong>
-                </div>
-              )}
-              
-              {/* New: Show availability summary */}
               {scanInfo.availability_summary && (
                 <div className="grid grid-cols-2 gap-4 text-xs text-primary bg-primary/20 p-2 rounded">
                   <div>Productos clasificados: {scanInfo.availability_summary.products_classified_only}</div>
                   <div>Venta inmediata: {scanInfo.availability_summary.can_sell_immediately ? 'Sí' : 'No'}</div>
                   <div>Disponibles localmente: {scanInfo.availability_summary.products_available_locally}</div>
                   <div>Requieren transferencia: {scanInfo.availability_summary.products_requiring_transfer}</div>
-                </div>
-              )}
-              
-              {/* New: Show classification service info */}
-              {scanInfo.classification_service && (
-                <div className="text-xs text-primary">
-                  Modelo: {scanInfo.classification_service.model} | 
-                  Coincidencias en BD: {scanInfo.classification_service.total_database_matches}
                 </div>
               )}
             </div>
@@ -860,69 +842,99 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
               {scanOptions.map((option) => (
                 <div
                   key={option.id}
-                  className="border rounded-lg p-4 cursor-pointer hover:border-primary hover:shadow-md transition-all"
+                  className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
+                    option.inventory.total_stock > 0 ? 'hover:border-primary' : 'border-red-400'
+                  }`}
                   onClick={() => handleProductSelect(option)}
                 >
-                  <div className="flex items-start gap-6">
+                  {/* Photo | Info */}
+                  <div className="flex gap-3 sm:gap-4">
+                    {/* Left: Photo */}
                     <ProductImageComponent
                       image={option.image}
                       alt={`${option.brand} ${option.model}`}
-                      className="w-32 h-44 object-cover rounded-lg flex-shrink-0 border border-border shadow"
+                      className="w-28 sm:w-36 h-auto self-stretch object-cover rounded-lg flex-shrink-0 border border-border shadow"
                     />
-                    <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
-                      {/* Título y confianza */}
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-bold bg-primary text-white px-2 py-0.5 rounded">#{option.rank}</span>
-                            <h4 className="font-semibold text-lg text-foreground truncate">{option.description || `${option.brand} ${option.model}`}</h4>
+                    {/* Right: Info */}
+                    <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                      {/* Mobile: stacked layout */}
+                      <div className="sm:hidden flex flex-col gap-1.5">
+                        {/* Name */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold bg-primary text-white px-1.5 py-0.5 rounded shrink-0">#{option.rank}</span>
+                          <h4 className="font-semibold text-sm text-foreground truncate">{option.description || `${option.brand} ${option.model}`}</h4>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground truncate">{option.brand} • {option.model}</p>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${getConfidenceCircleStyles(option.confidence_level)}`}>
+                            <span className="text-[9px] font-bold">{option.confidence?.toFixed(0)}%</span>
                           </div>
-                          <p className="text-xs text-muted-foreground truncate">{option.brand} • {option.model}</p>
-                        </div>
-                        <div className="flex flex-col items-end ml-2">
-                          <span className={`text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded mb-1`}>{option.confidence?.toFixed(1)}%</span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getConfidenceLevelColor(option.confidence_level)}`}>{getConfidenceLevelText(option.confidence_level)}</span>
-                        </div>
-                      </div>
-                      {/* Info principal */}
-                      <div className="mt-1 text-sm text-muted-foreground">
-                        <div className="truncate">
-                          Código: <span className="font-medium text-foreground">{option.code}</span>
-                          {option.color && ` | Color: ${option.color}`}
+                          <span className={`text-[10px] font-semibold ${getConfidenceCircleStyles(option.confidence_level).split(' ')[1]}`}>{getConfidenceLevelText(option.confidence_level)}</span>
                         </div>
                         {option.inventory.available_sizes && option.inventory.available_sizes.length > 0 && (
-                          <div className="text-xs text-muted-foreground">
-                            Tallas: {option.inventory.available_sizes.slice(0, 5).join(', ')}
-                            {option.inventory.available_sizes.length > 5 && '...'}
+                          <div className="flex items-center gap-1.5 overflow-x-auto">
+                            <span className="text-[10px] font-semibold text-muted-foreground shrink-0">Tallas:</span>
+                            <div className="flex gap-1 flex-nowrap">
+                              {option.inventory.available_sizes.slice(0, 6).map((size) => (
+                                <span key={size} className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary border border-primary/20 shrink-0">
+                                  {size}
+                                </span>
+                              ))}
+                              {option.inventory.available_sizes.length > 6 && (
+                                <span className="text-[10px] text-muted-foreground self-center shrink-0">+{option.inventory.available_sizes.length - 6}</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        <span className="text-primary font-bold text-sm">{formatCurrency(option.inventory.pricing.unit_price)}</span>
+                      </div>
+
+                      {/* Desktop: optimized layout */}
+                      <div className="hidden sm:flex sm:flex-col sm:gap-2 sm:h-full">
+                        {/* Row 1: Name + Confidence */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-bold bg-primary text-white px-2 py-0.5 rounded shrink-0">#{option.rank}</span>
+                              <h4 className="font-semibold text-base text-foreground truncate">{option.description || `${option.brand} ${option.model}`}</h4>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">{option.brand} • {option.model}</p>
+                          </div>
+                          <div className="flex flex-col items-center shrink-0">
+                            <div className={`w-11 h-11 rounded-full border-[3px] flex items-center justify-center ${getConfidenceCircleStyles(option.confidence_level)}`}>
+                              <span className="text-[11px] font-bold">{option.confidence?.toFixed(0)}%</span>
+                            </div>
+                            <span className={`text-[10px] font-semibold mt-0.5 ${getConfidenceCircleStyles(option.confidence_level).split(' ')[1]}`}>{getConfidenceLevelText(option.confidence_level)}</span>
+                          </div>
+                        </div>
+                        {/* Row 2: Stock + Price */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-primary font-bold text-base">{formatCurrency(option.inventory.pricing.unit_price)}</span>
+                        </div>
+                        {/* Row 3: Tallas */}
+                        {option.inventory.available_sizes && option.inventory.available_sizes.length > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold text-muted-foreground shrink-0">Tallas:</span>
+                            <div className="flex gap-1 flex-wrap">
+                              {option.inventory.available_sizes.slice(0, 8).map((size) => (
+                                <span key={size} className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                                  {size}
+                                </span>
+                              ))}
+                              {option.inventory.available_sizes.length > 8 && (
+                                <span className="text-xs text-muted-foreground self-center">+{option.inventory.available_sizes.length - 8}</span>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
-                      {/* Estado de disponibilidad */}
-                      <div className="mt-2">
-                        <div
-                          className={`p-2 rounded-md border text-sm flex items-center gap-2 
-                            ${option.availability.can_sell ? 'bg-success/10 border-success text-success' : 
-                              option.availability.can_request_from_other_locations ? 'bg-warning/10 border-warning text-warning' : 'bg-error/10 border-error text-error'}
-                          `}
-                        >
-                          {getAvailabilityIcon(option.availability)}
-                          <span className="font-medium text-foreground">{option.availability.recommended_action}</span>
-                          {option.availability.can_sell && (
-                            <span className="ml-2 text-xs text-muted-foreground">Stock total: {option.inventory.total_stock} unidades</span>
-                          )}
-                        </div>
-                      </div>
-                      {/* Precios */}
-                      <div className="mt-2 flex items-center gap-4">
-                        <span className="text-primary font-bold text-base">{formatCurrency(option.inventory.pricing.unit_price)}</span>
-                        <span className="text-muted-foreground text-sm">(Caja: {formatCurrency(option.inventory.pricing.box_price)})</span>
-                      </div>
-                      {/* Ranking y acción */}
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Ranking: #{option.rank}</span>
-                        <span className="text-primary font-semibold text-sm flex items-center gap-1">Seleccionar <ArrowRight className="h-4 w-4 inline" /></span>
-                      </div>
                     </div>
+                  </div>
+                  {/* Acción */}
+                  <div className="mt-3">
+                    <span className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all">
+                      Seleccionar <ArrowRight className="h-4 w-4" />
+                    </span>
                   </div>
                 </div>
               ))}
@@ -969,21 +981,22 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
             <div className="space-y-6">
               {/* Product Info */}
               <div className="bg-muted/20 p-4 rounded-lg">
-                <h4 className="font-semibold text-xl mb-2 text-foreground">
-                  {selectedProduct.product.description || `${selectedProduct.product.brand} ${selectedProduct.product.model}`}
-                </h4>
-                <p className="text-muted-foreground mb-1">
-                  Código: {selectedProduct.product.code} | Modelo: {selectedProduct.product.model}
-                </p>
-                <p className="text-sm text-muted-foreground mb-3">Marca: {selectedProduct.product.brand}</p>
-
-                <div className="mt-3 flex items-center space-x-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getConfidenceLevelColor(selectedProduct.product.confidence_level)}`}>
-                    Confianza: {getConfidenceLevelText(selectedProduct.product.confidence_level)} ({selectedProduct.product.confidence}%)
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Similitud: {(selectedProduct.product.similarity_score * 100).toFixed(1)}%
-                  </span>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="font-semibold text-xl mb-2 text-foreground">
+                      {selectedProduct.product.description || `${selectedProduct.product.brand} ${selectedProduct.product.model}`}
+                    </h4>
+                    <p className="text-muted-foreground mb-1">
+                      Modelo: {selectedProduct.product.model}
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-3">Marca: {selectedProduct.product.brand}</p>
+                  </div>
+                  <div className="flex flex-col items-center ml-6">
+                    <div className={`w-14 h-14 rounded-full border-[3px] flex items-center justify-center ${getConfidenceCircleStyles(selectedProduct.product.confidence_level)}`}>
+                      <span className="text-sm font-bold">{selectedProduct.product.confidence?.toFixed(0)}%</span>
+                    </div>
+                    <span className={`text-[10px] font-semibold mt-1 ${getConfidenceCircleStyles(selectedProduct.product.confidence_level).split(' ')[1]}`}>{getConfidenceLevelText(selectedProduct.product.confidence_level)}</span>
+                  </div>
                 </div>
               </div>
 
