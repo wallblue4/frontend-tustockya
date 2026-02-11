@@ -376,8 +376,9 @@ export const SellerDashboard: React.FC = () => {
             <Button variant="ghost" onClick={goBack} className="mb-4">
               <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Dashboard
             </Button>
-            <ProductScanner 
+            <ProductScanner
               onRequestTransfer={handleRequestTransfer}
+              onSellProduct={handleSellProduct}
               capturedImage={capturedImage}
               scanResult={scanResult}
             />
