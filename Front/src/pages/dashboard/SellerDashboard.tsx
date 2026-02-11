@@ -64,6 +64,7 @@ interface TransfersSummary {
 export const SellerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
+  const [scanViewTitle, setScanViewTitle] = useState('Escanear Producto');
   const [apiData, setApiData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -350,6 +351,7 @@ export const SellerDashboard: React.FC = () => {
     console.log('🔍 SellerDashboard - Limpiando estados y volviendo al dashboard');
     setPrefilledProduct(null);
     setProductDataForTransfer(null);
+    setScanViewTitle('Escanear Producto');
     setCapturedImage(null);
     setScanResult(null);
     setErrorMessage(null);
@@ -378,6 +380,7 @@ export const SellerDashboard: React.FC = () => {
             </Button>
             <ProductScanner
               onRequestTransfer={handleRequestTransfer}
+              onStepTitleChange={setScanViewTitle}
               onSellProduct={handleSellProduct}
               capturedImage={capturedImage}
               scanResult={scanResult}
@@ -661,7 +664,7 @@ export const SellerDashboard: React.FC = () => {
   return (
     <DashboardLayout title={
       currentView === 'dashboard' ? 'Panel de Vendedor' :
-      currentView === 'scan' ? 'Escanear Producto' :
+      currentView === 'scan' ? scanViewTitle :
       currentView === 'new-sale' ? (prefilledProduct ? 'Nueva Venta - Producto Escaneado' : 'Nueva Venta') :
       currentView === 'today-sales' ? 'Ventas del Día' :
       currentView === 'expenses' ? 'Registrar Gasto' :

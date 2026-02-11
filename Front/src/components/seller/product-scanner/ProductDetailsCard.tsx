@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertCircle, ArrowLeft, Check, CheckCircle, MapPin, Package, ShoppingBag, XCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '../../ui/Card';
+import { Card, CardContent } from '../../ui/Card';
 import { Button } from '../../ui/Button';
 import { formatCurrency } from '../../../services/api';
 import { createSizeKey, findSizeByKey, getConfidenceCircleStyles, getConfidenceLevelText } from './helpers';
@@ -318,17 +318,15 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Detalles del Producto</h3>
-          <Button variant="ghost" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Cambiar Producto
-          </Button>
-        </div>
-      </CardHeader>
       <CardContent>
         <div className="space-y-6">
+          <div className="flex items-center justify-end">
+            <Button variant="ghost" onClick={onBack}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Cambiar Producto
+            </Button>
+          </div>
+
           <div className="bg-muted/20 p-4 rounded-lg">
             <div className="flex items-start justify-between">
               <div>

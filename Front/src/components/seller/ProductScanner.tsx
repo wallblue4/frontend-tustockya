@@ -43,6 +43,7 @@ interface ProductScannerProps {
       right_feet_quantity?: number;
     };
   }) => void;
+  onStepTitleChange?: (title: string) => void;
   onSellProduct?: (productData: {
     code: string;
     brand: string;
@@ -60,6 +61,7 @@ interface ProductScannerProps {
 
 export const ProductScanner: React.FC<ProductScannerProps> = ({
   onRequestTransfer,
+  onStepTitleChange,
   onSellProduct,
   capturedImage
 }) => {
@@ -80,6 +82,30 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       handleScanFromCamera(capturedImage);
     }
   }, [capturedImage]);
+
+  useEffect(() => {
+    if (!onStepTitleChange) return;
+
+    if (currentStep === 'processing') {
+      onStepTitleChange('Analizando imagen');
+      return;
+    }
+
+    if (currentStep === 'options') {
+      if (isScanning) {
+        onStepTitleChange('Analizando imagen');
+      } else if (scanOptions.length > 0) {
+        onStepTitleChange('Selecciona el Producto Correcto');
+      } else {
+        onStepTitleChange('Sin resultados de escaneo');
+      }
+      return;
+    }
+
+    if (currentStep === 'details') {
+      onStepTitleChange('Detalles del Producto');
+    }
+  }, [currentStep, isScanning, scanOptions.length, onStepTitleChange]);
 
   // Función para convertir los datos de disponibilidad a formato de tallas
   const convertAvailabilityToSizes = (product: ProductOption): SizeInfo[] => {

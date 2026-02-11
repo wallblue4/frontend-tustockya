@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '../../ui/Card';
+import { Card, CardContent } from '../../ui/Card';
 import { formatCurrency } from '../../../services/api';
 import { getConfidenceCircleStyles, getConfidenceLevelText } from './helpers';
 import { ProductOption } from './types';
@@ -141,13 +141,10 @@ const ProductOptionItem: React.FC<{ option: ProductOption; onSelect: (product: P
 export const ProductOptionsCard: React.FC<ProductOptionsCardProps> = ({ options, onSelect }) => {
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Selecciona el Producto Correcto</h3>
+      <CardContent>
+        <div className="flex items-center justify-end mb-4">
           <p className="text-sm text-gray-500">{options.length} productos encontrados</p>
         </div>
-      </CardHeader>
-      <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {options.map((option) => (
             <ProductOptionItem key={option.id} option={option} onSelect={onSelect} />
