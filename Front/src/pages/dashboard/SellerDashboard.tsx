@@ -647,9 +647,9 @@ export const SellerDashboard: React.FC = () => {
                 <h2 className="text-xl font-bold">{apiData.vendor_info.name}</h2>
                 <h3 className="text-lg font-medium">{user?.location_name}</h3>
                 <p className="text-gray-600">{apiData.vendor_info.email}</p>
-                <p className="text-sm text-gray-500">
-                  {apiData.vendor_info.location_name} • {apiData.vendor_info.role}
-                </p>
+                <span className="text-xs text-green-800 font-bold bg-green-300 px-2 py-1 rounded-md">
+                  Rol: {apiData.vendor_info.role === 'seller' ? 'Vendedor' : apiData.vendor_info.role}
+                </span>
                 <p className="text-xs text-gray-400 mt-1">
                   Fecha: {new Date().toLocaleDateString('es-ES')}
                 </p>
