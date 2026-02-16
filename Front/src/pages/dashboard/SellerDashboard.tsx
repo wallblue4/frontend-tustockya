@@ -26,12 +26,13 @@ import { ExpensesForm } from '../../components/seller/ExpensesForm';
 import { ExpensesList } from '../../components/seller/ExpensesList';
 import { SalesList } from '../../components/seller/SalesList';
 import { TransfersView } from '../../components/seller/TransfersView';
+import { ScannerTransferRequest } from '../../components/seller/ScannerTransferRequest';
 import { useNavigate } from 'react-router-dom';
 import { vendorAPI } from '../../services/api';
 import { CameraCapture } from '../../components/seller/CameraCapture';
 import { transfersAPI } from '../../services/transfersAPI';
 
-type ViewType = 'dashboard' | 'scan' | 'new-sale' | 'today-sales' | 'expenses' | 'expenses-list' | 'transfers' | 'notifications';
+type ViewType = 'dashboard' | 'scan' | 'new-sale' | 'today-sales' | 'expenses' | 'expenses-list' | 'transfers' | 'notifications' | 'scanner-transfer';
 
 // Interfaces
 interface PrefilledProduct {
@@ -299,12 +300,12 @@ export const SellerDashboard: React.FC = () => {
     // Guardar los datos exactamente como llegan
     setProductDataForTransfer(productData);
 
-    console.log('🔍 SellerDashboard - Estado actualizado, cambiando a transfers');
+    console.log('🔍 SellerDashboard - Estado actualizado, cambiando a scanner-transfer');
 
-    // Cambiar a la vista de transferencias
-    setCurrentView('transfers');
+    // Cambiar a la vista simplificada de transferencia desde scanner
+    setCurrentView('scanner-transfer');
 
-    console.log('🔍 SellerDashboard - Vista cambiada a transfers');
+    console.log('🔍 SellerDashboard - Vista cambiada a scanner-transfer');
   };
 
   // Función única para abrir SalesForm con datos prellenados, navegando a la ruta de venta
@@ -425,6 +426,26 @@ export const SellerDashboard: React.FC = () => {
               <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Dashboard
             </Button>
             <ExpensesList />
+          </div>
+        );
+
+      case 'scanner-transfer':
+        return (
+          <div className="space-y-4">
+            <Button variant="ghost" onClick={goBack} className="mb-4">
+              <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Dashboard
+            </Button>
+            {productDataForTransfer && (
+              <ScannerTransferRequest
+                prefilledProductData={productDataForTransfer}
+                onTransferRequested={(transferId, isUrgent) => {
+                  console.log('✅ Transferencia solicitada desde scanner:', { transferId, isUrgent });
+                  loadTransfersSummary();
+                  goBack();
+                }}
+                onBack={goBack}
+              />
+            )}
           </div>
         );
 
