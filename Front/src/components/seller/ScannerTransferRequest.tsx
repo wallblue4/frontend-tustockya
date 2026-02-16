@@ -157,7 +157,7 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
               {/* Punto destino */}
               <div>
                 <p className="text-xs text-muted-foreground">Destino</p>
-                <p className="text-sm font-semibold">{user?.location_name || `Local #${user?.location_id || '?'}`}</p>
+                <p className="text-sm font-semibold">{user?.location_name}</p>
               </div>
             </div>
 

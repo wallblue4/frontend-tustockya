@@ -32,6 +32,7 @@ import { useNavigate } from 'react-router-dom';
 import { vendorAPI } from '../../services/api';
 import { CameraCapture } from '../../components/seller/CameraCapture';
 import { transfersAPI } from '../../services/transfersAPI';
+import { useAuth } from '../../context/AuthContext';
 
 type ViewType = 'dashboard' | 'scan' | 'new-sale' | 'today-sales' | 'expenses' | 'expenses-list' | 'transfers' | 'notifications' | 'scanner-transfer' | 'scanner-sale';
 
@@ -65,6 +66,7 @@ interface TransfersSummary {
 
 export const SellerDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [scanViewTitle, setScanViewTitle] = useState('Escanear Producto');
   const [apiData, setApiData] = useState<any>(null);
@@ -643,17 +645,16 @@ export const SellerDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold">{apiData.vendor_info.name}</h2>
+                <h3 className="text-lg font-medium">{user?.location_name}</h3>
                 <p className="text-gray-600">{apiData.vendor_info.email}</p>
                 <p className="text-sm text-gray-500">
                   {apiData.vendor_info.location_name} • {apiData.vendor_info.role}
                 </p>
-                {apiData.today_summary && apiData.today_summary.date && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Fecha: {new Date(apiData.today_summary.date).toLocaleDateString('es-ES')}
-                  </p>
-                )}
+                <p className="text-xs text-gray-400 mt-1">
+                  Fecha: {new Date().toLocaleDateString('es-ES')}
+                </p>
               </div>
-            </div>            
+            </div>
           </CardContent>
         </Card>
       )}
@@ -696,13 +697,13 @@ export const SellerDashboard: React.FC = () => {
       currentView === 'dashboard' ? 'Panel de Vendedor' :
         currentView === 'scan' ? scanViewTitle :
           currentView === 'scanner-transfer' ? 'Solicitar Transferencia' :
-          currentView === 'scanner-sale' ? 'Confirmar Venta' :
-          currentView === 'new-sale' ? (prefilledProduct ? 'Nueva Venta - Producto Escaneado' : 'Nueva Venta') :
-            currentView === 'today-sales' ? 'Ventas del Día' :
-              currentView === 'expenses' ? 'Registrar Gasto' :
-                currentView === 'expenses-list' ? 'Gastos del Día' :
-                  currentView === 'transfers' ? 'Gestión de Transferencias' :
-                    'Notificaciones'
+            currentView === 'scanner-sale' ? 'Confirmar Venta' :
+              currentView === 'new-sale' ? (prefilledProduct ? 'Nueva Venta - Producto Escaneado' : 'Nueva Venta') :
+                currentView === 'today-sales' ? 'Ventas del Día' :
+                  currentView === 'expenses' ? 'Registrar Gasto' :
+                    currentView === 'expenses-list' ? 'Gastos del Día' :
+                      currentView === 'transfers' ? 'Gestión de Transferencias' :
+                        'Notificaciones'
     }>
       {/* MODAL DE CÁMARA */}
       {showCamera && (

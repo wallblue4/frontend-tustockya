@@ -38,6 +38,7 @@ const mapApiUserToUser = (apiUser: any, token: string, tokenType: string): User 
     token: token,
     token_type: tokenType,
     location_id: apiUser.location_id,
+    location_name: apiUser.location_name,
     avatar: undefined,
   };
 };
