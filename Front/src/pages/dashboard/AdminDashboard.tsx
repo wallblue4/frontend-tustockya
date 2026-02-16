@@ -127,10 +127,11 @@ import { AdjustInventoryModal } from '../../components/admin/AdjustInventoryModa
 import { AdjustPriceModal } from '../../components/admin/AdjustPriceModal';
 import { AddSizeModal } from '../../components/admin/AddSizeModal';
 import { AssignProductToLocationModal } from '../../components/admin/AssignProductToLocationModal';
+import { EditProductInfoModal } from '../../components/admin/EditProductInfoModal';
 
 // Import inventory types and API
 import type { AdminInventoryLocation, AdminInventoryProduct, AdminInventorySize } from '../../types';
-import { adjustInventory, adjustProductPrice, fetchAdminInventory } from '../../services/adminAPI';
+import { adjustInventory, adjustProductPrice, updateProductInfo, fetchAdminInventory } from '../../services/adminAPI';
 
 type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics' | 'transfers';
 
@@ -374,6 +375,14 @@ export const AdminDashboard: React.FC = () => {
     current_price: number;
     image_url?: string;
   } | null>(null);
+  const [showEditProductInfoModal, setShowEditProductInfoModal] = useState(false);
+  const [selectedProductForInfoEdit, setSelectedProductForInfoEdit] = useState<{
+    brand: string;
+    model: string;
+    reference_code: string;
+    image_url?: string;
+  } | null>(null);
+  const [openEditDropdown, setOpenEditDropdown] = useState<string | null>(null);
   const [showAddSizeModal, setShowAddSizeModal] = useState(false);
   const [selectedProductForAddSize, setSelectedProductForAddSize] = useState<{
     brand: string;
@@ -1364,6 +1373,16 @@ Por favor verifica que:
     setShowAdjustPriceModal(true);
   };
 
+  const handleOpenEditProductInfoModal = (product: AdminInventoryProduct) => {
+    setSelectedProductForInfoEdit({
+      brand: product.brand,
+      model: product.model,
+      reference_code: product.reference_code,
+      image_url: product.image_url
+    });
+    setShowEditProductInfoModal(true);
+  };
+
   const handleOpenAddSizeModal = (product: AdminInventoryProduct, locationId: number, locationName: string) => {
     setSelectedProductForAddSize({
       brand: product.brand,
@@ -1496,6 +1515,34 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
     } catch (error: any) {
       console.error('Error ajustando precio:', error);
       alert('Error al ajustar precio: ' + (error.message || 'Error desconocido'));
+      throw error;
+    }
+  };
+
+  const handleEditProductInfo = async (data: {
+    product_reference: string;
+    brand: string;
+    model: string;
+  }) => {
+    try {
+      const response = await updateProductInfo(data);
+      console.log('Info actualizada:', response);
+
+      await loadAdminInventory();
+
+      const oldBrand = selectedProductForInfoEdit?.brand || '';
+      const oldModel = selectedProductForInfoEdit?.model || '';
+      const changes: string[] = [];
+      if (data.brand !== oldBrand) changes.push(`Marca: ${oldBrand} → ${data.brand}`);
+      if (data.model !== oldModel) changes.push(`Modelo: ${oldModel} → ${data.model}`);
+
+      alert(`Informacion actualizada exitosamente.\n\nProducto: ${data.product_reference}\n${changes.join('\n')}`);
+
+      setShowEditProductInfoModal(false);
+      setSelectedProductForInfoEdit(null);
+    } catch (error: any) {
+      console.error('Error actualizando info:', error);
+      alert('Error al actualizar informacion: ' + (error.message || 'Error desconocido'));
       throw error;
     }
   };
@@ -2732,15 +2779,39 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                         <span className="text-sm font-bold text-success">
                                           {formatCurrency(parseFloat(product.unit_price))}
                                         </span>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() => handleOpenAdjustPriceModal(product)}
-                                          className="text-xs h-7 px-2"
-                                        >
-                                          <Edit className="h-3 w-3 mr-1" />
-                                          Precio
-                                        </Button>
+                                        <div className="relative">
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => setOpenEditDropdown(openEditDropdown === product.reference_code ? null : product.reference_code)}
+                                            className="text-xs h-7 px-2"
+                                          >
+                                            <Edit className="h-3 w-3 mr-1" />
+                                            Editar
+                                            <ChevronDown className="h-3 w-3 ml-1" />
+                                          </Button>
+                                          {openEditDropdown === product.reference_code && (
+                                            <>
+                                              <div className="fixed inset-0 z-10" onClick={() => setOpenEditDropdown(null)} />
+                                              <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-md shadow-lg z-20 min-w-[140px]">
+                                                <button
+                                                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                                                  onClick={() => { setOpenEditDropdown(null); handleOpenAdjustPriceModal(product); }}
+                                                >
+                                                  <DollarSign className="h-3 w-3 mr-2" />
+                                                  Precio
+                                                </button>
+                                                <button
+                                                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                                                  onClick={() => { setOpenEditDropdown(null); handleOpenEditProductInfoModal(product); }}
+                                                >
+                                                  <Edit className="h-3 w-3 mr-2" />
+                                                  Marca / Modelo
+                                                </button>
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
                                       </div>
                                       <div className="flex items-center space-x-2 mt-2">
                                         <span className="text-xs text-muted-foreground">
@@ -4928,6 +4999,18 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             }}
             onSubmit={handleAdjustPrice}
             productData={selectedProductForPriceAdjustment}
+          />
+        )}
+
+        {/* Edit Product Info Modal */}
+        {showEditProductInfoModal && selectedProductForInfoEdit && (
+          <EditProductInfoModal
+            onClose={() => {
+              setShowEditProductInfoModal(false);
+              setSelectedProductForInfoEdit(null);
+            }}
+            onSubmit={handleEditProductInfo}
+            productData={selectedProductForInfoEdit}
           />
         )}
 
