@@ -670,6 +670,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
   };
 
   const handleDirectAction = (product: ProductOption, selectedSizeStr: string, pickupType: 'vendedor' | 'corredor') => {
+    setError(null);
     const sizes = sizesMap.get(product.id) || [];
     const matchingSizes = sizes.filter(s => s.size === selectedSizeStr);
 
@@ -791,12 +792,43 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         }
       }
 
-      transferType = 'pair';
-      requestNotes = `Solicitar par completo (sin stock local)`;
+      // Selección inteligente de fuente y tipo
+      const sourceWithPairs = remoteEntries.find(e => (e.pairs || 0) > 0);
+      const sourceWithBothFeet = remoteEntries.find(
+        e => (e.left_feet || 0) > 0 && (e.right_feet || 0) > 0
+      );
+
+      if (sourceWithPairs) {
+        transferType = 'pair';
+        requestNotes = `Solicitar par completo desde ${sourceWithPairs.location_name}`;
+      } else if (sourceWithBothFeet) {
+        transferType = 'form_pair';
+        requestNotes = `Formar par con pies separados desde ${sourceWithBothFeet.location_name}`;
+      } else {
+        // Pie huérfano: no existe par ni contraparte en ningún lugar
+        setError('No hay stock suficiente para completar un par de esta talla en ninguna ubicación');
+        return;
+      }
     }
 
-    // FUENTE: usar el primer entry remoto que tenga el stock necesario
-    const sourceInfo = remoteEntries[0];
+    // FUENTE: selección inteligente basada en transferType
+    let sourceInfo;
+    if (transferType === 'pair') {
+      sourceInfo = remoteEntries.find(e => (e.pairs || 0) > 0);
+    } else if (transferType === 'form_pair') {
+      sourceInfo = remoteEntries.find(e => (e.left_feet || 0) > 0 && (e.right_feet || 0) > 0);
+    } else if (transferType === 'right_foot') {
+      sourceInfo = remoteEntries.find(e => (e.right_feet || 0) > 0);
+    } else if (transferType === 'left_foot') {
+      sourceInfo = remoteEntries.find(e => (e.left_feet || 0) > 0);
+    } else {
+      sourceInfo = remoteEntries[0];
+    }
+
+    if (!sourceInfo) {
+      setError('No se encontró una ubicación de origen con el stock necesario');
+      return;
+    }
     const sourceLocationId = sourceInfo.location_id || sourceInfo.location_number;
 
     if (!sourceLocationId) {
@@ -853,7 +885,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       {currentStep === 'processing' && <ProcessingCard />}
 
       {currentStep === 'options' && scanOptions.length > 0 && (
-        <ProductOptionsCard options={scanOptions} sizesMap={sizesMap} onAction={handleDirectAction} />
+        <ProductOptionsCard options={scanOptions} sizesMap={sizesMap} onAction={handleDirectAction} error={error} onClearError={() => setError(null)} />
       )}
 
       {currentStep === 'options' && scanOptions.length === 0 && !isScanning && (

@@ -325,10 +325,7 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
                   <div>
                     <p className="text-xs text-muted-foreground">Se transferirá:</p>
                     <p className="text-sm font-medium text-indigo-700">
-                      🦶 1 Pie Izquierdo desde {dual.left_foot_source.location_name}
-                    </p>
-                    <p className="text-sm font-medium text-indigo-700">
-                      🦶 1 Pie Derecho desde {dual.right_foot_source.location_name}
+                      🦶 1 Pie Izquierdo + 🦶 1 Pie Derecho
                     </p>
                   </div>
                 </div>

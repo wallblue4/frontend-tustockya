@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { User, Truck, ShoppingBag } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Truck, ShoppingBag, XCircle } from 'lucide-react';
 import { Card, CardContent } from '../../ui/Card';
 import { formatCurrency } from '../../../services/api';
 import { getConfidenceCircleStyles, getConfidenceLevelText } from './helpers';
@@ -10,6 +10,8 @@ interface ProductOptionsCardProps {
   options: ProductOption[];
   sizesMap: Map<string, SizeInfo[]>;
   onAction: (product: ProductOption, selectedSize: string, pickupType: 'vendedor' | 'corredor') => void;
+  error?: string | null;
+  onClearError?: () => void;
 }
 
 const ProductOptionItem: React.FC<{
@@ -212,10 +214,29 @@ const ProductOptionItem: React.FC<{
   );
 };
 
-export const ProductOptionsCard: React.FC<ProductOptionsCardProps> = ({ options, sizesMap, onAction }) => {
+export const ProductOptionsCard: React.FC<ProductOptionsCardProps> = ({ options, sizesMap, onAction, error, onClearError }) => {
+  const errorRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [error]);
+
   return (
     <Card>
       <CardContent>
+        {error && (
+          <div ref={errorRef} className="mb-4 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 p-3">
+            <XCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-700 flex-1">{error}</p>
+            {onClearError && (
+              <button type="button" onClick={onClearError} className="text-red-400 hover:text-red-600 flex-shrink-0">
+                <XCircle className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
         <div className="flex items-center justify-end mb-4">
           <p className="text-sm text-gray-500">{options.length} productos encontrados</p>
         </div>
