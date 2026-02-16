@@ -34,6 +34,17 @@ interface ProductScannerProps {
     transfer_type?: 'pair' | 'left_foot' | 'right_foot' | 'form_pair';
     request_notes?: string;
     pickup_type?: 'vendedor' | 'corredor';
+    // Transferencia dual: pies en ubicaciones diferentes
+    dual_transfer?: {
+      left_foot_source: {
+        source_location_id: number;
+        location_name: string;
+      };
+      right_foot_source: {
+        source_location_id: number;
+        location_name: string;
+      };
+    };
     // Opciones disponibles para solicitar
     available_options?: {
       pairs_available?: boolean;
@@ -715,6 +726,71 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         requestNotes = `Solicitar par completo`;
       }
     } else {
+      // Sin stock local: verificar si necesitamos transferencia dual
+      const canSingleRemoteSatisfy = remoteEntries.some(
+        e => (e.pairs || 0) > 0 || ((e.left_feet || 0) > 0 && (e.right_feet || 0) > 0)
+      );
+
+      if (!canSingleRemoteSatisfy) {
+        // Ningún remoto puede satisfacer solo → buscar pies en ubicaciones distintas
+        const remoteWithLeft = remoteEntries.find(
+          e => (e.left_feet || 0) > 0 && (e.right_feet || 0) === 0 && (e.pairs || 0) === 0
+        );
+        const remoteWithRight = remoteEntries.find(
+          e => (e.right_feet || 0) > 0 && (e.left_feet || 0) === 0 && (e.pairs || 0) === 0
+        );
+
+        if (remoteWithLeft && remoteWithRight) {
+          const leftSourceId = remoteWithLeft.location_id || remoteWithLeft.location_number;
+          const rightSourceId = remoteWithRight.location_id || remoteWithRight.location_number;
+
+          if (leftSourceId && rightSourceId) {
+            onRequestTransfer({
+              sneaker_reference_code: product.code,
+              brand: product.brand,
+              model: product.model,
+              color: product.color,
+              size: selectedSizeStr,
+              product: product,
+              source_location_id: leftSourceId, // Principal para compatibilidad
+              destination_location_id: user.location_id || 0,
+              pairs: 0,
+              left_feet: remoteWithLeft.left_feet,
+              right_feet: remoteWithRight.right_feet,
+              can_sell: false,
+              can_form_pair: false,
+              missing_foot: null,
+              location_name: remoteWithLeft.location_name,
+              transfer_type: 'form_pair',
+              request_notes: `Transferencia dual: pie izquierdo desde ${remoteWithLeft.location_name}, pie derecho desde ${remoteWithRight.location_name}`,
+              pickup_type: pickupType,
+              available_options: {
+                pairs_available: false,
+                left_feet_available: true,
+                right_feet_available: true,
+                pairs_quantity: 0,
+                left_feet_quantity: remoteWithLeft.left_feet || 0,
+                right_feet_quantity: remoteWithRight.right_feet || 0,
+              },
+              local_left_feet: 0,
+              local_right_feet: 0,
+              local_pairs: 0,
+              dual_transfer: {
+                left_foot_source: {
+                  source_location_id: leftSourceId,
+                  location_name: remoteWithLeft.location_name || '',
+                },
+                right_foot_source: {
+                  source_location_id: rightSourceId,
+                  location_name: remoteWithRight.location_name || '',
+                },
+              },
+            });
+            return;
+          }
+        }
+      }
+
       transferType = 'pair';
       requestNotes = `Solicitar par completo (sin stock local)`;
     }

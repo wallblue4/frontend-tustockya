@@ -32,22 +32,37 @@ interface ScannerTransferRequestProps {
     local_left_feet?: number;
     local_right_feet?: number;
     local_pairs?: number;
+    dual_transfer?: {
+      left_foot_source: {
+        source_location_id: number;
+        location_name: string;
+      };
+      right_foot_source: {
+        source_location_id: number;
+        location_name: string;
+      };
+    };
   };
   onTransferRequested?: (transferId: number, isUrgent: boolean) => void;
   onBack?: () => void;
+  onViewTransfers?: () => void;
 }
 
 export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
   prefilledProductData,
   onTransferRequested,
-  onBack
+  onBack,
+  onViewTransfers
 }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isDualTransfer = !!prefilledProductData.dual_transfer;
+
   const getInventoryLabel = () => {
+    if (isDualTransfer) return '1 Par (2 transferencias desde ubicaciones distintas)';
     const { transfer_type } = prefilledProductData;
     switch (transfer_type) {
       case 'left_foot':
@@ -71,6 +86,46 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
     setError(null);
 
     try {
+      // Transferencia dual: 2 solicitudes en paralelo
+      if (isDualTransfer) {
+        const dual = prefilledProductData.dual_transfer!;
+        const destinationId = prefilledProductData.destination_location_id || user?.location_id || 0;
+        const pickupType = prefilledProductData.pickup_type || 'vendedor';
+
+        const leftPayload = {
+          source_location_id: dual.left_foot_source.source_location_id,
+          destination_location_id: destinationId,
+          sneaker_reference_code: prefilledProductData.sneaker_reference_code,
+          size: prefilledProductData.size,
+          foot_side: 'left' as const,
+          quantity: 1,
+          purpose: 'pair_formation' as const,
+          pickup_type: pickupType,
+          notes: `Transferencia dual: pie izquierdo desde ${dual.left_foot_source.location_name}`,
+        };
+
+        const rightPayload = {
+          source_location_id: dual.right_foot_source.source_location_id,
+          destination_location_id: destinationId,
+          sneaker_reference_code: prefilledProductData.sneaker_reference_code,
+          size: prefilledProductData.size,
+          foot_side: 'right' as const,
+          quantity: 1,
+          purpose: 'pair_formation' as const,
+          pickup_type: pickupType,
+          notes: `Transferencia dual: pie derecho desde ${dual.right_foot_source.location_name}`,
+        };
+
+        const [leftResponse] = await Promise.all([
+          vendorAPI.requestSingleFoot(leftPayload),
+          vendorAPI.requestSingleFoot(rightPayload),
+        ]);
+
+        setSuccess(true);
+        onTransferRequested?.(leftResponse.transfer_request_id, true);
+        return;
+      }
+
       const transferType = prefilledProductData.transfer_type || 'pair';
       const isSingleFoot = transferType === 'left_foot' || transferType === 'right_foot';
 
@@ -119,12 +174,35 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
   if (success) {
     return (
       <Card className="border-green-200 bg-green-50">
-        <CardContent className="p-6 text-center space-y-3">
+        <CardContent className="p-6 text-center space-y-4">
           <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-          <h3 className="text-lg font-semibold text-green-800">Transferencia Solicitada</h3>
+          <h3 className="text-lg font-semibold text-green-800">
+            {isDualTransfer ? 'Transferencias Solicitadas' : 'Transferencia Solicitada'}
+          </h3>
           <p className="text-sm text-green-600">
-            Tu solicitud ha sido enviada. Recibirás una notificación cuando sea procesada.
+            {isDualTransfer
+              ? 'Se han enviado 2 solicitudes de transferencia (pie izquierdo y pie derecho) desde ubicaciones distintas. Recibirás notificaciones cuando sean procesadas.'
+              : 'Tu solicitud ha sido enviada. Recibirás una notificación cuando sea procesada.'}
           </p>
+          {onBack && (
+            <>              <button
+              onClick={onBack}
+              className="w-full bg-green-500 text-white hover:bg-green-600 text-sm px-4 py-2 rounded-md"
+            >
+              Volver a resultados de búsqueda
+            </button>
+            {onViewTransfers && (
+              <button
+                type="button"
+                onClick={onViewTransfers}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
+              >
+                Ver transferencias
+              </button>
+            )}
+            </>
+
+          )}
         </CardContent>
       </Card>
     );
@@ -137,38 +215,76 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
 
         {/* Ruta: Origen → Destino */}
         <div className="bg-muted/50 rounded-lg p-4">
-          <div className="flex gap-4">
-            {/* Línea vertical con puntos */}
-            <div className="flex flex-col items-center pt-1">
-              <div className="h-3 w-3 rounded-full bg-purple-500 ring-4 ring-purple-100 shrink-0" />
-              <div className="w-0.5 flex-1 bg-gradient-to-b from-purple-300 to-blue-300 " />
-              <ArrowDown className="h-5 w-5 text-blue-400 shrink-0" />
-              <div className="h-3 w-3 rounded-full bg-blue-500 ring-4 ring-blue-100 shrink-0" />
-            </div>
-
-            {/* Contenido de los puntos */}
-            <div className="flex flex-col justify-between flex-1 gap-4 min-h-[88px]">
-              {/* Punto origen */}
-              <div>
-                <p className="text-xs text-muted-foreground">Origen</p>
-                <p className="text-sm font-semibold">{prefilledProductData.location_name || 'Bodega Principal'}</p>
+          {isDualTransfer ? (
+            <div className="flex gap-4">
+              {/* Línea vertical con puntos - dual */}
+              <div className="flex flex-col items-center pt-1">
+                <div className="h-3 w-3 rounded-full bg-purple-500 ring-4 ring-purple-100 shrink-0" />
+                <div className="w-0.5 flex-1 bg-gradient-to-b from-purple-300 to-orange-300" />
+                <div className="h-3 w-3 rounded-full bg-orange-500 ring-4 ring-orange-100 shrink-0" />
+                <div className="w-0.5 flex-1 bg-gradient-to-b from-orange-300 to-blue-300" />
+                <ArrowDown className="h-5 w-5 text-blue-400 shrink-0" />
+                <div className="h-3 w-3 rounded-full bg-blue-500 ring-4 ring-blue-100 shrink-0" />
               </div>
 
-              {/* Punto destino */}
-              <div>
-                <p className="text-xs text-muted-foreground">Destino</p>
-                <p className="text-sm font-semibold">{user?.location_name}</p>
+              {/* Contenido de los puntos - dual */}
+              <div className="flex flex-col justify-between flex-1 gap-4 min-h-[132px]">
+                <div>
+                  <p className="text-xs text-muted-foreground">Origen 1 — Pie Izquierdo</p>
+                  <p className="text-sm font-semibold">{prefilledProductData.dual_transfer!.left_foot_source.location_name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Origen 2 — Pie Derecho</p>
+                  <p className="text-sm font-semibold">{prefilledProductData.dual_transfer!.right_foot_source.location_name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Destino</p>
+                  <p className="text-sm font-semibold">{user?.location_name}</p>
+                </div>
+              </div>
+
+              {/* Badge de recogida */}
+              <div className="flex items-center self-center">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
+                  <Truck className="h-3 w-3" />
+                  {getPickupLabel()}
+                </span>
               </div>
             </div>
+          ) : (
+            <div className="flex gap-4">
+              {/* Línea vertical con puntos */}
+              <div className="flex flex-col items-center pt-1">
+                <div className="h-3 w-3 rounded-full bg-purple-500 ring-4 ring-purple-100 shrink-0" />
+                <div className="w-0.5 flex-1 bg-gradient-to-b from-purple-300 to-blue-300 " />
+                <ArrowDown className="h-5 w-5 text-blue-400 shrink-0" />
+                <div className="h-3 w-3 rounded-full bg-blue-500 ring-4 ring-blue-100 shrink-0" />
+              </div>
 
-            {/* Badge de recogida */}
-            <div className="flex items-center self-center">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
-                <Truck className="h-3 w-3" />
-                {getPickupLabel()}
-              </span>
+              {/* Contenido de los puntos */}
+              <div className="flex flex-col justify-between flex-1 gap-4 min-h-[88px]">
+                {/* Punto origen */}
+                <div>
+                  <p className="text-xs text-muted-foreground">Origen</p>
+                  <p className="text-sm font-semibold">{prefilledProductData.location_name || 'Bodega Principal'}</p>
+                </div>
+
+                {/* Punto destino */}
+                <div>
+                  <p className="text-xs text-muted-foreground">Destino</p>
+                  <p className="text-sm font-semibold">{user?.location_name}</p>
+                </div>
+              </div>
+
+              {/* Badge de recogida */}
+              <div className="flex items-center self-center">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
+                  <Truck className="h-3 w-3" />
+                  {getPickupLabel()}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Detalle del producto */}
@@ -191,6 +307,34 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
         {(() => {
           const { transfer_type, local_left_feet = 0, local_right_feet = 0, local_pairs = 0 } = prefilledProductData;
           const hasLocalStock = local_left_feet > 0 || local_right_feet > 0 || local_pairs > 0;
+
+          // Caso dual: pies desde ubicaciones distintas
+          if (isDualTransfer) {
+            const dual = prefilledProductData.dual_transfer!;
+            return (
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Footprints className="h-5 w-5 text-indigo-600" />
+                  <span className="text-sm font-semibold text-indigo-800">Formación de Par (2 orígenes)</span>
+                </div>
+                <div className="space-y-2 pl-7">
+                  <div>
+                    <p className="text-xs text-muted-foreground">En tu local:</p>
+                    <p className="text-sm font-medium text-red-800">Sin stock de esta talla</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Se transferirá:</p>
+                    <p className="text-sm font-medium text-indigo-700">
+                      🦶 1 Pie Izquierdo desde {dual.left_foot_source.location_name}
+                    </p>
+                    <p className="text-sm font-medium text-indigo-700">
+                      🦶 1 Pie Derecho desde {dual.right_foot_source.location_name}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          }
 
           if (transfer_type === 'left_foot' || transfer_type === 'right_foot' || transfer_type === 'form_pair') {
             return (
@@ -255,10 +399,10 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Solicitando...
+                {isDualTransfer ? 'Solicitando 2 transferencias...' : 'Solicitando...'}
               </>
             ) : (
-              'Solicitar Transferencia'
+              isDualTransfer ? 'Solicitar 2 Transferencias' : 'Solicitar Transferencia'
             )}
           </Button>
           {onBack && (

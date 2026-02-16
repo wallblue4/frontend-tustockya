@@ -423,9 +423,9 @@ export const SellerDashboard: React.FC = () => {
                 onTransferRequested={(transferId, isUrgent) => {
                   console.log('✅ Transferencia solicitada desde scanner:', { transferId, isUrgent });
                   loadTransfersSummary();
-                  goBack();
                 }}
                 onBack={goBackToScanner}
+                onViewTransfers={handleTransfersClick}
               />
             )}
 

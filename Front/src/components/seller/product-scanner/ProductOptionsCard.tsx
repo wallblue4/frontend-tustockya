@@ -23,17 +23,20 @@ const ProductOptionItem: React.FC<{
 
   // Obtener tallas únicas con su stock total y si se puede vender directo
   const uniqueSizes = React.useMemo(() => {
-    const sizeMap = new Map<string, { size: string; totalStock: number; canSell: boolean; hasLocalParts: boolean }>();
+    const sizeMap = new Map<string, { size: string; totalStock: number; canSell: boolean; hasLocalParts: boolean; hasRemoteCompletePair: boolean }>();
     sizes.forEach((s) => {
       // Contar pares completos + pies individuales como stock disponible
       const effectiveStock = s.quantity + (s.left_feet || 0) + (s.right_feet || 0);
+      // Un remoto tiene par completo si tiene pairs > 0 o ambos pies
+      const remoteHasPair = !s.is_local && ((s.pairs || 0) > 0 || ((s.left_feet || 0) > 0 && (s.right_feet || 0) > 0));
       const existing = sizeMap.get(s.size);
       if (existing) {
         existing.totalStock += effectiveStock;
         if (s.can_sell) existing.canSell = true;
         if (s.is_local) existing.hasLocalParts = true;
+        if (remoteHasPair) existing.hasRemoteCompletePair = true;
       } else {
-        sizeMap.set(s.size, { size: s.size, totalStock: effectiveStock, canSell: !!s.can_sell, hasLocalParts: !!s.is_local });
+        sizeMap.set(s.size, { size: s.size, totalStock: effectiveStock, canSell: !!s.can_sell, hasLocalParts: !!s.is_local, hasRemoteCompletePair: remoteHasPair });
       }
     });
     return Array.from(sizeMap.values());
@@ -126,7 +129,7 @@ const ProductOptionItem: React.FC<{
         <div className="mt-3">
           <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground mb-1.5 block">Tallas:</span>
           <div className="grid grid-cols-4 gap-2 sm:flex sm:gap-1.5 sm:flex-wrap">
-            {uniqueSizes.map(({ size, totalStock, canSell, hasLocalParts }) => {
+            {uniqueSizes.map(({ size, totalStock, canSell, hasLocalParts, hasRemoteCompletePair }) => {
               const hasStock = totalStock > 0;
               const isSelected = selectedSize === size;
               return (
@@ -145,7 +148,9 @@ const ProductOptionItem: React.FC<{
                           ? 'bg-green-50 text-green-600 border-2 border-green-500 hover:bg-green-100 active:scale-95'
                           : hasLocalParts
                             ? 'bg-primary/10 text-primary font-bold border-2 border-primary/50 hover:bg-primary/20 active:scale-95'
-                            : 'bg-primary/10 text-primary border-dashed border-primary/20 hover:bg-primary/20 active:scale-95'
+                            : hasRemoteCompletePair
+                              ? 'bg-primary/10 text-primary border-dashed border-primary/20 hover:bg-primary/20 active:scale-95'
+                              : 'bg-primary/10 text-primary border-dotted border-2 border-primary/30 hover:bg-primary/20 active:scale-95'
                         : 'bg-muted/50 text-muted-foreground/40 border-muted/30 cursor-not-allowed'
                     }`}
                 >
