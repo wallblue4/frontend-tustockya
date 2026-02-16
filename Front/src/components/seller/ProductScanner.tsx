@@ -101,7 +101,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       if (isScanning) {
         onStepTitleChange('Analizando imagen');
       } else if (scanOptions.length > 0) {
-        onStepTitleChange('Selecciona Producto y Talla');
+        onStepTitleChange('Selecciona el producto');
       } else {
         onStepTitleChange('Sin resultados de escaneo');
       }
@@ -773,7 +773,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
   return (
     <div className="space-y-6">
-      <ScanInfoCard scanInfo={scanInfo} />
 
       {currentStep === 'processing' && <ProcessingCard />}
 

@@ -368,6 +368,12 @@ export const SellerDashboard: React.FC = () => {
     console.log('🔍 SellerDashboard - Estados limpiados');
   };
 
+  const goBackToScanner = () => {
+    setProductDataForTransfer(null);
+    setPrefilledProduct(null);
+    setCurrentView('scan');
+  };
+
   const handleNewSaleClick = () => {
     setPrefilledProduct(null);
     setCurrentView('new-sale');
@@ -382,18 +388,63 @@ export const SellerDashboard: React.FC = () => {
   const renderCurrentView = () => {
     switch (currentView) {
       case 'scan':
+      case 'scanner-transfer':
+      case 'scanner-sale':
         return (
           <div className="space-y-4">
-            <Button variant="ghost" onClick={goBack} className="mb-4">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Dashboard
-            </Button>
-            <ProductScanner
-              onRequestTransfer={handleRequestTransfer}
-              onStepTitleChange={setScanViewTitle}
-              onSellProduct={handleSellProduct}
-              capturedImage={capturedImage}
-              scanResult={scanResult}
-            />
+            {/* Botón superior: volver al dashboard desde scan, o volver al escáner desde sub-vistas */}
+            {currentView === 'scan' ? (
+              <Button variant="ghost" onClick={goBack} className="mb-4">
+                <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Dashboard
+              </Button>
+            ) : (
+              <Button variant="ghost" onClick={goBackToScanner} className="mb-4">
+                <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Escáner
+              </Button>
+            )}
+
+            {/* ProductScanner siempre montado, oculto cuando estamos en sub-vistas */}
+            <div className={currentView !== 'scan' ? 'hidden' : ''}>
+              <ProductScanner
+                onRequestTransfer={handleRequestTransfer}
+                onStepTitleChange={setScanViewTitle}
+                onSellProduct={handleSellProduct}
+                capturedImage={capturedImage}
+                scanResult={scanResult}
+              />
+            </div>
+
+            {/* ScannerTransferRequest */}
+            {currentView === 'scanner-transfer' && productDataForTransfer && (
+              <ScannerTransferRequest
+                prefilledProductData={productDataForTransfer}
+                onTransferRequested={(transferId, isUrgent) => {
+                  console.log('✅ Transferencia solicitada desde scanner:', { transferId, isUrgent });
+                  loadTransfersSummary();
+                  goBack();
+                }}
+                onBack={goBackToScanner}
+              />
+            )}
+
+            {/* ScannerSaleConfirm */}
+            {currentView === 'scanner-sale' && prefilledProduct && (
+              <ScannerSaleConfirm
+                productData={{
+                  code: prefilledProduct.code,
+                  brand: prefilledProduct.brand,
+                  model: prefilledProduct.model,
+                  size: prefilledProduct.size,
+                  price: prefilledProduct.price,
+                  location: prefilledProduct.location,
+                  storage_type: prefilledProduct.storage_type,
+                  color: prefilledProduct.color,
+                  image: prefilledProduct.image?.[0],
+                }}
+                onSaleCompleted={goBack}
+                onBack={goBackToScanner}
+              />
+            )}
           </div>
         );
 
@@ -434,52 +485,6 @@ export const SellerDashboard: React.FC = () => {
               <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Dashboard
             </Button>
             <ExpensesList />
-          </div>
-        );
-
-      case 'scanner-transfer':
-        return (
-          <div className="space-y-4">
-            <Button variant="ghost" onClick={goBack} className="mb-4">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Dashboard
-            </Button>
-            {productDataForTransfer && (
-              <ScannerTransferRequest
-                prefilledProductData={productDataForTransfer}
-                onTransferRequested={(transferId, isUrgent) => {
-                  console.log('✅ Transferencia solicitada desde scanner:', { transferId, isUrgent });
-                  loadTransfersSummary();
-                  goBack();
-                }}
-                onBack={goBack}
-              />
-            )}
-          </div>
-        );
-
-      case 'scanner-sale':
-        return (
-          <div className="space-y-4">
-            <Button variant="ghost" onClick={goBack} className="mb-4">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Dashboard
-            </Button>
-            {prefilledProduct && (
-              <ScannerSaleConfirm
-                productData={{
-                  code: prefilledProduct.code,
-                  brand: prefilledProduct.brand,
-                  model: prefilledProduct.model,
-                  size: prefilledProduct.size,
-                  price: prefilledProduct.price,
-                  location: prefilledProduct.location,
-                  storage_type: prefilledProduct.storage_type,
-                  color: prefilledProduct.color,
-                  image: prefilledProduct.image?.[0],
-                }}
-                onSaleCompleted={goBack}
-                onBack={goBack}
-              />
-            )}
           </div>
         );
 
@@ -546,39 +551,87 @@ export const SellerDashboard: React.FC = () => {
         </Card>
       )}
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Acciones Rápidas</h3>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            <Button
-              className="h-20 flex flex-col items-center justify-center space-y-2"
-              onClick={handleOpenCamera}
-            >
-              <Camera className="h-6 w-6" />
-              <span className="text-sm">Vender Producto</span>
-            </Button>
+      {/* Registrar */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium text-muted-foreground px-1">Registrar</h3>
 
-            <Button
-              className="h-20 flex flex-col items-center justify-center space-y-2"
-              onClick={() => setCurrentView('expenses')}
-            >
-              <Receipt className="h-6 w-6" />
-              <span className="text-sm">Registrar Gasto</span>
-            </Button>
-
-            <Button
-              className="h-20 flex flex-col items-center justify-center space-y-2"
-              onClick={() => setCurrentView('today-sales')}
-            >
-              <TrendingUp className="h-6 w-6" />
-              <span className="text-sm">Ver Ventas</span>
-            </Button>
+        {/* Vender — acción principal */}
+        <button
+          onClick={handleOpenCamera}
+          className="w-full flex items-center gap-4 p-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg transition-all active:scale-[0.98]"
+        >
+          <div className="p-3 rounded-lg bg-white/20">
+            <Camera className="h-6 w-6" />
           </div>
-        </CardContent>
-      </Card>
+          <div className="text-left">
+            <p className="text-base font-semibold">Vender Producto</p>
+            <p className="text-sm opacity-80">Escanear y registrar venta</p>
+          </div>
+        </button>
+
+        {/* Registrar gasto — acción secundaria */}
+        <button
+          onClick={() => setCurrentView('expenses')}
+          className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-border/80 hover:bg-accent/50 transition-all"
+        >
+          <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600">
+            <Receipt className="h-4 w-4" />
+          </div>
+          <span className="text-sm font-medium text-foreground">Registrar Gasto</span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto" />
+        </button>
+      </div>
+
+      {/* Gestión */}
+      <div>
+        <h3 className="text-sm font-medium text-muted-foreground mb-3 px-1">Gestión</h3>
+        <div className="grid grid-cols-1 gap-2">
+          <button
+            onClick={() => setCurrentView('today-sales')}
+            className="flex items-center justify-between p-3.5 rounded-xl bg-card border border-border hover:border-border/80 hover:bg-accent/50 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <TrendingUp className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-medium text-foreground">Ventas del día</span>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </button>
+
+          <button
+            onClick={() => setCurrentView('expenses-list')}
+            className="flex items-center justify-between p-3.5 rounded-xl bg-card border border-border hover:border-border/80 hover:bg-accent/50 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <List className="h-4 w-4 text-amber-600" />
+              <span className="text-sm font-medium text-foreground">Gastos del día</span>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </button>
+
+          <button
+            onClick={handleTransfersClick}
+            className="flex items-center justify-between p-3.5 rounded-xl bg-card border border-border hover:border-border/80 hover:bg-accent/50 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <Truck className="h-4 w-4 text-purple-600" />
+              <span className="text-sm font-medium text-foreground">Transferencias</span>
+              {transfersSummary && transfersSummary.total_pending > 0 && (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
+                  <Clock className="h-3 w-3" />
+                  {transfersSummary.total_pending}
+                </span>
+              )}
+              {transfersSummary && transfersSummary.urgent_count > 0 && (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">
+                  <AlertCircle className="h-3 w-3" />
+                  {transfersSummary.urgent_count}
+                </span>
+              )}
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </div>
+      </div>
 
       {/* Resultado del escaneo - Solo mostrar en dashboard si hay error */}
       {renderScanResult()}
@@ -600,88 +653,7 @@ export const SellerDashboard: React.FC = () => {
                   </p>
                 )}
               </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500">Resumen del Día</p>
-                <p className="text-lg font-bold text-green-600">
-                  {apiData.today_summary && apiData.today_summary.sales && apiData.today_summary.sales.total_count || 0} ventas totales
-                </p>
-                {apiData.today_summary && apiData.today_summary.sales && apiData.today_summary.sales.pending_confirmations > 0 && (
-                  <p className="text-sm text-amber-600">
-                    {apiData.today_summary.sales.pending_confirmations} pendientes de confirmar
-                  </p>
-                )}
-                <p className="text-sm text-gray-600">
-                  ${apiData.today_summary && apiData.today_summary.sales && apiData.today_summary.sales.total_amount && apiData.today_summary.sales.total_amount.toLocaleString('es-CO') || '0'}
-                </p>
-              </div>
-            </div>
-
-            {/* *** INFORMACIÓN ACTUALIZADA DE TRANSFERENCIAS *** */}
-            {(apiData.pending_actions || transfersSummary) && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-                  {apiData.pending_actions && apiData.pending_actions.sale_confirmations > 0 && (
-                    <div className="bg-blue-50 p-3 rounded-lg">
-                      <p className="text-2xl font-bold text-blue-600">
-                        {apiData.pending_actions.sale_confirmations}
-                      </p>
-                      <p className="text-xs text-blue-600">Ventas por confirmar</p>
-                    </div>
-                  )}
-
-                  {/* *** BOTÓN CLICKEABLE PARA TRANSFERENCIAS - ACTUALIZADO *** */}
-                  {transfersSummary && (
-                    <button
-                      onClick={handleTransfersClick}
-                      className="bg-purple-50 p-3 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer group text-center"
-                    >
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        <div className="text-center">
-                          <p className="text-2xl font-bold text-purple-600">
-                            {transfersSummary.total_pending || 0}
-                          </p>
-                          <p className="text-xs text-purple-600">
-                            {transfersSummary.total_pending > 0 ? 'Transferencias pendientes' : 'No hay pendientes'}
-                          </p>
-                          {transfersLoading && (
-                            <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mt-1"></div>
-                          )}
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-purple-400 group-hover:text-purple-600 transition-colors" />
-                      </div>
-                      <div className="mt-1 flex items-center justify-center space-x-1">
-                        {transfersSummary.urgent_count > 0 ? (
-                          <>
-                            <AlertCircle className="h-3 w-3 text-red-500" />
-                            <span className="text-xs text-red-500">
-                              {transfersSummary.urgent_count} urgente{transfersSummary.urgent_count > 1 ? 's' : ''}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="h-3 w-3 text-purple-500" />
-                            <span className="text-xs text-purple-500">
-                              Ver transferencias
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </button>
-                  )}
-
-
-
-                  {apiData.pending_actions && apiData.pending_actions.return_notifications > 0 && (
-                    <div className="bg-red-50 p-3 rounded-lg">
-                      <p className="text-2xl font-bold text-red-600">
-                        {apiData.pending_actions.return_notifications}
-                      </p>
-                      <p className="text-xs text-red-600">Devoluciones</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            </div>            
           </CardContent>
         </Card>
       )}
@@ -720,9 +692,10 @@ export const SellerDashboard: React.FC = () => {
   }
 
   return (
-    <DashboardLayout title={
+    <DashboardLayout onHome={currentView !== 'dashboard' ? goBack : undefined} title={
       currentView === 'dashboard' ? 'Panel de Vendedor' :
         currentView === 'scan' ? scanViewTitle :
+          currentView === 'scanner-transfer' ? 'Solicitar Transferencia' :
           currentView === 'scanner-sale' ? 'Confirmar Venta' :
           currentView === 'new-sale' ? (prefilledProduct ? 'Nueva Venta - Producto Escaneado' : 'Nueva Venta') :
             currentView === 'today-sales' ? 'Ventas del Día' :

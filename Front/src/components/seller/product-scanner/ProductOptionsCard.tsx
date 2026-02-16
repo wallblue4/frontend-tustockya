@@ -139,11 +139,11 @@ const ProductOptionItem: React.FC<{
                   className={`py-2.5 sm:py-1 sm:px-2.5 rounded-lg text-sm sm:text-sm font-medium border transition-all
                     ${isSelected
                       ? canSell
-                        ? 'bg-green-500 text-white border-green-500 shadow-sm scale-105'
+                        ? 'bg-green-500 text-white border-2 border-green-500 shadow-sm scale-105'
                         : 'bg-primary text-white border-primary shadow-sm scale-105'
                       : hasStock
                         ? canSell
-                          ? 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100 active:scale-95'
+                          ? 'bg-green-50 text-green-600 border-2 border-green-500 hover:bg-green-100 active:scale-95'
                           : hasLocalParts
                             ? 'bg-primary/10 text-primary font-bold border-2 border-primary/50 hover:bg-primary/20 active:scale-95'
                             : 'bg-primary/10 text-primary border-dashed border-primary/20 hover:bg-primary/20 active:scale-95'
