@@ -27,12 +27,13 @@ import { ExpensesList } from '../../components/seller/ExpensesList';
 import { SalesList } from '../../components/seller/SalesList';
 import { TransfersView } from '../../components/seller/TransfersView';
 import { ScannerTransferRequest } from '../../components/seller/ScannerTransferRequest';
+import { ScannerSaleConfirm } from '../../components/seller/ScannerSaleConfirm';
 import { useNavigate } from 'react-router-dom';
 import { vendorAPI } from '../../services/api';
 import { CameraCapture } from '../../components/seller/CameraCapture';
 import { transfersAPI } from '../../services/transfersAPI';
 
-type ViewType = 'dashboard' | 'scan' | 'new-sale' | 'today-sales' | 'expenses' | 'expenses-list' | 'transfers' | 'notifications' | 'scanner-transfer';
+type ViewType = 'dashboard' | 'scan' | 'new-sale' | 'today-sales' | 'expenses' | 'expenses-list' | 'transfers' | 'notifications' | 'scanner-transfer' | 'scanner-sale';
 
 // Interfaces
 interface PrefilledProduct {
@@ -205,7 +206,7 @@ export const SellerDashboard: React.FC = () => {
     setIsProcessingImage(false);
   };
 
-  // Función para backup - input file
+  // Función para backup - input file (cámara)
   const handleFileInputCapture = () => {
     setScanResult(null);
     setErrorMessage(null);
@@ -341,11 +342,18 @@ export const SellerDashboard: React.FC = () => {
     console.log('🔍 SellerDashboard - Datos preparados para SalesForm:', prefilledData);
     console.log('🔑 SellerDashboard - Transfer ID en prefilledData:', prefilledData.transfer_id);
 
-    // Establecer los datos prellenados y cambiar a vista de venta
+    // Si viene del scanner sin transfer_id → vista simplificada
+    if (!prefilledData.transfer_id) {
+      setPrefilledProduct(prefilledData);
+      setCurrentView('scanner-sale');
+      console.log('✅ SellerDashboard - Vista cambiada a scanner-sale (venta directa)');
+      return;
+    }
+
+    // Si viene de TransfersView con transfer_id → SalesForm completo (flujo actual)
     setPrefilledProduct(prefilledData);
     setCurrentView('new-sale');
-
-    console.log('✅ SellerDashboard - Vista cambiada a new-sale');
+    console.log('✅ SellerDashboard - Vista cambiada a new-sale (con transfer_id)');
   };
 
   const goBack = () => {
@@ -443,6 +451,32 @@ export const SellerDashboard: React.FC = () => {
                   loadTransfersSummary();
                   goBack();
                 }}
+                onBack={goBack}
+              />
+            )}
+          </div>
+        );
+
+      case 'scanner-sale':
+        return (
+          <div className="space-y-4">
+            <Button variant="ghost" onClick={goBack} className="mb-4">
+              <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Dashboard
+            </Button>
+            {prefilledProduct && (
+              <ScannerSaleConfirm
+                productData={{
+                  code: prefilledProduct.code,
+                  brand: prefilledProduct.brand,
+                  model: prefilledProduct.model,
+                  size: prefilledProduct.size,
+                  price: prefilledProduct.price,
+                  location: prefilledProduct.location,
+                  storage_type: prefilledProduct.storage_type,
+                  color: prefilledProduct.color,
+                  image: prefilledProduct.image?.[0],
+                }}
+                onSaleCompleted={goBack}
                 onBack={goBack}
               />
             )}
@@ -689,6 +723,7 @@ export const SellerDashboard: React.FC = () => {
     <DashboardLayout title={
       currentView === 'dashboard' ? 'Panel de Vendedor' :
         currentView === 'scan' ? scanViewTitle :
+          currentView === 'scanner-sale' ? 'Confirmar Venta' :
           currentView === 'new-sale' ? (prefilledProduct ? 'Nueva Venta - Producto Escaneado' : 'Nueva Venta') :
             currentView === 'today-sales' ? 'Ventas del Día' :
               currentView === 'expenses' ? 'Registrar Gasto' :

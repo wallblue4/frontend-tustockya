@@ -45,17 +45,17 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const getInventoryLabel = () => {
-    const { transfer_type, pairs, left_feet, right_feet } = prefilledProductData;
+    const { transfer_type } = prefilledProductData;
     switch (transfer_type) {
       case 'left_foot':
-        return `Pie Izquierdo (${left_feet || 1})`;
+        return '1 Pie Izquierdo';
       case 'right_foot':
-        return `Pie Derecho (${right_feet || 1})`;
+        return '1 Pie Derecho';
       case 'form_pair':
-        return `Formar Par (I:${left_feet || 0} / D:${right_feet || 0})`;
+        return '1 Par (formar con pies separados)';
       case 'pair':
       default:
-        return `Par Completo (${pairs || 1})`;
+        return '1 Par Completo';
     }
   };
 
