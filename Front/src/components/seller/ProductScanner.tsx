@@ -43,6 +43,10 @@ interface ProductScannerProps {
       left_feet_quantity?: number;
       right_feet_quantity?: number;
     };
+    // Inventario local del destino
+    local_left_feet?: number;
+    local_right_feet?: number;
+    local_pairs?: number;
   }) => void;
   onStepTitleChange?: (title: string) => void;
   onSellProduct?: (productData: {
@@ -164,6 +168,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
               can_sell: canSell,
               can_form_pair: canFormPair,
               missing_foot: missing,
+              is_local: true,
               formation_opportunities: sizeDetails.formation_opportunities || [],
               suggestions: sizeDetails.suggestions || []
             });
@@ -199,6 +204,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                   can_sell: false, // No está en el local actual
                   can_form_pair: locationLeftFeet > 0 && locationRightFeet > 0,
                   missing_foot: null,
+                  is_local: false,
                   formation_opportunities: sizeDetails.formation_opportunities || [],
                   suggestions: sizeDetails.suggestions || []
                 });
@@ -683,43 +689,53 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     // Si no es vendible localmente -> ir a transferencia
     if (!onRequestTransfer || !user) return;
 
-    // Para transferencia, usar la primera entrada disponible
-    const sizeInfo = matchingSizes[0];
+    // Separar entry local (destino) de entries remotos (posibles orígenes)
+    const localEntry = matchingSizes.find(s => s.is_local);
+    const remoteEntries = matchingSizes.filter(s => !s.is_local);
 
-    let sourceLocationId = sizeInfo.location_id || sizeInfo.location_number;
+    if (remoteEntries.length === 0) {
+      setError('No hay stock disponible en otras ubicaciones');
+      return;
+    }
+
+    // Determinar transfer_type basado en inventario LOCAL
+    let transferType: 'pair' | 'left_foot' | 'right_foot' | 'form_pair' = 'pair';
+    let requestNotes = '';
+
+    if (localEntry) {
+      // Hay inventario local parcial → transferir la pieza faltante
+      if (localEntry.missing_foot === 'right' && (localEntry.left_feet || 0) > 0) {
+        transferType = 'right_foot';
+        requestNotes = `Completar par: tiene pie izquierdo, necesita pie derecho`;
+      } else if (localEntry.missing_foot === 'left' && (localEntry.right_feet || 0) > 0) {
+        transferType = 'left_foot';
+        requestNotes = `Completar par: tiene pie derecho, necesita pie izquierdo`;
+      } else {
+        transferType = 'pair';
+        requestNotes = `Solicitar par completo`;
+      }
+    } else {
+      transferType = 'pair';
+      requestNotes = `Solicitar par completo (sin stock local)`;
+    }
+
+    // FUENTE: usar el primer entry remoto que tenga el stock necesario
+    const sourceInfo = remoteEntries[0];
+    const sourceLocationId = sourceInfo.location_id || sourceInfo.location_number;
+
     if (!sourceLocationId) {
-      setError('No se pudo determinar la ubicación de origen para la transferencia');
+      setError('No se pudo determinar la ubicación de origen');
       return;
     }
 
     const availableOptions = {
-      pairs_available: (sizeInfo.pairs || 0) > 0,
-      left_feet_available: (sizeInfo.left_feet || 0) > 0,
-      right_feet_available: (sizeInfo.right_feet || 0) > 0,
-      pairs_quantity: sizeInfo.pairs || 0,
-      left_feet_quantity: sizeInfo.left_feet || 0,
-      right_feet_quantity: sizeInfo.right_feet || 0
+      pairs_available: (sourceInfo.pairs || 0) > 0,
+      left_feet_available: (sourceInfo.left_feet || 0) > 0,
+      right_feet_available: (sourceInfo.right_feet || 0) > 0,
+      pairs_quantity: sourceInfo.pairs || 0,
+      left_feet_quantity: sourceInfo.left_feet || 0,
+      right_feet_quantity: sourceInfo.right_feet || 0
     };
-
-    let transferType: 'pair' | 'left_foot' | 'right_foot' | 'form_pair' = 'pair';
-    let requestNotes = '';
-
-    if ((sizeInfo.pairs || 0) > 0) {
-      transferType = 'pair';
-      requestNotes = `Solicitar ${sizeInfo.pairs} par(es) completo(s) desde ${sizeInfo.location_name}`;
-    } else if (sizeInfo.can_form_pair && (sizeInfo.left_feet || 0) > 0 && (sizeInfo.right_feet || 0) > 0) {
-      transferType = 'form_pair';
-      requestNotes = `Formar pares desde ${sizeInfo.location_name}`;
-    } else if (sizeInfo.missing_foot === 'right' && (sizeInfo.left_feet || 0) > 0) {
-      transferType = 'right_foot';
-      requestNotes = `Solicitar pie derecho desde ${sizeInfo.location_name}`;
-    } else if (sizeInfo.missing_foot === 'left' && (sizeInfo.right_feet || 0) > 0) {
-      transferType = 'left_foot';
-      requestNotes = `Solicitar pie izquierdo desde ${sizeInfo.location_name}`;
-    } else {
-      transferType = 'pair';
-      requestNotes = `Solicitar par completo desde ${sizeInfo.location_name}`;
-    }
 
     onRequestTransfer({
       sneaker_reference_code: product.code,
@@ -730,17 +746,22 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       product: product,
       source_location_id: sourceLocationId,
       destination_location_id: user.location_id || 0,
-      pairs: sizeInfo.pairs,
-      left_feet: sizeInfo.left_feet,
-      right_feet: sizeInfo.right_feet,
-      can_sell: sizeInfo.can_sell,
-      can_form_pair: sizeInfo.can_form_pair,
-      missing_foot: sizeInfo.missing_foot,
-      location_name: sizeInfo.location_name,
+      // Inventario del ORIGEN
+      pairs: sourceInfo.pairs,
+      left_feet: sourceInfo.left_feet,
+      right_feet: sourceInfo.right_feet,
+      can_sell: sourceInfo.can_sell,
+      can_form_pair: sourceInfo.can_form_pair,
+      missing_foot: localEntry?.missing_foot || null,
+      location_name: sourceInfo.location_name,
       transfer_type: transferType,
       request_notes: requestNotes,
       pickup_type: pickupType,
-      available_options: availableOptions
+      available_options: availableOptions,
+      // Inventario local del destino
+      local_left_feet: localEntry?.left_feet || 0,
+      local_right_feet: localEntry?.right_feet || 0,
+      local_pairs: localEntry?.pairs || 0,
     });
   };
 

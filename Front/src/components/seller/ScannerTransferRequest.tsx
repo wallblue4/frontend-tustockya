@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { vendorAPI } from '../../services/transfersAPI';
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Package, Truck, Tag, Loader2, CheckCircle, AlertCircle, ArrowDown } from 'lucide-react';
+import { Package, Truck, Tag, Loader2, CheckCircle, AlertCircle, ArrowDown, Footprints } from 'lucide-react';
 
 interface ScannerTransferRequestProps {
   prefilledProductData: {
@@ -29,6 +29,9 @@ interface ScannerTransferRequestProps {
       left_feet_quantity?: number;
       right_feet_quantity?: number;
     };
+    local_left_feet?: number;
+    local_right_feet?: number;
+    local_pairs?: number;
   };
   onTransferRequested?: (transferId: number, isUrgent: boolean) => void;
   onBack?: () => void;
@@ -182,11 +185,59 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
               </p>
             </div>
           </div>
-          <div className="flex items-start gap-3">
-            <Package className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
-            <p className="text-sm font-medium">{getInventoryLabel()}</p>
-          </div>
         </div>
+
+        {/* Sección de formación de par */}
+        {(() => {
+          const { transfer_type, local_left_feet = 0, local_right_feet = 0, local_pairs = 0 } = prefilledProductData;
+          const hasLocalStock = local_left_feet > 0 || local_right_feet > 0 || local_pairs > 0;
+
+          if (transfer_type === 'left_foot' || transfer_type === 'right_foot' || transfer_type === 'form_pair') {
+            return (
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Footprints className="h-5 w-5 text-indigo-600" />
+                  <span className="text-sm font-semibold text-indigo-800">Formación de Par</span>
+                </div>
+                <div className="space-y-2 pl-7">
+                  <div>
+                    <p className="text-xs text-muted-foreground">En tu local:</p>
+                    <p className="text-sm font-medium text-black">
+                      {local_left_feet > 0 && `🦶 ${local_left_feet} Pie${local_left_feet > 1 ? 's' : ''} Izquierdo${local_left_feet > 1 ? 's' : ''}`}
+                      {local_right_feet > 0 && `🦶 ${local_right_feet} Pie${local_right_feet > 1 ? 's' : ''} Derecho${local_right_feet > 1 ? 's' : ''}`}
+                      {local_pairs > 0 && `📦 ${local_pairs} Par${local_pairs > 1 ? 'es' : ''}`}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Se transferirá:</p>
+                    <p className="text-sm font-medium text-indigo-700">
+                      {transfer_type === 'right_foot' && '🦶 1 Pie Derecho'}
+                      {transfer_type === 'left_foot' && '🦶 1 Pie Izquierdo'}
+                      {transfer_type === 'form_pair' && '📦 1 Par (formar con pies separados)'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (transfer_type === 'pair' && !hasLocalStock) {
+            return (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-slate-600" />
+                  <span className="text-sm font-semibold text-slate-800">Detalle de Transferencia</span>
+                </div>
+                <div className="space-y-1 pl-7">
+                  <p className="text-xs text-muted-foreground">En tu local: <span className="font-medium text-foreground">Sin stock de esta talla</span></p>
+                  <p className="text-xs text-muted-foreground">Se transferirá: <span className="font-medium text-slate-700">1 Par Completo</span></p>
+                </div>
+              </div>
+            );
+          }
+
+          return null;
+        })()}
 
         {error && (
           <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">

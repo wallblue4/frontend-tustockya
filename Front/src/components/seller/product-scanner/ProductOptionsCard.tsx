@@ -23,7 +23,7 @@ const ProductOptionItem: React.FC<{
 
   // Obtener tallas únicas con su stock total y si se puede vender directo
   const uniqueSizes = React.useMemo(() => {
-    const sizeMap = new Map<string, { size: string; totalStock: number; canSell: boolean }>();
+    const sizeMap = new Map<string, { size: string; totalStock: number; canSell: boolean; hasLocalParts: boolean }>();
     sizes.forEach((s) => {
       // Contar pares completos + pies individuales como stock disponible
       const effectiveStock = s.quantity + (s.left_feet || 0) + (s.right_feet || 0);
@@ -31,8 +31,9 @@ const ProductOptionItem: React.FC<{
       if (existing) {
         existing.totalStock += effectiveStock;
         if (s.can_sell) existing.canSell = true;
+        if (s.is_local) existing.hasLocalParts = true;
       } else {
-        sizeMap.set(s.size, { size: s.size, totalStock: effectiveStock, canSell: !!s.can_sell });
+        sizeMap.set(s.size, { size: s.size, totalStock: effectiveStock, canSell: !!s.can_sell, hasLocalParts: !!s.is_local });
       }
     });
     return Array.from(sizeMap.values());
@@ -126,7 +127,7 @@ const ProductOptionItem: React.FC<{
         <div className="mt-3">
           <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground mb-1.5 block">Tallas:</span>
           <div className="grid grid-cols-4 gap-2 sm:flex sm:gap-1.5 sm:flex-wrap">
-            {uniqueSizes.map(({ size, totalStock, canSell }) => {
+            {uniqueSizes.map(({ size, totalStock, canSell, hasLocalParts }) => {
               const hasStock = totalStock > 0;
               const isSelected = selectedSize === size;
               return (
@@ -143,7 +144,9 @@ const ProductOptionItem: React.FC<{
                       : hasStock
                         ? canSell
                           ? 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100 active:scale-95'
-                          : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 active:scale-95'
+                          : hasLocalParts
+                            ? 'bg-primary/10 text-primary font-bold border-2 border-primary/50 hover:bg-primary/20 active:scale-95'
+                            : 'bg-primary/10 text-primary border-dashed border-primary/20 hover:bg-primary/20 active:scale-95'
                         : 'bg-muted/50 text-muted-foreground/40 border-muted/30 cursor-not-allowed'
                     }`}
                 >

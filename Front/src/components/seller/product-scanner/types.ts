@@ -63,6 +63,7 @@ export interface SizeInfo {
   can_sell?: boolean;
   can_form_pair?: boolean;
   missing_foot?: 'left' | 'right' | null;
+  is_local?: boolean;
   formation_opportunities?: any[];
   suggestions?: any[];
 }
