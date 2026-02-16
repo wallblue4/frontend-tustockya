@@ -32,7 +32,8 @@ import {
   Settings,
   Download,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Trash2
 } from 'lucide-react';
 
 // Import ALL correct adminAPI functions
@@ -390,7 +391,7 @@ export const AdminDashboard: React.FC = () => {
     reference_code: string;
     location_id: number;
     location_name: string;
-    existing_sizes: string[];
+    existing_sizes: { size: string; inventory_type: 'pair' | 'left_only' | 'right_only' }[];
   } | null>(null);
   const [showAssignProductModal, setShowAssignProductModal] = useState(false);
 
@@ -1390,7 +1391,7 @@ Por favor verifica que:
       reference_code: product.reference_code,
       location_id: locationId,
       location_name: locationName,
-      existing_sizes: product.sizes.map(s => s.size)
+      existing_sizes: product.sizes.map(s => ({ size: s.size, inventory_type: s.inventory_type || 'pair' as const }))
     });
     setShowAddSizeModal(true);
   };
@@ -1544,6 +1545,36 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
       console.error('Error actualizando info:', error);
       alert('Error al actualizar informacion: ' + (error.message || 'Error desconocido'));
       throw error;
+    }
+  };
+
+  const handleDeleteSize = async (
+    product: AdminInventoryProduct,
+    size: AdminInventorySize,
+    locationId: number,
+    locationName: string
+  ) => {
+    const typeLabel = size.inventory_type === 'pair' ? 'Par' : size.inventory_type === 'left_only' ? 'Pie izquierdo' : 'Pie derecho';
+    const confirmed = window.confirm(
+      `¿Eliminar talla ${size.size} (${typeLabel}) del producto ${product.brand} ${product.model} en ${locationName}?\n\nEsta accion pondra la cantidad en 0.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await adjustInventory({
+        location_id: locationId,
+        product_reference: product.reference_code,
+        size: size.size,
+        adjustment_type: 'set_quantity',
+        quantity: 0,
+        reason: `Eliminacion de talla ${size.size} (${typeLabel}) - correccion de inventario`,
+        inventory_type: size.inventory_type || 'pair'
+      });
+      await loadAdminInventory();
+      alert(`Talla ${size.size} (${typeLabel}) eliminada exitosamente.`);
+    } catch (error: any) {
+      console.error('Error eliminando talla:', error);
+      alert('Error al eliminar talla: ' + (error.message || 'Error desconocido'));
     }
   };
 
@@ -1817,8 +1848,8 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                 <span
                                   key={loc.id}
                                   className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${loc.type === 'bodega'
-                                      ? 'bg-warning/20 text-warning'
-                                      : 'bg-primary/20 text-primary'
+                                    ? 'bg-warning/20 text-warning'
+                                    : 'bg-primary/20 text-primary'
                                     }`}
                                 >
                                   {loc.name}
@@ -2606,8 +2637,8 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
           <button
             onClick={() => setInventoryActiveTab('view')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${inventoryActiveTab === 'view'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
           >
             <Package className="h-4 w-4 inline mr-2" />
@@ -2616,8 +2647,8 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
           <button
             onClick={() => setInventoryActiveTab('entry')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${inventoryActiveTab === 'entry'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
           >
             <Video className="h-4 w-4 inline mr-2" />
@@ -2855,37 +2886,48 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                         {product.sizes.map((size, sizeIdx) => (
                                           <div
                                             key={sizeIdx}
-                                            className={`flex items-center justify-between p-2 rounded-lg border ${size.quantity > 0 ? 'bg-card border-border' : 'bg-muted/50 border-border/50'
-                                              }`}
+                                            className={`p-2.5 rounded-lg border ${size.quantity > 0 ? 'bg-card border-border' : 'bg-muted/50 border-border/50'}`}
                                           >
-                                            <div className="flex items-center space-x-3">
-                                              <span className="font-medium text-foreground w-10">{size.size}</span>
-                                              <span className={`px-2 py-0.5 rounded text-xs border ${getInventoryTypeBadgeColor(size.inventory_type || 'pair')}`}>
-                                                {getInventoryTypeLabel(size.inventory_type || 'pair')}
-                                              </span>
-                                              <span className={`font-semibold ${size.quantity > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
-                                                {size.quantity} uds
-                                              </span>
-                                              {size.quantity_exhibition && size.quantity_exhibition > 0 && (
-                                                <span className="text-xs text-warning">
-                                                  (+{size.quantity_exhibition} exhib.)
+                                            <div className="flex items-center justify-between">
+                                              <div className="flex items-center space-x-2">
+                                                <span className="font-semibold text-foreground text-sm w-10">{size.size}</span>
+                                                <span className={`px-1.5 py-0.5 rounded text-xs border ${getInventoryTypeBadgeColor(size.inventory_type || 'pair')}`}>
+                                                  {getInventoryTypeLabel(size.inventory_type || 'pair')}
                                                 </span>
-                                              )}
+                                                <span className={`text-sm font-medium ${size.quantity > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                  {size.quantity} uds
+                                                </span>
+
+                                              </div>
+                                              <div className="flex items-center space-x-1">
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  onClick={() => handleOpenAdjustInventoryModal(
+                                                    product,
+                                                    size,
+                                                    location.location_id,
+                                                    location.location_name
+                                                  )}
+                                                  className="text-xs h-7 px-2"
+                                                >
+                                                  <Edit className="h-3 w-3" />
+                                                </Button>
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  onClick={() => handleDeleteSize(
+                                                    product,
+                                                    size,
+                                                    location.location_id,
+                                                    location.location_name
+                                                  )}
+                                                  className="text-xs h-7 px-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                                                >
+                                                  <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                              </div>
                                             </div>
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              onClick={() => handleOpenAdjustInventoryModal(
-                                                product,
-                                                size,
-                                                location.location_id,
-                                                location.location_name
-                                              )}
-                                              className="text-xs h-7 px-2"
-                                            >
-                                              <Edit className="h-3 w-3 mr-1" />
-                                              Ajustar
-                                            </Button>
                                           </div>
                                         ))}
                                       </div>

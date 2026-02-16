@@ -3,6 +3,11 @@ import { X, Plus, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 
+interface ExistingSizeEntry {
+  size: string;
+  inventory_type: 'pair' | 'left_only' | 'right_only';
+}
+
 interface AddSizeModalProps {
   onClose: () => void;
   onSubmit: (data: {
@@ -20,7 +25,7 @@ interface AddSizeModalProps {
     reference_code: string;
     location_id: number;
     location_name: string;
-    existing_sizes: string[];
+    existing_sizes: ExistingSizeEntry[];
   };
 }
 
@@ -53,8 +58,10 @@ export const AddSizeModal: React.FC<AddSizeModalProps> = ({
 
     if (!formData.size.trim()) {
       newErrors.size = 'La talla es requerida';
-    } else if (productData.existing_sizes.includes(formData.size.trim())) {
-      newErrors.size = 'Esta talla ya existe para este producto en esta ubicacion';
+    } else if (productData.existing_sizes.some(
+      entry => entry.size === formData.size.trim() && entry.inventory_type === formData.inventory_type
+    )) {
+      newErrors.size = `La talla ${formData.size.trim()} ya existe como "${getInventoryTypeLabel(formData.inventory_type)}" en esta ubicacion`;
     }
 
     if (formData.quantity <= 0) {
@@ -142,9 +149,9 @@ export const AddSizeModal: React.FC<AddSizeModalProps> = ({
               <div className="pt-2 border-t border-border">
                 <span className="text-sm text-muted-foreground">Tallas existentes:</span>
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {productData.existing_sizes.map(size => (
-                    <span key={size} className="px-2 py-0.5 bg-muted rounded text-xs text-foreground">
-                      {size}
+                  {productData.existing_sizes.map((entry, idx) => (
+                    <span key={`${entry.size}-${entry.inventory_type}-${idx}`} className="px-2 py-0.5 bg-muted rounded text-xs text-foreground">
+                      {entry.size} ({entry.inventory_type === 'pair' ? 'Par' : entry.inventory_type === 'left_only' ? 'Izq' : 'Der'})
                     </span>
                   ))}
                 </div>
