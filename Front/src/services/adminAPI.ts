@@ -1040,6 +1040,22 @@ export const adjustProductPrice = async (priceData: PriceAdjustmentRequest) => {
   return handleResponse(response);
 };
 
+// POST /api/v1/admin/admin/inventory/update-info - Actualizar marca/modelo de producto
+interface ProductInfoUpdateRequest {
+  product_reference: string;
+  brand?: string;
+  model?: string;
+}
+
+export const updateProductInfo = async (updateData: ProductInfoUpdateRequest) => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/inventory/update-info`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(updateData),
+  });
+  return handleResponse(response);
+};
+
 // GET /api/v1/admin/admin/inventory/all - Obtener todo el inventario administrativo
 export const fetchAdminInventory = async () => {
   const response = await fetch(`${BACKEND_URL}/api/v1/inventory/admin/inventory/all`, {

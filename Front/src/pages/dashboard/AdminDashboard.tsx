@@ -126,10 +126,12 @@ import { FullScreenPhotoCapture } from '../../components/admin/FullScreenPhotoCa
 import { AdjustInventoryModal } from '../../components/admin/AdjustInventoryModal';
 import { AdjustPriceModal } from '../../components/admin/AdjustPriceModal';
 import { AddSizeModal } from '../../components/admin/AddSizeModal';
+import { AssignProductToLocationModal } from '../../components/admin/AssignProductToLocationModal';
+import { EditProductInfoModal } from '../../components/admin/EditProductInfoModal';
 
 // Import inventory types and API
 import type { AdminInventoryLocation, AdminInventoryProduct, AdminInventorySize } from '../../types';
-import { adjustInventory, adjustProductPrice, fetchAdminInventory } from '../../services/adminAPI';
+import { adjustInventory, adjustProductPrice, updateProductInfo, fetchAdminInventory } from '../../services/adminAPI';
 
 type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics' | 'transfers';
 
@@ -373,6 +375,14 @@ export const AdminDashboard: React.FC = () => {
     current_price: number;
     image_url?: string;
   } | null>(null);
+  const [showEditProductInfoModal, setShowEditProductInfoModal] = useState(false);
+  const [selectedProductForInfoEdit, setSelectedProductForInfoEdit] = useState<{
+    brand: string;
+    model: string;
+    reference_code: string;
+    image_url?: string;
+  } | null>(null);
+  const [openEditDropdown, setOpenEditDropdown] = useState<string | null>(null);
   const [showAddSizeModal, setShowAddSizeModal] = useState(false);
   const [selectedProductForAddSize, setSelectedProductForAddSize] = useState<{
     brand: string;
@@ -382,6 +392,7 @@ export const AdminDashboard: React.FC = () => {
     location_name: string;
     existing_sizes: string[];
   } | null>(null);
+  const [showAssignProductModal, setShowAssignProductModal] = useState(false);
 
   // Modal states
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
@@ -1362,6 +1373,16 @@ Por favor verifica que:
     setShowAdjustPriceModal(true);
   };
 
+  const handleOpenEditProductInfoModal = (product: AdminInventoryProduct) => {
+    setSelectedProductForInfoEdit({
+      brand: product.brand,
+      model: product.model,
+      reference_code: product.reference_code,
+      image_url: product.image_url
+    });
+    setShowEditProductInfoModal(true);
+  };
+
   const handleOpenAddSizeModal = (product: AdminInventoryProduct, locationId: number, locationName: string) => {
     setSelectedProductForAddSize({
       brand: product.brand,
@@ -1402,6 +1423,38 @@ Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type ==
     } catch (error: any) {
       console.error('Error agregando talla:', error);
       alert('Error al agregar talla: ' + (error.message || 'Error desconocido'));
+      throw error;
+    }
+  };
+
+  const handleAssignProductToLocation = async (data: {
+    location_id: number;
+    product_reference: string;
+    size: string;
+    adjustment_type: 'set_quantity';
+    quantity: number;
+    reason: string;
+    inventory_type: 'pair' | 'left_only' | 'right_only';
+  }) => {
+    try {
+      const response = await adjustInventory(data);
+      console.log('Producto asignado a ubicacion:', response);
+
+      await loadAdminInventory();
+
+      const locationName = locations.find(l => l.id === data.location_id)?.name || `ID ${data.location_id}`;
+      alert(`Producto asignado exitosamente.
+
+Producto: ${data.product_reference}
+Ubicacion: ${locationName}
+Talla: ${data.size}
+Cantidad: ${data.quantity}
+Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type === 'left_only' ? 'Pie izquierdo' : 'Pie derecho'}`);
+
+      setShowAssignProductModal(false);
+    } catch (error: any) {
+      console.error('Error asignando producto:', error);
+      alert('Error al asignar producto: ' + (error.message || 'Error desconocido'));
       throw error;
     }
   };
@@ -1462,6 +1515,34 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
     } catch (error: any) {
       console.error('Error ajustando precio:', error);
       alert('Error al ajustar precio: ' + (error.message || 'Error desconocido'));
+      throw error;
+    }
+  };
+
+  const handleEditProductInfo = async (data: {
+    product_reference: string;
+    brand: string;
+    model: string;
+  }) => {
+    try {
+      const response = await updateProductInfo(data);
+      console.log('Info actualizada:', response);
+
+      await loadAdminInventory();
+
+      const oldBrand = selectedProductForInfoEdit?.brand || '';
+      const oldModel = selectedProductForInfoEdit?.model || '';
+      const changes: string[] = [];
+      if (data.brand !== oldBrand) changes.push(`Marca: ${oldBrand} → ${data.brand}`);
+      if (data.model !== oldModel) changes.push(`Modelo: ${oldModel} → ${data.model}`);
+
+      alert(`Informacion actualizada exitosamente.\n\nProducto: ${data.product_reference}\n${changes.join('\n')}`);
+
+      setShowEditProductInfoModal(false);
+      setSelectedProductForInfoEdit(null);
+    } catch (error: any) {
+      console.error('Error actualizando info:', error);
+      alert('Error al actualizar informacion: ' + (error.message || 'Error desconocido'));
       throw error;
     }
   };
@@ -2505,6 +2586,14 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <h2 className="text-2xl font-bold text-foreground">Gestion de Inventario</h2>
           <div className="flex space-x-2">
+            <Button
+              onClick={() => setShowAssignProductModal(true)}
+              size="sm"
+              disabled={adminInventoryLoading || adminInventory.length === 0}
+            >
+              <MapPin className="h-4 w-4 mr-2" />
+              Asignar a Ubicacion
+            </Button>
             <Button onClick={() => loadAdminInventory()} size="sm" variant="outline" disabled={adminInventoryLoading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${adminInventoryLoading ? 'animate-spin' : ''}`} />
               Actualizar
@@ -2690,15 +2779,39 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                         <span className="text-sm font-bold text-success">
                                           {formatCurrency(parseFloat(product.unit_price))}
                                         </span>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() => handleOpenAdjustPriceModal(product)}
-                                          className="text-xs h-7 px-2"
-                                        >
-                                          <Edit className="h-3 w-3 mr-1" />
-                                          Precio
-                                        </Button>
+                                        <div className="relative">
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => setOpenEditDropdown(openEditDropdown === product.reference_code ? null : product.reference_code)}
+                                            className="text-xs h-7 px-2"
+                                          >
+                                            <Edit className="h-3 w-3 mr-1" />
+                                            Editar
+                                            <ChevronDown className="h-3 w-3 ml-1" />
+                                          </Button>
+                                          {openEditDropdown === product.reference_code && (
+                                            <>
+                                              <div className="fixed inset-0 z-10" onClick={() => setOpenEditDropdown(null)} />
+                                              <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-md shadow-lg z-20 min-w-[140px]">
+                                                <button
+                                                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                                                  onClick={() => { setOpenEditDropdown(null); handleOpenAdjustPriceModal(product); }}
+                                                >
+                                                  <DollarSign className="h-3 w-3 mr-2" />
+                                                  Precio
+                                                </button>
+                                                <button
+                                                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                                                  onClick={() => { setOpenEditDropdown(null); handleOpenEditProductInfoModal(product); }}
+                                                >
+                                                  <Edit className="h-3 w-3 mr-2" />
+                                                  Marca / Modelo
+                                                </button>
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
                                       </div>
                                       <div className="flex items-center space-x-2 mt-2">
                                         <span className="text-xs text-muted-foreground">
@@ -4889,6 +5002,18 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
           />
         )}
 
+        {/* Edit Product Info Modal */}
+        {showEditProductInfoModal && selectedProductForInfoEdit && (
+          <EditProductInfoModal
+            onClose={() => {
+              setShowEditProductInfoModal(false);
+              setSelectedProductForInfoEdit(null);
+            }}
+            onSubmit={handleEditProductInfo}
+            productData={selectedProductForInfoEdit}
+          />
+        )}
+
         {/* Add Size Modal */}
         {showAddSizeModal && selectedProductForAddSize && (
           <AddSizeModal
@@ -4898,6 +5023,15 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             }}
             onSubmit={handleAddSize}
             productData={selectedProductForAddSize}
+          />
+        )}
+
+        {showAssignProductModal && (
+          <AssignProductToLocationModal
+            onClose={() => setShowAssignProductModal(false)}
+            onSubmit={handleAssignProductToLocation}
+            allInventory={adminInventory}
+            allLocations={locations.map(l => ({ id: l.id, name: l.name }))}
           />
         )}
 
