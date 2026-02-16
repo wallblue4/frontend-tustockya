@@ -49,7 +49,7 @@ const ProductOptionItem: React.FC<{
 
   return (
     <div
-      className={`border rounded-lg p-4 transition-all ${
+      className={`relative border rounded-lg p-4 transition-all ${
         hasSelection && !selectedCanSell
           ? 'border-blue-400'
           : sizes.some((s) => s.can_sell)
@@ -57,6 +57,11 @@ const ProductOptionItem: React.FC<{
             : 'border-border'
       }`}
     >
+      {/* Ranking badge absoluto */}
+      <span className="absolute -top-2.5 -left-2 z-10 text-xs font-bold bg-primary text-white px-2 py-0.5 rounded-full shadow-md ring-2 ring-background">
+        #{option.rank}
+      </span>
+
       <div className="flex gap-3 sm:gap-4">
         <ProductImage
           image={option.image}
@@ -68,9 +73,6 @@ const ProductOptionItem: React.FC<{
           {/* Mobile layout */}
           <div className="sm:hidden flex flex-col gap-1.5">
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-bold bg-primary text-white px-1.5 py-0.5 rounded shrink-0">
-                #{option.rank}
-              </span>
               <h4 className="font-semibold text-sm text-foreground truncate">
                 {option.description || `${option.brand} ${option.model}`}
               </h4>
@@ -94,9 +96,6 @@ const ProductOptionItem: React.FC<{
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold bg-primary text-white px-2 py-0.5 rounded shrink-0">
-                    #{option.rank}
-                  </span>
                   <h4 className="font-semibold text-base text-foreground truncate">
                     {option.description || `${option.brand} ${option.model}`}
                   </h4>
