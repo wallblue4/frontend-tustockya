@@ -126,6 +126,7 @@ import { FullScreenPhotoCapture } from '../../components/admin/FullScreenPhotoCa
 import { AdjustInventoryModal } from '../../components/admin/AdjustInventoryModal';
 import { AdjustPriceModal } from '../../components/admin/AdjustPriceModal';
 import { AddSizeModal } from '../../components/admin/AddSizeModal';
+import { AssignProductToLocationModal } from '../../components/admin/AssignProductToLocationModal';
 
 // Import inventory types and API
 import type { AdminInventoryLocation, AdminInventoryProduct, AdminInventorySize } from '../../types';
@@ -382,6 +383,7 @@ export const AdminDashboard: React.FC = () => {
     location_name: string;
     existing_sizes: string[];
   } | null>(null);
+  const [showAssignProductModal, setShowAssignProductModal] = useState(false);
 
   // Modal states
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
@@ -1402,6 +1404,38 @@ Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type ==
     } catch (error: any) {
       console.error('Error agregando talla:', error);
       alert('Error al agregar talla: ' + (error.message || 'Error desconocido'));
+      throw error;
+    }
+  };
+
+  const handleAssignProductToLocation = async (data: {
+    location_id: number;
+    product_reference: string;
+    size: string;
+    adjustment_type: 'set_quantity';
+    quantity: number;
+    reason: string;
+    inventory_type: 'pair' | 'left_only' | 'right_only';
+  }) => {
+    try {
+      const response = await adjustInventory(data);
+      console.log('Producto asignado a ubicacion:', response);
+
+      await loadAdminInventory();
+
+      const locationName = locations.find(l => l.id === data.location_id)?.name || `ID ${data.location_id}`;
+      alert(`Producto asignado exitosamente.
+
+Producto: ${data.product_reference}
+Ubicacion: ${locationName}
+Talla: ${data.size}
+Cantidad: ${data.quantity}
+Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type === 'left_only' ? 'Pie izquierdo' : 'Pie derecho'}`);
+
+      setShowAssignProductModal(false);
+    } catch (error: any) {
+      console.error('Error asignando producto:', error);
+      alert('Error al asignar producto: ' + (error.message || 'Error desconocido'));
       throw error;
     }
   };
@@ -2505,6 +2539,14 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <h2 className="text-2xl font-bold text-foreground">Gestion de Inventario</h2>
           <div className="flex space-x-2">
+            <Button
+              onClick={() => setShowAssignProductModal(true)}
+              size="sm"
+              disabled={adminInventoryLoading || adminInventory.length === 0}
+            >
+              <MapPin className="h-4 w-4 mr-2" />
+              Asignar a Ubicacion
+            </Button>
             <Button onClick={() => loadAdminInventory()} size="sm" variant="outline" disabled={adminInventoryLoading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${adminInventoryLoading ? 'animate-spin' : ''}`} />
               Actualizar
@@ -4898,6 +4940,15 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             }}
             onSubmit={handleAddSize}
             productData={selectedProductForAddSize}
+          />
+        )}
+
+        {showAssignProductModal && (
+          <AssignProductToLocationModal
+            onClose={() => setShowAssignProductModal(false)}
+            onSubmit={handleAssignProductToLocation}
+            allInventory={adminInventory}
+            allLocations={locations.map(l => ({ id: l.id, name: l.name }))}
           />
         )}
 
