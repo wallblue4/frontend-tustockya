@@ -44,6 +44,7 @@ interface TransfersViewProps {
     location_name?: string;
     transfer_type?: 'pair' | 'left_foot' | 'right_foot' | 'form_pair';
     request_notes?: string;
+    pickup_type?: 'vendedor' | 'corredor';
     // Opciones disponibles para solicitar
     available_options?: {
       pairs_available?: boolean;
@@ -170,7 +171,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         size: prefilledProductData.size || '',
         quantity: 1,
         purpose: 'cliente',
-        pickup_type: 'vendedor',
+        pickup_type: prefilledProductData.pickup_type || 'vendedor',
         destination_type: 'exhibicion',
         notes: prefilledProductData.request_notes || `Solicitud desde escáner - Color: ${prefilledProductData.color || 'N/A'}`,
         transfer_type: 'pair',

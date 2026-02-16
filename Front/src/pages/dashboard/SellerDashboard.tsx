@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Camera, 
-  ShoppingBag, 
-  Package, 
-  Clock, 
-  ArrowLeft, 
+import {
+  Camera,
+  ShoppingBag,
+  Package,
+  Clock,
+  ArrowLeft,
   DollarSign,
   Plus,
   Receipt,
@@ -78,11 +78,11 @@ export const SellerDashboard: React.FC = () => {
   const [scanResult, setScanResult] = useState<PredictionResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [capturedImage, setCapturedImage] = useState<File | null>(null);
-  
+
   // *** ESTADO ACTUALIZADO PARA TRANSFERENCIAS ***
   const [transfersSummary, setTransfersSummary] = useState<TransfersSummary | null>(null);
   const [transfersLoading, setTransfersLoading] = useState(false);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -94,12 +94,12 @@ export const SellerDashboard: React.FC = () => {
     try {
       setApiError(null);
       const response = await vendorAPI.getDashboard();
-      setApiData(response); 
+      setApiData(response);
     } catch (error) {
       console.warn('Backend API not available');
-      
+
       setApiError('Conectando con el servidor...');
-      
+
     } finally {
       setLoading(false);
     }
@@ -110,13 +110,13 @@ export const SellerDashboard: React.FC = () => {
     try {
       setTransfersLoading(true);
       console.log('🔄 Cargando resumen de transferencias...');
-      
+
       // Cargar datos de ambos endpoints
       const [pendingResponse, completedResponse] = await Promise.allSettled([
         transfersAPI.vendor.getPendingTransfers(),   // /vendor/pending-transfers
         transfersAPI.vendor.getCompletedTransfers()  // /vendor/completed-transfers
       ]);
-      
+
       let summary: TransfersSummary = {
         total_pending: 0,
         urgent_count: 0,
@@ -124,33 +124,33 @@ export const SellerDashboard: React.FC = () => {
         completed_today: 0,
         success_rate: 0
       };
-      
+
       // Procesar transferencias pendientes
       if (pendingResponse.status === 'fulfilled' && pendingResponse.value.success) {
         const pendingData = pendingResponse.value;
         summary.total_pending = pendingData.total_pending || 0;
         summary.urgent_count = pendingData.urgent_count || 0;
         summary.normal_count = pendingData.normal_count || 0;
-        
+
         console.log('✅ Transferencias pendientes cargadas:', summary.total_pending);
       } else {
         console.warn('⚠️ Error cargando transferencias pendientes');
       }
-      
+
       // Procesar transferencias completadas
       if (completedResponse.status === 'fulfilled' && completedResponse.value.success) {
         const completedData = completedResponse.value;
         summary.completed_today = completedData.today_stats?.completed || 0;
         summary.success_rate = completedData.today_stats?.success_rate || 0;
-        
+
         console.log('✅ Transferencias completadas cargadas:', summary.completed_today);
       } else {
         console.warn('⚠️ Error cargando transferencias completadas');
       }
-      
+
       console.log('📈 Resumen final calculado:', summary);
       setTransfersSummary(summary);
-      
+
     } catch (error) {
       console.warn('⚠️ Error loading transfers summary:', error);
       // Fallback a datos mock para mostrar algo mientras debuggeamos
@@ -184,7 +184,7 @@ export const SellerDashboard: React.FC = () => {
     setErrorMessage(null);
     setCapturedImage(null);
     setIsProcessingImage(false);
-    
+
     // Mostrar modal de cámara
     setShowCamera(true);
   };
@@ -192,13 +192,13 @@ export const SellerDashboard: React.FC = () => {
   // Manejar captura desde CameraCapture
   const handleCameraCapture = async (imageFile: File) => {
     console.log('Imagen capturada desde cámara:', imageFile.name);
-    
+
     setCapturedImage(imageFile);
     setIsProcessingImage(true);
-    
+
     // Procesar la imagen
     await sendImageToServer(imageFile);
-    
+
     // Cerrar modal de cámara después del procesamiento
     setShowCamera(false);
     setIsProcessingImage(false);
@@ -227,21 +227,21 @@ export const SellerDashboard: React.FC = () => {
 
     try {
       console.log('Simulando procesamiento de imagen:', imageFile.name);
-      
+
       // Simular delay de procesamiento
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // Resultado simulado
       const mockResult: PredictionResult = {
         class_name: 'tenis_nike',
         confidence: 0.85
       };
-      
+
       setScanResult(mockResult);
-      
+
       // Navegar a la vista de scan después del procesamiento exitoso
       setCurrentView('scan');
-      
+
     } catch (error: any) {
       console.error('Error simulando escaneo:', error);
       setErrorMessage('Error en la simulación del escaneo');
@@ -270,7 +270,7 @@ export const SellerDashboard: React.FC = () => {
         <Card className="border-red-200 bg-red-50">
           <CardContent className="p-4 text-center">
             <p className="text-red-800 font-semibold">{errorMessage}</p>
-            <Button 
+            <Button
               onClick={() => setErrorMessage(null)}
               className="mt-2"
               variant="ghost"
@@ -295,15 +295,15 @@ export const SellerDashboard: React.FC = () => {
     product: any;
   }) => {
     console.log('🔍 SellerDashboard - Datos recibidos del ProductScanner:', productData);
-    
+
     // Guardar los datos exactamente como llegan
     setProductDataForTransfer(productData);
-    
+
     console.log('🔍 SellerDashboard - Estado actualizado, cambiando a transfers');
-    
+
     // Cambiar a la vista de transferencias
     setCurrentView('transfers');
-    
+
     console.log('🔍 SellerDashboard - Vista cambiada a transfers');
   };
 
@@ -322,7 +322,7 @@ export const SellerDashboard: React.FC = () => {
   }) => {
     console.log('🔍 SellerDashboard - Recibiendo datos para venta:', productData);
     console.log('🔑 SellerDashboard - Transfer ID recibido:', productData.transfer_id);
-  
+
     // Convertir los datos al formato que espera SalesForm
     const prefilledData: PrefilledProduct = {
       code: productData.code,
@@ -332,18 +332,18 @@ export const SellerDashboard: React.FC = () => {
       price: productData.price,
       location: productData.location,
       storage_type: productData.storage_type,
-      color: productData.color,   
+      color: productData.color,
       image: productData.image ? [productData.image] : undefined, // Convertir string a array
       transfer_id: productData.transfer_id // ✅ COPIAR EL TRANSFER_ID (puede ser undefined)
     };
 
     console.log('🔍 SellerDashboard - Datos preparados para SalesForm:', prefilledData);
     console.log('🔑 SellerDashboard - Transfer ID en prefilledData:', prefilledData.transfer_id);
-  
+
     // Establecer los datos prellenados y cambiar a vista de venta
     setPrefilledProduct(prefilledData);
     setCurrentView('new-sale');
-    
+
     console.log('✅ SellerDashboard - Vista cambiada a new-sale');
   };
 
@@ -387,7 +387,7 @@ export const SellerDashboard: React.FC = () => {
             />
           </div>
         );
-      
+
       case 'new-sale':
         return (
           <div className="space-y-4">
@@ -397,7 +397,7 @@ export const SellerDashboard: React.FC = () => {
             <SalesForm prefilledProduct={prefilledProduct} />
           </div>
         );
-      
+
       case 'today-sales':
         return (
           <div className="space-y-4">
@@ -407,7 +407,7 @@ export const SellerDashboard: React.FC = () => {
             <SalesList />
           </div>
         );
-      
+
       case 'expenses':
         return (
           <div className="space-y-4">
@@ -427,7 +427,7 @@ export const SellerDashboard: React.FC = () => {
             <ExpensesList />
           </div>
         );
-      
+
       case 'transfers':
         console.log('🔍 SellerDashboard - Renderizando TransfersView con datos:', productDataForTransfer);
         return (
@@ -435,7 +435,7 @@ export const SellerDashboard: React.FC = () => {
             <Button variant="ghost" onClick={goBack} className="mb-4">
               <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Dashboard
             </Button>
-            <TransfersView 
+            <TransfersView
               prefilledProductData={productDataForTransfer}
               onSellProduct={handleSellProduct}
               onTransferRequested={(transferId, isUrgent) => {
@@ -446,7 +446,7 @@ export const SellerDashboard: React.FC = () => {
             />
           </div>
         );
-      
+
       case 'notifications':
         return (
           <div className="space-y-4">
@@ -456,7 +456,7 @@ export const SellerDashboard: React.FC = () => {
             <NotificationsView />
           </div>
         );
-      
+
       default:
         return <DashboardView />;
     }
@@ -498,23 +498,23 @@ export const SellerDashboard: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            <Button 
+            <Button
               className="h-20 flex flex-col items-center justify-center space-y-2"
-              onClick={handleOpenCamera}     
+              onClick={handleOpenCamera}
             >
               <Camera className="h-6 w-6" />
               <span className="text-sm">Vender Producto</span>
             </Button>
-            
-            <Button 
+
+            <Button
               className="h-20 flex flex-col items-center justify-center space-y-2"
               onClick={() => setCurrentView('expenses')}
             >
               <Receipt className="h-6 w-6" />
               <span className="text-sm">Registrar Gasto</span>
             </Button>
-            
-            <Button 
+
+            <Button
               className="h-20 flex flex-col items-center justify-center space-y-2"
               onClick={() => setCurrentView('today-sales')}
             >
@@ -527,7 +527,7 @@ export const SellerDashboard: React.FC = () => {
 
       {/* Resultado del escaneo - Solo mostrar en dashboard si hay error */}
       {renderScanResult()}
-      
+
       {/* Vendor Info */}
       {apiData && apiData.vendor_info && (
         <Card>
@@ -560,7 +560,7 @@ export const SellerDashboard: React.FC = () => {
                 </p>
               </div>
             </div>
-            
+
             {/* *** INFORMACIÓN ACTUALIZADA DE TRANSFERENCIAS *** */}
             {(apiData.pending_actions || transfersSummary) && (
               <div className="mt-4 pt-4 border-t border-gray-200">
@@ -573,7 +573,7 @@ export const SellerDashboard: React.FC = () => {
                       <p className="text-xs text-blue-600">Ventas por confirmar</p>
                     </div>
                   )}
-                  
+
                   {/* *** BOTÓN CLICKEABLE PARA TRANSFERENCIAS - ACTUALIZADO *** */}
                   {transfersSummary && (
                     <button
@@ -614,8 +614,8 @@ export const SellerDashboard: React.FC = () => {
                     </button>
                   )}
 
-                  
-                  
+
+
                   {apiData.pending_actions && apiData.pending_actions.return_notifications > 0 && (
                     <div className="bg-red-50 p-3 rounded-lg">
                       <p className="text-2xl font-bold text-red-600">
@@ -631,8 +631,11 @@ export const SellerDashboard: React.FC = () => {
         </Card>
       )}
 
-      {/* Stats */}
-      {apiData && <DashboardStats data={apiData} />}
+      {
+        /* Stats
+        {apiData && <DashboardStats data={apiData} />}
+         */
+      }
 
     </div>
   );
@@ -664,13 +667,13 @@ export const SellerDashboard: React.FC = () => {
   return (
     <DashboardLayout title={
       currentView === 'dashboard' ? 'Panel de Vendedor' :
-      currentView === 'scan' ? scanViewTitle :
-      currentView === 'new-sale' ? (prefilledProduct ? 'Nueva Venta - Producto Escaneado' : 'Nueva Venta') :
-      currentView === 'today-sales' ? 'Ventas del Día' :
-      currentView === 'expenses' ? 'Registrar Gasto' :
-      currentView === 'expenses-list' ? 'Gastos del Día' :
-      currentView === 'transfers' ? 'Gestión de Transferencias' :
-      'Notificaciones'
+        currentView === 'scan' ? scanViewTitle :
+          currentView === 'new-sale' ? (prefilledProduct ? 'Nueva Venta - Producto Escaneado' : 'Nueva Venta') :
+            currentView === 'today-sales' ? 'Ventas del Día' :
+              currentView === 'expenses' ? 'Registrar Gasto' :
+                currentView === 'expenses-list' ? 'Gastos del Día' :
+                  currentView === 'transfers' ? 'Gestión de Transferencias' :
+                    'Notificaciones'
     }>
       {/* MODAL DE CÁMARA */}
       {showCamera && (

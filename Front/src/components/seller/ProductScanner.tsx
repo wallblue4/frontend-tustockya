@@ -33,6 +33,7 @@ interface ProductScannerProps {
     location_name?: string;
     transfer_type?: 'pair' | 'left_foot' | 'right_foot' | 'form_pair';
     request_notes?: string;
+    pickup_type?: 'vendedor' | 'corredor';
     // Opciones disponibles para solicitar
     available_options?: {
       pairs_available?: boolean;
@@ -74,6 +75,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<'processing' | 'options' | 'details'>('processing');
   const [scanInfo, setScanInfo] = useState<any>(null);
+  const [sizesMap, setSizesMap] = useState<Map<string, SizeInfo[]>>(new Map());
 
   // Effect para procesar imagen automáticamente cuando llega desde la cámara
   useEffect(() => {
@@ -95,7 +97,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       if (isScanning) {
         onStepTitleChange('Analizando imagen');
       } else if (scanOptions.length > 0) {
-        onStepTitleChange('Selecciona el Producto Correcto');
+        onStepTitleChange('Selecciona Producto y Talla');
       } else {
         onStepTitleChange('Sin resultados de escaneo');
       }
@@ -500,6 +502,12 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         availability: opt.availability
       })));
       setScanOptions(options);
+
+      // Pre-computar sizesMap para todas las opciones
+      const map = new Map<string, SizeInfo[]>();
+      options.forEach(opt => map.set(opt.id, convertAvailabilityToSizes(opt)));
+      setSizesMap(map);
+
       setCurrentStep('options');
     } catch (err) {
       console.error('Error al procesar la imagen:', err);
@@ -644,6 +652,98 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     }
   };
 
+  const handleDirectAction = (product: ProductOption, selectedSizeStr: string, pickupType: 'vendedor' | 'corredor') => {
+    const sizes = sizesMap.get(product.id) || [];
+    const matchingSizes = sizes.filter(s => s.size === selectedSizeStr);
+
+    if (matchingSizes.length === 0) {
+      setError('No se encontró información para la talla seleccionada');
+      return;
+    }
+
+    // Buscar si hay alguna entrada local con can_sell
+    const localSellable = matchingSizes.find(s => s.can_sell === true);
+
+    if (localSellable && onSellProduct) {
+      // Si es local y can_sell=true -> siempre ir a Nueva Venta (sin importar botón)
+      onSellProduct({
+        code: product.code,
+        brand: product.brand,
+        model: product.model,
+        size: selectedSizeStr,
+        price: localSellable.unit_price,
+        location: localSellable.location_name || localSellable.location,
+        storage_type: localSellable.storage_type,
+        color: product.color,
+        image: product.image,
+      });
+      return;
+    }
+
+    // Si no es vendible localmente -> ir a transferencia
+    if (!onRequestTransfer || !user) return;
+
+    // Para transferencia, usar la primera entrada disponible
+    const sizeInfo = matchingSizes[0];
+
+    let sourceLocationId = sizeInfo.location_id || sizeInfo.location_number;
+    if (!sourceLocationId) {
+      setError('No se pudo determinar la ubicación de origen para la transferencia');
+      return;
+    }
+
+    const availableOptions = {
+      pairs_available: (sizeInfo.pairs || 0) > 0,
+      left_feet_available: (sizeInfo.left_feet || 0) > 0,
+      right_feet_available: (sizeInfo.right_feet || 0) > 0,
+      pairs_quantity: sizeInfo.pairs || 0,
+      left_feet_quantity: sizeInfo.left_feet || 0,
+      right_feet_quantity: sizeInfo.right_feet || 0
+    };
+
+    let transferType: 'pair' | 'left_foot' | 'right_foot' | 'form_pair' = 'pair';
+    let requestNotes = '';
+
+    if ((sizeInfo.pairs || 0) > 0) {
+      transferType = 'pair';
+      requestNotes = `Solicitar ${sizeInfo.pairs} par(es) completo(s) desde ${sizeInfo.location_name}`;
+    } else if (sizeInfo.can_form_pair && (sizeInfo.left_feet || 0) > 0 && (sizeInfo.right_feet || 0) > 0) {
+      transferType = 'form_pair';
+      requestNotes = `Formar pares desde ${sizeInfo.location_name}`;
+    } else if (sizeInfo.missing_foot === 'right' && (sizeInfo.left_feet || 0) > 0) {
+      transferType = 'right_foot';
+      requestNotes = `Solicitar pie derecho desde ${sizeInfo.location_name}`;
+    } else if (sizeInfo.missing_foot === 'left' && (sizeInfo.right_feet || 0) > 0) {
+      transferType = 'left_foot';
+      requestNotes = `Solicitar pie izquierdo desde ${sizeInfo.location_name}`;
+    } else {
+      transferType = 'pair';
+      requestNotes = `Solicitar par completo desde ${sizeInfo.location_name}`;
+    }
+
+    onRequestTransfer({
+      sneaker_reference_code: product.code,
+      brand: product.brand,
+      model: product.model,
+      color: product.color,
+      size: selectedSizeStr,
+      product: product,
+      source_location_id: sourceLocationId,
+      destination_location_id: user.location_id || 0,
+      pairs: sizeInfo.pairs,
+      left_feet: sizeInfo.left_feet,
+      right_feet: sizeInfo.right_feet,
+      can_sell: sizeInfo.can_sell,
+      can_form_pair: sizeInfo.can_form_pair,
+      missing_foot: sizeInfo.missing_foot,
+      location_name: sizeInfo.location_name,
+      transfer_type: transferType,
+      request_notes: requestNotes,
+      pickup_type: pickupType,
+      available_options: availableOptions
+    });
+  };
+
   const goBackToOptions = () => {
     setSelectedProduct(null);
     setSelectedSize('');
@@ -657,7 +757,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       {currentStep === 'processing' && <ProcessingCard />}
 
       {currentStep === 'options' && scanOptions.length > 0 && (
-        <ProductOptionsCard options={scanOptions} onSelect={handleProductSelect} />
+        <ProductOptionsCard options={scanOptions} sizesMap={sizesMap} onAction={handleDirectAction} />
       )}
 
       {currentStep === 'options' && scanOptions.length === 0 && !isScanning && (

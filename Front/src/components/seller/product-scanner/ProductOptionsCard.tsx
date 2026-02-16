@@ -1,29 +1,60 @@
-import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Truck, ShoppingBag } from 'lucide-react';
 import { Card, CardContent } from '../../ui/Card';
 import { formatCurrency } from '../../../services/api';
 import { getConfidenceCircleStyles, getConfidenceLevelText } from './helpers';
-import { ProductOption } from './types';
+import { ProductOption, SizeInfo } from './types';
 import { ProductImage } from './ProductImage';
 
 interface ProductOptionsCardProps {
   options: ProductOption[];
-  onSelect: (product: ProductOption) => void;
+  sizesMap: Map<string, SizeInfo[]>;
+  onAction: (product: ProductOption, selectedSize: string, pickupType: 'vendedor' | 'corredor') => void;
 }
 
-const ProductOptionItem: React.FC<{ option: ProductOption; onSelect: (product: ProductOption) => void }> = ({
-  option,
-  onSelect,
-}) => {
+const ProductOptionItem: React.FC<{
+  option: ProductOption;
+  sizes: SizeInfo[];
+  onAction: (product: ProductOption, selectedSize: string, pickupType: 'vendedor' | 'corredor') => void;
+}> = ({ option, sizes, onAction }) => {
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const confidenceStyles = getConfidenceCircleStyles(option.confidence_level);
   const confidenceTextColor = confidenceStyles.split(' ')[1];
 
+  // Obtener tallas únicas con su stock total y si se puede vender directo
+  const uniqueSizes = React.useMemo(() => {
+    const sizeMap = new Map<string, { size: string; totalStock: number; canSell: boolean }>();
+    sizes.forEach((s) => {
+      // Contar pares completos + pies individuales como stock disponible
+      const effectiveStock = s.quantity + (s.left_feet || 0) + (s.right_feet || 0);
+      const existing = sizeMap.get(s.size);
+      if (existing) {
+        existing.totalStock += effectiveStock;
+        if (s.can_sell) existing.canSell = true;
+      } else {
+        sizeMap.set(s.size, { size: s.size, totalStock: effectiveStock, canSell: !!s.can_sell });
+      }
+    });
+    return Array.from(sizeMap.values());
+  }, [sizes]);
+
+  const handleSizeToggle = (size: string, hasStock: boolean) => {
+    if (!hasStock) return;
+    setSelectedSize((prev) => (prev === size ? null : size));
+  };
+
+  const hasSelection = selectedSize !== null;
+  const selectedCanSell = hasSelection && uniqueSizes.find((s) => s.size === selectedSize)?.canSell;
+
   return (
     <div
-      className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
-        option.inventory.total_stock > 0 ? 'hover:border-primary' : 'border-red-400'
+      className={`border rounded-lg p-4 transition-all ${
+        hasSelection && !selectedCanSell
+          ? 'border-blue-400'
+          : sizes.some((s) => s.can_sell)
+            ? 'border-green-400'
+            : 'border-border'
       }`}
-      onClick={() => onSelect(option)}
     >
       <div className="flex gap-3 sm:gap-4">
         <ProductImage
@@ -33,6 +64,7 @@ const ProductOptionItem: React.FC<{ option: ProductOption; onSelect: (product: P
         />
 
         <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+          {/* Mobile layout */}
           <div className="sm:hidden flex flex-col gap-1.5">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-bold bg-primary text-white px-1.5 py-0.5 rounded shrink-0">
@@ -43,7 +75,7 @@ const ProductOptionItem: React.FC<{ option: ProductOption; onSelect: (product: P
               </h4>
             </div>
             <p className="text-[11px] text-muted-foreground truncate">
-              {option.brand} • {option.model}
+              {option.brand} &bull; {option.model}
             </p>
             <div className="flex items-center gap-2">
               <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${confidenceStyles}`}>
@@ -53,29 +85,10 @@ const ProductOptionItem: React.FC<{ option: ProductOption; onSelect: (product: P
                 {getConfidenceLevelText(option.confidence_level)}
               </span>
             </div>
-            {option.inventory.available_sizes && option.inventory.available_sizes.length > 0 && (
-              <div className="flex items-center gap-1.5 overflow-x-auto">
-                <span className="text-[10px] font-semibold text-muted-foreground shrink-0">Tallas:</span>
-                <div className="flex gap-1 flex-nowrap">
-                  {option.inventory.available_sizes.slice(0, 6).map((size) => (
-                    <span
-                      key={size}
-                      className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary border border-primary/20 shrink-0"
-                    >
-                      {size}
-                    </span>
-                  ))}
-                  {option.inventory.available_sizes.length > 6 && (
-                    <span className="text-[10px] text-muted-foreground self-center shrink-0">
-                      +{option.inventory.available_sizes.length - 6}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
             <span className="text-primary font-bold text-sm">{formatCurrency(option.inventory.pricing.unit_price)}</span>
           </div>
 
+          {/* Desktop layout */}
           <div className="hidden sm:flex sm:flex-col sm:gap-2 sm:h-full">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
@@ -88,7 +101,7 @@ const ProductOptionItem: React.FC<{ option: ProductOption; onSelect: (product: P
                   </h4>
                 </div>
                 <p className="text-xs text-muted-foreground truncate">
-                  {option.brand} • {option.model}
+                  {option.brand} &bull; {option.model}
                 </p>
               </div>
               <div className="flex flex-col items-center shrink-0">
@@ -104,41 +117,95 @@ const ProductOptionItem: React.FC<{ option: ProductOption; onSelect: (product: P
             <div className="flex items-center justify-between">
               <span className="text-primary font-bold text-base">{formatCurrency(option.inventory.pricing.unit_price)}</span>
             </div>
-
-            {option.inventory.available_sizes && option.inventory.available_sizes.length > 0 && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-muted-foreground shrink-0">Tallas:</span>
-                <div className="flex gap-1 flex-wrap">
-                  {option.inventory.available_sizes.slice(0, 8).map((size) => (
-                    <span
-                      key={size}
-                      className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
-                    >
-                      {size}
-                    </span>
-                  ))}
-                  {option.inventory.available_sizes.length > 8 && (
-                    <span className="text-xs text-muted-foreground self-center">
-                      +{option.inventory.available_sizes.length - 8}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
 
-      <div className="mt-3">
-        <span className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all">
-          Seleccionar <ArrowRight className="h-4 w-4" />
-        </span>
+      {/* Toggle de tallas */}
+      {uniqueSizes.length > 0 ? (
+        <div className="mt-3">
+          <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground mb-1.5 block">Tallas:</span>
+          <div className="grid grid-cols-4 gap-2 sm:flex sm:gap-1.5 sm:flex-wrap">
+            {uniqueSizes.map(({ size, totalStock, canSell }) => {
+              const hasStock = totalStock > 0;
+              const isSelected = selectedSize === size;
+              return (
+                <button
+                  key={size}
+                  type="button"
+                  disabled={!hasStock}
+                  onClick={() => handleSizeToggle(size, hasStock)}
+                  className={`py-2.5 sm:py-1 sm:px-2.5 rounded-lg text-sm sm:text-sm font-medium border transition-all
+                    ${isSelected
+                      ? canSell
+                        ? 'bg-green-500 text-white border-green-500 shadow-sm scale-105'
+                        : 'bg-primary text-white border-primary shadow-sm scale-105'
+                      : hasStock
+                        ? canSell
+                          ? 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100 active:scale-95'
+                          : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 active:scale-95'
+                        : 'bg-muted/50 text-muted-foreground/40 border-muted/30 cursor-not-allowed'
+                    }`}
+                >
+                  {size}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3">
+          <span className="text-[10px] sm:text-xs text-muted-foreground">Sin tallas disponibles</span>
+        </div>
+      )}
+
+      {/* Botones de acción */}
+      <div className="mt-3 flex gap-2">
+        {selectedCanSell ? (
+          <button
+            type="button"
+            onClick={() => onAction(option, selectedSize!, 'vendedor')}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-sm font-semibold transition-all bg-green-500 text-white hover:bg-green-600 active:scale-[0.98]"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            Vender
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              disabled={!hasSelection}
+              onClick={() => hasSelection && onAction(option, selectedSize!, 'vendedor')}
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-sm font-semibold transition-all
+                ${hasSelection
+                  ? 'bg-primary text-white hover:bg-primary/90 active:scale-[0.98]'
+                  : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
+                }`}
+            >
+              <User className="h-4 w-4" />
+              Vendedor
+            </button>
+            <button
+              type="button"
+              disabled={!hasSelection}
+              onClick={() => hasSelection && onAction(option, selectedSize!, 'corredor')}
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-sm font-semibold transition-all
+                ${hasSelection
+                  ? 'bg-secondary text-secondary-foreground hover:bg-secondary/90 active:scale-[0.98] border border-border'
+                  : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
+                }`}
+            >
+              <Truck className="h-4 w-4" />
+              Corredor
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
 };
 
-export const ProductOptionsCard: React.FC<ProductOptionsCardProps> = ({ options, onSelect }) => {
+export const ProductOptionsCard: React.FC<ProductOptionsCardProps> = ({ options, sizesMap, onAction }) => {
   return (
     <Card>
       <CardContent>
@@ -147,7 +214,12 @@ export const ProductOptionsCard: React.FC<ProductOptionsCardProps> = ({ options,
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {options.map((option) => (
-            <ProductOptionItem key={option.id} option={option} onSelect={onSelect} />
+            <ProductOptionItem
+              key={option.id}
+              option={option}
+              sizes={sizesMap.get(option.id) || []}
+              onAction={onAction}
+            />
           ))}
         </div>
       </CardContent>
