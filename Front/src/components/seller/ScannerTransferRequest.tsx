@@ -157,7 +157,7 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
               {/* Punto destino */}
               <div>
                 <p className="text-xs text-muted-foreground">Destino</p>
-                <p className="text-sm font-semibold">{user?.location_name || `Local #${user?.location_id || '?'}`}</p>
+                <p className="text-sm font-semibold">{user?.location_name}</p>
               </div>
             </div>
 
@@ -229,7 +229,7 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
                   <span className="text-sm font-semibold text-slate-800">Detalle de Transferencia</span>
                 </div>
                 <div className="space-y-1 pl-7">
-                  <p className="text-xs text-muted-foreground">En tu local: <span className="font-medium text-foreground">Sin stock de esta talla</span></p>
+                  <p className="text-xs text-muted-foreground">En tu local: <span className="font-medium text-red-800">Sin stock de esta talla</span></p>
                   <p className="text-xs text-muted-foreground">Se transferirá: <span className="font-medium text-slate-700">1 Par Completo</span></p>
                 </div>
               </div>
