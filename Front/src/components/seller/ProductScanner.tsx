@@ -1,95 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader } from '../ui/Card';
-import { Button } from '../ui/Button';
-import { formatCurrency, vendorAPI } from '../../services/api';
+import { vendorAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  Camera, 
-  Loader2, 
-  Package, 
-  MapPin,
-  ArrowRight,
-  Check,
-  ArrowLeft,
-  AlertCircle,
-  CheckCircle,
-  XCircle
-} from 'lucide-react';
-
-interface StockBySizeInfo {
-  size: string;
-  quantity_stock: number;
-  quantity_exhibition: number;
-  location: string;
-}
-
-interface InventoryInfo {
-  local_info: {
-    location_number: number;
-    location_name: string;
-  };
-  pricing: {
-    unit_price: number;
-    box_price: number;
-  };
-  stock_by_size: StockBySizeInfo[];
-  total_stock: number;
-  total_exhibition: number;
-  available_sizes: string[];
-  other_locations: any[];
-}
-
-interface AvailabilityInfo {
-  in_stock: boolean;
-  can_sell: boolean;
-  can_request_from_other_locations: boolean;
-  recommended_action: string;
-}
-
-interface ProductOption {
-  id: string;
-  brand: string;
-  model: string;
-  code: string;
-  description: string;
-  confidence: number;
-  image?: string;
-  rank: number;
-  similarity_score: number;
-  confidence_level: string;
-  original_db_id: number;
-  inventory: InventoryInfo;
-  availability: AvailabilityInfo;
-  color: string;
-}
-
-interface SizeInfo {
-  size: string;
-  location: string;
-  location_number?: number;
-  location_id?: number; // ID de la ubicación para transferencias
-  location_name?: string;
-  location_type?: 'local' | 'bodega';
-  storage_type: 'warehouse' | 'display';
-  quantity: number;
-  unit_price: number;
-  box_price: number;
-  total_quantity: number;
-  // Nuevos campos para pies separados
-  pairs?: number; // Pares completos
-  left_feet?: number; // Pies izquierdos
-  right_feet?: number; // Pies derechos
-  can_sell?: boolean; // Si se puede vender ahora
-  can_form_pair?: boolean; // Si se pueden formar pares
-  missing_foot?: 'left' | 'right' | null; // Qué pie falta para formar par
-  formation_opportunities?: any[]; // Oportunidades de formar pares
-  suggestions?: any[]; // Sugerencias de transferencia
-}
-
-interface SelectedProductDetails {
-  product: ProductOption;
-  sizes: SizeInfo[];
-}
+import { ErrorCard } from './product-scanner/ErrorCard';
+import {
+  extractLocationFromKey,
+  extractSizeFromKey,
+} from './product-scanner/helpers';
+import { NoResultsCard } from './product-scanner/NoResultsCard';
+import { ProcessingCard } from './product-scanner/ProcessingCard';
+import { ProductDetailsCard } from './product-scanner/ProductDetailsCard';
+import { ProductOptionsCard } from './product-scanner/ProductOptionsCard';
+import { ScanInfoCard } from './product-scanner/ScanInfoCard';
+import { AvailabilityInfo, InventoryInfo, ProductOption, SelectedProductDetails, SizeInfo } from './product-scanner/types';
 
 interface ProductScannerProps {
   onRequestTransfer?: (productData: {
@@ -111,6 +33,7 @@ interface ProductScannerProps {
     location_name?: string;
     transfer_type?: 'pair' | 'left_foot' | 'right_foot' | 'form_pair';
     request_notes?: string;
+    pickup_type?: 'vendedor' | 'corredor';
     // Opciones disponibles para solicitar
     available_options?: {
       pairs_available?: boolean;
@@ -120,52 +43,31 @@ interface ProductScannerProps {
       left_feet_quantity?: number;
       right_feet_quantity?: number;
     };
+    // Inventario local del destino
+    local_left_feet?: number;
+    local_right_feet?: number;
+    local_pairs?: number;
+  }) => void;
+  onStepTitleChange?: (title: string) => void;
+  onSellProduct?: (productData: {
+    code: string;
+    brand: string;
+    model: string;
+    size: string;
+    price: number;
+    location: string;
+    storage_type: string;
+    color?: string;
+    image?: string;
   }) => void;
   capturedImage?: File | null;
   scanResult?: any;
 }
 
-// Componente para manejar imágenes con fallback
-interface ProductImageProps {
-  image?: string;
-  alt: string;
-  className?: string;
-}
-
-const ProductImageComponent: React.FC<ProductImageProps> = ({ 
-  image, 
-  alt, 
-  className = "w-20 h-20 object-cover rounded-md flex-shrink-0" 
-}) => {
-  const [imageError, setImageError] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
-
-  if (!image || imageError) {
-    return (
-      <div className={`${className} bg-gray-200 flex items-center justify-center`}>
-        <Camera className="h-8 w-8 text-gray-400" />
-      </div>
-    );
-  }
-
-  return (
-    <img
-      src={image}
-      alt={alt}
-      className={className}
-      onError={() => {
-        console.log(`Error cargando imagen: ${image}`);
-        setImageError(true);
-        setImageLoading(false);
-      }}
-      onLoad={() => setImageLoading(false)}
-      style={{ display: imageLoading ? 'none' : 'block' }}
-    />
-  );
-};
-
 export const ProductScanner: React.FC<ProductScannerProps> = ({
   onRequestTransfer,
+  onStepTitleChange,
+  onSellProduct,
   capturedImage
 }) => {
   const { user } = useAuth();
@@ -177,21 +79,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<'processing' | 'options' | 'details'>('processing');
   const [scanInfo, setScanInfo] = useState<any>(null);
-
-  // Función helper para crear una clave única por talla y ubicación
-  const createSizeKey = (size: string, location: string): string => {
-    return `${size}|||${location}`;
-  };
-
-  // Función helper para extraer la talla de la clave única
-  const extractSizeFromKey = (key: string): string => {
-    return key.split('|||')[0];
-  };
-
-  // Función helper para extraer la ubicación de la clave única
-  const extractLocationFromKey = (key: string): string => {
-    return key.split('|||')[1] || '';
-  };
+  const [sizesMap, setSizesMap] = useState<Map<string, SizeInfo[]>>(new Map());
 
   // Effect para procesar imagen automáticamente cuando llega desde la cámara
   useEffect(() => {
@@ -200,6 +88,30 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       handleScanFromCamera(capturedImage);
     }
   }, [capturedImage]);
+
+  useEffect(() => {
+    if (!onStepTitleChange) return;
+
+    if (currentStep === 'processing') {
+      onStepTitleChange('Analizando imagen');
+      return;
+    }
+
+    if (currentStep === 'options') {
+      if (isScanning) {
+        onStepTitleChange('Analizando imagen');
+      } else if (scanOptions.length > 0) {
+        onStepTitleChange('Selecciona el producto');
+      } else {
+        onStepTitleChange('Sin resultados de escaneo');
+      }
+      return;
+    }
+
+    if (currentStep === 'details') {
+      onStepTitleChange('Detalles del Producto');
+    }
+  }, [currentStep, isScanning, scanOptions.length, onStepTitleChange]);
 
   // Función para convertir los datos de disponibilidad a formato de tallas
   const convertAvailabilityToSizes = (product: ProductOption): SizeInfo[] => {
@@ -256,6 +168,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
               can_sell: canSell,
               can_form_pair: canFormPair,
               missing_foot: missing,
+              is_local: true,
               formation_opportunities: sizeDetails.formation_opportunities || [],
               suggestions: sizeDetails.suggestions || []
             });
@@ -291,6 +204,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                   can_sell: false, // No está en el local actual
                   can_form_pair: locationLeftFeet > 0 && locationRightFeet > 0,
                   missing_foot: null,
+                  is_local: false,
                   formation_opportunities: sizeDetails.formation_opportunities || [],
                   suggestions: sizeDetails.suggestions || []
                 });
@@ -594,6 +508,12 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         availability: opt.availability
       })));
       setScanOptions(options);
+
+      // Pre-computar sizesMap para todas las opciones
+      const map = new Map<string, SizeInfo[]>();
+      options.forEach(opt => map.set(opt.id, convertAvailabilityToSizes(opt)));
+      setSizesMap(map);
+
       setCurrentStep('options');
     } catch (err) {
       console.error('Error al procesar la imagen:', err);
@@ -710,663 +630,174 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     }
   };
 
+  const handleSell = () => {
+    if (selectedProduct && selectedSize && onSellProduct) {
+      const size = extractSizeFromKey(selectedSize);
+      const location = extractLocationFromKey(selectedSize);
+
+      const sizeInfo = selectedProduct.sizes.find(
+        s => s.size === size && (s.location_name || s.location) === location
+      );
+
+      if (!sizeInfo) {
+        console.error('No se encontró información de la talla seleccionada para venta');
+        return;
+      }
+
+      onSellProduct({
+        code: selectedProduct.product.code,
+        brand: selectedProduct.product.brand,
+        model: selectedProduct.product.model,
+        size: size,
+        price: sizeInfo.unit_price,
+        location: sizeInfo.location_name || sizeInfo.location,
+        storage_type: sizeInfo.storage_type,
+        color: selectedProduct.product.color,
+        image: selectedProduct.product.image,
+      });
+    }
+  };
+
+  const handleDirectAction = (product: ProductOption, selectedSizeStr: string, pickupType: 'vendedor' | 'corredor') => {
+    const sizes = sizesMap.get(product.id) || [];
+    const matchingSizes = sizes.filter(s => s.size === selectedSizeStr);
+
+    if (matchingSizes.length === 0) {
+      setError('No se encontró información para la talla seleccionada');
+      return;
+    }
+
+    // Buscar si hay alguna entrada local con can_sell
+    const localSellable = matchingSizes.find(s => s.can_sell === true);
+
+    if (localSellable && onSellProduct) {
+      // Si es local y can_sell=true -> siempre ir a Nueva Venta (sin importar botón)
+      onSellProduct({
+        code: product.code,
+        brand: product.brand,
+        model: product.model,
+        size: selectedSizeStr,
+        price: localSellable.unit_price,
+        location: localSellable.location_name || localSellable.location,
+        storage_type: localSellable.storage_type,
+        color: product.color,
+        image: product.image,
+      });
+      return;
+    }
+
+    // Si no es vendible localmente -> ir a transferencia
+    if (!onRequestTransfer || !user) return;
+
+    // Separar entry local (destino) de entries remotos (posibles orígenes)
+    const localEntry = matchingSizes.find(s => s.is_local);
+    const remoteEntries = matchingSizes.filter(s => !s.is_local);
+
+    if (remoteEntries.length === 0) {
+      setError('No hay stock disponible en otras ubicaciones');
+      return;
+    }
+
+    // Determinar transfer_type basado en inventario LOCAL
+    let transferType: 'pair' | 'left_foot' | 'right_foot' | 'form_pair' = 'pair';
+    let requestNotes = '';
+
+    if (localEntry) {
+      // Hay inventario local parcial → transferir la pieza faltante
+      if (localEntry.missing_foot === 'right' && (localEntry.left_feet || 0) > 0) {
+        transferType = 'right_foot';
+        requestNotes = `Completar par: tiene pie izquierdo, necesita pie derecho`;
+      } else if (localEntry.missing_foot === 'left' && (localEntry.right_feet || 0) > 0) {
+        transferType = 'left_foot';
+        requestNotes = `Completar par: tiene pie derecho, necesita pie izquierdo`;
+      } else {
+        transferType = 'pair';
+        requestNotes = `Solicitar par completo`;
+      }
+    } else {
+      transferType = 'pair';
+      requestNotes = `Solicitar par completo (sin stock local)`;
+    }
+
+    // FUENTE: usar el primer entry remoto que tenga el stock necesario
+    const sourceInfo = remoteEntries[0];
+    const sourceLocationId = sourceInfo.location_id || sourceInfo.location_number;
+
+    if (!sourceLocationId) {
+      setError('No se pudo determinar la ubicación de origen');
+      return;
+    }
+
+    const availableOptions = {
+      pairs_available: (sourceInfo.pairs || 0) > 0,
+      left_feet_available: (sourceInfo.left_feet || 0) > 0,
+      right_feet_available: (sourceInfo.right_feet || 0) > 0,
+      pairs_quantity: sourceInfo.pairs || 0,
+      left_feet_quantity: sourceInfo.left_feet || 0,
+      right_feet_quantity: sourceInfo.right_feet || 0
+    };
+
+    onRequestTransfer({
+      sneaker_reference_code: product.code,
+      brand: product.brand,
+      model: product.model,
+      color: product.color,
+      size: selectedSizeStr,
+      product: product,
+      source_location_id: sourceLocationId,
+      destination_location_id: user.location_id || 0,
+      // Inventario del ORIGEN
+      pairs: sourceInfo.pairs,
+      left_feet: sourceInfo.left_feet,
+      right_feet: sourceInfo.right_feet,
+      can_sell: sourceInfo.can_sell,
+      can_form_pair: sourceInfo.can_form_pair,
+      missing_foot: localEntry?.missing_foot || null,
+      location_name: sourceInfo.location_name,
+      transfer_type: transferType,
+      request_notes: requestNotes,
+      pickup_type: pickupType,
+      available_options: availableOptions,
+      // Inventario local del destino
+      local_left_feet: localEntry?.left_feet || 0,
+      local_right_feet: localEntry?.right_feet || 0,
+      local_pairs: localEntry?.pairs || 0,
+    });
+  };
+
   const goBackToOptions = () => {
     setSelectedProduct(null);
     setSelectedSize('');
     setCurrentStep('options');
   };
 
-  const getConfidenceLevelColor = (level: string) => {
-    switch (level) {
-      case 'very_high':
-        return 'text-green-600 bg-green-100';
-      case 'high':
-        return 'text-blue-600 bg-blue-100';
-      case 'medium':
-        return 'text-yellow-600 bg-yellow-100';
-      case 'low':
-        return 'text-red-600 bg-red-100';
-      default:
-        return 'text-gray-600 bg-gray-100';
-    }
-  };
-
-  const getConfidenceCircleStyles = (level: string) => {
-    switch (level) {
-      case 'very_high':
-        return 'border-lime-500 text-lime-600';
-      case 'high':
-        return 'border-green-500 text-green-600';
-      case 'medium':
-        return 'border-yellow-500 text-yellow-600';
-      case 'low':
-        return 'border-red-500 text-red-600';
-      default:
-        return 'border-gray-400 text-gray-600';
-    }
-  }; 
-
-  const getConfidenceLevelText = (level: string) => {
-    switch (level) {
-      case 'very_high':
-        return 'Muy Alta';
-      case 'high':
-        return 'Alta';
-      case 'medium':
-        return 'Media';
-      case 'low':
-        return 'Baja';
-      default:
-        return 'Desconocida';
-    }
-  };
-
-  const getAvailabilityIcon = (availability: AvailabilityInfo) => {
-    if (availability.can_sell) {
-      return <CheckCircle className="h-4 w-4 text-green-600" />;
-    } else if (availability.can_request_from_other_locations) {
-      return <AlertCircle className="h-4 w-4 text-yellow-600" />;
-    } else {
-      return <XCircle className="h-4 w-4 text-red-600" />;
-    }
-  };
-
-  const getAvailabilityColor = (availability: AvailabilityInfo) => {
-    if (availability.can_sell) {
-      return 'text-green-600 bg-green-50 border-green-200';
-    } else if (availability.can_request_from_other_locations) {
-      return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-    } else {
-      return 'text-red-600 bg-red-50 border-red-200';
-    }
-  };
-
   return (
     <div className="space-y-6">
 
-      {/* Scan Info */}
-      {scanInfo && (
-        <Card className="border-primary/30 bg-primary/10">
-          <CardContent className="p-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-primary">
-                    Procesado en {scanInfo.processing_time.toFixed(0)}ms
-                  </p>
-                </div>
-                <div className="text-xs text-primary">
-                  {new Date(scanInfo.scan_timestamp).toLocaleString()}
-                </div>
-              </div>
-              
-              {scanInfo.availability_summary && (
-                <div className="grid grid-cols-2 gap-4 text-xs text-primary bg-primary/20 p-2 rounded">
-                  <div>Productos clasificados: {scanInfo.availability_summary.products_classified_only}</div>
-                  <div>Venta inmediata: {scanInfo.availability_summary.can_sell_immediately ? 'Sí' : 'No'}</div>
-                  <div>Disponibles localmente: {scanInfo.availability_summary.products_available_locally}</div>
-                  <div>Requieren transferencia: {scanInfo.availability_summary.products_requiring_transfer}</div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {currentStep === 'processing' && <ProcessingCard />}
 
-      {/* Processing State */}
-      {currentStep === 'processing' && (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <div className="space-y-4">
-              <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
-              <div>
-                <h3 className="text-lg font-semibold">Analizando imagen con IA...</h3>
-                <p className="text-gray-600">Identificando producto y consultando disponibilidad</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Product Options Selection */}
       {currentStep === 'options' && scanOptions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Selecciona el Producto Correcto</h3>
-              <p className="text-sm text-gray-500">{scanOptions.length} productos encontrados</p>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {scanOptions.map((option) => (
-                <div
-                  key={option.id}
-                  className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
-                    option.inventory.total_stock > 0 ? 'hover:border-primary' : 'border-red-400'
-                  }`}
-                  onClick={() => handleProductSelect(option)}
-                >
-                  {/* Photo | Info */}
-                  <div className="flex gap-3 sm:gap-4">
-                    {/* Left: Photo */}
-                    <ProductImageComponent
-                      image={option.image}
-                      alt={`${option.brand} ${option.model}`}
-                      className="w-28 sm:w-36 h-auto self-stretch object-cover rounded-lg flex-shrink-0 border border-border shadow"
-                    />
-                    {/* Right: Info */}
-                    <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-                      {/* Mobile: stacked layout */}
-                      <div className="sm:hidden flex flex-col gap-1.5">
-                        {/* Name */}
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-bold bg-primary text-white px-1.5 py-0.5 rounded shrink-0">#{option.rank}</span>
-                          <h4 className="font-semibold text-sm text-foreground truncate">{option.description || `${option.brand} ${option.model}`}</h4>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground truncate">{option.brand} • {option.model}</p>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${getConfidenceCircleStyles(option.confidence_level)}`}>
-                            <span className="text-[9px] font-bold">{option.confidence?.toFixed(0)}%</span>
-                          </div>
-                          <span className={`text-[10px] font-semibold ${getConfidenceCircleStyles(option.confidence_level).split(' ')[1]}`}>{getConfidenceLevelText(option.confidence_level)}</span>
-                        </div>
-                        {option.inventory.available_sizes && option.inventory.available_sizes.length > 0 && (
-                          <div className="flex items-center gap-1.5 overflow-x-auto">
-                            <span className="text-[10px] font-semibold text-muted-foreground shrink-0">Tallas:</span>
-                            <div className="flex gap-1 flex-nowrap">
-                              {option.inventory.available_sizes.slice(0, 6).map((size) => (
-                                <span key={size} className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary border border-primary/20 shrink-0">
-                                  {size}
-                                </span>
-                              ))}
-                              {option.inventory.available_sizes.length > 6 && (
-                                <span className="text-[10px] text-muted-foreground self-center shrink-0">+{option.inventory.available_sizes.length - 6}</span>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        <span className="text-primary font-bold text-sm">{formatCurrency(option.inventory.pricing.unit_price)}</span>
-                      </div>
-
-                      {/* Desktop: optimized layout */}
-                      <div className="hidden sm:flex sm:flex-col sm:gap-2 sm:h-full">
-                        {/* Row 1: Name + Confidence */}
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-bold bg-primary text-white px-2 py-0.5 rounded shrink-0">#{option.rank}</span>
-                              <h4 className="font-semibold text-base text-foreground truncate">{option.description || `${option.brand} ${option.model}`}</h4>
-                            </div>
-                            <p className="text-xs text-muted-foreground truncate">{option.brand} • {option.model}</p>
-                          </div>
-                          <div className="flex flex-col items-center shrink-0">
-                            <div className={`w-11 h-11 rounded-full border-[3px] flex items-center justify-center ${getConfidenceCircleStyles(option.confidence_level)}`}>
-                              <span className="text-[11px] font-bold">{option.confidence?.toFixed(0)}%</span>
-                            </div>
-                            <span className={`text-[10px] font-semibold mt-0.5 ${getConfidenceCircleStyles(option.confidence_level).split(' ')[1]}`}>{getConfidenceLevelText(option.confidence_level)}</span>
-                          </div>
-                        </div>
-                        {/* Row 2: Stock + Price */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-primary font-bold text-base">{formatCurrency(option.inventory.pricing.unit_price)}</span>
-                        </div>
-                        {/* Row 3: Tallas */}
-                        {option.inventory.available_sizes && option.inventory.available_sizes.length > 0 && (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-semibold text-muted-foreground shrink-0">Tallas:</span>
-                            <div className="flex gap-1 flex-wrap">
-                              {option.inventory.available_sizes.slice(0, 8).map((size) => (
-                                <span key={size} className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
-                                  {size}
-                                </span>
-                              ))}
-                              {option.inventory.available_sizes.length > 8 && (
-                                <span className="text-xs text-muted-foreground self-center">+{option.inventory.available_sizes.length - 8}</span>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {/* Acción */}
-                  <div className="mt-3">
-                    <span className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all">
-                      Seleccionar <ArrowRight className="h-4 w-4" />
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <ProductOptionsCard options={scanOptions} sizesMap={sizesMap} onAction={handleDirectAction} />
       )}
 
-      {/* No results found */}
       {currentStep === 'options' && scanOptions.length === 0 && !isScanning && (
-        <Card className="border-warning/30 bg-warning/10">
-          <CardContent className="p-8 text-center">
-            <div className="space-y-4">
-              <AlertCircle className="h-12 w-12 mx-auto text-warning" />
-              <div>
-                <h3 className="text-lg font-semibold text-warning">No se encontraron productos</h3>
-                <p className="text-warning">No se pudieron identificar productos en la imagen. Intenta con una imagen más clara o un ángulo diferente.</p>
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => window.location.reload()}
-                className="mt-4"
-              >
-                Intentar de Nuevo
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <NoResultsCard onRetry={() => window.location.reload()} />
       )}
 
-      {/* Product Details and Size Selection */}
       {currentStep === 'details' && selectedProduct && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Detalles del Producto</h3>
-              <Button variant="ghost" onClick={goBackToOptions}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Cambiar Producto
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {/* Product Info */}
-              <div className="bg-muted/20 p-4 rounded-lg">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="font-semibold text-xl mb-2 text-foreground">
-                      {selectedProduct.product.description || `${selectedProduct.product.brand} ${selectedProduct.product.model}`}
-                    </h4>
-                    <p className="text-muted-foreground mb-1">
-                      Modelo: {selectedProduct.product.model}
-                    </p>
-                    <p className="text-sm text-muted-foreground mb-3">Marca: {selectedProduct.product.brand}</p>
-                  </div>
-                  <div className="flex flex-col items-center ml-6">
-                    <div className={`w-14 h-14 rounded-full border-[3px] flex items-center justify-center ${getConfidenceCircleStyles(selectedProduct.product.confidence_level)}`}>
-                      <span className="text-sm font-bold">{selectedProduct.product.confidence?.toFixed(0)}%</span>
-                    </div>
-                    <span className={`text-[10px] font-semibold mt-1 ${getConfidenceCircleStyles(selectedProduct.product.confidence_level).split(' ')[1]}`}>{getConfidenceLevelText(selectedProduct.product.confidence_level)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Size Selection */}
-              {selectedProduct.sizes.length > 0 ? (
-                <div>
-                  <h5 className="font-medium mb-3 text-foreground">Selecciona una Talla:</h5>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {selectedProduct.sizes.map((sizeInfo) => {
-                      // Crear clave única para esta talla+ubicación
-                      const sizeKey = createSizeKey(sizeInfo.size, sizeInfo.location_name || sizeInfo.location);
-                      const isSelected = selectedSize === sizeKey;
-                      
-                      return (
-                        <button
-                          key={sizeKey}
-                          onClick={() => setSelectedSize(sizeKey)}
-                          disabled={false} // Permitir seleccionar todas las tallas para solicitar transferencias
-                          className={`p-4 border rounded-lg text-left transition-all ${
-                            isSelected
-                              ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
-                              : sizeInfo.location_id === user?.location_id 
-                                ? (sizeInfo.can_sell
-                                  ? 'border-success bg-success/5 hover:border-success/50 hover:shadow-sm'
-                                  : sizeInfo.can_form_pair
-                                  ? 'border-warning bg-warning/5 hover:border-warning/50 hover:shadow-sm'
-                                  : 'border-muted bg-muted/5 hover:border-muted/50 hover:shadow-sm')
-                                : 'border-primary bg-primary/5 hover:border-primary/50 hover:shadow-sm'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-semibold text-lg text-foreground">Talla {sizeInfo.size}</span>
-                            <div className="flex items-center gap-1">
-                              {sizeInfo.location_id === user?.location_id ? (
-                                <>
-                                  {sizeInfo.can_sell && <CheckCircle className="h-5 w-5 text-success" />}
-                                  {!sizeInfo.can_sell && sizeInfo.can_form_pair && <AlertCircle className="h-5 w-5 text-warning" />}
-                                  {!sizeInfo.can_sell && !sizeInfo.can_form_pair && <XCircle className="h-5 w-5 text-muted" />}
-                                </>
-                              ) : (
-                                <Package className="h-5 w-5 text-primary" />
-                              )}
-                              {isSelected && <Check className="h-5 w-5 text-primary ml-1" />}
-                            </div>
-                          </div>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-center text-muted-foreground gap-2 flex-wrap">
-                            <MapPin className="h-3 w-3 mr-1" />
-                            <span className="font-medium">{sizeInfo.location_name || sizeInfo.location}</span>
-                            {sizeInfo.location_type && (
-                              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                                sizeInfo.location_type === 'local'
-                                  ? 'bg-primary/10 text-primary'
-                                  : 'bg-secondary/10 text-secondary'
-                              }`}>
-                                {sizeInfo.location_type === 'local' ? 'Local' : 'Bodega'}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Información de pares y pies separados */}
-                          <div className="grid grid-cols-3 gap-2 p-2 bg-muted/10 rounded">
-                            <div className="text-center">
-                              <div className="text-xs text-muted-foreground">👟 Pares</div>
-                              <div className={`font-bold ${(sizeInfo.pairs || 0) > 0 ? 'text-success' : 'text-muted'}`}>
-                                {sizeInfo.pairs || 0}
-                          </div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-xs text-muted-foreground">🦶 Izq</div>
-                              <div className={`font-bold ${(sizeInfo.left_feet || 0) > 0 ? 'text-warning' : 'text-muted'}`}>
-                                {sizeInfo.left_feet || 0}
-                              </div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-xs text-muted-foreground">🦶 Der</div>
-                              <div className={`font-bold ${(sizeInfo.right_feet || 0) > 0 ? 'text-warning' : 'text-muted'}`}>
-                                {sizeInfo.right_feet || 0}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Estado de venta */}
-                          <div className="flex justify-between items-center">
-                            <div className="flex flex-col">
-                              {(() => {
-                                // Determinar si es el local del vendedor o una ubicación externa
-                                // Comparar con la ubicación del usuario actual
-                                const isLocalVendor = sizeInfo.location_id === user?.location_id;
-                                
-                                if (isLocalVendor) {
-                                  // En el local del vendedor - mostrar estado real
-                                  if (sizeInfo.can_sell) {
-                                    return (
-                                      <span className="text-success font-medium flex items-center gap-1">
-                                        <CheckCircle className="h-4 w-4" />
-                                        Disponible venta
-                                      </span>
-                                    );
-                                  } else if (sizeInfo.can_form_pair) {
-                                    return (
-                                      <span className="text-warning font-medium flex items-center gap-1">
-                                        <AlertCircle className="h-4 w-4" />
-                                        Formar pares
-                                      </span>
-                                    );
-                                  } else if (sizeInfo.missing_foot) {
-                                    return (
-                                      <span className="text-muted-foreground font-medium flex items-center gap-1">
-                                        <XCircle className="h-4 w-4" />
-                                        Falta pie {sizeInfo.missing_foot === 'left' ? 'izq' : 'der'}
-                                      </span>
-                                    );
-                                  } else {
-                                    return (
-                                      <span className="text-muted font-medium">
-                                        Sin stock local
-                                      </span>
-                                    );
-                                  }
-                                } else {
-                                  // En otras ubicaciones - siempre requiere transferencia
-                                  return (
-                                    <span className="text-primary font-medium flex items-center gap-1">
-                                      <Package className="h-4 w-4" />
-                                      Requiere transferencia
-                                    </span>
-                                  );
-                                }
-                              })()}
-                            </div>
-                            <span className="font-bold text-primary">
-                              {formatCurrency(sizeInfo.unit_price)}
-                            </span>
-                          </div>
-
-                          {/* Oportunidades de formación - solo para local del vendedor */}
-                          {sizeInfo.formation_opportunities && sizeInfo.formation_opportunities.length > 0 && sizeInfo.location_id === user?.location_id && (
-                            <div className="text-xs text-warning bg-warning/10 p-2 rounded">
-                              💡 {sizeInfo.formation_opportunities[0].action}
-                            </div>
-                          )}
-
-                          {/* Sugerencias de transferencia - solo para ubicaciones externas */}
-                          {sizeInfo.suggestions && sizeInfo.suggestions.length > 0 && sizeInfo.location_id !== user?.location_id && (
-                            <div className="text-xs text-primary bg-primary/10 p-2 rounded">
-                              📦 {sizeInfo.suggestions[0].action}
-                            </div>
-                          )}
-
-                          {sizeInfo.box_price > 0 && sizeInfo.box_price !== sizeInfo.unit_price && (
-                            <div className="text-xs text-muted-foreground">
-                              Precio caja: {formatCurrency(sizeInfo.box_price)}
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p>No hay información de tallas disponible para este producto</p>
-                </div>
-              )}
-
-              {/* Selected Size Details */}
-              {selectedSize && (
-                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                  {(() => {
-                    // Extraer talla y ubicación de la clave única
-                    const size = extractSizeFromKey(selectedSize);
-                    const location = extractLocationFromKey(selectedSize);
-                    
-                    // Buscar la información exacta de esa talla en esa ubicación
-                    const sizeInfo = selectedProduct.sizes.find(
-                      s => s.size === size && (s.location_name || s.location) === location
-                    );
-                    if (!sizeInfo) return null;
-                    
-                    return (
-                      <div className="space-y-4">
-                      <div>
-                          <h6 className="font-medium text-primary mb-3 flex items-center gap-2">
-                            Talla {size} Seleccionada
-                            {sizeInfo.can_sell && <CheckCircle className="h-5 w-5 text-success" />}
-                            {!sizeInfo.can_sell && sizeInfo.can_form_pair && <AlertCircle className="h-5 w-5 text-warning" />}
-                          </h6>
-                          
-                          {/* Inventario detallado */}
-                          <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 mb-3">
-                            <div className="text-xs text-muted-foreground mb-2 font-semibold">Inventario Disponible</div>
-                            <div className="grid grid-cols-3 gap-3">
-                              <div className="text-center p-2 bg-success/10 rounded">
-                                <div className="text-2xl font-bold text-success">{sizeInfo.pairs || 0}</div>
-                                <div className="text-xs text-muted-foreground">👟 Pares completos</div>
-                              </div>
-                              <div className="text-center p-2 bg-warning/10 rounded">
-                                <div className="text-2xl font-bold text-warning">{sizeInfo.left_feet || 0}</div>
-                                <div className="text-xs text-muted-foreground">🦶 Izquierdos</div>
-                              </div>
-                              <div className="text-center p-2 bg-warning/10 rounded">
-                                <div className="text-2xl font-bold text-warning">{sizeInfo.right_feet || 0}</div>
-                                <div className="text-xs text-muted-foreground">🦶 Derechos</div>
-                              </div>
-                            </div>
-                          </div>
-
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Ubicación:</span>
-                            <p className="font-medium text-foreground">{sizeInfo.location}</p>
-                          </div>
-                            <div>
-                              <span className="text-muted-foreground">Estado:</span>
-                              <p className={`font-medium ${sizeInfo.location_id === user?.location_id ? 
-                                (sizeInfo.can_sell ? 'text-success' : sizeInfo.can_form_pair ? 'text-warning' : 'text-muted') 
-                                : 'text-primary'}`}>
-                                {sizeInfo.location_id === user?.location_id ? 
-                                  (sizeInfo.can_sell ? '✅ Disponible venta' : 
-                                   sizeInfo.can_form_pair ? '⚠️ Puede formar pares' : 
-                                   '❌ Sin stock local') : 
-                                  '📦 Requiere transferencia'}
-                              </p>
-                            </div>
-                          <div>
-                            <span className="text-muted-foreground">Precio unitario:</span>
-                            <p className="font-bold text-lg text-primary">{formatCurrency(sizeInfo.unit_price)}</p>
-                          </div>
-                          {sizeInfo.box_price > 0 && sizeInfo.box_price !== sizeInfo.unit_price && (
-                              <div>
-                              <span className="text-muted-foreground">Precio por caja:</span>
-                              <p className="font-medium text-primary">{formatCurrency(sizeInfo.box_price)}</p>
-                            </div>
-                          )}
-                        </div>
-                        </div>
-
-                        {/* Oportunidades de formación de pares */}
-                        {sizeInfo.formation_opportunities && sizeInfo.formation_opportunities.length > 0 && (
-                          <div className="border-t border-primary/20 pt-3">
-                            <div className="text-sm font-semibold text-foreground mb-2">💡 Oportunidades de Formación</div>
-                            {sizeInfo.formation_opportunities.map((opp: any, idx: number) => (
-                              <div key={idx} className="bg-warning/10 border border-warning/20 rounded p-3 mb-2">
-                                <div className="flex items-start gap-2">
-                                  <AlertCircle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
-                                  <div className="text-sm">
-                                    <p className="font-medium text-warning">{opp.action}</p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      Prioridad: {opp.priority} • Tiempo estimado: {opp.estimated_time_hours}h
-                                    </p>
-                                    {opp.from_locations && (
-                                      <div className="text-xs text-muted-foreground mt-2">
-                                        {opp.from_locations.map((loc: any, locIdx: number) => (
-                                          <div key={locIdx}>• {loc.quantity} {loc.type === 'left' ? 'izq' : 'der'} en {loc.location_name}</div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Sugerencias de transferencia */}
-                        {sizeInfo.suggestions && sizeInfo.suggestions.length > 0 && (
-                          <div className="border-t border-primary/20 pt-3">
-                            <div className="text-sm font-semibold text-foreground mb-2">📦 Sugerencias de Transferencia</div>
-                            {sizeInfo.suggestions.slice(0, 2).map((sugg: any, idx: number) => (
-                              <div key={idx} className="bg-primary/10 border border-primary/20 rounded p-3 mb-2">
-                                <div className="flex items-start gap-2">
-                                  <Package className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                                  <div className="text-sm">
-                                    <p className="font-medium text-primary">{sugg.action}</p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      Tiempo: ~{sugg.estimated_time_minutes} min • Disponibles: {sugg.metadata?.available_quantity || 0}
-                                    </p>
-                                    {sugg.steps && sugg.steps.length > 0 && (
-                                      <div className="text-xs text-muted-foreground mt-2">
-                                        {sugg.steps.slice(0, 2).map((step: string, stepIdx: number) => (
-                                          <div key={stepIdx}>• {step}</div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex space-x-4">
-                {selectedSize && (selectedProduct.product.availability.can_sell || selectedProduct.product.inventory.total_stock > 0) ? (
-                  <Button
-                    onClick={handleSolicitar}
-                    className="w-full"
-                  >
-                    <Package className="h-4 w-4 mr-2" />
-                    Solicitar
-                  </Button>
-                ) : selectedProduct.product.availability.can_request_from_other_locations ? (
-                  <>
-                    <Button
-                      onClick={handleSolicitar}
-                      variant="secondary"
-                      className="flex-1"
-                      disabled={!selectedSize && selectedProduct.sizes.length > 0}
-                    >
-                      <Package className="h-4 w-4 mr-2" />
-                      Solicitar Transferencia
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => window.location.reload()}
-                      className="px-6"
-                    >
-                      Escanear Otro
-                    </Button>
-                  </>
-                ) : (
-                  <div className="text-center py-4 w-full">
-                    <p className="text-muted-foreground mb-4">
-                      Producto identificado pero no disponible para venta o transferencia
-                    </p>
-                    <div className="flex space-x-4">
-                      <Button
-                        onClick={handleSolicitar}
-                        variant="secondary"
-                        className="flex-1"
-                        disabled={!selectedSize}
-                      >
-                        <Package className="h-4 w-4 mr-2" />
-                        Solicitar de Todas Formas
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => window.location.reload()}
-                        className="px-6"
-                      >
-                        Escanear Otro Producto
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <ProductDetailsCard
+          selectedProduct={selectedProduct}
+          selectedSize={selectedSize}
+          userLocationId={user?.location_id}
+          onBack={goBackToOptions}
+          onSelectSize={setSelectedSize}
+          onSolicitar={handleSolicitar}
+          onSell={handleSell}
+          onScanAnother={() => window.location.reload()}
+        />
       )}
 
-      {/* Error Display */}
-      {error && (
-        <Card className="border-error">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <XCircle className="h-5 w-5 text-error" />
-              <p className="text-error">{error}</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {error && <ErrorCard error={error} />}
     </div>
   );
 };

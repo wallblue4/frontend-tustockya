@@ -1,15 +1,17 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { 
-  Camera, 
-  X, 
+import {
+  Camera,
+  X,
   RotateCcw,
   CheckCircle,
   Loader2,
   ScanLine,
   Zap,
-  Focus
+  Focus,
+  ImageUp,
+  Search
 } from 'lucide-react';
 
 interface CameraCaptureProps {
@@ -26,7 +28,8 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [isStreaming, setIsStreaming] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +45,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
       }
 
       // Primero intentar con configuración básica
-      let constraints = {
+      let constraints: MediaStreamConstraints = {
         video: {
           facingMode: 'environment'
         }
@@ -157,6 +160,53 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
     stopCamera();
     onClose();
   }, [stopCamera, onClose]);
+
+  // Subir imagen desde archivos
+  const handleFileUpload = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCapturedImage(reader.result as string);
+      stopCamera();
+      onCapture(file);
+    };
+    reader.readAsDataURL(file);
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [onCapture, stopCamera]);
+
+  // Ctrl+V — pegar imagen desde portapapeles
+  React.useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (!file) break;
+
+          const reader = new FileReader();
+          reader.onload = () => {
+            setCapturedImage(reader.result as string);
+            stopCamera();
+            onCapture(file);
+          };
+          reader.readAsDataURL(file);
+          break;
+        }
+      }
+    };
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [onCapture, stopCamera]);
 
   // Iniciar cámara automáticamente al montar el componente
   React.useEffect(() => {
@@ -331,30 +381,44 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                 </div>
               </div>
 
-              {/* Botón de captura dentro de la imagen - Responsive */}
-              <div className="absolute bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-20">
+              {/* Input oculto para subir archivo */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                className="hidden"
+              />
+
+              {/* Barra de acciones - 3 botones */}
+              <div className="absolute bottom-4 sm:bottom-6 left-0 right-0 z-20 flex items-center justify-center gap-6 sm:gap-8">
+                {/* Botón Subir Imagen */}
+                <button
+                  onClick={handleFileUpload}
+                  disabled={isScanning}
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/50 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white hover:bg-white/20 active:scale-90 transition-all disabled:opacity-50"
+                >
+                  <ImageUp className="h-5 w-5 sm:h-6 sm:w-6" />
+                </button>
+
+                {/* Botón Cámara (principal) */}
                 <div className="relative">
-                  {/* Anillo exterior animado - Responsive */}
                   <div className={`absolute inset-0 rounded-full border-2 sm:border-4 ${
-                    isScanning 
-                      ? 'border-primary animate-pulse' 
-                      : isStreaming 
-                        ? 'border-primary/50 animate-pulse' 
+                    isScanning
+                      ? 'border-primary animate-pulse'
+                      : isStreaming
+                        ? 'border-primary/50 animate-pulse'
                         : 'border-gray-500'
                   } transition-all duration-300 w-16 h-16 sm:w-20 sm:h-20`}
                   ></div>
-                  
-                  {/* Anillo medio con efecto glow - Responsive */}
                   <div className={`absolute inset-1 sm:inset-2 rounded-full ${
-                    isScanning 
-                      ? 'bg-primary/20 ring-2 sm:ring-4 ring-primary/30' 
-                      : isStreaming 
-                        ? 'bg-primary/10 ring-1 sm:ring-2 ring-primary/20' 
+                    isScanning
+                      ? 'bg-primary/20 ring-2 sm:ring-4 ring-primary/30'
+                      : isStreaming
+                        ? 'bg-primary/10 ring-1 sm:ring-2 ring-primary/20'
                         : 'bg-gray-600/20'
                   } transition-all duration-300`}
                   ></div>
-                  
-                  {/* Botón principal - Responsive */}
                   <button
                     onClick={capturePhoto}
                     disabled={!isStreaming || isScanning}
@@ -375,8 +439,6 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                         <Camera className="h-6 w-6 sm:h-8 sm:w-8" />
                       </div>
                     )}
-                    
-                    {/* Efecto de ondas al hacer clic */}
                     {isScanning && (
                       <>
                         <div className="absolute inset-0 rounded-full bg-primary animate-ping opacity-20"></div>
@@ -385,6 +447,15 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                     )}
                   </button>
                 </div>
+
+                {/* Botón Buscar (futuro) */}
+                <button
+                  disabled
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/50 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white/40 cursor-not-allowed transition-all"
+                  title="Buscar por texto (próximamente)"
+                >
+                  <Search className="h-5 w-5 sm:h-6 sm:w-6" />
+                </button>
               </div>
             </div>
           )}
@@ -396,9 +467,9 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
 
       {/* Texto instructivo - Fixed at bottom */}
       <div className="flex-shrink-0 px-4 pb-4 pt-2 safe-area-bottom">
-        <div className="text-center">
+        <div className="text-center space-y-1">
           <p className="text-muted-foreground text-xs sm:text-sm">
-            Mantén el producto dentro del recuadro para mejor reconocimiento
+            Centra el producto en el recuadro, sube una foto o pega con <kbd className="px-1 py-0.5 rounded bg-white/10 border border-white/20 text-[10px] font-mono">Ctrl+V</kbd>
           </p>
         </div>
       </div>
