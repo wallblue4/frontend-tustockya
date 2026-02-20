@@ -143,7 +143,7 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
           pickup_type: prefilledProductData.pickup_type || 'vendedor',
           notes: prefilledProductData.request_notes || null
         };
-        response = await vendorAPI.requestSingleFoot(singleFootPayload);
+        response = await vendorAPI.instantSingleFoot(singleFootPayload);
       } else {
         const transferPayload = {
           source_location_id: prefilledProductData.source_location_id,
