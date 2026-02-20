@@ -724,33 +724,6 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         </Card>
       )}
 
-      {/* Resumen de transferencias */}
-      {totalPending > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-              <div className="bg-muted/20 p-3 rounded-lg">
-                <p className="text-2xl font-bold text-muted-foreground">{totalPending}</p>
-                <p className="text-xs text-muted-foreground">Total Pendientes</p>
-              </div>
-              {urgentCount > 0 && (
-                <div className="bg-destructive/10 p-3 rounded-lg">
-                  <p className="text-2xl font-bold text-destructive">{urgentCount}</p>
-                  <p className="text-xs text-destructive">🔥 Urgentes</p>
-                </div>
-              )}
-              {normalCount > 0 && (
-                <div className="bg-success/10 p-3 rounded-lg">
-                  <p className="text-2xl font-bold text-success">{normalCount}</p>
-                  <p className="text-xs text-success">✅ Normales</p>
-                </div>
-              )}
-
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Navigation Tabs - RESPONSIVE */}
       <Card>
         <CardContent className="p-2 md:p-4">
@@ -982,10 +955,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 const cardBg = isPending ? 'bg-error/5' : 'bg-success/5';
                 const statusLabel =
                   transfer.status === 'pending' ? 'Pendiente' :
-                  transfer.status === 'accepted' ? 'Aceptada' :
-                  transfer.status === 'courier_assigned' ? 'Corredor asignado' :
-                  transfer.status === 'in_transit' ? 'En camino' :
-                  transfer.status === 'delivered' ? 'Entregada' : 'Completada';
+                    transfer.status === 'accepted' ? 'Aceptada' :
+                      transfer.status === 'courier_assigned' ? 'Corredor asignado' :
+                        transfer.status === 'in_transit' ? 'En camino' :
+                          transfer.status === 'delivered' ? 'Entregada' : 'Completada';
                 const inventoryLabel = transfer.purpose === 'pair_formation'
                   ? (transfer.inventory_type === 'left_only' ? '🦶 Izquierdo' : transfer.inventory_type === 'right_only' ? '🦶 Derecho' : '👟 Par')
                   : '👟 Par';
@@ -1127,10 +1100,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 const isPending = transfer.status === 'pending';
                 const statusLabel =
                   transfer.status === 'pending' ? 'Pendiente' :
-                  transfer.status === 'accepted' ? 'Aceptada' :
-                  transfer.status === 'courier_assigned' ? 'Corredor asignado' :
-                  transfer.status === 'in_transit' ? 'En camino' :
-                  transfer.status === 'delivered' ? 'Entregada' : 'Completada';
+                    transfer.status === 'accepted' ? 'Aceptada' :
+                      transfer.status === 'courier_assigned' ? 'Corredor asignado' :
+                        transfer.status === 'in_transit' ? 'En camino' :
+                          transfer.status === 'delivered' ? 'Entregada' : 'Completada';
                 const inventoryLabel = transfer.purpose === 'pair_formation'
                   ? (transfer.inventory_type === 'left_only' ? '🦶 Izq' : transfer.inventory_type === 'right_only' ? '🦶 Der' : '👟 Par')
                   : '👟 Par';
@@ -1214,10 +1187,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                       const isPending = t.status === 'pending';
                       const sLabel =
                         t.status === 'pending' ? 'Pendiente' :
-                        t.status === 'accepted' ? 'Aceptada' :
-                        t.status === 'courier_assigned' ? 'Corredor asignado' :
-                        t.status === 'in_transit' ? 'En camino' :
-                        t.status === 'delivered' ? 'Entregada' : 'Completada';
+                          t.status === 'accepted' ? 'Aceptada' :
+                            t.status === 'courier_assigned' ? 'Corredor asignado' :
+                              t.status === 'in_transit' ? 'En camino' :
+                                t.status === 'delivered' ? 'Entregada' : 'Completada';
                       const invLabel = t.purpose === 'pair_formation'
                         ? (t.inventory_type === 'left_only' ? '🦶 Izq' : t.inventory_type === 'right_only' ? '🦶 Der' : '👟 Par')
                         : '👟 Par';
