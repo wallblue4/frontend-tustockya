@@ -208,20 +208,13 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
           </div>
         </div>
 
-        {/* Precio editable */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+        {/* Precio (solo lectura) */}
+        <div className="flex items-center justify-between bg-muted/50 rounded-lg px-4 py-3">
+          <span className="flex items-center gap-2 text-sm font-medium text-foreground">
             <DollarSign className="h-4 w-4 text-green-600" />
             Precio
-          </label>
-          <input
-            type="number"
-            value={editedPrice}
-            onChange={(e) => setEditedPrice(Number(e.target.value))}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            min={0}
-            step={1000}
-          />
+          </span>
+          <span className="text-sm font-semibold text-foreground">${editedPrice.toLocaleString('es-CO')}</span>
         </div>
 
         {/* Metodo de pago */}
