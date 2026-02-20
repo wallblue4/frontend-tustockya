@@ -70,7 +70,9 @@ const apiFormDataRequest = async (endpoint: string, formData: FormData) => {
     const data = await response.json();
     
     if (!response.ok) {
-      throw new Error(data.message || 'API request failed');
+      const err: any = new Error(data.message || data.detail || 'API request failed');
+      err.detail = data.detail || null;
+      throw err;
     }
     
     return data;

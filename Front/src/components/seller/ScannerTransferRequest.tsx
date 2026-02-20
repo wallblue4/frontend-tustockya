@@ -86,7 +86,7 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
     setError(null);
 
     try {
-      // Transferencia dual: 2 solicitudes en paralelo
+      // Transferencia dual: 2 solicitudes instantáneas en paralelo
       if (isDualTransfer) {
         const dual = prefilledProductData.dual_transfer!;
         const destinationId = prefilledProductData.destination_location_id || user?.location_id || 0;
@@ -102,7 +102,6 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
           purpose: 'pair_formation' as const,
           pickup_type: pickupType,
           notes: `Transferencia dual: pie izquierdo desde ${dual.left_foot_source.location_name}`,
-          status: 'completed'
         };
 
         const rightPayload = {
@@ -115,12 +114,11 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
           purpose: 'pair_formation' as const,
           pickup_type: pickupType,
           notes: `Transferencia dual: pie derecho desde ${dual.right_foot_source.location_name}`,
-          status: 'completed'
         };
 
         const [leftResponse] = await Promise.all([
-          vendorAPI.requestSingleFoot(leftPayload),
-          vendorAPI.requestSingleFoot(rightPayload),
+          vendorAPI.instantSingleFoot(leftPayload),
+          vendorAPI.instantSingleFoot(rightPayload),
         ]);
 
         setSuccess(true);

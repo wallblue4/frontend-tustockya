@@ -32,6 +32,8 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
+  const [showErrorView, setShowErrorView] = useState(false);
   const [editedPrice, setEditedPrice] = useState<number>(productData.price);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodType>('efectivo');
 
@@ -154,9 +156,22 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
       }
 
       setSuccess(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creando venta:', err);
-      setError(err instanceof Error ? err.message : 'Error desconocido al registrar la venta');
+      const msg = err instanceof Error ? err.message : 'Error desconocido al registrar la venta';
+      // Intentar extraer detail del error si viene como JSON string en el message
+      let detail: string | null = null;
+      if (err?.detail) {
+        detail = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail);
+      } else if (err?.response) {
+        try {
+          const body = await err.response.json();
+          detail = body?.detail ? (typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail)) : null;
+        } catch { /* ignore */ }
+      }
+      setError(msg);
+      setErrorDetail(detail);
+      setShowErrorView(true);
     } finally {
       setLoading(false);
     }
@@ -176,6 +191,42 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
               Volver al Dashboard
             </Button>
           )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (showErrorView && error) {
+    return (
+      <Card className="border-red-200 bg-red-50">
+        <CardContent className="p-6 text-center space-y-3">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
+          <h3 className="text-lg font-semibold text-red-800">Error al Registrar Venta</h3>
+          <p className="text-sm text-red-600">{error}</p>
+          {errorDetail && errorDetail !== error && (
+            <div className="bg-red-100 border border-red-200 rounded-lg p-3 text-left">
+              <p className="text-xs font-medium text-red-700 mb-1">Detalle:</p>
+              <p className="text-xs text-red-600">{errorDetail}</p>
+            </div>
+          )}
+          <div className="flex flex-col items-center gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => { setShowErrorView(false); setError(null); setErrorDetail(null); }}
+              className="border-red-300 text-red-700 hover:bg-red-100"
+            >
+              Intentar de nuevo
+            </Button>
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
         </CardContent>
       </Card>
     );

@@ -86,29 +86,56 @@ export const vendorAPI = {
       return handleResponse(response);
     };
 
+    const token = localStorage.getItem('token');
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${token || ''}`
+    };
+
+    const response = await fetch(`${BACKEND_URL}/api/v1/vendor/sell-from-transfer/${transferId}`, {
+      method: 'POST',
+      headers,
+      body: formData
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const err: any = new Error(body.message || body.detail || `Error ${response.status}`);
+      err.detail = body.detail || null;
+      throw err;
+    }
+
+    return response.json();
+  },
+
+  async instantSingleFoot(data: any) {
+    console.log('⚡ Solicitando transferencia instantánea de pie individual...', data);
+
+    const backendCall = async () => {
+      const response = await fetch(`${BACKEND_URL}/api/v1/transfers/instant-single-foot`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+      });
+      return handleResponse(response);
+    };
+
     const result = await tryBackendFirst(backendCall);
 
     if (result.success) {
       return result.data;
     } else {
-      console.log('📦 Usando respuesta mock para sellFromTransfer');
-      await new Promise(resolve => setTimeout(resolve, 800));
-      const saleId = Math.floor(Math.random() * 10000) + 1000;
-      const totalAmount = formData.get('total_amount');
-      const paymentMethods = JSON.parse(formData.get('payment_methods') as string);
+      console.log('📦 Usando respuesta mock para instantSingleFoot');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const transferId = Math.floor(Math.random() * 1000) + 100;
 
       return {
         success: true,
-        sale_id: saleId,
-        total_amount: totalAmount,
-        payments: paymentMethods,
+        transfer_request_id: transferId,
         status: 'completed',
-        sale_timestamp: new Date().toISOString(),
-        seller_info: { seller_name: 'Vendedor Mock' },
-        receipt_info: {
-          has_receipt: !!formData.get('receipt_image'),
-          stored_in: formData.get('receipt_image') ? 'cloud_storage' : 'none'
-        }
+        estimated_time: 'Instantáneo',
+        priority: 'high',
+        pair_formation_available: true,
+        pairs_can_be_formed: 1
       };
     }
   },
