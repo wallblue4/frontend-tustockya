@@ -344,18 +344,10 @@ export const SellerDashboard: React.FC = () => {
     console.log('🔍 SellerDashboard - Datos preparados para SalesForm:', prefilledData);
     console.log('🔑 SellerDashboard - Transfer ID en prefilledData:', prefilledData.transfer_id);
 
-    // Si viene del scanner sin transfer_id → vista simplificada
-    if (!prefilledData.transfer_id) {
-      setPrefilledProduct(prefilledData);
-      setCurrentView('scanner-sale');
-      console.log('✅ SellerDashboard - Vista cambiada a scanner-sale (venta directa)');
-      return;
-    }
-
-    // Si viene de TransfersView con transfer_id → SalesForm completo (flujo actual)
+    // Siempre usar vista simplificada (ScannerSaleConfirm) para todas las ventas
     setPrefilledProduct(prefilledData);
-    setCurrentView('new-sale');
-    console.log('✅ SellerDashboard - Vista cambiada a new-sale (con transfer_id)');
+    setCurrentView('scanner-sale');
+    console.log('✅ SellerDashboard - Vista cambiada a scanner-sale', prefilledData.transfer_id ? '(desde transferencia)' : '(venta directa)');
   };
 
   const goBack = () => {
@@ -442,9 +434,10 @@ export const SellerDashboard: React.FC = () => {
                   storage_type: prefilledProduct.storage_type,
                   color: prefilledProduct.color,
                   image: prefilledProduct.image?.[0],
+                  transfer_id: prefilledProduct.transfer_id,
                 }}
                 onSaleCompleted={goBack}
-                onBack={goBackToScanner}
+                onBack={prefilledProduct.transfer_id ? goBack : goBackToScanner}
               />
             )}
           </div>

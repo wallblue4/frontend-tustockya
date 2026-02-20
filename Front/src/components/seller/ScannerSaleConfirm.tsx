@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { vendorAPI } from '../../services/api';
+import { vendorAPI as transferVendorAPI } from '../../services/transfersAPI';
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Tag, Loader2, CheckCircle, AlertCircle, DollarSign, ChevronDown, ChevronUp, Percent, Upload } from 'lucide-react';
@@ -15,6 +16,7 @@ interface ScannerSaleConfirmProps {
     storage_type?: string;
     color?: string;
     image?: string;
+    transfer_id?: number;
   };
   onSaleCompleted?: () => void;
   onBack?: () => void;
@@ -101,7 +103,9 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
     setError(null);
 
     try {
-      const autoNotes = `Venta directa desde escaner — ${productData.location || 'N/A'} (${getStorageLabel(productData.storage_type)})`;
+      const autoNotes = productData.transfer_id
+        ? `Venta desde transferencia #${productData.transfer_id} — ${productData.location || 'N/A'} (${getStorageLabel(productData.storage_type)})`
+        : `Venta directa desde escaner — ${productData.location || 'N/A'} (${getStorageLabel(productData.storage_type)})`;
       const fullNotes = notes ? `${autoNotes} | ${notes}` : autoNotes;
 
       const paymentMethod: { type: 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto'; amount: number; reference?: string | null } = {
@@ -112,24 +116,43 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
         paymentMethod.reference = paymentReference;
       }
 
-      const saleData = {
-        items: [{
-          sneaker_reference_code: productData.code,
-          brand: productData.brand,
-          model: productData.model,
-          color: productData.color,
-          size: productData.size,
-          quantity: 1,
-          unit_price: editedPrice
-        }],
-        total_amount: totalAmount,
-        payment_methods: [paymentMethod],
-        notes: fullNotes,
-        requires_confirmation: requiresConfirmation,
-        receipt_image: receiptFile,
-      };
+      if (productData.transfer_id) {
+        // Venta desde transferencia completada — usar endpoint sellFromTransfer
+        const formData = new FormData();
+        formData.append('total_amount', String(totalAmount));
+        formData.append('payment_methods', JSON.stringify([{
+          type: paymentMethod.type,
+          amount: paymentMethod.amount,
+          reference: paymentMethod.reference || null
+        }]));
+        formData.append('notes', fullNotes);
+        if (receiptFile) {
+          formData.append('receipt_image', receiptFile);
+        }
 
-      await vendorAPI.createSale(saleData);
+        await transferVendorAPI.sellFromTransfer(productData.transfer_id, formData);
+      } else {
+        // Venta directa desde escáner — usar endpoint createSale
+        const saleData = {
+          items: [{
+            sneaker_reference_code: productData.code,
+            brand: productData.brand,
+            model: productData.model,
+            color: productData.color,
+            size: productData.size,
+            quantity: 1,
+            unit_price: editedPrice
+          }],
+          total_amount: totalAmount,
+          payment_methods: [paymentMethod],
+          notes: fullNotes,
+          requires_confirmation: requiresConfirmation,
+          receipt_image: receiptFile,
+        };
+
+        await vendorAPI.createSale(saleData);
+      }
+
       setSuccess(true);
     } catch (err) {
       console.error('Error creando venta:', err);

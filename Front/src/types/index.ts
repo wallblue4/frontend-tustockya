@@ -197,6 +197,7 @@ export interface PendingTransferItem {
   product_image: string;
   courier_name: string | null;
   warehouse_keeper_name: string | null;
+  location_name?: string;
 }
 
 export interface PendingTransfersSummary {

@@ -102,6 +102,7 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
           purpose: 'pair_formation' as const,
           pickup_type: pickupType,
           notes: `Transferencia dual: pie izquierdo desde ${dual.left_foot_source.location_name}`,
+          status: 'completed'
         };
 
         const rightPayload = {
@@ -114,6 +115,7 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
           purpose: 'pair_formation' as const,
           pickup_type: pickupType,
           notes: `Transferencia dual: pie derecho desde ${dual.right_foot_source.location_name}`,
+          status: 'completed'
         };
 
         const [leftResponse] = await Promise.all([

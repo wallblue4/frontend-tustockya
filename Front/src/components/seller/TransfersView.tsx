@@ -20,7 +20,10 @@ import {
   DollarSign,
   MapPin,
   ArrowDownCircle,
-  Send
+  Send,
+  LayoutGrid,
+  List,
+  Layers
 } from 'lucide-react';
 
 interface TransfersViewProps {
@@ -74,7 +77,7 @@ interface TransfersViewProps {
 
 // Interfaz para transferencia completada (historial) - Actualizada según respuesta real del API
 interface CompletedTransfer {
-  inventory_type: any;
+  inventory_type: 'pair' | 'left_only' | 'right_only';
   id: number;
   status: 'completed' | 'cancelled';
   sneaker_reference_code: string;
@@ -89,8 +92,10 @@ interface CompletedTransfer {
   completed_at: string | null;
   duration: string;
   next_action: string;
-  product_image?: string; // Campo opcional para la imagen
-  has_return_request?: boolean; // Nuevo campo que indica si ya existe una solicitud de devolución
+  product_image?: string;
+  has_return_request?: boolean;
+  pickup_type?: 'corredor' | 'vendedor';
+  location_name?: string;
 }
 
 export const TransfersView: React.FC<TransfersViewProps> = ({
@@ -122,6 +127,12 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
   // Estados para UI responsivo
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [pendingViewMode, setPendingViewMode] = useState<'grid' | 'list'>('grid');
+  const [groupByRef, setGroupByRef] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [completedViewMode, setCompletedViewMode] = useState<'grid' | 'list'>('grid');
+  const [completedGroupByRef, setCompletedGroupByRef] = useState(false);
+  const [completedExpandedGroups, setCompletedExpandedGroups] = useState<Set<string>>(new Set());
 
   const { user } = useAuth();
   // source_location_id SIEMPRE sale de user.location_id
@@ -926,7 +937,34 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       {activeTab === 'pending' && (
         <Card>
           <CardHeader>
-            <h3 className="text-base md:text-lg font-semibold">Transferencias Pendientes de Confirmación</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base md:text-lg font-semibold">Pendientes de Confirmación</h3>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => { setGroupByRef(!groupByRef); setExpandedGroups(new Set()); }}
+                  className={`p-1.5 rounded-lg transition-colors ${groupByRef ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted/30 text-muted-foreground hover:text-foreground'}`}
+                  aria-label="Agrupar por referencia"
+                >
+                  <Layers className="h-4 w-4" />
+                </button>
+                <div className="flex items-center bg-muted/30 rounded-lg p-0.5">
+                  <button
+                    onClick={() => setPendingViewMode('grid')}
+                    className={`p-1.5 rounded-md transition-colors ${pendingViewMode === 'grid' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    aria-label="Vista grid"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setPendingViewMode('list')}
+                    className={`p-1.5 rounded-md transition-colors ${pendingViewMode === 'list' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    aria-label="Vista lista"
+                  >
+                    <List className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {pendingTransfers.length === 0 ? (
@@ -934,216 +972,299 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 <Package className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground text-sm md:text-base">No tienes transferencias pendientes</p>
               </div>
-            ) : (
-              <div className="space-y-3 md:space-y-4">
-                {pendingTransfers
-                  .sort((a, b) => {
-                    // Ordenar por porcentaje de avance de mayor a menor
-                    const progressA = getProgressPercentage(a);
-                    const progressB = getProgressPercentage(b);
-                    return progressB - progressA;
-                  })
-                  .map((transfer) => (
-                    <div key={transfer.id} className="border border-border rounded-lg p-3 md:p-4 bg-card shadow-sm hover:shadow-lg transition-all duration-300">
-                      <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
-                        <div className="flex-1 min-w-0">
-                          <div className="mb-4">
-                            <div className="bg-gradient-to-br from-muted/20 to-muted/40 rounded-lg flex items-center justify-center">
-                              <img
-                                src={transfer.product_image}
-                                className="w-32 h-48 object-cover rounded-lg border border-border"
-                                alt={`${transfer.brand} ${transfer.model}`}
-                              />
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2 mb-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(transfer)}`}>
-                              {getStatusIcon(transfer)}
-                              <span>{getStatusText(transfer)}</span>
-                            </span>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${transfer.pickup_type === 'corredor' ? 'bg-primary/10 text-primary' : 'bg-success/10 text-success'
-                              }`}>
-                              {transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}
-                            </span>
-                            {transfer.purpose === 'return' && (
-                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted/10 text-muted-foreground">
-                                🔄 Devolución
-                              </span>
-                            )}
-                            {transfer.purpose === 'pair_formation' && (
-                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                                🔗 Formar Par
-                              </span>
-                            )}
-                          </div>
+            ) : (() => {
+              const sorted = [...pendingTransfers].sort((a, b) => getProgressPercentage(b) - getProgressPercentage(a));
 
-                          {/* Barra de progreso */}
-                          <div className="mb-3">
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-xs font-medium text-muted-foreground">Progreso</span>
-                              <span className="text-xs font-bold text-primary">{getProgressPercentage(transfer)}%</span>
-                            </div>
-                            <div className="w-full bg-muted rounded-full h-2">
-                              <div
-                                className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(getProgressPercentage(transfer))}`}
-                                style={{ width: `${getProgressPercentage(transfer)}%` }}
-                              ></div>
-                            </div>
-                          </div>
+              // ===== Helper: renderizar un card individual =====
+              const renderTransferCard = (transfer: PendingTransferItem) => {
+                const isPending = transfer.status === 'pending';
+                const cardBorder = isPending ? 'border-error/40' : 'border-success/40';
+                const cardBg = isPending ? 'bg-error/5' : 'bg-success/5';
+                const statusLabel =
+                  transfer.status === 'pending' ? 'Pendiente' :
+                  transfer.status === 'accepted' ? 'Aceptada' :
+                  transfer.status === 'courier_assigned' ? 'Corredor asignado' :
+                  transfer.status === 'in_transit' ? 'En camino' :
+                  transfer.status === 'delivered' ? 'Entregada' : 'Completada';
+                const inventoryLabel = transfer.purpose === 'pair_formation'
+                  ? (transfer.inventory_type === 'left_only' ? '🦶 Izquierdo' : transfer.inventory_type === 'right_only' ? '🦶 Derecho' : '👟 Par')
+                  : '👟 Par';
 
-                          <h4 className="font-semibold text-sm md:text-lg truncate">
-                            {transfer.brand} {transfer.model}
-                          </h4>
-                          <p className="text-xs md:text-sm text-muted-foreground truncate">
-                            Código: {transfer.sneaker_reference_code} | Talla: {transfer.size} | Cantidad: {transfer.quantity}
-                          </p>
-                          <p className="text-xs md:text-sm text-muted-foreground">
-                            {getNextAction(transfer)}
-                          </p>
+                // Botones de acción compartidos
+                const actionButtons = (compact: boolean) => (
+                  <div className={`flex flex-col ${compact ? 'gap-1.5 mt-2' : 'gap-1.5 mt-2'}`}>
+                    {(transfer.status === 'delivered' && !transfer.is_return) && (
+                      <Button onClick={() => handleConfirmReception(transfer)} className={`bg-success hover:bg-success/90 text-success-foreground w-full ${compact ? 'text-[10px] h-7' : 'text-xs'}`} size="sm">
+                        <CheckCircle className="h-3 w-3 mr-1" /> Confirmar
+                      </Button>
+                    )}
+                    {(transfer.status === 'delivered' && transfer.is_return && transfer.role_in_transfer === 'receiver') && (
+                      <Button onClick={() => handleConfirmReception(transfer)} className={`bg-success hover:bg-success/90 text-success-foreground w-full ${compact ? 'text-[10px] h-7' : 'text-xs'}`} size="sm">
+                        <CheckCircle className="h-3 w-3 mr-1" /> Confirmar Dev.
+                      </Button>
+                    )}
+                    {(transfer.is_return && transfer.role_in_transfer === 'requester' && transfer.status === 'accepted') && (
+                      <Button onClick={() => handleDeliverReturnToWarehouse(transfer.id)} className={`bg-muted text-muted-foreground hover:bg-muted/80 w-full ${compact ? 'text-[10px] h-7' : 'text-xs'}`} size="sm">
+                        <Package className="h-3 w-3 mr-1" /> {compact ? 'A Bodega' : 'Entregar a Bodega'}
+                      </Button>
+                    )}
+                    {(!transfer.is_return && transfer.status === 'accepted') && (
+                      <div className={`bg-warning/10 border border-warning/20 rounded-lg text-center ${compact ? 'p-1.5' : 'p-2'}`}>
+                        <span className="text-[10px] font-medium text-warning">Ir a recoger{!compact && ' a bodega'}</span>
+                      </div>
+                    )}
+                    {transfer.status === 'pending' && (
+                      <Button onClick={() => handleCancelTransfer(transfer.id)} className={`w-full ${compact ? 'text-[10px] h-7' : 'text-xs'}`} size="sm" variant="outline">
+                        <XCircle className="h-3 w-3 mr-1" /> Cancelar
+                      </Button>
+                    )}
+                  </div>
+                );
+
+                if (pendingViewMode === 'grid') {
+                  return (
+                    <div key={transfer.id} className={`border ${cardBorder} rounded-xl overflow-hidden ${cardBg} shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col`}>
+                      <div className="aspect-square bg-muted/20 relative overflow-hidden">
+                        <img src={transfer.product_image} className="absolute inset-0 w-full h-full object-cover" alt={`${transfer.brand} ${transfer.model}`} />
+                        <div className="absolute top-1.5 left-1.5 flex flex-wrap gap-1">
+                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm ${isPending ? 'bg-error/80 text-white' : 'bg-success/80 text-white'}`}>{statusLabel}</span>
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm bg-black/50 text-white">{transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>
                         </div>
-
-                        <div className="text-right flex-shrink-0">
-
-                          {/* Botones de acción */}
-                          <div className="flex flex-col space-y-2 mt-3">
-                            {/* Botones para pickup_type 'corredor' */}
-                            {transfer.pickup_type === 'corredor' && (
-                              <>
-                                {transfer.status === 'delivered' && (
-                                  <Button
-                                    onClick={() => handleConfirmReception(transfer)}
-                                    className="bg-success hover:bg-success/90 text-success-foreground text-sm w-full"
-                                    size="sm"
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Confirmar Recepción
-                                  </Button>
-                                )}
-
-                                {transfer.status === 'pending' && (
-                                  <Button
-                                    onClick={() => handleCancelTransfer(transfer.id)}
-                                    className="bg-error hover:bg-error/90 text-error-foreground text-sm w-full"
-                                    size="sm"
-                                    variant="outline"
-                                  >
-                                    <XCircle className="h-4 w-4 mr-2" />
-                                    Cancelar
-                                  </Button>
-                                )}
-                              </>
-                            )}
-
-                            {/* Botones para pickup_type 'vendedor' */}
-                            {transfer.pickup_type === 'vendedor' && (
-                              <>
-                                {/* CASO 1: Devolución - Status accepted - Debes llevar el producto a bodega */}
-                                {transfer.is_return && transfer.role_in_transfer === 'requester' && transfer.status === 'accepted' && (
-                                  <>
-                                    <div className="p-3 bg-muted/10 border border-muted/20 rounded-lg mb-2">
-                                      <div className="flex items-center space-x-2 mb-1">
-                                        <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                                        <span className="text-sm font-medium text-muted-foreground">
-                                          🔄 Devolución: Debes llevar el producto a la bodega
-                                        </span>
-                                      </div>
-                                      <p className="text-xs text-muted-foreground mt-1">
-                                        Lleva el producto personalmente a la bodega para completar la devolución.
-                                      </p>
-                                    </div>
-                                    <Button
-                                      onClick={() => handleDeliverReturnToWarehouse(transfer.id)}
-                                      className="bg-muted text-muted-foreground hover:bg-muted/80 text-sm w-full"
-                                      size="sm"
-                                    >
-                                      <Package className="h-4 w-4 mr-2" />
-                                      Entregar a Bodeguero
-                                    </Button>
-                                  </>
-                                )}
-
-                                {/* CASO 2: Transferencia normal - Status accepted - Debes ir a recoger */}
-                                {!transfer.is_return && transfer.status === 'accepted' && (
-                                  <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
-                                    <div className="flex items-center space-x-2">
-                                      <AlertCircle className="h-4 w-4 text-warning" />
-                                      <span className="text-sm font-medium text-warning">
-                                        Debes ir a recoger el producto a la bodega
-                                      </span>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* CASO 3: Status delivered - Confirmar recepción */}
-                                {transfer.status === 'delivered' && !transfer.is_return && (
-                                  <Button
-                                    onClick={() => handleConfirmReception(transfer)}
-                                    className="bg-success hover:bg-success/90 text-success-foreground text-sm w-full"
-                                    size="sm"
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Confirmar Recepción
-                                  </Button>
-                                )}
-
-                                {/* CASO 3.1: Status delivered Y is_return Y soy el RECEIVER - Confirmar recepción de devolución */}
-                                {transfer.status === 'delivered' && transfer.is_return && transfer.role_in_transfer === 'receiver' && (
-                                  <Button
-                                    onClick={() => handleConfirmReception(transfer)}
-                                    className="bg-success hover:bg-success/90 text-success-foreground text-sm w-full"
-                                    size="sm"
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Confirmar Devolución
-                                  </Button>
-                                )}
-
-                                {/* CASO 4: Status pending - Cancelar */}
-                                {transfer.status === 'pending' && (
-                                  <Button
-                                    onClick={() => handleCancelTransfer(transfer.id)}
-                                    className="bg-error hover:bg-error/90 text-error-foreground text-sm w-full"
-                                    size="sm"
-                                    variant="outline"
-                                  >
-                                    <XCircle className="h-4 w-4 mr-2" />
-                                    Cancelar
-                                  </Button>
-                                )}
-                              </>
-                            )}
-                          </div>
+                        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex justify-between items-end">
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-bold backdrop-blur-sm bg-black/70 text-white">{transfer.size}</span>
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm bg-black/50 text-white">{inventoryLabel}</span>
                         </div>
                       </div>
-
-                      {/* Información de participantes */}
-                      <div className="mt-3 p-2 md:p-3 bg-muted/5 border border-border rounded-md">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs md:text-sm">
-                          {transfer.pickup_type === 'corredor' ? (
-                            <>
-                              <div>
-                                <strong>Corredor:</strong> {getCourierName(transfer)}
-                              </div>
-                              <div>
-                                <strong>Bodeguero:</strong> {transfer.warehouse_keeper_name || 'Sin asignar'}
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <div>
-                                <strong>Bodeguero:</strong> {transfer.warehouse_keeper_name || 'Sin asignar'}
-                              </div>
-                              <div>
-                                <strong>Tipo:</strong> Recogida por vendedor
-                              </div>
-                            </>
+                      <div className="p-2.5 flex flex-col flex-1 justify-between">
+                        <div>
+                          <div className="flex items-baseline gap-1">
+                            <h4 className="font-bold text-xs leading-tight line-clamp-2">{transfer.brand} {transfer.model}</h4>
+                            <span className="text-xs font-semibold text-muted-foreground shrink-0">x{transfer.quantity}</span>
+                          </div>
+                          {transfer.location_name && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-0.5">
+                              <MapPin className="h-3 w-3 shrink-0" />{transfer.location_name}
+                            </p>
+                          )}
+                          {transfer.purpose === 'return' && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>
+                            </div>
                           )}
                         </div>
+                        {actionButtons(true)}
                       </div>
                     </div>
-                  ))}
-              </div>
-            )}
+                  );
+                }
+
+                // MODO LISTA
+                return (
+                  <div key={transfer.id} className={`border ${cardBorder} rounded-xl overflow-hidden ${cardBg} shadow-sm hover:shadow-lg transition-all duration-300`}>
+                    <div className="flex flex-row">
+                      <div className="w-2/5 md:w-1/3 aspect-square bg-muted/20 flex-shrink-0 relative overflow-hidden">
+                        <img src={transfer.product_image} className="absolute inset-0 w-full h-full object-cover" alt={`${transfer.brand} ${transfer.model}`} />
+                        <div className="absolute top-1.5 left-1.5 flex flex-wrap gap-1">
+                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm ${isPending ? 'bg-error/80 text-white' : 'bg-success/80 text-white'}`}>{statusLabel}</span>
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm bg-black/50 text-white">{transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>
+                        </div>
+                        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex justify-between items-end">
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-bold backdrop-blur-sm bg-black/70 text-white">{transfer.size}</span>
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm bg-black/50 text-white">{inventoryLabel}</span>
+                        </div>
+                      </div>
+                      <div className="w-3/5 md:w-2/3 p-3 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-baseline gap-1.5">
+                            <h4 className="font-bold text-sm leading-tight">{transfer.brand} {transfer.model}</h4>
+                            <span className="text-sm font-semibold text-muted-foreground shrink-0">x{transfer.quantity}</span>
+                          </div>
+                          {transfer.location_name && (
+                            <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-0.5">
+                              <MapPin className="h-3 w-3 shrink-0" />{transfer.location_name}
+                            </p>
+                          )}
+                          {transfer.purpose === 'return' && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Devolución</span>
+                            </div>
+                          )}
+                        </div>
+                        {actionButtons(false)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              };
+
+              // ===== MODO SIN AGRUPAR =====
+              if (!groupByRef) {
+                return (
+                  <div className={pendingViewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2'}>
+                    {sorted.map(renderTransferCard)}
+                  </div>
+                );
+              }
+
+              // ===== MODO AGRUPADO POR REFERENCIA =====
+              const groups: Record<string, PendingTransferItem[]> = {};
+              sorted.forEach((t) => {
+                const key = t.sneaker_reference_code;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(t);
+              });
+
+              const toggleGroup = (key: string) => {
+                setExpandedGroups((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(key)) next.delete(key); else next.add(key);
+                  return next;
+                });
+              };
+
+              // Helper: renderizar item compacto dentro de un grupo (sin imagen ni datos repetidos)
+              const renderGroupedItem = (transfer: PendingTransferItem) => {
+                const isPending = transfer.status === 'pending';
+                const statusLabel =
+                  transfer.status === 'pending' ? 'Pendiente' :
+                  transfer.status === 'accepted' ? 'Aceptada' :
+                  transfer.status === 'courier_assigned' ? 'Corredor asignado' :
+                  transfer.status === 'in_transit' ? 'En camino' :
+                  transfer.status === 'delivered' ? 'Entregada' : 'Completada';
+                const inventoryLabel = transfer.purpose === 'pair_formation'
+                  ? (transfer.inventory_type === 'left_only' ? '🦶 Izq' : transfer.inventory_type === 'right_only' ? '🦶 Der' : '👟 Par')
+                  : '👟 Par';
+
+                const itemActions = (
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {(transfer.status === 'delivered' && !transfer.is_return) && (
+                      <Button onClick={() => handleConfirmReception(transfer)} className="bg-success hover:bg-success/90 text-success-foreground text-[10px] h-7 px-2" size="sm">
+                        <CheckCircle className="h-3 w-3 mr-1" /> Confirmar
+                      </Button>
+                    )}
+                    {(transfer.status === 'delivered' && transfer.is_return && transfer.role_in_transfer === 'receiver') && (
+                      <Button onClick={() => handleConfirmReception(transfer)} className="bg-success hover:bg-success/90 text-success-foreground text-[10px] h-7 px-2" size="sm">
+                        <CheckCircle className="h-3 w-3 mr-1" /> Confirmar Dev.
+                      </Button>
+                    )}
+                    {(transfer.is_return && transfer.role_in_transfer === 'requester' && transfer.status === 'accepted') && (
+                      <Button onClick={() => handleDeliverReturnToWarehouse(transfer.id)} className="bg-muted text-muted-foreground hover:bg-muted/80 text-[10px] h-7 px-2" size="sm">
+                        <Package className="h-3 w-3 mr-1" /> A Bodega
+                      </Button>
+                    )}
+                    {(!transfer.is_return && transfer.status === 'accepted') && (
+                      <span className="px-2 py-1 rounded-lg text-[10px] font-medium bg-warning/10 border border-warning/20 text-warning">Ir a recoger</span>
+                    )}
+                    {transfer.status === 'pending' && (
+                      <Button onClick={() => handleCancelTransfer(transfer.id)} className="text-[10px] h-7 px-2" size="sm" variant="outline">
+                        <XCircle className="h-3 w-3 mr-1" /> Cancelar
+                      </Button>
+                    )}
+                  </div>
+                );
+
+                return (
+                  <div key={transfer.id} className={`flex items-start gap-3 p-2.5 rounded-lg border ${isPending ? 'border-error/30 bg-error/5' : 'border-success/30 bg-success/5'}`}>
+                    <div className="flex flex-col items-center gap-1 shrink-0">
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-black/70 text-white">{transfer.size}</span>
+                      <span className="text-xs font-semibold text-muted-foreground">x{transfer.quantity}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${isPending ? 'bg-error/80 text-white' : 'bg-success/80 text-white'}`}>{statusLabel}</span>
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{inventoryLabel}</span>
+                        {transfer.purpose === 'return' && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>
+                        )}
+                      </div>
+                      {transfer.location_name && (
+                        <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-0.5">
+                          <MapPin className="h-3 w-3 shrink-0" />{transfer.location_name}
+                        </p>
+                      )}
+                      {itemActions}
+                    </div>
+                  </div>
+                );
+              };
+
+              // Helper: agrupar cantidades por talla + inventory_type
+              const sizeSummary = (items: PendingTransferItem[]) => {
+                const sizeMap: Record<string, { qty: number; type: string }> = {};
+                items.forEach((t) => {
+                  const typeLabel = t.purpose === 'pair_formation'
+                    ? (t.inventory_type === 'left_only' ? '🦶I' : t.inventory_type === 'right_only' ? '🦶D' : '👟')
+                    : '👟';
+                  const key = `${t.size}|${typeLabel}`;
+                  if (!sizeMap[key]) sizeMap[key] = { qty: 0, type: typeLabel };
+                  sizeMap[key].qty += t.quantity;
+                });
+                return Object.entries(sizeMap)
+                  .map(([key, val]) => ({ size: key.split('|')[0], type: val.type, qty: val.qty }))
+                  .sort((a, b) => parseFloat(a.size) - parseFloat(b.size) || a.type.localeCompare(b.type));
+              };
+
+              return (
+                <div className="space-y-3">
+                  {Object.entries(groups).map(([refCode, items]) => {
+                    const isExpanded = expandedGroups.has(refCode);
+                    const first = items[0];
+                    const totalQty = items.reduce((s, t) => s + t.quantity, 0);
+                    const hasPending = items.some((t) => t.status === 'pending');
+                    const allAccepted = items.every((t) => t.status !== 'pending');
+                    const sizeEntries = sizeSummary(items);
+
+                    return (
+                      <div key={refCode} className={`border rounded-xl overflow-hidden transition-all duration-300 ${hasPending ? 'border-error/30' : 'border-success/30'}`}>
+                        {/* Cabecera del grupo */}
+                        <button
+                          onClick={() => toggleGroup(refCode)}
+                          className={`w-full flex items-center gap-3 p-3 text-left transition-colors ${hasPending ? 'bg-error/5 hover:bg-error/10' : 'bg-success/5 hover:bg-success/10'}`}
+                        >
+                          {/* Miniatura */}
+                          <div className="w-14 h-14 md:w-16 md:h-16 rounded-lg overflow-hidden bg-muted/20 flex-shrink-0">
+                            <img src={first.product_image} className="w-full h-full object-cover" alt={`${first.brand} ${first.model}`} />
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-1.5">
+                              <h4 className="font-bold text-sm leading-tight truncate">{first.brand} {first.model}</h4>
+                              <span className="text-sm font-semibold text-muted-foreground shrink-0">x{totalQty}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {sizeEntries.map((entry, i) => (
+                                <span key={`${entry.size}-${entry.type}-${i}`} className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-black/70 text-white">
+                                  {entry.size} {entry.type} <span className="font-normal opacity-80">x{entry.qty}</span>
+                                </span>
+                              ))}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              {items.length} transferencia{items.length > 1 ? 's' : ''} · {allAccepted ? <span className="text-success font-medium">Todo aceptado</span> : <span className="text-error font-medium">{items.filter((t) => t.status === 'pending').length} pendiente{items.filter((t) => t.status === 'pending').length > 1 ? 's' : ''}</span>}
+                            </p>
+                          </div>
+
+                          {/* Chevron */}
+                          <div className="shrink-0">
+                            {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                          </div>
+                        </button>
+
+                        {/* Contenido expandido: items compactos sin info repetida */}
+                        {isExpanded && (
+                          <div className={`p-3 border-t ${hasPending ? 'border-error/20' : 'border-success/20'}`}>
+                            <div className="space-y-2">
+                              {items.map(renderGroupedItem)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       )}
@@ -1151,7 +1272,34 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       {activeTab === 'completed' && (
         <Card>
           <CardHeader>
-            <h3 className="text-base md:text-lg font-semibold">Transferencias Completadas</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base md:text-lg font-semibold">Transferencias Completadas</h3>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => { setCompletedGroupByRef(!completedGroupByRef); setCompletedExpandedGroups(new Set()); }}
+                  className={`p-1.5 rounded-lg transition-colors ${completedGroupByRef ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted/30 text-muted-foreground hover:text-foreground'}`}
+                  aria-label="Agrupar por referencia"
+                >
+                  <Layers className="h-4 w-4" />
+                </button>
+                <div className="flex items-center bg-muted/30 rounded-lg p-0.5">
+                  <button
+                    onClick={() => setCompletedViewMode('grid')}
+                    className={`p-1.5 rounded-md transition-colors ${completedViewMode === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    aria-label="Vista cuadrícula"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setCompletedViewMode('list')}
+                    className={`p-1.5 rounded-md transition-colors ${completedViewMode === 'list' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    aria-label="Vista lista"
+                  >
+                    <List className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {completedTransfers.filter((t) => !t.has_return_request).length === 0 ? (
@@ -1159,121 +1307,238 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 <CheckCircle className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground text-sm md:text-base">No hay transferencias completadas hoy</p>
               </div>
-            ) : (
-              <div className="space-y-3 md:space-y-4">
-                {completedTransfers.filter((t) => !t.has_return_request).map((transfer) => (
-                  <div key={transfer.id} className="border border-border rounded-lg p-3 md:p-4 bg-card shadow-sm hover:shadow-lg transition-all duration-300">
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
+            ) : (() => {
+              const filtered = completedTransfers.filter((t) => !t.has_return_request);
+
+              // Helper: card individual de completada
+              const renderCompletedCard = (transfer: CompletedTransfer) => {
+                const isCompleted = transfer.status === 'completed';
+                const cardBorder = isCompleted ? 'border-success/40' : 'border-error/40';
+                const cardBg = isCompleted ? 'bg-success/5' : 'bg-error/5';
+                const statusLabel = isCompleted ? 'Completada' : 'Cancelada';
+                const inventoryLabel = transfer.purpose === 'pair_formation'
+                  ? (transfer.inventory_type === 'left_only' ? '🦶 Izquierdo' : transfer.inventory_type === 'right_only' ? '🦶 Derecho' : '👟 Par')
+                  : '👟 Par';
+                const isReturn = String(transfer.purpose).toLowerCase().trim() === 'return';
+
+                const completedActions = (compact: boolean) => {
+                  if (!isCompleted) return null;
+                  if (isReturn) {
+                    return (
+                      <div className={`bg-muted/10 border border-muted/20 rounded-lg text-center ${compact ? 'p-1.5 mt-1.5' : 'p-2 mt-2'}`}>
+                        <span className="text-[10px] font-medium text-muted-foreground">✅ Dev. completada</span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className={`flex flex-col ${compact ? 'gap-1.5 mt-2' : 'gap-1.5 mt-2'}`}>
+                      <Button onClick={() => handleSellFromCompletedTransfer(transfer)} className={`bg-primary hover:bg-primary/90 text-primary-foreground w-full ${compact ? 'text-[10px] h-7' : 'text-xs'}`} size="sm">
+                        <DollarSign className="h-3 w-3 mr-1" /> Vender
+                      </Button>
+                      <Button onClick={() => handleGenerateReturn(transfer)} className={`bg-muted text-muted-foreground hover:bg-muted/80 w-full ${compact ? 'text-[10px] h-7' : 'text-xs'}`} size="sm">
+                        <Package className="h-3 w-3 mr-1" /> {compact ? 'Devolver' : 'Generar Devolución'}
+                      </Button>
+                    </div>
+                  );
+                };
+
+                if (completedViewMode === 'grid') {
+                  return (
+                    <div key={transfer.id} className={`border ${cardBorder} rounded-xl overflow-hidden ${cardBg} shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col p-2.5`}>
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${isCompleted ? 'bg-success/80 text-white' : 'bg-error/80 text-white'}`}>{statusLabel}</span>
+                        {transfer.pickup_type && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>}
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-black/70 text-white">{transfer.size}</span>
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{inventoryLabel}</span>
+                      </div>
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-baseline gap-1">
+                            <h4 className="font-bold text-xs leading-tight line-clamp-2">{transfer.brand} {transfer.model}</h4>
+                            <span className="text-xs font-semibold text-muted-foreground shrink-0">x{transfer.quantity}</span>
+                          </div>
+                          {transfer.location_name && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-0.5">
+                              <MapPin className="h-3 w-3 shrink-0" />{transfer.location_name}
+                            </p>
+                          )}
+                          {isReturn && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>
+                            </div>
+                          )}
+                        </div>
+                        {completedActions(true)}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // MODO LISTA
+                return (
+                  <div key={transfer.id} className={`border ${cardBorder} rounded-xl overflow-hidden ${cardBg} shadow-sm hover:shadow-lg transition-all duration-300 p-3`}>
+                    <div className="flex items-start gap-3">
+                      <div className="flex flex-col items-center gap-1 shrink-0">
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-black/70 text-white">{transfer.size}</span>
+                        <span className="text-xs font-semibold text-muted-foreground">x{transfer.quantity}</span>
+                      </div>
                       <div className="flex-1 min-w-0">
-                        {/* Imagen del producto */}
-                        <div className="mb-4">
-                          <div className="bg-gradient-to-br from-muted/20 to-muted/40 rounded-lg flex items-center justify-center">
-                            {transfer.product_image && (
-                              <img
-                                src={transfer.product_image}
-                                className="w-32 h-48 object-cover rounded-lg border border-border"
-                                alt={`${transfer.brand} ${transfer.model}`}
-                              />
-                            )}
-                          </div>
+                        <div className="flex items-baseline gap-1.5">
+                          <h4 className="font-bold text-sm leading-tight">{transfer.brand} {transfer.model}</h4>
                         </div>
-
-                        {/* Estado */}
-                        <div className="flex items-center space-x-2 mb-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${transfer.status === 'completed' ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
-                            }`}>
-                            {transfer.status === 'completed' ? '✅ Completada' : '❌ Cancelada'}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${transfer.priority === 'high' ? 'bg-error/10 text-error' : 'bg-primary/10 text-primary'
-                            }`}>
-                            {transfer.priority === 'high' ? '🔥 Urgente' : '📦 Normal'}
-                          </span>
-                          {transfer.purpose === 'pair_formation' && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                              🔗 Formar Par
-                            </span>
-                          )}
-                          {String(transfer.purpose).toLowerCase().trim() === 'return' && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted/10 text-muted-foreground">
-                              🔄 Devolución
-                            </span>
-                          )}
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${isCompleted ? 'bg-success/80 text-white' : 'bg-error/80 text-white'}`}>{statusLabel}</span>
+                          {transfer.pickup_type && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>}
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{inventoryLabel}</span>
+                          {isReturn && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>}
                         </div>
-
-                        {/* Información del producto */}
-                        <h4 className="font-semibold text-sm md:text-lg truncate mb-2">
-                          {transfer.brand} {transfer.model}
-                        </h4>
-                        <p className="text-xs md:text-sm text-muted-foreground truncate mb-2">
-                          Código: {transfer.sneaker_reference_code} | Talla: {transfer.size} | Cantidad: {transfer.quantity}
-                        </p>
-
-                        {/* Propósito */}
-                        <div className="text-xs md:text-sm mb-3">
-                          <span className="text-muted-foreground">Propósito:</span>
-                          <span className="font-medium ml-1">
-                            {String(transfer.purpose).toLowerCase().trim() === 'cliente' ? '🏃‍♂️ Cliente' :
-                              String(transfer.purpose).toLowerCase().trim() === 'pair_formation' ? '🔗 Formar Par' :
-                                String(transfer.purpose).toLowerCase().trim() === 'return' ? '🔄 Devolución' : '📦 Restock'}
-                          </span>
-                        </div>
-
-                        {/* Fechas */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-muted-foreground mb-3">
-                          <div>
-                            <strong>Solicitado:</strong> {new Date(transfer.requested_at).toLocaleString()}
-                          </div>
-                        </div>
-
-                        {/* Botones de acción - SOLO para transferencias completadas */}
-                        {transfer.status === 'completed' && (
-                          <>
-                            {/* Caso especial: Devolución completada - Sin acciones disponibles */}
-                            {(() => {
-                              const purposeValue = String(transfer.purpose).toLowerCase().trim();
-                              console.log('🔍 Debug - Transfer ID:', transfer.id, 'Purpose:', transfer.purpose, 'Normalized:', purposeValue, 'Is Return:', purposeValue === 'return');
-                              return purposeValue === 'return';
-                            })() ? (
-                              <div className="p-3 bg-muted/10 border border-muted/20 rounded-lg mt-3">
-                                <div className="flex items-center space-x-2">
-                                  <CheckCircle className="h-4 w-4 text-success" />
-                                  <span className="text-sm font-medium text-muted-foreground">
-                                    ✅ Devolución completada - No hay acciones disponibles
-                                  </span>
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  Esta devolución ha sido completada y procesada. No se requieren más acciones de tu parte.
-                                </p>
-                              </div>
-                            ) : (
-                              /* Transferencias normales completadas - Mostrar botones de acción */
-                              <div className="flex flex-col md:flex-row gap-2 mt-3">
-                                <Button
-                                  onClick={() => handleGenerateReturn(transfer)}
-                                  className="bg-muted text-muted-foreground hover:bg-muted/80 text-sm flex-1"
-                                  size="sm"
-                                >
-                                  <Package className="h-4 w-4 mr-2" />
-                                  Generar Devolución
-                                </Button>
-                                <Button
-                                  onClick={() => handleSellFromCompletedTransfer(transfer)}
-                                  className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm flex-1"
-                                  size="sm"
-                                >
-                                  <DollarSign className="h-4 w-4 mr-2" />
-                                  Vender
-                                </Button>
-                              </div>
-                            )}
-                          </>
+                        {transfer.location_name && (
+                          <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-0.5">
+                            <MapPin className="h-3 w-3 shrink-0" />{transfer.location_name}
+                          </p>
                         )}
+                        {completedActions(false)}
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              };
+
+              // MODO SIN AGRUPAR
+              if (!completedGroupByRef) {
+                return (
+                  <div className={completedViewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2'}>
+                    {filtered.map(renderCompletedCard)}
+                  </div>
+                );
+              }
+
+              // MODO AGRUPADO POR REFERENCIA
+              const cGroups: Record<string, CompletedTransfer[]> = {};
+              filtered.forEach((t) => {
+                const key = t.sneaker_reference_code;
+                if (!cGroups[key]) cGroups[key] = [];
+                cGroups[key].push(t);
+              });
+
+              const toggleCompletedGroup = (key: string) => {
+                setCompletedExpandedGroups((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(key)) next.delete(key); else next.add(key);
+                  return next;
+                });
+              };
+
+              // Helper: item compacto dentro de grupo completado
+              const renderCompletedGroupedItem = (transfer: CompletedTransfer) => {
+                const isCompleted = transfer.status === 'completed';
+                const statusLabel = isCompleted ? 'Completada' : 'Cancelada';
+                const inventoryLabel = transfer.purpose === 'pair_formation'
+                  ? (transfer.inventory_type === 'left_only' ? '🦶 Izq' : transfer.inventory_type === 'right_only' ? '🦶 Der' : '👟 Par')
+                  : '👟 Par';
+                const isReturn = String(transfer.purpose).toLowerCase().trim() === 'return';
+
+                const itemActions = isCompleted && !isReturn ? (
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    <Button onClick={() => handleSellFromCompletedTransfer(transfer)} className="bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] h-7 px-2" size="sm">
+                      <DollarSign className="h-3 w-3 mr-1" /> Vender
+                    </Button>
+                    <Button onClick={() => handleGenerateReturn(transfer)} className="bg-muted text-muted-foreground hover:bg-muted/80 text-[10px] h-7 px-2" size="sm">
+                      <Package className="h-3 w-3 mr-1" /> Devolver
+                    </Button>
+                  </div>
+                ) : isReturn ? (
+                  <span className="text-[10px] text-muted-foreground mt-1 inline-block">✅ Dev. completada</span>
+                ) : null;
+
+                return (
+                  <div key={transfer.id} className={`flex items-start gap-3 p-2.5 rounded-lg border ${isCompleted ? 'border-success/30 bg-success/5' : 'border-error/30 bg-error/5'}`}>
+                    <div className="flex flex-col items-center gap-1 shrink-0">
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-black/70 text-white">{transfer.size}</span>
+                      <span className="text-xs font-semibold text-muted-foreground">x{transfer.quantity}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${isCompleted ? 'bg-success/80 text-white' : 'bg-error/80 text-white'}`}>{statusLabel}</span>
+                        {transfer.pickup_type && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>}
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{inventoryLabel}</span>
+                        {isReturn && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>}
+                      </div>
+                      {transfer.location_name && (
+                        <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-0.5">
+                          <MapPin className="h-3 w-3 shrink-0" />{transfer.location_name}
+                        </p>
+                      )}
+                      {itemActions}
+                    </div>
+                  </div>
+                );
+              };
+
+              // Helper: agrupar cantidades por talla + inventory_type para completadas
+              const completedSizeSummary = (items: CompletedTransfer[]) => {
+                const sizeMap: Record<string, { qty: number; type: string }> = {};
+                items.forEach((t) => {
+                  const typeLabel = t.purpose === 'pair_formation'
+                    ? (t.inventory_type === 'left_only' ? '🦶I' : t.inventory_type === 'right_only' ? '🦶D' : '👟')
+                    : '👟';
+                  const key = `${t.size}|${typeLabel}`;
+                  if (!sizeMap[key]) sizeMap[key] = { qty: 0, type: typeLabel };
+                  sizeMap[key].qty += t.quantity;
+                });
+                return Object.entries(sizeMap)
+                  .map(([key, val]) => ({ size: key.split('|')[0], type: val.type, qty: val.qty }))
+                  .sort((a, b) => parseFloat(a.size) - parseFloat(b.size) || a.type.localeCompare(b.type));
+              };
+
+              return (
+                <div className="space-y-3">
+                  {Object.entries(cGroups).map(([refCode, items]) => {
+                    const isExpanded = completedExpandedGroups.has(refCode);
+                    const first = items[0];
+                    const totalQty = items.reduce((s, t) => s + t.quantity, 0);
+                    const allCompleted = items.every((t) => t.status === 'completed');
+                    const sizeEntries = completedSizeSummary(items);
+
+                    return (
+                      <div key={refCode} className={`border rounded-xl overflow-hidden transition-all duration-300 ${allCompleted ? 'border-success/30' : 'border-error/30'}`}>
+                        <button
+                          onClick={() => toggleCompletedGroup(refCode)}
+                          className={`w-full flex items-center gap-3 p-3 text-left transition-colors ${allCompleted ? 'bg-success/5 hover:bg-success/10' : 'bg-error/5 hover:bg-error/10'}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-1.5">
+                              <h4 className="font-bold text-sm leading-tight truncate">{first.brand} {first.model}</h4>
+                              <span className="text-sm font-semibold text-muted-foreground shrink-0">x{totalQty}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {sizeEntries.map((entry, i) => (
+                                <span key={`${entry.size}-${entry.type}-${i}`} className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-black/70 text-white">
+                                  {entry.size} {entry.type} <span className="font-normal opacity-80">x{entry.qty}</span>
+                                </span>
+                              ))}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              {items.length} transferencia{items.length > 1 ? 's' : ''} · {allCompleted ? <span className="text-success font-medium">Todas completadas</span> : <span className="text-error font-medium">{items.filter((t) => t.status === 'cancelled').length} cancelada{items.filter((t) => t.status === 'cancelled').length > 1 ? 's' : ''}</span>}
+                            </p>
+                          </div>
+                          <div className="shrink-0">
+                            {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                          </div>
+                        </button>
+                        {isExpanded && (
+                          <div className={`p-3 border-t ${allCompleted ? 'border-success/20' : 'border-error/20'}`}>
+                            <div className="space-y-2">
+                              {items.map(renderCompletedGroupedItem)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       )}
