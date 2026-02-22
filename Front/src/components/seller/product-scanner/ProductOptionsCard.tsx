@@ -12,13 +12,15 @@ interface ProductOptionsCardProps {
   onAction: (product: ProductOption, selectedSize: string, pickupType: 'vendedor' | 'corredor') => void;
   error?: string | null;
   onClearError?: () => void;
+  hideConfidence?: boolean;
 }
 
 const ProductOptionItem: React.FC<{
   option: ProductOption;
   sizes: SizeInfo[];
   onAction: (product: ProductOption, selectedSize: string, pickupType: 'vendedor' | 'corredor') => void;
-}> = ({ option, sizes, onAction }) => {
+  hideConfidence?: boolean;
+}> = ({ option, sizes, onAction, hideConfidence }) => {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const confidenceStyles = getConfidenceCircleStyles(option.confidence_level);
   const confidenceTextColor = confidenceStyles.split(' ')[1];
@@ -85,14 +87,16 @@ const ProductOptionItem: React.FC<{
             <p className="text-[11px] text-muted-foreground truncate">
               {option.brand} &bull; {option.model}
             </p>
-            <div className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${confidenceStyles}`}>
-                <span className="text-[9px] font-bold">{option.confidence?.toFixed(0)}%</span>
+            {!hideConfidence && (
+              <div className="flex items-center gap-2">
+                <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${confidenceStyles}`}>
+                  <span className="text-[9px] font-bold">{option.confidence?.toFixed(0)}%</span>
+                </div>
+                <span className={`text-[10px] font-semibold ${confidenceTextColor}`}>
+                  {getConfidenceLevelText(option.confidence_level)}
+                </span>
               </div>
-              <span className={`text-[10px] font-semibold ${confidenceTextColor}`}>
-                {getConfidenceLevelText(option.confidence_level)}
-              </span>
-            </div>
+            )}
             <span className="text-primary font-bold text-sm">{formatCurrency(option.inventory.pricing.unit_price)}</span>
           </div>
 
@@ -109,14 +113,16 @@ const ProductOptionItem: React.FC<{
                   {option.brand} &bull; {option.model}
                 </p>
               </div>
-              <div className="flex flex-col items-center shrink-0">
-                <div className={`w-11 h-11 rounded-full border-[3px] flex items-center justify-center ${confidenceStyles}`}>
-                  <span className="text-[11px] font-bold">{option.confidence?.toFixed(0)}%</span>
+              {!hideConfidence && (
+                <div className="flex flex-col items-center shrink-0">
+                  <div className={`w-11 h-11 rounded-full border-[3px] flex items-center justify-center ${confidenceStyles}`}>
+                    <span className="text-[11px] font-bold">{option.confidence?.toFixed(0)}%</span>
+                  </div>
+                  <span className={`text-[10px] font-semibold mt-0.5 ${confidenceTextColor}`}>
+                    {getConfidenceLevelText(option.confidence_level)}
+                  </span>
                 </div>
-                <span className={`text-[10px] font-semibold mt-0.5 ${confidenceTextColor}`}>
-                  {getConfidenceLevelText(option.confidence_level)}
-                </span>
-              </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between">
@@ -214,7 +220,7 @@ const ProductOptionItem: React.FC<{
   );
 };
 
-export const ProductOptionsCard: React.FC<ProductOptionsCardProps> = ({ options, sizesMap, onAction, error, onClearError }) => {
+export const ProductOptionsCard: React.FC<ProductOptionsCardProps> = ({ options, sizesMap, onAction, error, onClearError, hideConfidence }) => {
   const errorRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -247,6 +253,7 @@ export const ProductOptionsCard: React.FC<ProductOptionsCardProps> = ({ options,
               option={option}
               sizes={sizesMap.get(option.id) || []}
               onAction={onAction}
+              hideConfidence={hideConfidence}
             />
           ))}
         </div>

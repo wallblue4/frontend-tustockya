@@ -957,7 +957,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
       {/* Resultados de búsqueda / escaneo */}
       {currentStep === 'options' && scanOptions.length > 0 && (
-        <ProductOptionsCard options={scanOptions} sizesMap={sizesMap} onAction={handleDirectAction} error={error} onClearError={() => setError(null)} />
+        <ProductOptionsCard options={scanOptions} sizesMap={sizesMap} onAction={handleDirectAction} error={error} onClearError={() => setError(null)} hideConfidence={searchMode} />
       )}
 
       {currentStep === 'options' && scanOptions.length === 0 && !isScanning && !isSearching && !searchMode && (
