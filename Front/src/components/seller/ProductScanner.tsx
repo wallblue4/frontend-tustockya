@@ -945,15 +945,13 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     setCurrentStep('options');
   };
 
-  const showSearchBar = currentStep === 'options' || (searchMode && currentStep !== 'details');
-
   return (
     <div className="space-y-6">
 
       {currentStep === 'processing' && !searchMode && <ProcessingCard />}
 
-      {/* SearchBar siempre visible en modo opciones / búsqueda — memoizado para no re-renderizar al cambiar resultados */}
-      {showSearchBar && (
+      {/* SearchBar solo visible en modo búsqueda por texto, nunca tras escaneo por imagen */}
+      {searchMode && currentStep !== 'details' && (
         <SearchBar onSearch={handleTextSearch} isSearching={isSearching} />
       )}
 
