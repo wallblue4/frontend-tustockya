@@ -132,7 +132,7 @@ import { EditProductInfoModal } from '../../components/admin/EditProductInfoModa
 
 // Import inventory types and API
 import type { AdminInventoryLocation, AdminInventoryProduct, AdminInventorySize } from '../../types';
-import { adjustInventory, adjustProductPrice, updateProductInfo, fetchAdminInventory } from '../../services/adminAPI';
+import { adjustInventory, adjustProductPrice, updateProductInfo, fetchAdminInventory, deleteProductReference } from '../../services/adminAPI';
 
 type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics' | 'transfers';
 
@@ -1578,6 +1578,45 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
     }
   };
 
+  const [deletingProductId, setDeletingProductId] = useState<number | null>(null);
+
+  const handleDeleteProductReference = async (product: AdminInventoryProduct) => {
+    const confirmed = window.confirm(
+      `¿Estas seguro de que deseas ELIMINAR COMPLETAMENTE la referencia "${product.brand} ${product.model}" (${product.reference_code})?\n\nEsta accion desactivara el producto y eliminara sus vectores de IA. No se puede deshacer.`
+    );
+    if (!confirmed) return;
+
+    setDeletingProductId(product.product_id);
+    try {
+      const data = await deleteProductReference(product.product_id);
+
+      if (data.jobs_with_errors > 0) {
+        alert(
+          `Referencia ${data.reference_code} eliminada.\n\n` +
+          `Producto: ${data.brand} ${data.model}\n` +
+          `Vectores de IA eliminados: ${data.vectors_deleted}\n` +
+          `Jobs limpiados: ${data.jobs_cleaned}/${data.jobs_found}\n\n` +
+          `${data.jobs_with_errors} job(s) con error al limpiar vectores de IA.\n` +
+          `El producto fue desactivado correctamente.`
+        );
+      } else {
+        alert(
+          `Referencia ${data.reference_code} eliminada completamente.\n\n` +
+          `Producto: ${data.brand} ${data.model}\n` +
+          `Vectores de IA eliminados: ${data.vectors_deleted}\n` +
+          `Jobs limpiados: ${data.jobs_cleaned}/${data.jobs_found}`
+        );
+      }
+
+      await loadAdminInventory();
+    } catch (error: any) {
+      console.error('Error eliminando referencia:', error);
+      alert(error.message || 'Error al eliminar la referencia.');
+    } finally {
+      setDeletingProductId(null);
+    }
+  };
+
   const getInventoryTypeLabel = (type: string) => {
     switch (type) {
       case 'pair': return 'Par';
@@ -2772,13 +2811,13 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                             const isExpanded = expandedProducts.has(productKey);
 
                             return (
-                              <Card key={product.product_id} className="border border-border overflow-hidden">
+                              <Card key={product.product_id} className="border border-border">
                                 <CardContent className="p-4">
                                   {/* Product Summary - Always visible */}
                                   <div className="flex space-x-3">
                                     {/* Imagen del producto */}
                                     <div className="flex-shrink-0">
-                                      <div className="w-20 h-28 rounded-lg overflow-hidden border border-border bg-muted">
+                                      <div className="w-16 h-22 sm:w-20 sm:h-28 rounded-lg overflow-hidden border border-border bg-muted">
                                         <img
                                           src={product.image_url || `https://via.placeholder.com/80x112/e5e7eb/6b7280?text=${encodeURIComponent(product.brand)}`}
                                           alt={`${product.brand} ${product.model}`}
@@ -2795,56 +2834,21 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
 
                                     {/* Info del producto */}
                                     <div className="flex-1 min-w-0">
-                                      <div className="flex items-start justify-between mb-1">
-                                        <h4 className="font-semibold text-sm leading-tight text-foreground">
+                                      <div className="flex items-start justify-between gap-2 mb-1">
+                                        <h4 className="font-semibold text-sm leading-tight text-foreground truncate">
                                           {product.brand} {product.model}
                                         </h4>
-                                        <span className="bg-primary text-primary-foreground px-2 py-1 rounded-full text-xs font-medium">
+                                        <span className="flex-shrink-0 bg-primary text-primary-foreground px-2 py-0.5 rounded-full text-xs font-medium">
                                           {product.total_quantity}
                                         </span>
                                       </div>
-                                      <p className="text-xs text-muted-foreground font-mono mb-2">
+                                      <p className="text-xs text-muted-foreground font-mono truncate mb-1">
                                         {product.reference_code}
                                       </p>
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-sm font-bold text-success">
-                                          {formatCurrency(parseFloat(product.unit_price))}
-                                        </span>
-                                        <div className="relative">
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() => setOpenEditDropdown(openEditDropdown === product.reference_code ? null : product.reference_code)}
-                                            className="text-xs h-7 px-2"
-                                          >
-                                            <Edit className="h-3 w-3 mr-1" />
-                                            Editar
-                                            <ChevronDown className="h-3 w-3 ml-1" />
-                                          </Button>
-                                          {openEditDropdown === product.reference_code && (
-                                            <>
-                                              <div className="fixed inset-0 z-10" onClick={() => setOpenEditDropdown(null)} />
-                                              <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-md shadow-lg z-20 min-w-[140px]">
-                                                <button
-                                                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
-                                                  onClick={() => { setOpenEditDropdown(null); handleOpenAdjustPriceModal(product); }}
-                                                >
-                                                  <DollarSign className="h-3 w-3 mr-2" />
-                                                  Precio
-                                                </button>
-                                                <button
-                                                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
-                                                  onClick={() => { setOpenEditDropdown(null); handleOpenEditProductInfoModal(product); }}
-                                                >
-                                                  <Edit className="h-3 w-3 mr-2" />
-                                                  Marca / Modelo
-                                                </button>
-                                              </div>
-                                            </>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center space-x-2 mt-2">
+                                      <span className="text-sm font-bold text-success">
+                                        {formatCurrency(parseFloat(product.unit_price))}
+                                      </span>
+                                      <div className="flex items-center flex-wrap gap-1 mt-1">
                                         <span className="text-xs text-muted-foreground">
                                           {product.sizes.length} tallas
                                         </span>
@@ -2855,6 +2859,59 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                           <Badge variant="warning" className="text-xs">Stock bajo</Badge>
                                         )}
                                       </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Actions row - separate from the cramped info area */}
+                                  <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-border">
+                                    <div className="relative">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setOpenEditDropdown(openEditDropdown === product.reference_code ? null : product.reference_code)}
+                                        className="text-xs h-8 px-3"
+                                      >
+                                        <Edit className="h-3 w-3 mr-1" />
+                                        Editar
+                                        <ChevronDown className="h-3 w-3 ml-1" />
+                                      </Button>
+                                      {openEditDropdown === product.reference_code && (
+                                        <>
+                                          <div
+                                            className="fixed inset-0 z-40"
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              setOpenEditDropdown(null);
+                                            }}
+                                          />
+                                          <div className="absolute right-0 bottom-full mb-1 bg-card border border-border rounded-md shadow-lg z-50 min-w-[180px]">
+                                            <button
+                                              className="w-full text-left px-3 py-2.5 text-xs hover:bg-muted flex items-center text-foreground rounded-t-md"
+                                              onClick={() => { setOpenEditDropdown(null); handleOpenAdjustPriceModal(product); }}
+                                            >
+                                              <DollarSign className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                                              Precio
+                                            </button>
+                                            <button
+                                              className="w-full text-left px-3 py-2.5 text-xs hover:bg-muted flex items-center text-foreground"
+                                              onClick={() => { setOpenEditDropdown(null); handleOpenEditProductInfoModal(product); }}
+                                            >
+                                              <Edit className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                                              Marca / Modelo
+                                            </button>
+                                            <div className="border-t border-border my-1" />
+                                            <button
+                                              className="w-full text-left px-3 py-2.5 text-xs hover:bg-destructive/10 flex items-center text-destructive rounded-b-md"
+                                              onClick={() => { setOpenEditDropdown(null); handleDeleteProductReference(product); }}
+                                              disabled={deletingProductId === product.product_id}
+                                            >
+                                              <Trash2 className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                                              {deletingProductId === product.product_id ? 'Eliminando...' : 'Eliminar Referencia'}
+                                            </button>
+                                          </div>
+                                        </>
+                                      )}
                                     </div>
                                   </div>
 
