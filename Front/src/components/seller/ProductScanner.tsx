@@ -781,8 +781,16 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     let requestNotes = '';
 
     if (localEntry) {
-      // Hay inventario local parcial → transferir la pieza faltante
-      if (localEntry.missing_foot === 'right' && (localEntry.left_feet || 0) > 0) {
+      // Prioridad: si hay un par completo en bodega, preferirlo sobre completar el par con piezas sueltas de otro local
+      const bodegaWithCompletePair = remoteEntries.find(
+        e => (e.pairs || 0) > 0 && e.location_type === 'bodega'
+      );
+
+      if (bodegaWithCompletePair && localEntry.missing_foot) {
+        // Bodega tiene par completo → priorizar sobre solicitar pieza suelta de otro local
+        transferType = 'pair';
+        requestNotes = `Par completo disponible en bodega ${bodegaWithCompletePair.location_name} (priorizado sobre completar par con piezas sueltas)`;
+      } else if (localEntry.missing_foot === 'right' && (localEntry.left_feet || 0) > 0) {
         transferType = 'right_foot';
         requestNotes = `Completar par: tiene pie izquierdo, necesita pie derecho`;
       } else if (localEntry.missing_foot === 'left' && (localEntry.right_feet || 0) > 0) {
@@ -858,9 +866,12 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         }
       }
 
-      // Selección inteligente de fuente y tipo
-      const sourceWithPairs = remoteEntries.find(e => (e.pairs || 0) > 0);
+      // Selección inteligente de fuente y tipo (priorizar bodegas sobre otros locales)
+      const sourceWithPairs = remoteEntries.find(e => (e.pairs || 0) > 0 && e.location_type === 'bodega')
+        || remoteEntries.find(e => (e.pairs || 0) > 0);
       const sourceWithBothFeet = remoteEntries.find(
+        e => (e.left_feet || 0) > 0 && (e.right_feet || 0) > 0 && e.location_type === 'bodega'
+      ) || remoteEntries.find(
         e => (e.left_feet || 0) > 0 && (e.right_feet || 0) > 0
       );
 
@@ -877,16 +888,21 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       }
     }
 
-    // FUENTE: selección inteligente basada en transferType
+    // FUENTE: selección inteligente basada en transferType (priorizar bodegas sobre otros locales)
+    const findPreferBodega = (predicate: (e: SizeInfo) => boolean) => {
+      return remoteEntries.find(e => predicate(e) && e.location_type === 'bodega')
+        || remoteEntries.find(predicate);
+    };
+
     let sourceInfo;
     if (transferType === 'pair') {
-      sourceInfo = remoteEntries.find(e => (e.pairs || 0) > 0);
+      sourceInfo = findPreferBodega(e => (e.pairs || 0) > 0);
     } else if (transferType === 'form_pair') {
-      sourceInfo = remoteEntries.find(e => (e.left_feet || 0) > 0 && (e.right_feet || 0) > 0);
+      sourceInfo = findPreferBodega(e => (e.left_feet || 0) > 0 && (e.right_feet || 0) > 0);
     } else if (transferType === 'right_foot') {
-      sourceInfo = remoteEntries.find(e => (e.right_feet || 0) > 0);
+      sourceInfo = findPreferBodega(e => (e.right_feet || 0) > 0);
     } else if (transferType === 'left_foot') {
-      sourceInfo = remoteEntries.find(e => (e.left_feet || 0) > 0);
+      sourceInfo = findPreferBodega(e => (e.left_feet || 0) > 0);
     } else {
       sourceInfo = remoteEntries[0];
     }

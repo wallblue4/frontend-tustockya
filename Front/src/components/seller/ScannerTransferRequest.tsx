@@ -372,12 +372,59 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
                 <div className="space-y-1 pl-7">
                   <p className="text-xs text-muted-foreground">En tu local: <span className="font-medium text-red-800">Sin stock de esta talla</span></p>
                   <p className="text-xs text-muted-foreground">Se transferirá: <span className="font-medium text-slate-700">1 Par Completo</span></p>
+                  {prefilledProductData.request_notes && (
+                    <p className="text-xs text-muted-foreground mt-1">💡 {prefilledProductData.request_notes}</p>
+                  )}
                 </div>
               </div>
             );
           }
 
-          return null;
+          if (transfer_type === 'pair' && hasLocalStock) {
+            return (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-amber-600" />
+                  <span className="text-sm font-semibold text-amber-800">Par completo desde bodega</span>
+                </div>
+                <div className="space-y-1 pl-7">
+                  <div>
+                    <p className="text-xs text-muted-foreground">En tu local:</p>
+                    <p className="text-sm font-medium text-black">
+                      {local_pairs > 0 && `👟 ${local_pairs} Par${local_pairs > 1 ? 'es' : ''} `}
+                      {local_left_feet > 0 && `🦶 ${local_left_feet} Izq `}
+                      {local_right_feet > 0 && `🦶 ${local_right_feet} Der`}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Se transferirá:</p>
+                    <p className="text-sm font-medium text-amber-700">👟 1 Par Completo (priorizado desde bodega)</p>
+                  </div>
+                  {prefilledProductData.request_notes && (
+                    <p className="text-xs text-muted-foreground mt-1">💡 {prefilledProductData.request_notes}</p>
+                  )}
+                </div>
+              </div>
+            );
+          }
+
+          // Fallback: mostrar datos crudos para diagnosticar casos no contemplados
+          return (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-gray-500" />
+                <span className="text-sm font-semibold text-gray-700">Info de Transferencia</span>
+              </div>
+              <div className="space-y-1 pl-7 text-xs text-muted-foreground">
+                <p>Tipo: <span className="font-medium text-gray-700">{transfer_type || 'no definido'}</span></p>
+                <p>Stock local: <span className="font-medium text-gray-700">{local_pairs} pares, {local_left_feet} izq, {local_right_feet} der</span></p>
+                <p>Se solicita: <span className="font-medium text-gray-700">{getInventoryLabel()}</span></p>
+                {prefilledProductData.request_notes && (
+                  <p>Nota: <span className="font-medium text-gray-700">{prefilledProductData.request_notes}</span></p>
+                )}
+              </div>
+            </div>
+          );
         })()}
 
         {error && (

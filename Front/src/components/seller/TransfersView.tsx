@@ -112,10 +112,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   const [transferHistory, setTransferHistory] = useState<TransferHistoryItem[]>([]);
   const [incomingTransfers, setIncomingTransfers] = useState<IncomingTransfer[]>([]);
 
-  // *** NUEVOS ESTADOS PARA DEVOLUCIONES ***
+  // *** ESTADOS PARA DEVOLUCIONES ***
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [selectedTransferForReturn, setSelectedTransferForReturn] = useState<any>(null);
-  const [isCreatingReturn, setIsCreatingReturn] = useState(false);
 
   // Estados de resumen
   const [urgentCount, setUrgentCount] = useState(0);
@@ -343,33 +342,6 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     };
     setSelectedTransferForReturn(transferForReturn);
     setShowReturnModal(true);
-  };
-
-  const handleReturnSubmit = async (returnData: any) => {
-    if (!selectedTransferForReturn) return;
-
-    setIsCreatingReturn(true);
-    try {
-      console.log('🔄 Creando devolución...', returnData);
-
-      const response = await vendorAPI.createReturn(returnData);
-
-      console.log('✅ Devolución creada:', response);
-
-      // Mostrar mensaje de éxito con detalles del flujo
-      alert(`${response.message}\n\nID: ${response.return_id}\nTiempo estimado: ${response.estimated_return_time}\n\nPróxima acción: ${response.next_action}`);
-
-      // Cerrar modal y recargar datos
-      setShowReturnModal(false);
-      setSelectedTransferForReturn(null);
-      loadTransfersData();
-
-    } catch (err: any) {
-      console.error('❌ Error creando devolución:', err);
-      alert('Error creando devolución: ' + (err instanceof Error ? err.message : 'Error desconocido'));
-    } finally {
-      setIsCreatingReturn(false);
-    }
   };
 
   const handleReturnModalClose = () => {
@@ -2115,8 +2087,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         <ReturnModal
           transfer={selectedTransferForReturn}
           onClose={handleReturnModalClose}
-          onSubmit={handleReturnSubmit}
-          isSubmitting={isCreatingReturn}
+          onSuccess={loadTransfersData}
         />
       )}
     </div>
