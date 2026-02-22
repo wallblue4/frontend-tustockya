@@ -33,7 +33,8 @@ import {
   Download,
   ChevronDown,
   ChevronUp,
-  Trash2
+  Trash2,
+  Camera
 } from 'lucide-react';
 
 // Import ALL correct adminAPI functions
@@ -132,7 +133,7 @@ import { EditProductInfoModal } from '../../components/admin/EditProductInfoModa
 
 // Import inventory types and API
 import type { AdminInventoryLocation, AdminInventoryProduct, AdminInventorySize } from '../../types';
-import { adjustInventory, adjustProductPrice, updateProductInfo, fetchAdminInventory, deleteProductReference } from '../../services/adminAPI';
+import { adjustInventory, adjustProductPrice, updateProductInfo, fetchAdminInventory, deleteProductReference, updateProductImage } from '../../services/adminAPI';
 
 type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics' | 'transfers';
 
@@ -1579,6 +1580,25 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
   };
 
   const [deletingProductId, setDeletingProductId] = useState<number | null>(null);
+  const [updatingImageRef, setUpdatingImageRef] = useState<string | null>(null);
+  const imageInputRef = React.useRef<HTMLInputElement>(null);
+  const [editDropdownPos, setEditDropdownPos] = useState<{ top: number; left: number } | null>(null);
+
+  const handleOpenEditDropdown = (refCode: string, buttonEl: HTMLButtonElement) => {
+    if (openEditDropdown === refCode) {
+      setOpenEditDropdown(null);
+      setEditDropdownPos(null);
+      return;
+    }
+    const rect = buttonEl.getBoundingClientRect();
+    setEditDropdownPos({ top: rect.bottom + 4, left: rect.right });
+    setOpenEditDropdown(refCode);
+  };
+
+  const closeEditDropdown = () => {
+    setOpenEditDropdown(null);
+    setEditDropdownPos(null);
+  };
 
   const handleDeleteProductReference = async (product: AdminInventoryProduct) => {
     const confirmed = window.confirm(
@@ -1614,6 +1634,25 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
       alert(error.message || 'Error al eliminar la referencia.');
     } finally {
       setDeletingProductId(null);
+    }
+  };
+
+  const handleUpdateProductImage = async (file: File) => {
+    if (!updatingImageRef) return;
+
+    try {
+      const response = await updateProductImage(updatingImageRef, file);
+      console.log('Imagen actualizada:', response);
+      await loadAdminInventory();
+      alert(`Imagen actualizada exitosamente para ${updatingImageRef}.`);
+    } catch (error: any) {
+      console.error('Error actualizando imagen:', error);
+      alert('Error al actualizar imagen: ' + (error.message || 'Error desconocido'));
+    } finally {
+      setUpdatingImageRef(null);
+      if (imageInputRef.current) {
+        imageInputRef.current.value = '';
+      }
     }
   };
 
@@ -2653,6 +2692,20 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
 
     return (
       <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
+        {/* Hidden file input for image updates */}
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              handleUpdateProductImage(file);
+            }
+          }}
+        />
+
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <h2 className="text-2xl font-bold text-foreground">Gestion de Inventario</h2>
           <div className="flex space-x-2">
@@ -2862,57 +2915,18 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                     </div>
                                   </div>
 
-                                  {/* Actions row - separate from the cramped info area */}
-                                  <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-border">
-                                    <div className="relative">
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => setOpenEditDropdown(openEditDropdown === product.reference_code ? null : product.reference_code)}
-                                        className="text-xs h-8 px-3"
-                                      >
-                                        <Edit className="h-3 w-3 mr-1" />
-                                        Editar
-                                        <ChevronDown className="h-3 w-3 ml-1" />
-                                      </Button>
-                                      {openEditDropdown === product.reference_code && (
-                                        <>
-                                          <div
-                                            className="fixed inset-0 z-40"
-                                            onMouseDown={(e) => {
-                                              e.preventDefault();
-                                              e.stopPropagation();
-                                              setOpenEditDropdown(null);
-                                            }}
-                                          />
-                                          <div className="absolute right-0 bottom-full mb-1 bg-card border border-border rounded-md shadow-lg z-50 min-w-[180px]">
-                                            <button
-                                              className="w-full text-left px-3 py-2.5 text-xs hover:bg-muted flex items-center text-foreground rounded-t-md"
-                                              onClick={() => { setOpenEditDropdown(null); handleOpenAdjustPriceModal(product); }}
-                                            >
-                                              <DollarSign className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                                              Precio
-                                            </button>
-                                            <button
-                                              className="w-full text-left px-3 py-2.5 text-xs hover:bg-muted flex items-center text-foreground"
-                                              onClick={() => { setOpenEditDropdown(null); handleOpenEditProductInfoModal(product); }}
-                                            >
-                                              <Edit className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                                              Marca / Modelo
-                                            </button>
-                                            <div className="border-t border-border my-1" />
-                                            <button
-                                              className="w-full text-left px-3 py-2.5 text-xs hover:bg-destructive/10 flex items-center text-destructive rounded-b-md"
-                                              onClick={() => { setOpenEditDropdown(null); handleDeleteProductReference(product); }}
-                                              disabled={deletingProductId === product.product_id}
-                                            >
-                                              <Trash2 className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                                              {deletingProductId === product.product_id ? 'Eliminando...' : 'Eliminar Referencia'}
-                                            </button>
-                                          </div>
-                                        </>
-                                      )}
-                                    </div>
+                                  {/* Actions row */}
+                                  <div className="flex items-center justify-end mt-3 pt-3 border-t border-border">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={(e) => handleOpenEditDropdown(product.reference_code, e.currentTarget)}
+                                      className="text-xs h-8 px-3"
+                                    >
+                                      <Edit className="h-3 w-3 mr-1" />
+                                      Editar
+                                      <ChevronDown className="h-3 w-3 ml-1" />
+                                    </Button>
                                   </div>
 
                                   {/* Expand/Collapse button */}
@@ -5076,6 +5090,67 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             locations={locations}
           />
         )}
+
+        {/* Edit Product Dropdown (fixed position) */}
+        {openEditDropdown && editDropdownPos && (() => {
+          const product = adminInventory
+            .flatMap(loc => loc.products)
+            .find(p => p.reference_code === openEditDropdown);
+          if (!product) return null;
+
+          // Clamp so menu doesn't overflow viewport
+          const menuW = 192; // w-48
+          const left = Math.min(editDropdownPos.left, window.innerWidth - menuW - 8);
+          const top = editDropdownPos.top;
+
+          return (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); closeEditDropdown(); }}
+              />
+              <div
+                className="fixed z-50 w-48 bg-card border border-border rounded-md shadow-lg py-1"
+                style={{ top, left: left }}
+              >
+                <button
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                  onClick={() => { closeEditDropdown(); handleOpenAdjustPriceModal(product); }}
+                >
+                  <DollarSign className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                  Precio
+                </button>
+                <button
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                  onClick={() => { closeEditDropdown(); handleOpenEditProductInfoModal(product); }}
+                >
+                  <Edit className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                  Marca / Modelo
+                </button>
+                <button
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                  onClick={() => {
+                    closeEditDropdown();
+                    setUpdatingImageRef(product.reference_code);
+                    imageInputRef.current?.click();
+                  }}
+                >
+                  <Camera className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                  Imagen
+                </button>
+                <div className="border-t border-border my-1" />
+                <button
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-destructive/10 flex items-center text-destructive"
+                  onClick={() => { closeEditDropdown(); handleDeleteProductReference(product); }}
+                  disabled={deletingProductId === product.product_id}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                  {deletingProductId === product.product_id ? 'Eliminando...' : 'Eliminar Referencia'}
+                </button>
+              </div>
+            </>
+          );
+        })()}
 
         {/* Inventory Adjustment Modal */}
         {showAdjustInventoryModal && selectedSizeForAdjustment && (

@@ -1056,6 +1056,20 @@ export const updateProductInfo = async (updateData: ProductInfoUpdateRequest) =>
   return handleResponse(response);
 };
 
+// POST /api/v1/admin/inventory/update-image - Actualizar imagen de referencia del producto
+export const updateProductImage = async (productReference: string, referenceImage: File) => {
+  const formData = new FormData();
+  formData.append('product_reference', productReference);
+  formData.append('reference_image', referenceImage);
+
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/inventory/update-image`, {
+    method: 'POST',
+    headers: getFormDataHeaders(),
+    body: formData,
+  });
+  return handleResponse(response);
+};
+
 // GET /api/v1/admin/admin/inventory/all - Obtener todo el inventario administrativo
 export const fetchAdminInventory = async () => {
   const response = await fetch(`${BACKEND_URL}/api/v1/inventory/admin/inventory/all`, {
