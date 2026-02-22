@@ -10,6 +10,7 @@ import { NoResultsCard } from './product-scanner/NoResultsCard';
 import { ProcessingCard } from './product-scanner/ProcessingCard';
 import { ProductDetailsCard } from './product-scanner/ProductDetailsCard';
 import { ProductOptionsCard } from './product-scanner/ProductOptionsCard';
+import { SearchBar } from './product-scanner/SearchBar';
 import { ScanInfoCard } from './product-scanner/ScanInfoCard';
 import { AvailabilityInfo, InventoryInfo, ProductOption, SelectedProductDetails, SizeInfo } from './product-scanner/types';
 
@@ -73,17 +74,20 @@ interface ProductScannerProps {
   }) => void;
   capturedImage?: File | null;
   scanResult?: any;
+  searchMode?: boolean;
 }
 
 export const ProductScanner: React.FC<ProductScannerProps> = ({
   onRequestTransfer,
   onStepTitleChange,
   onSellProduct,
-  capturedImage
+  capturedImage,
+  searchMode
 }) => {
   const { user } = useAuth();
 
   const [isScanning, setIsScanning] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [scanOptions, setScanOptions] = useState<ProductOption[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<SelectedProductDetails | null>(null);
   const [selectedSize, setSelectedSize] = useState<string>(''); // Ahora guardará "talla-ubicacion" como clave única
@@ -99,6 +103,13 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       handleScanFromCamera(capturedImage);
     }
   }, [capturedImage]);
+
+  // En searchMode, ir directo a la vista de opciones (con barra de búsqueda)
+  useEffect(() => {
+    if (searchMode && !capturedImage) {
+      setCurrentStep('options');
+    }
+  }, [searchMode, capturedImage]);
 
   useEffect(() => {
     if (!onStepTitleChange) return;
@@ -431,7 +442,8 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       const similarityScore = match.similarity_score || 0;
       
       // Mapear confidence_level de la API
-      const mapConfidenceLevel = (level: string): 'very_high' | 'high' | 'medium' | 'low' => {
+      const mapConfidenceLevel = (level?: string): 'very_high' | 'high' | 'medium' | 'low' => {
+        if (!level) return confidencePercentage >= 90 ? 'very_high' : confidencePercentage >= 70 ? 'high' : confidencePercentage >= 50 ? 'medium' : 'low';
         switch(level.toLowerCase()) {
           case 'very_high': return 'very_high';
           case 'high': return 'high';
@@ -534,6 +546,60 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       setIsScanning(false);
     }
   };
+
+  // Búsqueda por texto (marca/modelo)
+  const handleTextSearch = React.useCallback(async (brand: string, model: string) => {
+    setIsSearching(true);
+    setError(null);
+    setScanOptions([]);
+    setSizesMap(new Map());
+    setScanInfo(null);
+
+    try {
+      console.log('Buscando productos por texto:', { brand, model });
+      const searchResponse: any = await vendorAPI.searchProducts(brand, model);
+      console.log('Respuesta de búsqueda:', searchResponse);
+
+      if (!searchResponse.success) {
+        throw new Error('La API no pudo procesar la búsqueda');
+      }
+
+      // Guardar información del resultado
+      if (searchResponse.scan_timestamp || searchResponse.processing_time_ms) {
+        setScanInfo({
+          scan_timestamp: searchResponse.scan_timestamp,
+          scanned_by: searchResponse.scanned_by,
+          user_location: searchResponse.user_location,
+          processing_time: searchResponse.processing_time_ms,
+          availability_summary: searchResponse.availability_summary,
+          classification_service: searchResponse.classification_service,
+          total_matches: searchResponse.results?.total_matches || 0
+        });
+      }
+
+      // Convertir la respuesta usando la misma lógica que el escaneo
+      let options = convertScanResponseToProductOptions(searchResponse);
+      options = options.map(opt => ({
+        ...opt,
+        image: opt.image === null ? undefined : opt.image
+      }));
+      console.log('Opciones de búsqueda procesadas:', options.length);
+      setScanOptions(options);
+
+      // Pre-computar sizesMap
+      const map = new Map<string, SizeInfo[]>();
+      options.forEach(opt => map.set(opt.id, convertAvailabilityToSizes(opt)));
+      setSizesMap(map);
+
+      setCurrentStep('options');
+    } catch (err) {
+      console.error('Error en búsqueda por texto:', err);
+      setError(err instanceof Error ? err.message : 'Error desconocido al buscar productos');
+      setCurrentStep('options');
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
 
   const handleProductSelect = async (product: ProductOption) => {
     try {
@@ -879,16 +945,24 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     setCurrentStep('options');
   };
 
+  const showSearchBar = currentStep === 'options' || (searchMode && currentStep !== 'details');
+
   return (
     <div className="space-y-6">
 
-      {currentStep === 'processing' && <ProcessingCard />}
+      {currentStep === 'processing' && !searchMode && <ProcessingCard />}
 
+      {/* SearchBar siempre visible en modo opciones / búsqueda — memoizado para no re-renderizar al cambiar resultados */}
+      {showSearchBar && (
+        <SearchBar onSearch={handleTextSearch} isSearching={isSearching} />
+      )}
+
+      {/* Resultados de búsqueda / escaneo */}
       {currentStep === 'options' && scanOptions.length > 0 && (
         <ProductOptionsCard options={scanOptions} sizesMap={sizesMap} onAction={handleDirectAction} error={error} onClearError={() => setError(null)} />
       )}
 
-      {currentStep === 'options' && scanOptions.length === 0 && !isScanning && (
+      {currentStep === 'options' && scanOptions.length === 0 && !isScanning && !isSearching && !searchMode && (
         <NoResultsCard onRetry={() => window.location.reload()} />
       )}
 

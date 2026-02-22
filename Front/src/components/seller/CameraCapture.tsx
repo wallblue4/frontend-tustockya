@@ -17,12 +17,14 @@ import {
 interface CameraCaptureProps {
   onCapture: (imageFile: File) => void;
   onClose: () => void;
+  onSearchMode?: () => void;
   isProcessing?: boolean;
 }
 
 export const CameraCapture: React.FC<CameraCaptureProps> = ({
   onCapture,
   onClose,
+  onSearchMode,
   isProcessing = false
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -160,6 +162,11 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
     stopCamera();
     onClose();
   }, [stopCamera, onClose]);
+
+  const handleSearchMode = useCallback(() => {
+    stopCamera();
+    onSearchMode?.();
+  }, [stopCamera, onSearchMode]);
 
   // Subir imagen desde archivos
   const handleFileUpload = useCallback(() => {
@@ -448,11 +455,12 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                   </button>
                 </div>
 
-                {/* Botón Buscar (futuro) */}
+                {/* Botón Buscar por texto */}
                 <button
-                  disabled
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/50 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white/40 cursor-not-allowed transition-all"
-                  title="Buscar por texto (próximamente)"
+                  onClick={handleSearchMode}
+                  disabled={isScanning}
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/50 backdrop-blur-sm border border-white/30 flex items-center justify-center text-white hover:bg-white/20 active:scale-90 transition-all disabled:opacity-50"
+                  title="Buscar por marca/modelo"
                 >
                   <Search className="h-5 w-5 sm:h-6 sm:w-6" />
                 </button>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Camera,
+  Search,
   ShoppingBag,
   Package,
   Clock,
@@ -75,7 +76,8 @@ export const SellerDashboard: React.FC = () => {
   const [prefilledProduct, setPrefilledProduct] = useState<PrefilledProduct | null>(null);
   const [productDataForTransfer, setProductDataForTransfer] = useState<any>(null);
 
-  // Estados para la cámara
+  // Estados para la cámara y búsqueda
+  const [isSearchMode, setIsSearchMode] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -179,6 +181,15 @@ export const SellerDashboard: React.FC = () => {
     setCapturedImage(null);
     setScanResult(null);
     setErrorMessage(null);
+  };
+
+  // Abrir búsqueda por texto
+  const handleOpenSearch = () => {
+    setScanResult(null);
+    setErrorMessage(null);
+    setCapturedImage(null);
+    setIsSearchMode(true);
+    setCurrentView('scan');
   };
 
   // Abrir cámara desde botón "Escanear"
@@ -358,6 +369,7 @@ export const SellerDashboard: React.FC = () => {
     setCapturedImage(null);
     setScanResult(null);
     setErrorMessage(null);
+    setIsSearchMode(false);
     setCurrentView('dashboard');
     console.log('🔍 SellerDashboard - Estados limpiados');
   };
@@ -405,6 +417,7 @@ export const SellerDashboard: React.FC = () => {
                 onSellProduct={handleSellProduct}
                 capturedImage={capturedImage}
                 scanResult={scanResult}
+                searchMode={isSearchMode}
               />
             </div>
 
@@ -688,7 +701,7 @@ export const SellerDashboard: React.FC = () => {
   return (
     <DashboardLayout onHome={currentView !== 'dashboard' ? goBack : undefined} title={
       currentView === 'dashboard' ? 'Panel de Vendedor' :
-        currentView === 'scan' ? scanViewTitle :
+        currentView === 'scan' ? (isSearchMode ? 'Buscar Producto' : scanViewTitle) :
           currentView === 'scanner-transfer' ? 'Solicitar Transferencia' :
             currentView === 'scanner-sale' ? 'Confirmar Venta' :
               currentView === 'new-sale' ? (prefilledProduct ? 'Nueva Venta - Producto Escaneado' : 'Nueva Venta') :
@@ -703,6 +716,10 @@ export const SellerDashboard: React.FC = () => {
         <CameraCapture
           onCapture={handleCameraCapture}
           onClose={handleCloseCameraCapture}
+          onSearchMode={() => {
+            setShowCamera(false);
+            handleOpenSearch();
+          }}
           isProcessing={isProcessingImage}
         />
       )}

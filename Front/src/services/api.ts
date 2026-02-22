@@ -332,6 +332,15 @@ export const vendorAPI = {
     formData.append('image', imageFile);
     return apiFormDataRequest('/api/v1/classify/scan', formData);
   },
+
+  // Search by brand/model text
+  searchProducts: (brand: string, model: string, limit: number = 5) => {
+    const params = new URLSearchParams();
+    if (brand) params.append('brand', brand);
+    if (model) params.append('model', model);
+    params.append('limit', limit.toString());
+    return apiRequest(`/api/v1/classify/search?${params.toString()}`);
+  },
   
   // Sales - ACTUALIZADO para usar FormData según el endpoint
   createSale: (saleData: SaleData) => {
