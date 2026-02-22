@@ -1056,6 +1056,20 @@ export const updateProductInfo = async (updateData: ProductInfoUpdateRequest) =>
   return handleResponse(response);
 };
 
+// POST /api/v1/admin/inventory/update-image - Actualizar imagen de referencia del producto
+export const updateProductImage = async (productReference: string, referenceImage: File) => {
+  const formData = new FormData();
+  formData.append('product_reference', productReference);
+  formData.append('reference_image', referenceImage);
+
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/inventory/update-image`, {
+    method: 'POST',
+    headers: getFormDataHeaders(),
+    body: formData,
+  });
+  return handleResponse(response);
+};
+
 // GET /api/v1/admin/admin/inventory/all - Obtener todo el inventario administrativo
 export const fetchAdminInventory = async () => {
   const response = await fetch(`${BACKEND_URL}/api/v1/inventory/admin/inventory/all`, {
@@ -1063,4 +1077,35 @@ export const fetchAdminInventory = async () => {
     headers: getHeaders(),
   });
   return handleResponse(response);
+};
+
+// DELETE /api/v1/video-processing/reference/{product_id} - Eliminar referencia de producto completa
+export const deleteProductReference = async (productId: number) => {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${BACKEND_URL}/api/v1/video-processing/reference/${productId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+  });
+
+  const data = await response.json();
+
+  if (response.status === 200) {
+    return data;
+  }
+
+  if (response.status === 409) {
+    throw new Error('El producto tiene un video en procesamiento activo. Intenta en unos minutos.');
+  }
+
+  if (response.status === 400) {
+    throw new Error('Este producto ya fue eliminado.');
+  }
+
+  if (response.status === 404) {
+    throw new Error('Producto no encontrado.');
+  }
+
+  throw new Error(data.detail || 'Error inesperado al eliminar la referencia.');
 };
