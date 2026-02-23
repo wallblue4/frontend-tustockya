@@ -22,7 +22,8 @@ interface ScannerSaleConfirmProps {
   onBack?: () => void;
 }
 
-type PaymentMethodType = 'efectivo' | 'tarjeta' | 'transferencia';
+type SinglePaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia';
+type PaymentMethodType = SinglePaymentMethod | 'mixto';
 
 export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
   productData,
@@ -47,11 +48,20 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [notes, setNotes] = useState('');
   const [requiresConfirmation, setRequiresConfirmation] = useState(false);
+  const [mixedPayments, setMixedPayments] = useState<{ type: SinglePaymentMethod; amount: string; reference: string }[]>([
+    { type: 'efectivo', amount: '', reference: '' },
+    { type: 'transferencia', amount: '', reference: '' },
+  ]);
 
-  const paymentMethods: { value: PaymentMethodType; label: string }[] = [
+  const singlePaymentMethods: { value: SinglePaymentMethod; label: string }[] = [
     { value: 'efectivo', label: 'Efectivo' },
     { value: 'tarjeta', label: 'Tarjeta' },
     { value: 'transferencia', label: 'Transferencia' },
+  ];
+
+  const paymentMethods: { value: PaymentMethodType; label: string }[] = [
+    ...singlePaymentMethods,
+    { value: 'mixto', label: 'Mixto' },
   ];
 
   const getStorageLabel = (storageType?: string) => {
@@ -63,6 +73,59 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
   };
 
   const totalAmount = editedPrice - discountAmount;
+
+  const mixedTotal = mixedPayments.reduce((sum, mp) => sum + (parseFloat(mp.amount) || 0), 0);
+  const mixedRemaining = totalAmount - mixedTotal;
+
+  const updateMixedPayment = (index: number, field: 'type' | 'amount' | 'reference', value: string) => {
+    setMixedPayments(prev => {
+      const updated = prev.map((mp, i) => i === index ? { ...mp, [field]: value } : mp);
+      if (field === 'amount') {
+        const lastIndex = updated.length - 1;
+        if (updated.length === 2) {
+          const otherIndex = index === 0 ? 1 : 0;
+          const typed = parseFloat(value) || 0;
+          const remaining = totalAmount - typed;
+          updated[otherIndex] = { ...updated[otherIndex], amount: remaining >= 0 ? String(remaining) : '' };
+        } else if (updated.length >= 3 && index !== lastIndex) {
+          const othersTotal = updated.reduce((sum, mp, i) => i === lastIndex ? sum : sum + (parseFloat(mp.amount) || 0), 0);
+          const remaining = totalAmount - othersTotal;
+          updated[lastIndex] = { ...updated[lastIndex], amount: remaining >= 0 ? String(remaining) : '' };
+        }
+      }
+      return updated;
+    });
+  };
+
+  const addMixedPayment = () => {
+    if (mixedPayments.length < 4) {
+      setMixedPayments(prev => [...prev, { type: 'efectivo', amount: '', reference: '' }]);
+    }
+  };
+
+  const removeMixedPayment = (index: number) => {
+    if (mixedPayments.length > 2) {
+      setMixedPayments(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const fillRemaining = (index: number) => {
+    const othersTotal = mixedPayments.reduce((sum, mp, i) => i === index ? sum : sum + (parseFloat(mp.amount) || 0), 0);
+    const remaining = totalAmount - othersTotal;
+    if (remaining > 0) {
+      updateMixedPayment(index, 'amount', String(remaining));
+    }
+  };
+
+  const formatCurrency = (value: string): string => {
+    const digits = value.replace(/[^0-9]/g, '');
+    if (!digits) return '';
+    return `$ ${parseInt(digits, 10).toLocaleString('es-CO')}`;
+  };
+
+  const parseCurrencyInput = (value: string): string => {
+    return value.replace(/[^0-9]/g, '');
+  };
 
   const handleRequestDiscount = async () => {
     if (!discountAmount || !discountReason) {
@@ -110,23 +173,42 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
         : `Venta directa desde escaner — ${productData.location || 'N/A'} (${getStorageLabel(productData.storage_type)})`;
       const fullNotes = notes ? `${autoNotes} | ${notes}` : autoNotes;
 
-      const paymentMethod: { type: 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto'; amount: number; reference?: string | null } = {
-        type: selectedPaymentMethod,
-        amount: totalAmount,
-      };
-      if (paymentReference && (selectedPaymentMethod === 'tarjeta' || selectedPaymentMethod === 'transferencia')) {
-        paymentMethod.reference = paymentReference;
+      let paymentMethodsArr: { type: 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto'; amount: number; reference?: string | null }[];
+
+      if (selectedPaymentMethod === 'mixto') {
+        if (Math.abs(mixedRemaining) > 0.01) {
+          setError(`La suma de los pagos debe ser igual al total ($${totalAmount.toLocaleString('es-CO')}). Diferencia: $${Math.abs(mixedRemaining).toLocaleString('es-CO')}`);
+          setLoading(false);
+          return;
+        }
+        paymentMethodsArr = mixedPayments
+          .filter(mp => (parseFloat(mp.amount) || 0) > 0)
+          .map(mp => ({
+            type: mp.type as 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto',
+            amount: parseFloat(mp.amount) || 0,
+            reference: mp.reference || null,
+          }));
+        if (paymentMethodsArr.length < 2) {
+          setError('El pago mixto requiere al menos 2 metodos de pago con monto mayor a 0');
+          setLoading(false);
+          return;
+        }
+      } else {
+        const pm: { type: 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto'; amount: number; reference?: string | null } = {
+          type: selectedPaymentMethod,
+          amount: totalAmount,
+        };
+        if (paymentReference && (selectedPaymentMethod === 'tarjeta' || selectedPaymentMethod === 'transferencia')) {
+          pm.reference = paymentReference;
+        }
+        paymentMethodsArr = [pm];
       }
 
       if (productData.transfer_id) {
         // Venta desde transferencia completada — usar endpoint sellFromTransfer
         const formData = new FormData();
         formData.append('total_amount', String(totalAmount));
-        formData.append('payment_methods', JSON.stringify([{
-          type: paymentMethod.type,
-          amount: paymentMethod.amount,
-          reference: paymentMethod.reference || null
-        }]));
+        formData.append('payment_methods', JSON.stringify(paymentMethodsArr));
         formData.append('notes', fullNotes);
         if (receiptFile) {
           formData.append('receipt_image', receiptFile);
@@ -146,7 +228,7 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
             unit_price: editedPrice
           }],
           total_amount: totalAmount,
-          payment_methods: [paymentMethod],
+          payment_methods: paymentMethodsArr,
           notes: fullNotes,
           requires_confirmation: requiresConfirmation,
           receipt_image: receiptFile,
@@ -271,26 +353,97 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
         {/* Metodo de pago */}
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">Metodo de pago</p>
-          <div className="grid grid-cols-3 gap-2">
+          <select
+            value={selectedPaymentMethod}
+            onChange={(e) => setSelectedPaymentMethod(e.target.value as PaymentMethodType)}
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
             {paymentMethods.map((method) => (
-              <button
-                key={method.value}
-                type="button"
-                onClick={() => setSelectedPaymentMethod(method.value)}
-                className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                  selectedPaymentMethod === method.value
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background text-foreground border-input hover:bg-muted'
-                }`}
-              >
-                {method.label}
-              </button>
+              <option key={method.value} value={method.value}>{method.label}</option>
             ))}
-          </div>
+          </select>
         </div>
 
-        {/* Referencia de pago (visible si tarjeta o transferencia) */}
-        {(selectedPaymentMethod === 'tarjeta' || selectedPaymentMethod === 'transferencia') && (
+        {/* Pago mixto */}
+        {selectedPaymentMethod === 'mixto' && (
+          <div className="space-y-3 border border-input rounded-lg p-3">
+            {mixedPayments.map((mp, index) => (
+              <div key={index} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">Pago {index + 1}</span>
+                  {mixedPayments.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => removeMixedPayment(index)}
+                      className="text-xs text-red-500 hover:text-red-700 transition-colors"
+                    >
+                      Eliminar
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={mp.type}
+                    onChange={(e) => updateMixedPayment(index, 'type', e.target.value)}
+                    className="rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {singlePaymentMethods.map((sm) => (
+                      <option key={sm.value} value={sm.value}>{sm.label}</option>
+                    ))}
+                  </select>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={mp.amount ? formatCurrency(mp.amount) : ''}
+                      onChange={(e) => updateMixedPayment(index, 'amount', parseCurrencyInput(e.target.value))}
+                      placeholder="$ 0"
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pr-16"
+                    />
+                    {mixedRemaining > 0 && !mp.amount && (
+                      <button
+                        type="button"
+                        onClick={() => fillRemaining(index)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-primary hover:text-primary/80 font-medium"
+                      >
+                        Restante
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {mp.type !== 'efectivo' && (
+                  <input
+                    type="text"
+                    value={mp.reference}
+                    onChange={(e) => updateMixedPayment(index, 'reference', e.target.value)}
+                    placeholder={mp.type === 'tarjeta' ? 'Ref. ****1234' : 'Ref. transferencia'}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                )}
+              </div>
+            ))}
+            {mixedPayments.length < 4 && (
+              <button
+                type="button"
+                onClick={addMixedPayment}
+                className="w-full py-1.5 text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+              >
+                + Agregar metodo de pago
+              </button>
+            )}
+            <div className={`text-xs font-medium text-right ${Math.abs(mixedRemaining) < 0.01 ? 'text-green-600' : 'text-amber-600'}`}>
+              {Math.abs(mixedRemaining) < 0.01
+                ? 'Total cubierto correctamente'
+                : mixedRemaining > 0
+                  ? `Falta: $${mixedRemaining.toLocaleString('es-CO')}`
+                  : `Excede: $${Math.abs(mixedRemaining).toLocaleString('es-CO')}`
+              }
+            </div>
+          </div>
+        )}
+
+        {/* Referencia de pago (visible si tarjeta o transferencia en modo simple) */}
+        {selectedPaymentMethod !== 'mixto' && (selectedPaymentMethod === 'tarjeta' || selectedPaymentMethod === 'transferencia') && (
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
               Referencia {selectedPaymentMethod === 'tarjeta' ? '(****1234)' : ''}
