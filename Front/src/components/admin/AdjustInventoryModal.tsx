@@ -33,7 +33,7 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     adjustment_type: 'set_quantity' as 'set_quantity' | 'increment' | 'decrement',
-    quantity: 0,
+    quantity: String(productData.current_quantity),
     reason: ''
   });
 
@@ -49,21 +49,21 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
     }
   };
 
+  const parsedQuantity = parseInt(formData.quantity) || 0;
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (formData.quantity <= 0) {
+    if (parsedQuantity <= 0) {
       newErrors.quantity = 'La cantidad debe ser mayor a 0';
     }
 
-    if (!formData.reason.trim()) {
-      newErrors.reason = 'El motivo es requerido';
-    } else if (formData.reason.trim().length < 5) {
+    if (formData.reason.trim().length > 0 && formData.reason.trim().length < 5) {
       newErrors.reason = 'El motivo debe tener al menos 5 caracteres';
     }
 
     // Validar que decrement no resulte en cantidad negativa
-    if (formData.adjustment_type === 'decrement' && formData.quantity > productData.current_quantity) {
+    if (formData.adjustment_type === 'decrement' && parsedQuantity > productData.current_quantity) {
       newErrors.quantity = `No se puede reducir mas de ${productData.current_quantity} unidades`;
     }
 
@@ -83,7 +83,7 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
         product_reference: productData.reference_code,
         size: productData.size,
         adjustment_type: formData.adjustment_type,
-        quantity: formData.quantity,
+        quantity: parsedQuantity,
         reason: formData.reason.trim(),
         inventory_type: productData.inventory_type
       });
@@ -96,7 +96,13 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
   };
 
   const handleInputChange = (field: string, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      if (field === 'adjustment_type') {
+        updated.quantity = value === 'set_quantity' ? String(productData.current_quantity) : '';
+      }
+      return updated;
+    });
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -105,11 +111,11 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
   const getPreviewQuantity = () => {
     switch (formData.adjustment_type) {
       case 'set_quantity':
-        return formData.quantity;
+        return parsedQuantity;
       case 'increment':
-        return productData.current_quantity + formData.quantity;
+        return productData.current_quantity + parsedQuantity;
       case 'decrement':
-        return Math.max(0, productData.current_quantity - formData.quantity);
+        return Math.max(0, productData.current_quantity - parsedQuantity);
       default:
         return productData.current_quantity;
     }
@@ -186,8 +192,8 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
             <Input
               label={formData.adjustment_type === 'set_quantity' ? 'Nueva Cantidad' : 'Cantidad a ajustar'}
               type="number"
-              value={formData.quantity.toString()}
-              onChange={(e) => handleInputChange('quantity', parseInt(e.target.value) || 0)}
+              value={formData.quantity}
+              onChange={(e) => handleInputChange('quantity', e.target.value)}
               error={errors.quantity}
               placeholder="0"
               min="0"
@@ -196,7 +202,7 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
           </div>
 
           {/* Preview del resultado */}
-          {formData.quantity > 0 && (
+          {parsedQuantity > 0 && (
             <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-primary">Cantidad resultante:</span>
@@ -211,7 +217,7 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
           {/* Motivo */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Motivo del Ajuste <span className="text-destructive">*</span>
+              Motivo del Ajuste
             </label>
             <textarea
               value={formData.reason}
@@ -220,10 +226,9 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
                 errors.reason ? 'border-destructive' : 'border-border'
               }`}
               placeholder="Ej: Encontradas unidades adicionales en auditoria, Error de conteo previo, etc."
-              required
             />
             {errors.reason && <p className="mt-1 text-sm text-destructive">{errors.reason}</p>}
-            <p className="mt-1 text-xs text-muted-foreground">Minimo 5 caracteres</p>
+            <p className="mt-1 text-xs text-muted-foreground">Opcional · Mínimo 5 caracteres si se llena</p>
           </div>
 
           {/* Warning */}
@@ -245,7 +250,7 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || formData.quantity <= 0 || formData.reason.length < 5}
+              disabled={isSubmitting || parsedQuantity <= 0}
               isLoading={isSubmitting}
             >
               Confirmar Ajuste
