@@ -23,7 +23,10 @@ import {
   Calendar,
   Users,
   Eye,
-  EyeOff
+  EyeOff,
+  Link,
+  Unlink,
+  Trash2
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { StatsCard } from '../../components/dashboard/StatsCard';
@@ -129,6 +132,16 @@ export const BossDashboard: React.FC = () => {
     is_active: true
   });
 
+  // Estados para sibling pairs (duos de hermanos)
+  const [siblingPairs, setSiblingPairs] = useState<any[]>([]);
+  const [siblingPairsLoading, setSiblingPairsLoading] = useState(false);
+  const [showCreateSiblingModal, setShowCreateSiblingModal] = useState(false);
+  const [createSiblingLoading, setCreateSiblingLoading] = useState(false);
+  const [siblingFormData, setSiblingFormData] = useState({
+    location_a_id: 0,
+    location_b_id: 0
+  });
+
   // Estados para selectores de fecha
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -199,6 +212,7 @@ export const BossDashboard: React.FC = () => {
         case 'locations':
           const locs = await bossAPI.getLocations(false);
           setLocations(locs);
+          await loadSiblingPairs();
           break;
         case 'inventory':
           const inv = await bossAPI.getConsolidatedInventory();
@@ -236,6 +250,74 @@ export const BossDashboard: React.FC = () => {
       console.error('Error cargando administradores:', err);
     } finally {
       setAdminsLoading(false);
+    }
+  };
+
+  // Cargar lista de sibling pairs
+  const loadSiblingPairs = async () => {
+    setSiblingPairsLoading(true);
+    try {
+      const pairs = await bossAPI.getSiblingPairs();
+      setSiblingPairs(pairs);
+    } catch (err: any) {
+      console.error('Error cargando duos de hermanos:', err);
+    } finally {
+      setSiblingPairsLoading(false);
+    }
+  };
+
+  // Crear duo de hermanos
+  const handleCreateSiblingPair = async () => {
+    if (siblingFormData.location_a_id === 0 || siblingFormData.location_b_id === 0) {
+      alert('Selecciona ambos locales');
+      return;
+    }
+    if (siblingFormData.location_a_id === siblingFormData.location_b_id) {
+      alert('Los locales deben ser diferentes');
+      return;
+    }
+
+    setCreateSiblingLoading(true);
+    try {
+      await bossAPI.createSiblingPair({
+        location_a_id: siblingFormData.location_a_id,
+        location_b_id: siblingFormData.location_b_id
+      });
+
+      // Recargar datos
+      const locs = await bossAPI.getLocations(false);
+      setLocations(locs);
+      await loadSiblingPairs();
+
+      setShowCreateSiblingModal(false);
+      setSiblingFormData({ location_a_id: 0, location_b_id: 0 });
+      alert('Duo de hermanos creado exitosamente');
+    } catch (err: any) {
+      console.error('Error creando duo de hermanos:', err);
+      alert('Error al crear duo: ' + (err.message || 'Error desconocido'));
+    } finally {
+      setCreateSiblingLoading(false);
+    }
+  };
+
+  // Eliminar duo de hermanos
+  const handleDeleteSiblingPair = async (pairId: number) => {
+    if (!confirm('¿Deseas desactivar este duo de hermanos? Los locales quedarán libres para formar nuevos duos.')) {
+      return;
+    }
+
+    try {
+      await bossAPI.deleteSiblingPair(pairId);
+
+      // Recargar datos
+      const locs = await bossAPI.getLocations(false);
+      setLocations(locs);
+      await loadSiblingPairs();
+
+      alert('Duo de hermanos desactivado exitosamente');
+    } catch (err: any) {
+      console.error('Error desactivando duo:', err);
+      alert('Error al desactivar duo: ' + (err.message || 'Error desconocido'));
     }
   };
 
@@ -767,14 +849,25 @@ export const BossDashboard: React.FC = () => {
 
   // Vista de Locales
   const renderLocationsView = () => {
+    // Locales tipo "local" activos sin hermano (para el formulario de crear duo)
+    const availableLocalsForSibling = locations.filter(
+      (l: any) => l.type === 'local' && l.is_active !== false && !l.sibling_location
+    );
+
     return (
       <div className="space-y-6 p-4 md:p-6">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">Gestión de Locales y Bodegas</h2>
-          <Button onClick={() => setShowCreateLocationModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Ubicación
-          </Button>
+          <div className="flex space-x-2">
+            <Button variant="outline" onClick={() => setShowCreateSiblingModal(true)}>
+              <Link className="h-4 w-4 mr-2" />
+              Crear Duo
+            </Button>
+            <Button onClick={() => setShowCreateLocationModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nueva Ubicación
+            </Button>
+          </div>
         </div>
 
         {loading ? (
@@ -827,6 +920,27 @@ export const BossDashboard: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Sibling info */}
+                  {location.sibling_location && (
+                    <div className="mb-3 p-2 bg-secondary/10 border border-secondary/20 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Link className="h-4 w-4 text-secondary" />
+                          <span className="text-xs font-medium text-secondary">Hermano:</span>
+                          <span className="text-xs font-semibold">{location.sibling_location.name}</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteSiblingPair(location.sibling_location.sibling_pair_id)}
+                        >
+                          <Unlink className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2 text-sm">
                     {location.address && (
                       <p className="text-muted-foreground">📍 {location.address}</p>
@@ -854,6 +968,66 @@ export const BossDashboard: React.FC = () => {
             ))}
           </div>
         )}
+
+        {/* Sección de Duos de Hermanos */}
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold flex items-center">
+                <Link className="h-5 w-5 mr-2" />
+                Duos de Locales Hermanos ({siblingPairs.length})
+              </h3>
+              <Button size="sm" variant="outline" onClick={loadSiblingPairs} disabled={siblingPairsLoading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${siblingPairsLoading ? 'animate-spin' : ''}`} />
+                Actualizar
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {siblingPairsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : siblingPairs.length === 0 ? (
+              <div className="text-center py-8">
+                <Unlink className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">No hay duos de hermanos activos</p>
+                <p className="text-sm text-muted-foreground mt-1">Crea un duo para vincular dos locales de venta</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {siblingPairs.map((pair: any) => (
+                  <div key={pair.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center space-x-4 flex-1">
+                      <div className="flex items-center space-x-2">
+                        <Store className="h-5 w-5 text-success" />
+                        <span className="font-medium">{pair.location_a.name}</span>
+                      </div>
+                      <Link className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center space-x-2">
+                        <Store className="h-5 w-5 text-success" />
+                        <span className="font-medium">{pair.location_b.name}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <span className="text-xs text-muted-foreground hidden sm:block">
+                        {new Date(pair.created_at).toLocaleDateString('es-CO')}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDeleteSiblingPair(pair.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   };
@@ -2408,6 +2582,126 @@ export const BossDashboard: React.FC = () => {
                     )}
                   </Button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal para crear duo de hermanos */}
+        {showCreateSiblingModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-card rounded-lg shadow-xl max-w-md w-full">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold flex items-center">
+                    <Link className="h-5 w-5 mr-2" />
+                    Crear Duo de Hermanos
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowCreateSiblingModal(false);
+                      setSiblingFormData({ location_a_id: 0, location_b_id: 0 });
+                    }}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <p className="text-sm text-muted-foreground mb-4">
+                  Vincula dos locales de venta como hermanos. Solo locales activos sin un duo existente pueden ser seleccionados.
+                </p>
+
+                {(() => {
+                  const availableLocals = locations.filter(
+                    (l: any) => l.type === 'local' && l.is_active !== false && !l.sibling_location
+                  );
+
+                  if (availableLocals.length < 2) {
+                    return (
+                      <div className="text-center py-6">
+                        <Unlink className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                        <p className="text-muted-foreground">
+                          Se necesitan al menos 2 locales de venta activos sin hermano para crear un duo.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Local A *</label>
+                        <select
+                          value={siblingFormData.location_a_id}
+                          onChange={(e) => setSiblingFormData({ ...siblingFormData, location_a_id: parseInt(e.target.value) })}
+                          className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground"
+                        >
+                          <option value={0}>Seleccionar local...</option>
+                          {availableLocals
+                            .filter((l: any) => l.id !== siblingFormData.location_b_id)
+                            .map((l: any) => (
+                              <option key={l.id} value={l.id}>{l.name}</option>
+                            ))}
+                        </select>
+                      </div>
+
+                      <div className="flex justify-center">
+                        <Link className="h-5 w-5 text-muted-foreground" />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Local B *</label>
+                        <select
+                          value={siblingFormData.location_b_id}
+                          onChange={(e) => setSiblingFormData({ ...siblingFormData, location_b_id: parseInt(e.target.value) })}
+                          className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground"
+                        >
+                          <option value={0}>Seleccionar local...</option>
+                          {availableLocals
+                            .filter((l: any) => l.id !== siblingFormData.location_a_id)
+                            .map((l: any) => (
+                              <option key={l.id} value={l.id}>{l.name}</option>
+                            ))}
+                        </select>
+                      </div>
+
+                      <div className="flex justify-end space-x-3 pt-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setShowCreateSiblingModal(false);
+                            setSiblingFormData({ location_a_id: 0, location_b_id: 0 });
+                          }}
+                          disabled={createSiblingLoading}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          onClick={handleCreateSiblingPair}
+                          disabled={
+                            siblingFormData.location_a_id === 0 ||
+                            siblingFormData.location_b_id === 0 ||
+                            siblingFormData.location_a_id === siblingFormData.location_b_id ||
+                            createSiblingLoading
+                          }
+                        >
+                          {createSiblingLoading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Creando...
+                            </>
+                          ) : (
+                            <>
+                              <Link className="h-4 w-4 mr-2" />
+                              Crear Duo
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>

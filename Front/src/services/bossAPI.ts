@@ -217,6 +217,41 @@ export const bossAPI = {
       headers: getHeaders()
     });
     return handleResponse(response);
+  },
+
+  // 17. Crear relación de hermanos entre dos locales
+  async createSiblingPair(data: { location_a_id: number; location_b_id: number }) {
+    const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/sibling-pairs`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+  },
+
+  // 18. Listar todos los duos activos de la empresa
+  async getSiblingPairs() {
+    const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/sibling-pairs`, {
+      headers: getHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  // 19. Desactivar un duo de hermanos
+  async deleteSiblingPair(pairId: number) {
+    const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/sibling-pairs/${pairId}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  // 20. Consultar si un local tiene hermano
+  async getLocationSibling(locationId: number) {
+    const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/locations/${locationId}/sibling`, {
+      headers: getHeaders()
+    });
+    return handleResponse(response);
   }
 };
 
