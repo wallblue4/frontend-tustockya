@@ -980,19 +980,6 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         <NoResultsCard onRetry={() => window.location.reload()} />
       )}
 
-      {currentStep === 'details' && selectedProduct && (
-        <ProductDetailsCard
-          selectedProduct={selectedProduct}
-          selectedSize={selectedSize}
-          userLocationId={user?.location_id}
-          onBack={goBackToOptions}
-          onSelectSize={setSelectedSize}
-          onSolicitar={handleSolicitar}
-          onSell={handleSell}
-          onScanAnother={() => window.location.reload()}
-        />
-      )}
-
       {error && <ErrorCard error={error} />}
     </div>
   );

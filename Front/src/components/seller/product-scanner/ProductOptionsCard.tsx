@@ -1,10 +1,54 @@
 import React, { useState, useEffect } from 'react';
-import { User, Truck, ShoppingBag, XCircle } from 'lucide-react';
+import { User, Truck, ShoppingBag, XCircle, Info } from 'lucide-react';
 import { Card, CardContent } from '../../ui/Card';
 import { formatCurrency } from '../../../services/api';
 import { getConfidenceCircleStyles, getConfidenceLevelText } from './helpers';
 import { ProductOption, SizeInfo } from './types';
 import { ProductImage } from './ProductImage';
+
+type SizeCategory = 'direct_sale' | 'request_pair' | 'request_piece' | 'request_multi' | 'other_stock' | 'no_stock';
+
+function getSizeCategory(s: {
+  totalStock: number;
+  canSell: boolean;
+  hasLocalParts: boolean;
+  hasRemoteCompletePair: boolean;
+  remotePartsCount: number;
+}): SizeCategory {
+  if (s.totalStock === 0) return 'no_stock';
+  if (s.canSell) return 'direct_sale';
+  if (s.hasRemoteCompletePair) return 'request_pair';
+  if (s.hasLocalParts && s.remotePartsCount >= 1) return 'request_piece';
+  if (s.remotePartsCount >= 2) return 'request_multi';
+  return 'other_stock';
+}
+
+const SIZE_STYLES: Record<SizeCategory, { unselected: string; selected: string }> = {
+  direct_sale: {
+    unselected: 'bg-success/15 text-success border-2 border-success hover:bg-success/25 active:scale-95',
+    selected: 'bg-success text-success-foreground border-2 border-success shadow-sm scale-105',
+  },
+  request_pair: {
+    unselected: 'bg-primary/15 text-primary border-2 border-primary/60 hover:bg-primary/25 active:scale-95',
+    selected: 'bg-primary text-primary-foreground border-2 border-primary shadow-sm scale-105',
+  },
+  request_piece: {
+    unselected: 'bg-warning/15 text-warning border-2 border-warning/60 hover:bg-warning/25 active:scale-95',
+    selected: 'bg-warning text-warning-foreground border-2 border-warning shadow-sm scale-105',
+  },
+  request_multi: {
+    unselected: 'bg-orange-500/15 text-orange-600 border-2 border-orange-400/60 hover:bg-orange-500/25 active:scale-95',
+    selected: 'bg-orange-500 text-white border-2 border-orange-500 shadow-sm scale-105',
+  },
+  other_stock: {
+    unselected: 'bg-primary/10 text-primary border-2 border-primary/30 hover:bg-primary/20 active:scale-95',
+    selected: 'bg-primary text-primary-foreground border-2 border-primary shadow-sm scale-105',
+  },
+  no_stock: {
+    unselected: 'bg-muted/50 text-muted-foreground/40 border-muted/30 cursor-not-allowed',
+    selected: '',
+  },
+};
 
 interface ProductOptionsCardProps {
   options: ProductOption[];
@@ -25,22 +69,29 @@ const ProductOptionItem: React.FC<{
   const confidenceStyles = getConfidenceCircleStyles(option.confidence_level);
   const confidenceTextColor = confidenceStyles.split(' ')[1];
 
-  // Obtener tallas únicas con su stock total y si se puede vender directo
+  // Obtener tallas únicas con su stock total y categorización por tipo de transferencia
   const uniqueSizes = React.useMemo(() => {
-    const sizeMap = new Map<string, { size: string; totalStock: number; canSell: boolean; hasLocalParts: boolean; hasRemoteCompletePair: boolean }>();
+    const sizeMap = new Map<string, {
+      size: string; totalStock: number; canSell: boolean;
+      hasLocalParts: boolean; hasRemoteCompletePair: boolean; remotePartsCount: number;
+    }>();
     sizes.forEach((s) => {
-      // Contar pares completos + pies individuales como stock disponible
       const effectiveStock = s.quantity + (s.left_feet || 0) + (s.right_feet || 0);
-      // Un remoto tiene par completo si tiene pairs > 0 o ambos pies
       const remoteHasPair = !s.is_local && ((s.pairs || 0) > 0 || ((s.left_feet || 0) > 0 && (s.right_feet || 0) > 0));
+      const remoteHasParts = !s.is_local && !remoteHasPair && ((s.left_feet || 0) > 0 || (s.right_feet || 0) > 0);
       const existing = sizeMap.get(s.size);
       if (existing) {
         existing.totalStock += effectiveStock;
         if (s.can_sell) existing.canSell = true;
         if (s.is_local) existing.hasLocalParts = true;
         if (remoteHasPair) existing.hasRemoteCompletePair = true;
+        if (remoteHasParts) existing.remotePartsCount += 1;
       } else {
-        sizeMap.set(s.size, { size: s.size, totalStock: effectiveStock, canSell: !!s.can_sell, hasLocalParts: !!s.is_local, hasRemoteCompletePair: remoteHasPair });
+        sizeMap.set(s.size, {
+          size: s.size, totalStock: effectiveStock, canSell: !!s.can_sell,
+          hasLocalParts: !!s.is_local, hasRemoteCompletePair: remoteHasPair,
+          remotePartsCount: remoteHasParts ? 1 : 0,
+        });
       }
     });
     return Array.from(sizeMap.values());
@@ -52,16 +103,19 @@ const ProductOptionItem: React.FC<{
   };
 
   const hasSelection = selectedSize !== null;
-  const selectedCanSell = hasSelection && uniqueSizes.find((s) => s.size === selectedSize)?.canSell;
+  const selectedSizeData = hasSelection ? uniqueSizes.find(s => s.size === selectedSize) : null;
+  const selectedCanSell = selectedSizeData?.canSell ?? false;
+  const selectedCategory = selectedSizeData ? getSizeCategory(selectedSizeData) : null;
 
   return (
     <div
       className={`relative border rounded-lg p-4 transition-all ${
-        hasSelection && !selectedCanSell
-          ? 'border-blue-400'
-          : sizes.some((s) => s.can_sell)
-            ? 'border-green-400'
-            : 'border-border'
+        hasSelection
+          ? selectedCategory === 'direct_sale' ? 'border-success'
+            : selectedCategory === 'request_piece' ? 'border-warning'
+            : selectedCategory === 'request_multi' ? 'border-orange-400'
+            : 'border-primary'
+          : sizes.some((s) => s.can_sell) ? 'border-success/50' : 'border-border'
       }`}
     >
       {/* Ranking badge absoluto */}
@@ -137,30 +191,18 @@ const ProductOptionItem: React.FC<{
         <div className="mt-3">
           <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground mb-1.5 block">Tallas:</span>
           <div className="grid grid-cols-4 gap-2 sm:flex sm:gap-1.5 sm:flex-wrap">
-            {uniqueSizes.map(({ size, totalStock, canSell, hasLocalParts, hasRemoteCompletePair }) => {
+            {uniqueSizes.map(({ size, totalStock, canSell, hasLocalParts, hasRemoteCompletePair, remotePartsCount }) => {
               const hasStock = totalStock > 0;
               const isSelected = selectedSize === size;
+              const category = getSizeCategory({ totalStock, canSell, hasLocalParts, hasRemoteCompletePair, remotePartsCount });
               return (
                 <button
                   key={size}
                   type="button"
                   disabled={!hasStock}
                   onClick={() => handleSizeToggle(size, hasStock)}
-                  className={`py-2.5 sm:py-1 sm:px-2.5 rounded-lg text-sm sm:text-sm font-medium border transition-all
-                    ${isSelected
-                      ? canSell
-                        ? 'bg-green-500 text-white border-2 border-green-500 shadow-sm scale-105'
-                        : 'bg-primary text-white border-primary shadow-sm scale-105'
-                      : hasStock
-                        ? canSell
-                          ? 'bg-green-50 text-green-600 border-2 border-green-500 hover:bg-green-100 active:scale-95'
-                          : hasLocalParts
-                            ? 'bg-primary/10 text-primary font-bold border-2 border-primary/50 hover:bg-primary/20 active:scale-95'
-                            : hasRemoteCompletePair
-                              ? 'bg-primary/10 text-primary border-dashed border-primary/20 hover:bg-primary/20 active:scale-95'
-                              : 'bg-primary/10 text-primary border-dotted border-2 border-primary/30 hover:bg-primary/20 active:scale-95'
-                        : 'bg-muted/50 text-muted-foreground/40 border-muted/30 cursor-not-allowed'
-                    }`}
+                  className={`py-2.5 sm:py-1 sm:px-2.5 rounded-lg text-sm font-medium border transition-all
+                    ${isSelected ? SIZE_STYLES[category].selected : SIZE_STYLES[category].unselected}`}
                 >
                   {size}
                 </button>
@@ -174,13 +216,24 @@ const ProductOptionItem: React.FC<{
         </div>
       )}
 
+      {/* Mensaje contextual al seleccionar talla */}
+      {hasSelection && selectedCategory && selectedCategory !== 'direct_sale' && selectedCategory !== 'no_stock' && (
+        <p className="mt-2 flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground">
+          <Info className="w-3 h-3 shrink-0" />
+          {selectedCategory === 'request_pair' && 'Se pedirá un par completo desde otra ubicación'}
+          {selectedCategory === 'request_piece' && 'Se completará el par con pieza de otra ubicación'}
+          {selectedCategory === 'request_multi' && 'Se juntarán piezas desde 2 ubicaciones distintas'}
+          {selectedCategory === 'other_stock' && 'Stock disponible en otra ubicación'}
+        </p>
+      )}
+
       {/* Botones de acción */}
       <div className="mt-3 flex gap-2">
         {selectedCanSell ? (
           <button
             type="button"
             onClick={() => onAction(option, selectedSize!, 'vendedor')}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-sm font-semibold transition-all bg-green-500 text-white hover:bg-green-600 active:scale-[0.98]"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-sm font-semibold transition-all bg-success text-success-foreground hover:bg-success/90 active:scale-[0.98]"
           >
             <ShoppingBag className="h-4 w-4" />
             Vender
@@ -193,7 +246,11 @@ const ProductOptionItem: React.FC<{
               onClick={() => hasSelection && onAction(option, selectedSize!, 'vendedor')}
               className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-sm font-semibold transition-all
                 ${hasSelection
-                  ? 'bg-primary text-white hover:bg-primary/90 active:scale-[0.98]'
+                  ? selectedCategory === 'request_piece'
+                    ? 'bg-warning text-warning-foreground hover:bg-warning/90 active:scale-[0.98]'
+                    : selectedCategory === 'request_multi'
+                      ? 'bg-orange-500 text-white hover:bg-orange-600 active:scale-[0.98]'
+                      : 'bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]'
                   : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
                 }`}
             >
@@ -206,7 +263,11 @@ const ProductOptionItem: React.FC<{
               onClick={() => hasSelection && onAction(option, selectedSize!, 'corredor')}
               className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-sm font-semibold transition-all
                 ${hasSelection
-                  ? 'bg-secondary text-secondary-foreground hover:bg-secondary/90 active:scale-[0.98] border border-border'
+                  ? selectedCategory === 'request_piece'
+                    ? 'bg-warning/80 text-warning-foreground hover:bg-warning/70 active:scale-[0.98] border border-warning'
+                    : selectedCategory === 'request_multi'
+                      ? 'bg-orange-400 text-white hover:bg-orange-500 active:scale-[0.98] border border-orange-500'
+                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/90 active:scale-[0.98] border border-border'
                   : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
                 }`}
             >
