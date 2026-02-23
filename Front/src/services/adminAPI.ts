@@ -1062,7 +1062,7 @@ export const updateProductImage = async (productReference: string, referenceImag
   formData.append('product_reference', productReference);
   formData.append('reference_image', referenceImage);
 
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/inventory/update-image`, {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/inventory/update-image`, {
     method: 'POST',
     headers: getFormDataHeaders(),
     body: formData,
