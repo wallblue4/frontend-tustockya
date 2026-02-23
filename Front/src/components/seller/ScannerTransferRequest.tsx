@@ -60,6 +60,7 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const isDualTransfer = !!prefilledProductData.dual_transfer;
+  const isSiblingSource = prefilledProductData.request_notes?.startsWith('[DUO]') || false;
 
   const getInventoryLabel = () => {
     if (isDualTransfer) return '1 Par (2 transferencias desde ubicaciones distintas)';
@@ -266,7 +267,12 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
                 {/* Punto origen */}
                 <div>
                   <p className="text-xs text-muted-foreground">Origen</p>
-                  <p className="text-sm font-semibold">{prefilledProductData.location_name || 'Bodega Principal'}</p>
+                  <p className="text-sm font-semibold flex items-center gap-1.5">
+                    {prefilledProductData.location_name || 'Bodega Principal'}
+                    {isSiblingSource && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200 uppercase tracking-wide">DUO</span>
+                    )}
+                  </p>
                 </div>
 
                 {/* Punto destino */}

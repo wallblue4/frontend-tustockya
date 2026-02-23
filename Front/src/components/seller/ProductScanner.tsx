@@ -191,6 +191,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
               can_form_pair: canFormPair,
               missing_foot: missing,
               is_local: true,
+              sibling_pair_id: localAvail.sibling_pair_id ?? null,
               formation_opportunities: sizeDetails.formation_opportunities || [],
               suggestions: sizeDetails.suggestions || []
             });
@@ -227,6 +228,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                   can_form_pair: locationLeftFeet > 0 && locationRightFeet > 0,
                   missing_foot: null,
                   is_local: false,
+                  sibling_pair_id: locDistro.sibling_pair_id ?? null,
                   formation_opportunities: sizeDetails.formation_opportunities || [],
                   suggestions: sizeDetails.suggestions || []
                 });
@@ -781,15 +783,15 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     let requestNotes = '';
 
     if (localEntry) {
-      // Prioridad: si hay un par completo en bodega, preferirlo sobre completar el par con piezas sueltas de otro local
-      const bodegaWithCompletePair = remoteEntries.find(
+      // Prioridad: si hay un par completo en algún remoto (bodega primero), preferirlo sobre completar el par con piezas sueltas
+      const remoteWithCompletePair = remoteEntries.find(
         e => (e.pairs || 0) > 0 && e.location_type === 'bodega'
-      );
+      ) || remoteEntries.find(e => (e.pairs || 0) > 0);
 
-      if (bodegaWithCompletePair && localEntry.missing_foot) {
-        // Bodega tiene par completo → priorizar sobre solicitar pieza suelta de otro local
+      if (remoteWithCompletePair && localEntry.missing_foot) {
+        // Remoto tiene par completo → priorizar sobre solicitar pieza suelta de otro local
         transferType = 'pair';
-        requestNotes = `Par completo disponible en bodega ${bodegaWithCompletePair.location_name} (priorizado sobre completar par con piezas sueltas)`;
+        requestNotes = `Par completo disponible en ${remoteWithCompletePair.location_name} (priorizado sobre completar par con piezas sueltas)`;
       } else if (localEntry.missing_foot === 'right' && (localEntry.left_feet || 0) > 0) {
         transferType = 'right_foot';
         requestNotes = `Completar par: tiene pie izquierdo, necesita pie derecho`;
@@ -888,21 +890,31 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       }
     }
 
-    // FUENTE: selección inteligente basada en transferType (priorizar bodegas sobre otros locales)
-    const findPreferBodega = (predicate: (e: SizeInfo) => boolean) => {
-      return remoteEntries.find(e => predicate(e) && e.location_type === 'bodega')
-        || remoteEntries.find(predicate);
+    // FUENTE: selección inteligente basada en transferType
+    // Prioridad: 1) Local hermano (sibling), 2) Bodega, 3) Cualquier remoto
+    const localSiblingPairId = localEntry?.sibling_pair_id;
+    const findPreferSource = (predicate: (e: SizeInfo) => boolean) => {
+      // 1. Sibling (mismo sibling_pair_id que el local) — máxima prioridad
+      if (localSiblingPairId) {
+        const fromSibling = remoteEntries.find(e => predicate(e) && e.sibling_pair_id === localSiblingPairId);
+        if (fromSibling) return fromSibling;
+      }
+      // 2. Bodega
+      const fromBodega = remoteEntries.find(e => predicate(e) && e.location_type === 'bodega');
+      if (fromBodega) return fromBodega;
+      // 3. Cualquier remoto
+      return remoteEntries.find(predicate);
     };
 
     let sourceInfo;
     if (transferType === 'pair') {
-      sourceInfo = findPreferBodega(e => (e.pairs || 0) > 0);
+      sourceInfo = findPreferSource(e => (e.pairs || 0) > 0);
     } else if (transferType === 'form_pair') {
-      sourceInfo = findPreferBodega(e => (e.left_feet || 0) > 0 && (e.right_feet || 0) > 0);
+      sourceInfo = findPreferSource(e => (e.left_feet || 0) > 0 && (e.right_feet || 0) > 0);
     } else if (transferType === 'right_foot') {
-      sourceInfo = findPreferBodega(e => (e.right_feet || 0) > 0);
+      sourceInfo = findPreferSource(e => (e.right_feet || 0) > 0);
     } else if (transferType === 'left_foot') {
-      sourceInfo = findPreferBodega(e => (e.left_feet || 0) > 0);
+      sourceInfo = findPreferSource(e => (e.left_feet || 0) > 0);
     } else {
       sourceInfo = remoteEntries[0];
     }
@@ -916,6 +928,12 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     if (!sourceLocationId) {
       setError('No se pudo determinar la ubicación de origen');
       return;
+    }
+
+    // Etiquetar como [DUO] si el origen es el local hermano (sibling)
+    const isSiblingSource = !!(localSiblingPairId && sourceInfo.sibling_pair_id === localSiblingPairId);
+    if (isSiblingSource) {
+      requestNotes = `[DUO] ${requestNotes}`;
     }
 
     const availableOptions = {
