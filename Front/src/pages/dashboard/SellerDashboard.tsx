@@ -622,7 +622,7 @@ export const SellerDashboard: React.FC = () => {
           >
             <div className="flex items-center gap-3">
               <Truck className="h-4 w-4 text-purple-600" />
-              <span className="text-sm font-medium text-foreground">Transferencias</span>
+              <span className="text-sm font-medium text-foreground">Pedidos</span>
               {transfersSummary && transfersSummary.total_pending > 0 && (
                 <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
                   <Clock className="h-3 w-3" />
@@ -708,7 +708,7 @@ export const SellerDashboard: React.FC = () => {
                 currentView === 'today-sales' ? 'Ventas del Día' :
                   currentView === 'expenses' ? 'Registrar Gasto' :
                     currentView === 'expenses-list' ? 'Gastos del Día' :
-                      currentView === 'transfers' ? 'Gestión de Transferencias' :
+                      currentView === 'transfers' ? 'Gestión de Pedidos' :
                         'Notificaciones'
     }>
       {/* MODAL DE CÁMARA */}

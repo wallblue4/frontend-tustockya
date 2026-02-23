@@ -712,7 +712,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 {activeTab === 'new' && <Plus className="h-4 w-4 text-primary" />}
                 <span className="font-medium">
                   {activeTab === 'pending' && `Recepciones por Confirmar (${totalPending})`}
-                  {activeTab === 'completed' && 'Transferencias Completadas'}
+                  {activeTab === 'completed' && 'Pedidos Completados'}
                   {activeTab === 'incoming' && `Solicitudes Entrantes (${incomingTransfers.filter(t => t.status === 'pending').length})`}
                   {activeTab === 'history' && 'Historial del Día'}
                   {activeTab === 'new' && 'Nueva Solicitud'}
@@ -748,7 +748,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     }`}
                 >
                   <CheckCircle className="h-4 w-4" />
-                  <span>Transferencias Completadas</span>
+                  <span>Pedidos Completados</span>
                 </button>
                 <button
                   onClick={() => {
@@ -808,7 +808,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               onClick={() => setActiveTab('completed')}
             >
               <CheckCircle className="h-4 w-4 mr-2" />
-              Transferencias Completadas
+              Pedidos Completados
             </Button>
             <Button
               variant={activeTab === 'incoming' ? 'primary' : 'outline'}
@@ -872,7 +872,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               className="flex-1 md:flex-none text-xs md:text-sm"
             >
               <CheckCircle className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-              Completadas
+              Ventas / Devoluciones
             </Button>
           </div>
         </CardContent>
@@ -1285,7 +1285,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <h3 className="text-base md:text-lg font-semibold">Transferencias Completadas</h3>
+              <h3 className="text-base md:text-lg font-semibold">Pedidos Completados</h3>
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => { setCompletedGroupByRef(!completedGroupByRef); setCompletedExpandedGroups(new Set()); }}
