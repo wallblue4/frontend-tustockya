@@ -1789,6 +1789,16 @@ export const WarehouseDashboard: React.FC = () => {
                 </h2>
 
                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={inventorySearchTerm}
+                      onChange={(e) => setInventorySearchTerm(e.target.value)}
+                      placeholder="Buscar marca, modelo, talla..."
+                      className="pl-9 pr-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground w-full sm:w-64"
+                    />
+                  </div>
                   <div className="flex space-x-2">
                     <select
                       value={selectedLocation}
