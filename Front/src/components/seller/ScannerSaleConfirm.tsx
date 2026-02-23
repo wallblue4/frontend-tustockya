@@ -117,6 +117,16 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
     }
   };
 
+  const formatCurrency = (value: string): string => {
+    const digits = value.replace(/[^0-9]/g, '');
+    if (!digits) return '';
+    return `$ ${parseInt(digits, 10).toLocaleString('es-CO')}`;
+  };
+
+  const parseCurrencyInput = (value: string): string => {
+    return value.replace(/[^0-9]/g, '');
+  };
+
   const handleRequestDiscount = async () => {
     if (!discountAmount || !discountReason) {
       setError('Ingresa el monto y la razon del descuento');
@@ -383,11 +393,11 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
                   </select>
                   <div className="relative">
                     <input
-                      type="number"
-                      value={mp.amount}
-                      onChange={(e) => updateMixedPayment(index, 'amount', e.target.value)}
-                      placeholder="Monto"
-                      min={0}
+                      type="text"
+                      inputMode="numeric"
+                      value={mp.amount ? formatCurrency(mp.amount) : ''}
+                      onChange={(e) => updateMixedPayment(index, 'amount', parseCurrencyInput(e.target.value))}
+                      placeholder="$ 0"
                       className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pr-16"
                     />
                     {mixedRemaining > 0 && !mp.amount && (
