@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, MapPin, Search, AlertCircle, Package } from 'lucide-react';
+import { X, MapPin, Search, AlertCircle, Package, Link } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import type { AdminInventoryLocation } from '../../types';
@@ -99,6 +99,17 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
     if (!selectedProduct) return [];
     return allLocations.filter(l => !selectedProduct.location_ids.includes(l.id));
   }, [selectedProduct, allLocations]);
+
+  // Detect sibling location for selected location
+  const siblingInfo = useMemo(() => {
+    if (!selectedLocationId) return null;
+    const currentLoc = allInventory.find(loc => loc.location_id === selectedLocationId);
+    if (!currentLoc?.sibling_pair_id) return null;
+    const sibling = allInventory.find(
+      loc => loc.sibling_pair_id === currentLoc.sibling_pair_id && loc.location_id !== selectedLocationId
+    );
+    return sibling ? { sibling_location_name: sibling.location_name } : null;
+  }, [selectedLocationId, allInventory]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -372,6 +383,16 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
                   Se creara el producto "{selectedProduct.reference_code}" con talla "{formData.size || '...'}" ({formData.quantity} unidad(es), {getInventoryTypeLabel(formData.inventory_type)}) en {selectedLocationName}.
                 </p>
               </div>
+
+              {/* Sibling sync warning */}
+              {siblingInfo && (formData.inventory_type === 'left_only' || formData.inventory_type === 'right_only') && (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex items-start space-x-2">
+                  <Link className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-blue-500">
+                    Esta asignacion tambien se aplicara como <strong>{formData.inventory_type === 'left_only' ? 'Pie derecho' : 'Pie izquierdo'}</strong> en <strong>{siblingInfo.sibling_location_name}</strong>.
+                  </p>
+                </div>
+              )}
             </>
           )}
 

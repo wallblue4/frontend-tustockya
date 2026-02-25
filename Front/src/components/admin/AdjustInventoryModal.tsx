@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Package, AlertCircle } from 'lucide-react';
+import { X, Package, AlertCircle, Link } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 
@@ -24,12 +24,14 @@ interface AdjustInventoryModalProps {
     inventory_type: 'pair' | 'left_only' | 'right_only';
     current_quantity: number;
   };
+  siblingInfo?: { sibling_location_name: string; opposite_inventory_type_label: string } | null;
 }
 
 export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
   onClose,
   onSubmit,
-  productData
+  productData,
+  siblingInfo
 }) => {
   const [formData, setFormData] = useState({
     adjustment_type: 'set_quantity' as 'set_quantity' | 'increment' | 'decrement',
@@ -238,6 +240,16 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
               Este ajuste quedara registrado en el historial. Asegurate de que la informacion sea correcta antes de confirmar.
             </p>
           </div>
+
+          {/* Sibling sync warning */}
+          {siblingInfo && (
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex items-start space-x-2">
+              <Link className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-blue-500">
+                Este ajuste tambien se aplicara como <strong>{siblingInfo.opposite_inventory_type_label}</strong> en <strong>{siblingInfo.sibling_location_name}</strong>.
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-end space-x-3 pt-4">
             <Button

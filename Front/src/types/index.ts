@@ -252,6 +252,7 @@ export interface AdminInventoryLocation {
   location_id: number;
   location_name: string;
   location_type?: 'local' | 'bodega';
+  sibling_pair_id?: number | null;
   products: AdminInventoryProduct[];
 }
 

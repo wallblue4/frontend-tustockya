@@ -369,6 +369,7 @@ export const AdminDashboard: React.FC = () => {
     size: string;
     inventory_type: 'pair' | 'left_only' | 'right_only';
     current_quantity: number;
+    siblingInfo?: { sibling_location_name: string; opposite_inventory_type_label: string } | null;
   } | null>(null);
   const [selectedProductForPriceAdjustment, setSelectedProductForPriceAdjustment] = useState<{
     brand: string;
@@ -393,6 +394,7 @@ export const AdminDashboard: React.FC = () => {
     location_id: number;
     location_name: string;
     existing_sizes: { size: string; inventory_type: 'pair' | 'left_only' | 'right_only' }[];
+    siblingLocationInfo?: { sibling_location_name: string } | null;
   } | null>(null);
   const [showAssignProductModal, setShowAssignProductModal] = useState(false);
 
@@ -1345,12 +1347,40 @@ Por favor verifica que:
     });
   };
 
+  // ========== SIBLING SYNC HELPERS ==========
+  const findSiblingLocation = (locationId: number, inventory: AdminInventoryLocation[]): AdminInventoryLocation | null => {
+    const currentLocation = inventory.find(loc => loc.location_id === locationId);
+    if (!currentLocation?.sibling_pair_id) return null;
+    return inventory.find(
+      loc => loc.sibling_pair_id === currentLocation.sibling_pair_id && loc.location_id !== locationId
+    ) || null;
+  };
+
+  const getOppositeFootType = (inventoryType: 'pair' | 'left_only' | 'right_only'): 'left_only' | 'right_only' | null => {
+    if (inventoryType === 'left_only') return 'right_only';
+    if (inventoryType === 'right_only') return 'left_only';
+    return null;
+  };
+
+  const getInventoryTypeFullLabel = (type: string) => {
+    switch (type) {
+      case 'pair': return 'Par completo';
+      case 'left_only': return 'Pie izquierdo';
+      case 'right_only': return 'Pie derecho';
+      default: return type;
+    }
+  };
+
   const handleOpenAdjustInventoryModal = (
     product: AdminInventoryProduct,
     size: AdminInventorySize,
     locationId: number,
     locationName: string
   ) => {
+    const invType = size.inventory_type || 'pair';
+    const oppositeType = getOppositeFootType(invType);
+    const sibling = oppositeType ? findSiblingLocation(locationId, adminInventory) : null;
+
     setSelectedSizeForAdjustment({
       brand: product.brand,
       model: product.model,
@@ -1358,8 +1388,12 @@ Por favor verifica que:
       location_id: locationId,
       location_name: locationName,
       size: size.size,
-      inventory_type: size.inventory_type || 'pair',
-      current_quantity: size.quantity
+      inventory_type: invType,
+      current_quantity: size.quantity,
+      siblingInfo: sibling && oppositeType ? {
+        sibling_location_name: sibling.location_name,
+        opposite_inventory_type_label: getInventoryTypeFullLabel(oppositeType)
+      } : null
     });
     setShowAdjustInventoryModal(true);
   };
@@ -1386,13 +1420,15 @@ Por favor verifica que:
   };
 
   const handleOpenAddSizeModal = (product: AdminInventoryProduct, locationId: number, locationName: string) => {
+    const sibling = findSiblingLocation(locationId, adminInventory);
     setSelectedProductForAddSize({
       brand: product.brand,
       model: product.model,
       reference_code: product.reference_code,
       location_id: locationId,
       location_name: locationName,
-      existing_sizes: product.sizes.map(s => ({ size: s.size, inventory_type: s.inventory_type || 'pair' as const }))
+      existing_sizes: product.sizes.map(s => ({ size: s.size, inventory_type: s.inventory_type || 'pair' as const })),
+      siblingLocationInfo: sibling ? { sibling_location_name: sibling.location_name } : null
     });
     setShowAddSizeModal(true);
   };
@@ -1410,7 +1446,27 @@ Por favor verifica que:
       const response = await adjustInventory(data);
       console.log('Talla agregada:', response);
 
-      // Reload inventory after adding size
+      // Sibling sync logic
+      let siblingMessage = '';
+      const oppositeType = getOppositeFootType(data.inventory_type);
+      if (oppositeType) {
+        const sibling = findSiblingLocation(data.location_id, adminInventory);
+        if (sibling) {
+          try {
+            await adjustInventory({
+              ...data,
+              location_id: sibling.location_id,
+              inventory_type: oppositeType,
+              reason: `[SYNC] ${data.reason || 'Talla sincronizada desde local hermano'}`
+            });
+            siblingMessage = `\nTambien se agrego ${getInventoryTypeFullLabel(oppositeType)} en ${sibling.location_name}.`;
+          } catch (syncError) {
+            console.error('Error en sync con hermano:', syncError);
+            siblingMessage = `\n⚠️ Advertencia: la talla se agrego pero fallo el sync con ${sibling.location_name}.`;
+          }
+        }
+      }
+
       await loadAdminInventory();
 
       alert(`Talla agregada exitosamente.
@@ -1418,7 +1474,7 @@ Por favor verifica que:
 Producto: ${data.product_reference}
 Nueva Talla: ${data.size}
 Cantidad: ${data.quantity}
-Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type === 'left_only' ? 'Pie izquierdo' : 'Pie derecho'}`);
+Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type === 'left_only' ? 'Pie izquierdo' : 'Pie derecho'}${siblingMessage}`);
 
       setShowAddSizeModal(false);
       setSelectedProductForAddSize(null);
@@ -1442,6 +1498,27 @@ Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type ==
       const response = await adjustInventory(data);
       console.log('Producto asignado a ubicacion:', response);
 
+      // Sibling sync logic
+      let siblingMessage = '';
+      const oppositeType = getOppositeFootType(data.inventory_type);
+      if (oppositeType) {
+        const sibling = findSiblingLocation(data.location_id, adminInventory);
+        if (sibling) {
+          try {
+            await adjustInventory({
+              ...data,
+              location_id: sibling.location_id,
+              inventory_type: oppositeType,
+              reason: `[SYNC] ${data.reason || 'Asignacion sincronizada desde local hermano'}`
+            });
+            siblingMessage = `\nTambien se asigno ${getInventoryTypeFullLabel(oppositeType)} en ${sibling.location_name}.`;
+          } catch (syncError) {
+            console.error('Error en sync con hermano:', syncError);
+            siblingMessage = `\n⚠️ Advertencia: la asignacion fue exitosa pero fallo el sync con ${sibling.location_name}.`;
+          }
+        }
+      }
+
       await loadAdminInventory();
 
       const locationName = locations.find(l => l.id === data.location_id)?.name || `ID ${data.location_id}`;
@@ -1451,7 +1528,7 @@ Producto: ${data.product_reference}
 Ubicacion: ${locationName}
 Talla: ${data.size}
 Cantidad: ${data.quantity}
-Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type === 'left_only' ? 'Pie izquierdo' : 'Pie derecho'}`);
+Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type === 'left_only' ? 'Pie izquierdo' : 'Pie derecho'}${siblingMessage}`);
 
       setShowAssignProductModal(false);
     } catch (error: any) {
@@ -1474,7 +1551,27 @@ Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type ==
       const response = await adjustInventory(data);
       console.log('Inventario ajustado:', response);
 
-      // Reload inventory after adjustment
+      // Sibling sync logic
+      let siblingMessage = '';
+      const oppositeType = getOppositeFootType(data.inventory_type);
+      if (oppositeType) {
+        const sibling = findSiblingLocation(data.location_id, adminInventory);
+        if (sibling) {
+          try {
+            await adjustInventory({
+              ...data,
+              location_id: sibling.location_id,
+              inventory_type: oppositeType,
+              reason: `[SYNC] ${data.reason || 'Ajuste sincronizado desde local hermano'}`
+            });
+            siblingMessage = `\nTambien se ajusto ${getInventoryTypeFullLabel(oppositeType)} en ${sibling.location_name}.`;
+          } catch (syncError) {
+            console.error('Error en sync con hermano:', syncError);
+            siblingMessage = `\n⚠️ Advertencia: el ajuste principal fue exitoso pero fallo el sync con ${sibling.location_name}.`;
+          }
+        }
+      }
+
       await loadAdminInventory();
 
       alert(`Inventario ajustado exitosamente.
@@ -1482,7 +1579,7 @@ Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type ==
 Producto: ${data.product_reference}
 Talla: ${data.size}
 Ajuste: ${data.adjustment_type === 'set_quantity' ? 'Establecido a' : data.adjustment_type === 'increment' ? 'Incrementado en' : 'Decrementado en'} ${data.quantity}
-Motivo: ${data.reason}`);
+Motivo: ${data.reason}${siblingMessage}`);
 
       setShowAdjustInventoryModal(false);
       setSelectedSizeForAdjustment(null);
@@ -5216,6 +5313,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             }}
             onSubmit={handleAdjustInventory}
             productData={selectedSizeForAdjustment}
+            siblingInfo={selectedSizeForAdjustment.siblingInfo}
           />
         )}
 
@@ -5252,6 +5350,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             }}
             onSubmit={handleAddSize}
             productData={selectedProductForAddSize}
+            siblingLocationInfo={selectedProductForAddSize.siblingLocationInfo}
           />
         )}
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, AlertCircle } from 'lucide-react';
+import { X, Plus, AlertCircle, Link } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 
@@ -27,12 +27,14 @@ interface AddSizeModalProps {
     location_name: string;
     existing_sizes: ExistingSizeEntry[];
   };
+  siblingLocationInfo?: { sibling_location_name: string } | null;
 }
 
 export const AddSizeModal: React.FC<AddSizeModalProps> = ({
   onClose,
   onSubmit,
-  productData
+  productData,
+  siblingLocationInfo
 }) => {
   const [formData, setFormData] = useState({
     size: '',
@@ -227,6 +229,16 @@ export const AddSizeModal: React.FC<AddSizeModalProps> = ({
               Se creara una nueva talla "{formData.size || '...'}" con {formData.quantity} unidad(es) de tipo "{getInventoryTypeLabel(formData.inventory_type)}" en {productData.location_name}.
             </p>
           </div>
+
+          {/* Sibling sync warning */}
+          {siblingLocationInfo && (formData.inventory_type === 'left_only' || formData.inventory_type === 'right_only') && (
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex items-start space-x-2">
+              <Link className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-blue-500">
+                Esta talla tambien se creara como <strong>{formData.inventory_type === 'left_only' ? 'Pie derecho' : 'Pie izquierdo'}</strong> en <strong>{siblingLocationInfo.sibling_location_name}</strong>.
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-end space-x-3 pt-4">
             <Button
