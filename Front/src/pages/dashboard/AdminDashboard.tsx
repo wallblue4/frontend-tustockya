@@ -133,7 +133,7 @@ import { EditProductInfoModal } from '../../components/admin/EditProductInfoModa
 
 // Import inventory types and API
 import type { AdminInventoryLocation, AdminInventoryProduct, AdminInventorySize } from '../../types';
-import { adjustInventory, adjustProductPrice, updateProductInfo, fetchAdminInventory, deleteProductReference, updateProductImage } from '../../services/adminAPI';
+import { adjustInventory, adjustProductPrice, updateProductInfo, fetchAdminInventory, deleteProductReference, updateProductImage, retrainProductVideo } from '../../services/adminAPI';
 
 type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics' | 'transfers';
 
@@ -1581,6 +1581,16 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
 
   const [deletingProductId, setDeletingProductId] = useState<number | null>(null);
   const [updatingImageRef, setUpdatingImageRef] = useState<string | null>(null);
+
+  // Retrain modal states
+  const [showRetrainModal, setShowRetrainModal] = useState(false);
+  const [retrainProduct, setRetrainProduct] = useState<AdminInventoryProduct | null>(null);
+  const [retrainLoading, setRetrainLoading] = useState(false);
+  const [retrainFormData, setRetrainFormData] = useState({
+    video_file: null as File | null,
+    warehouse_location_id: '',
+    notes: ''
+  });
   const imageInputRef = React.useRef<HTMLInputElement>(null);
   const [editDropdownPos, setEditDropdownPos] = useState<{ top: number; left: number } | null>(null);
 
@@ -1653,6 +1663,44 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
       if (imageInputRef.current) {
         imageInputRef.current.value = '';
       }
+    }
+  };
+
+  const handleOpenRetrainModal = (product: AdminInventoryProduct) => {
+    setRetrainProduct(product);
+    setRetrainFormData({ video_file: null, warehouse_location_id: '', notes: '' });
+    setShowRetrainModal(true);
+  };
+
+  const handleRetrainProduct = async () => {
+    if (!retrainProduct) return;
+
+    if (!retrainFormData.video_file) {
+      alert('Por favor selecciona un archivo de video.');
+      return;
+    }
+    if (!retrainFormData.warehouse_location_id) {
+      alert('Por favor selecciona una bodega.');
+      return;
+    }
+
+    setRetrainLoading(true);
+    try {
+      const response = await retrainProductVideo(retrainProduct.product_id, {
+        video_file: retrainFormData.video_file,
+        warehouse_location_id: parseInt(retrainFormData.warehouse_location_id),
+        notes: retrainFormData.notes || undefined,
+      });
+
+      alert(`Re-entrenamiento iniciado exitosamente.\n\nProducto: ${response.brand} ${response.model}\nCodigo: ${response.reference_code}\nJob ID: ${response.new_job_id}\nEstado: ${response.new_job_status}\n\n${response.previous_vectors_will_be_replaced ? 'Los vectores anteriores se reemplazaran al completar.' : ''}`);
+
+      setShowRetrainModal(false);
+      setRetrainProduct(null);
+    } catch (error: any) {
+      console.error('Error retraining product:', error);
+      alert('Error al re-entrenar producto: ' + (error.message || 'Error desconocido'));
+    } finally {
+      setRetrainLoading(false);
     }
   };
 
@@ -5138,6 +5186,13 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <Camera className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
                   Imagen
                 </button>
+                <button
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                  onClick={() => { closeEditDropdown(); handleOpenRetrainModal(product); }}
+                >
+                  <Video className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                  Re-entrenar IA
+                </button>
                 <div className="border-t border-border my-1" />
                 <button
                   className="w-full text-left px-3 py-2 text-xs hover:bg-destructive/10 flex items-center text-destructive"
@@ -5207,6 +5262,115 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             allInventory={adminInventory}
             allLocations={locations.map(l => ({ id: l.id, name: l.name }))}
           />
+        )}
+
+        {/* Retrain AI Modal */}
+        {showRetrainModal && retrainProduct && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-card rounded-lg shadow-xl w-full max-w-md border border-border flex flex-col max-h-[90vh]">
+              <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
+                <h3 className="text-lg font-semibold text-foreground flex items-center">
+                  <Video className="h-5 w-5 mr-2 text-primary" />
+                  Re-entrenar IA
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowRetrainModal(false);
+                    setRetrainProduct(null);
+                  }}
+                  disabled={retrainLoading}
+                >
+                  ×
+                </Button>
+              </div>
+              <div className="p-4 space-y-4 overflow-y-auto">
+                <div className="bg-muted/30 p-3 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    {retrainProduct.image_url && (
+                      <img
+                        src={retrainProduct.image_url}
+                        alt={`${retrainProduct.brand} ${retrainProduct.model}`}
+                        className="w-12 h-12 object-cover rounded"
+                      />
+                    )}
+                    <div>
+                      <p className="font-medium text-foreground">{retrainProduct.brand} {retrainProduct.model}</p>
+                      <p className="text-sm text-muted-foreground font-mono">{retrainProduct.reference_code}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Video del producto *</label>
+                  <FullScreenCameraCapture
+                    onVideoRecorded={(_url, blob) => {
+                      if (blob) {
+                        const file = blob instanceof File
+                          ? blob
+                          : new File([blob], `retrain-${retrainProduct.reference_code}-${Date.now()}.webm`, { type: blob.type || 'video/webm' });
+                        setRetrainFormData(prev => ({ ...prev, video_file: file }));
+                      }
+                    }}
+                  />
+                  {retrainFormData.video_file && (
+                    <p className="text-xs text-success">
+                      Video listo: {retrainFormData.video_file.name} ({(retrainFormData.video_file.size / 1024 / 1024).toFixed(1)} MB)
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Bodega *</label>
+                  <Select
+                    value={retrainFormData.warehouse_location_id}
+                    onChange={(e) => setRetrainFormData(prev => ({ ...prev, warehouse_location_id: e.target.value }))}
+                    options={[
+                      { value: '', label: 'Seleccionar bodega...' },
+                      ...locations
+                        .filter(l => l.type === 'bodega')
+                        .map(l => ({ value: l.id.toString(), label: l.name }))
+                    ]}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Notas (opcional)</label>
+                  <Input
+                    type="text"
+                    value={retrainFormData.notes}
+                    onChange={(e) => setRetrainFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Motivo del re-entrenamiento..."
+                  />
+                </div>
+
+                <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
+                  <p className="text-xs text-warning">
+                    Al re-entrenar, los vectores de IA anteriores se reemplazaran cuando el procesamiento complete. Este proceso puede tardar varios minutos.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-2 p-4 border-t border-border shrink-0">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowRetrainModal(false);
+                    setRetrainProduct(null);
+                  }}
+                  disabled={retrainLoading}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleRetrainProduct}
+                  disabled={retrainLoading || !retrainFormData.video_file || !retrainFormData.warehouse_location_id}
+                >
+                  {retrainLoading ? 'Enviando...' : 'Iniciar Re-entrenamiento'}
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Edit Cost Modal */}

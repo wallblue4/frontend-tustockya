@@ -1079,6 +1079,27 @@ export const fetchAdminInventory = async () => {
   return handleResponse(response);
 };
 
+// POST /api/v1/video-processing/retrain/{product_id} - Re-entrenar IA de producto
+export const retrainProductVideo = async (productId: number, data: {
+  video_file: File;
+  warehouse_location_id: number;
+  notes?: string;
+}) => {
+  const formData = new FormData();
+  formData.append('video_file', data.video_file);
+  formData.append('warehouse_location_id', data.warehouse_location_id.toString());
+  if (data.notes) {
+    formData.append('notes', data.notes);
+  }
+
+  const response = await fetch(`${BACKEND_URL}/api/v1/video-processing/retrain/${productId}`, {
+    method: 'POST',
+    headers: getFormDataHeaders(),
+    body: formData,
+  });
+  return handleResponse(response);
+};
+
 // DELETE /api/v1/video-processing/reference/{product_id} - Eliminar referencia de producto completa
 export const deleteProductReference = async (productId: number) => {
   const token = localStorage.getItem('token');
