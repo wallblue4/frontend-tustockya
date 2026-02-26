@@ -962,7 +962,7 @@ export const WarehouseDashboard: React.FC = () => {
                     >
                       <option value="all">Todos los propósitos</option>
                       <option value="cliente">🏃‍♂️ Cliente presente</option>
-                      <option value="restock">📦 Restock</option>
+                      <option value="restock">📦 Reposición</option>
                     </select>
                   </div>
                 </div>
@@ -993,9 +993,17 @@ export const WarehouseDashboard: React.FC = () => {
                       {/* MOBILE COMPACT VIEW */}
                       <div className="md:hidden">
                         <div className="p-4">
-                          {/* Header con etiquetas de prioridad */}
+                          {/* Header con etiquetas de prioridad y propósito */}
                           <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-2 flex-wrap gap-1">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(request.priority_level)}`}>
+                                {request.priority_level === 'URGENT' || request.priority === 'high' ? '🔥 URGENTE' : '📦 Normal'}
+                              </span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
+                                {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' :
+                                  request.purpose === 'restock' ? '📦 Reposición' :
+                                  request.purpose === 'pair_formation' ? '🔗 Formar Par' : '↩️ Devolución'}
+                              </span>
                               {request.request_type && (
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRequestTypeColor(request.request_type)}`}>
                                   {request.request_type === 'transfer' ? '📦 Transferencia' : '↩️ Devolución'}
@@ -1123,7 +1131,7 @@ export const WarehouseDashboard: React.FC = () => {
                             </span>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
                               {request.purpose === 'cliente' ? '🏃‍♂️ Cliente Presente' :
-                                request.purpose === 'pair_formation' ? '🔗 Formar Par' : '📦 Restock'}
+                                request.purpose === 'pair_formation' ? '🔗 Formar Par' : '📦 Reposición'}
                             </span>
                             {request.request_type && (
                               <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRequestTypeColor(request.request_type)}`}>
@@ -1239,6 +1247,26 @@ export const WarehouseDashboard: React.FC = () => {
                                 </div>
                               </div>
 
+                              {/* Origen y Destino */}
+                              <div className="p-4 bg-gray-50 rounded-lg mb-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="flex items-center space-x-2">
+                                    <MapPin className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                    <div>
+                                      <div className="text-sm text-gray-500">Origen</div>
+                                      <div className="font-medium text-gray-900">{request.location_info?.from?.name || request.source_location_name || 'N/A'}</div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
+                                    <div>
+                                      <div className="text-sm text-gray-500">Destino</div>
+                                      <div className="font-medium text-gray-900">{request.location_info?.to?.name || 'N/A'}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
                               {/* Código de referencia */}
                               <div className="p-4 bg-gray-50 rounded-lg mb-6">
                                 <div className="text-sm text-gray-500 mb-1">Código de referencia</div>
@@ -1343,8 +1371,13 @@ export const WarehouseDashboard: React.FC = () => {
                                   🔄 Devolución
                                 </span>
                               )}
+                              {request.purpose === 'restock' && (
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor('restock')}`}>
+                                  📦 Reposición
+                                </span>
+                              )}
                             </div>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium 
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium
                              ${request.status === 'courier_assigned' ? 'bg-success/10 text-success' :
                                 request.status === 'in_transit' ? 'bg-blue-100 text-blue-800' : 'bg-warning/10 text-warning'}
                            `}>
@@ -1532,6 +1565,11 @@ export const WarehouseDashboard: React.FC = () => {
                                   🔄 Devolución
                                 </span>
                               )}
+                              {request.purpose === 'restock' && (
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor('restock')}`}>
+                                  📦 Reposición
+                                </span>
+                              )}
                               {request.request_type && (
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRequestTypeColor(request.request_type)}`}>
                                   {request.request_type === 'transfer' ? '📦 Transferencia' : '↩️ Devolución'}
@@ -1632,7 +1670,7 @@ export const WarehouseDashboard: React.FC = () => {
                                   </span>
                                   <span>
                                     📍 Propósito: {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' :
-                                      request.purpose === 'pair_formation' ? '🔗 Formar Par' : '📦 Restock'}
+                                      request.purpose === 'pair_formation' ? '🔗 Formar Par' : '📦 Reposición'}
                                   </span>
                                   <span>
                                     📦 Cantidad: {request.quantity}
