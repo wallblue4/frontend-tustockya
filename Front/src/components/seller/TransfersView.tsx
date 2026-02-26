@@ -93,6 +93,7 @@ interface CompletedTransfer {
   duration: string;
   next_action: string;
   product_image?: string;
+  image_url?: string;
   has_return_request?: boolean;
   pickup_type?: 'corredor' | 'vendedor';
   location_name?: string;
@@ -338,7 +339,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       size: item.size,
       quantity: item.quantity,
       inventory_type: item.inventory_type || 'pair', // Use original inventory type or default to 'pair'
-      product_image: item.product_image
+      product_image: item.product_image || (item as any).image_url
     };
     setSelectedTransferForReturn(transferForReturn);
     setShowReturnModal(true);
@@ -394,7 +395,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       location: 'Local Actual',
       storage_type: 'display',
       color: 'N/A',
-      image: item.product_image || undefined,
+      image: item.product_image || (item as any).image_url || undefined,
       transfer_id: item.id
     };
 
@@ -413,6 +414,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     // Como CompletedTransfer y TransferHistoryItem comparten los campos necesarios, podemos castear o crear el objeto
     const historyItem: TransferHistoryItem = {
       ...item,
+      product_image: item.product_image || item.image_url, // Normalizar campo de imagen
       type: 'transfer', // Valor por defecto
       timestamp: item.completed_at || new Date().toISOString(), // Valor por defecto
       status: item.status === 'completed' ? 'completed' : 'cancelled', // Mapeo de status
@@ -1337,6 +1339,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 const inventoryLabel = transfer.inventory_type === 'left_only' ? '🦶 Izquierdo' : transfer.inventory_type === 'right_only' ? '🦶 Derecho' : '👟 Par';
                 const isReturn = String(transfer.purpose).toLowerCase().trim() === 'return';
                 const isRestock = String(transfer.purpose).toLowerCase().trim() === 'restock';
+                const transferImage = transfer.product_image || transfer.image_url;
+
+                const footLabel = transfer.inventory_type === 'left_only' ? 'Pie Izq.' : transfer.inventory_type === 'right_only' ? 'Pie Der.' : '';
 
                 const completedActions = (compact: boolean) => {
                   if (!isCompleted) return null;
@@ -1350,10 +1355,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   return (
                     <div className={`flex flex-col ${compact ? 'gap-1.5 mt-2' : 'gap-1.5 mt-2'}`}>
                       <Button onClick={() => handleSellFromCompletedTransfer(transfer)} className={`bg-primary hover:bg-primary/90 text-primary-foreground w-full ${compact ? 'text-[10px] h-7' : 'text-xs'}`} size="sm">
-                        <DollarSign className="h-3 w-3 mr-1" /> Vender
+                        <DollarSign className="h-3 w-3 mr-1" /> Vender Par
                       </Button>
                       <Button onClick={() => handleGenerateReturn(transfer)} className={`bg-muted text-muted-foreground hover:bg-muted/80 w-full ${compact ? 'text-[10px] h-7' : 'text-xs'}`} size="sm">
-                        <Package className="h-3 w-3 mr-1" /> {compact ? 'Devolver' : 'Generar Devolución'}
+                        <Package className="h-3 w-3 mr-1" /> {compact ? (footLabel ? `Dev. ${footLabel}` : 'Devolver') : (footLabel ? `Devolver ${footLabel}` : 'Generar Devolución')}
                       </Button>
                     </div>
                   );
@@ -1361,14 +1366,27 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
                 if (completedViewMode === 'grid') {
                   return (
-                    <div key={transfer.id} className={`border ${cardBorder} rounded-xl overflow-hidden ${cardBg} shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col p-2.5`}>
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${isCompleted ? 'bg-success/80 text-white' : 'bg-error/80 text-white'}`}>{statusLabel}</span>
-                        {transfer.pickup_type && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>}
-                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-black/70 text-white">{transfer.size}</span>
-                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{inventoryLabel}</span>
-                      </div>
-                      <div className="flex-1 flex flex-col justify-between">
+                    <div key={transfer.id} className={`border ${cardBorder} rounded-xl overflow-hidden ${cardBg} shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col`}>
+                      {transferImage && (
+                        <div className="aspect-square bg-muted/20 relative overflow-hidden">
+                          <img src={transferImage} className="absolute inset-0 w-full h-full object-cover" alt={`${transfer.brand} ${transfer.model}`} />
+                          <div className="absolute top-1.5 left-1.5 flex flex-wrap gap-1">
+                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm ${isCompleted ? 'bg-success/80 text-white' : 'bg-error/80 text-white'}`}>{statusLabel}</span>
+                          </div>
+                          <div className="absolute bottom-1.5 left-1.5 right-1.5 flex justify-between items-end">
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold backdrop-blur-sm bg-black/70 text-white">{transfer.size}</span>
+                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm bg-black/50 text-white">{inventoryLabel}</span>
+                          </div>
+                        </div>
+                      )}
+                      <div className="p-2.5 flex flex-col flex-1 justify-between">
+                        {!transferImage && (
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${isCompleted ? 'bg-success/80 text-white' : 'bg-error/80 text-white'}`}>{statusLabel}</span>
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-black/70 text-white">{transfer.size}</span>
+                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{inventoryLabel}</span>
+                          </div>
+                        )}
                         <div>
                           <div className="flex items-baseline gap-1">
                             <h4 className="font-bold text-xs leading-tight line-clamp-2">{transfer.brand} {transfer.model}</h4>
@@ -1398,28 +1416,49 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
                 // MODO LISTA
                 return (
-                  <div key={transfer.id} className={`border ${cardBorder} rounded-xl overflow-hidden ${cardBg} shadow-sm hover:shadow-lg transition-all duration-300 p-3`}>
-                    <div className="flex items-start gap-3">
-                      <div className="flex flex-col items-center gap-1 shrink-0">
-                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-black/70 text-white">{transfer.size}</span>
-                        <span className="text-xs font-semibold text-muted-foreground">x{transfer.quantity}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline gap-1.5">
-                          <h4 className="font-bold text-sm leading-tight">{transfer.brand} {transfer.model}</h4>
+                  <div key={transfer.id} className={`border ${cardBorder} rounded-xl overflow-hidden ${cardBg} shadow-sm hover:shadow-lg transition-all duration-300`}>
+                    <div className="flex flex-row">
+                      {transferImage && (
+                        <div className="w-2/5 md:w-1/3 aspect-square bg-muted/20 flex-shrink-0 relative overflow-hidden">
+                          <img src={transferImage} className="absolute inset-0 w-full h-full object-cover" alt={`${transfer.brand} ${transfer.model}`} />
+                          <div className="absolute top-1.5 left-1.5 flex flex-wrap gap-1">
+                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm ${isCompleted ? 'bg-success/80 text-white' : 'bg-error/80 text-white'}`}>{statusLabel}</span>
+                          </div>
+                          <div className="absolute bottom-1.5 left-1.5 right-1.5 flex justify-between items-end">
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold backdrop-blur-sm bg-black/70 text-white">{transfer.size}</span>
+                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm bg-black/50 text-white">{inventoryLabel}</span>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${isCompleted ? 'bg-success/80 text-white' : 'bg-error/80 text-white'}`}>{statusLabel}</span>
-                          {transfer.pickup_type && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>}
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{inventoryLabel}</span>
-                          {isReturn && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>}
-                          {isRestock && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">📦 Reposición</span>}
+                      )}
+                      <div className={`${transferImage ? 'w-3/5 md:w-2/3' : 'w-full'} p-3 flex flex-col justify-between`}>
+                        <div>
+                          <div className="flex items-baseline gap-1.5">
+                            <h4 className="font-bold text-sm leading-tight">{transfer.brand} {transfer.model}</h4>
+                            <span className="text-sm font-semibold text-muted-foreground shrink-0">x{transfer.quantity}</span>
+                          </div>
+                          {!transferImage && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${isCompleted ? 'bg-success/80 text-white' : 'bg-error/80 text-white'}`}>{statusLabel}</span>
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-black/70 text-white">{transfer.size}</span>
+                              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{inventoryLabel}</span>
+                            </div>
+                          )}
+                          {transfer.location_name && (
+                            <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-0.5">
+                              <MapPin className="h-3 w-3 shrink-0" />{transfer.location_name}
+                            </p>
+                          )}
+                          {isReturn && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Devolución</span>
+                            </div>
+                          )}
+                          {isRestock && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">📦 Reposición</span>
+                            </div>
+                          )}
                         </div>
-                        {transfer.location_name && (
-                          <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-0.5">
-                            <MapPin className="h-3 w-3 shrink-0" />{transfer.location_name}
-                          </p>
-                        )}
                         {completedActions(false)}
                       </div>
                     </div>
@@ -1459,14 +1498,15 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 const inventoryLabel = transfer.inventory_type === 'left_only' ? '🦶 Izq' : transfer.inventory_type === 'right_only' ? '🦶 Der' : '👟 Par';
                 const isReturn = String(transfer.purpose).toLowerCase().trim() === 'return';
                 const isRestock = String(transfer.purpose).toLowerCase().trim() === 'restock';
+                const footLbl = transfer.inventory_type === 'left_only' ? 'Pie Izq.' : transfer.inventory_type === 'right_only' ? 'Pie Der.' : '';
 
                 const itemActions = isCompleted && !isReturn ? (
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
                     <Button onClick={() => handleSellFromCompletedTransfer(transfer)} className="bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] h-7 px-2" size="sm">
-                      <DollarSign className="h-3 w-3 mr-1" /> Vender
+                      <DollarSign className="h-3 w-3 mr-1" /> Vender Par
                     </Button>
                     <Button onClick={() => handleGenerateReturn(transfer)} className="bg-muted text-muted-foreground hover:bg-muted/80 text-[10px] h-7 px-2" size="sm">
-                      <Package className="h-3 w-3 mr-1" /> Devolver
+                      <Package className="h-3 w-3 mr-1" /> {footLbl ? `Dev. ${footLbl}` : 'Devolver'}
                     </Button>
                   </div>
                 ) : isReturn ? (
@@ -1523,9 +1563,16 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                       const invLabel = t.inventory_type === 'left_only' ? '🦶 Izq' : t.inventory_type === 'right_only' ? '🦶 Der' : '👟 Par';
                       const isRet = String(t.purpose).toLowerCase().trim() === 'return';
                       const isRest = String(t.purpose).toLowerCase().trim() === 'restock';
+                      const fLabel = t.inventory_type === 'left_only' ? 'Pie Izq.' : t.inventory_type === 'right_only' ? 'Pie Der.' : '';
+                      const tImg = t.product_image || t.image_url;
                       return (
                         <div key={refCode} className={`border rounded-xl overflow-hidden transition-all duration-300 ${isComp ? 'border-success/30' : 'border-error/30'}`}>
                           <div className={`flex items-center gap-3 p-3 ${isComp ? 'bg-success/5' : 'bg-error/5'}`}>
+                            {tImg && (
+                              <div className="w-14 h-14 md:w-16 md:h-16 rounded-lg overflow-hidden bg-muted/20 flex-shrink-0">
+                                <img src={tImg} className="w-full h-full object-cover" alt={`${t.brand} ${t.model}`} />
+                              </div>
+                            )}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-baseline gap-1.5">
                                 <h4 className="font-bold text-sm leading-tight truncate">{t.brand} {t.model}</h4>
@@ -1547,10 +1594,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                               {isComp && !isRet && (
                                 <div className="flex flex-wrap gap-1.5 mt-1.5">
                                   <Button onClick={() => handleSellFromCompletedTransfer(t)} className="bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] h-7 px-2" size="sm">
-                                    <DollarSign className="h-3 w-3 mr-1" /> Vender
+                                    <DollarSign className="h-3 w-3 mr-1" /> Vender Par
                                   </Button>
                                   <Button onClick={() => handleGenerateReturn(t)} className="bg-muted text-muted-foreground hover:bg-muted/80 text-[10px] h-7 px-2" size="sm">
-                                    <Package className="h-3 w-3 mr-1" /> Devolver
+                                    <Package className="h-3 w-3 mr-1" /> {fLabel ? `Dev. ${fLabel}` : 'Devolver'}
                                   </Button>
                                 </div>
                               )}
@@ -1573,6 +1620,11 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                           onClick={() => toggleCompletedGroup(refCode)}
                           className={`w-full flex items-center gap-3 p-3 text-left transition-colors ${allCompleted ? 'bg-success/5 hover:bg-success/10' : 'bg-error/5 hover:bg-error/10'}`}
                         >
+                          {(first.product_image || first.image_url) && (
+                            <div className="w-14 h-14 md:w-16 md:h-16 rounded-lg overflow-hidden bg-muted/20 flex-shrink-0">
+                              <img src={first.product_image || first.image_url} className="w-full h-full object-cover" alt={`${first.brand} ${first.model}`} />
+                            </div>
+                          )}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-baseline gap-1.5">
                               <h4 className="font-bold text-sm leading-tight truncate">{first.brand} {first.model}</h4>
