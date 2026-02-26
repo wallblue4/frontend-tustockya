@@ -931,9 +931,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                       transfer.status === 'courier_assigned' ? 'Corredor asignado' :
                         transfer.status === 'in_transit' ? 'En camino' :
                           transfer.status === 'delivered' ? 'Entregada' : 'Completada';
-                const inventoryLabel = transfer.purpose === 'pair_formation'
-                  ? (transfer.inventory_type === 'left_only' ? '🦶 Izquierdo' : transfer.inventory_type === 'right_only' ? '🦶 Derecho' : '👟 Par')
-                  : '👟 Par';
+                const inventoryLabel = transfer.inventory_type === 'left_only' ? '🦶 Izquierdo' : transfer.inventory_type === 'right_only' ? '🦶 Derecho' : '👟 Par';
 
                 // Botones de acción compartidos
                 const actionButtons = (compact: boolean) => (
@@ -996,6 +994,11 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                               <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>
                             </div>
                           )}
+                          {transfer.purpose === 'restock' && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-blue-100 text-blue-700">📦 Reposición</span>
+                            </div>
+                          )}
                         </div>
                         {actionButtons(true)}
                       </div>
@@ -1032,6 +1035,11 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                           {transfer.purpose === 'return' && (
                             <div className="flex flex-wrap gap-1 mt-2">
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Devolución</span>
+                            </div>
+                          )}
+                          {transfer.purpose === 'restock' && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">📦 Reposición</span>
                             </div>
                           )}
                         </div>
@@ -1076,9 +1084,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                       transfer.status === 'courier_assigned' ? 'Corredor asignado' :
                         transfer.status === 'in_transit' ? 'En camino' :
                           transfer.status === 'delivered' ? 'Entregada' : 'Completada';
-                const inventoryLabel = transfer.purpose === 'pair_formation'
-                  ? (transfer.inventory_type === 'left_only' ? '🦶 Izq' : transfer.inventory_type === 'right_only' ? '🦶 Der' : '👟 Par')
-                  : '👟 Par';
+                const inventoryLabel = transfer.inventory_type === 'left_only' ? '🦶 Izq' : transfer.inventory_type === 'right_only' ? '🦶 Der' : '👟 Par';
 
                 const itemActions = (
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -1122,6 +1128,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         {transfer.purpose === 'return' && (
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>
                         )}
+                        {transfer.purpose === 'restock' && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">📦 Reposición</span>
+                        )}
                       </div>
                       {transfer.location_name && (
                         <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-0.5">
@@ -1138,9 +1147,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               const sizeSummary = (items: PendingTransferItem[]) => {
                 const sizeMap: Record<string, { qty: number; type: string }> = {};
                 items.forEach((t) => {
-                  const typeLabel = t.purpose === 'pair_formation'
-                    ? (t.inventory_type === 'left_only' ? '🦶I' : t.inventory_type === 'right_only' ? '🦶D' : '👟')
-                    : '👟';
+                  const typeLabel = t.inventory_type === 'left_only' ? '🦶I' : t.inventory_type === 'right_only' ? '🦶D' : '👟';
                   const key = `${t.size}|${typeLabel}`;
                   if (!sizeMap[key]) sizeMap[key] = { qty: 0, type: typeLabel };
                   sizeMap[key].qty += t.quantity;
@@ -1163,9 +1170,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                             t.status === 'courier_assigned' ? 'Corredor asignado' :
                               t.status === 'in_transit' ? 'En camino' :
                                 t.status === 'delivered' ? 'Entregada' : 'Completada';
-                      const invLabel = t.purpose === 'pair_formation'
-                        ? (t.inventory_type === 'left_only' ? '🦶 Izq' : t.inventory_type === 'right_only' ? '🦶 Der' : '👟 Par')
-                        : '👟 Par';
+                      const invLabel = t.inventory_type === 'left_only' ? '🦶 Izq' : t.inventory_type === 'right_only' ? '🦶 Der' : '👟 Par';
                       return (
                         <div key={refCode} className={`border rounded-xl overflow-hidden transition-all duration-300 ${isPending ? 'border-error/30' : 'border-success/30'}`}>
                           <div className={`flex items-center gap-3 p-3 ${isPending ? 'bg-error/5' : 'bg-success/5'}`}>
@@ -1183,6 +1188,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{t.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>
                                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{invLabel}</span>
                                 {t.purpose === 'return' && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>}
+                                {t.purpose === 'restock' && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">📦 Reposición</span>}
                               </div>
                               {t.location_name && (
                                 <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-0.5">
@@ -1328,10 +1334,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 const cardBorder = isCompleted ? 'border-success/40' : 'border-error/40';
                 const cardBg = isCompleted ? 'bg-success/5' : 'bg-error/5';
                 const statusLabel = isCompleted ? 'Completada' : 'Cancelada';
-                const inventoryLabel = transfer.purpose === 'pair_formation'
-                  ? (transfer.inventory_type === 'left_only' ? '🦶 Izquierdo' : transfer.inventory_type === 'right_only' ? '🦶 Derecho' : '👟 Par')
-                  : '👟 Par';
+                const inventoryLabel = transfer.inventory_type === 'left_only' ? '🦶 Izquierdo' : transfer.inventory_type === 'right_only' ? '🦶 Derecho' : '👟 Par';
                 const isReturn = String(transfer.purpose).toLowerCase().trim() === 'return';
+                const isRestock = String(transfer.purpose).toLowerCase().trim() === 'restock';
 
                 const completedActions = (compact: boolean) => {
                   if (!isCompleted) return null;
@@ -1379,6 +1384,11 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                               <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>
                             </div>
                           )}
+                          {isRestock && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-blue-100 text-blue-700">📦 Reposición</span>
+                            </div>
+                          )}
                         </div>
                         {completedActions(true)}
                       </div>
@@ -1403,6 +1413,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                           {transfer.pickup_type && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>}
                           <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{inventoryLabel}</span>
                           {isReturn && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>}
+                          {isRestock && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">📦 Reposición</span>}
                         </div>
                         {transfer.location_name && (
                           <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-0.5">
@@ -1445,10 +1456,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               const renderCompletedGroupedItem = (transfer: CompletedTransfer) => {
                 const isCompleted = transfer.status === 'completed';
                 const statusLabel = isCompleted ? 'Completada' : 'Cancelada';
-                const inventoryLabel = transfer.purpose === 'pair_formation'
-                  ? (transfer.inventory_type === 'left_only' ? '🦶 Izq' : transfer.inventory_type === 'right_only' ? '🦶 Der' : '👟 Par')
-                  : '👟 Par';
+                const inventoryLabel = transfer.inventory_type === 'left_only' ? '🦶 Izq' : transfer.inventory_type === 'right_only' ? '🦶 Der' : '👟 Par';
                 const isReturn = String(transfer.purpose).toLowerCase().trim() === 'return';
+                const isRestock = String(transfer.purpose).toLowerCase().trim() === 'restock';
 
                 const itemActions = isCompleted && !isReturn ? (
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -1475,6 +1485,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         {transfer.pickup_type && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>}
                         <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{inventoryLabel}</span>
                         {isReturn && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>}
+                        {isRestock && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">📦 Reposición</span>}
                       </div>
                       {transfer.location_name && (
                         <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-0.5">
@@ -1491,9 +1502,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
               const completedSizeSummary = (items: CompletedTransfer[]) => {
                 const sizeMap: Record<string, { qty: number; type: string }> = {};
                 items.forEach((t) => {
-                  const typeLabel = t.purpose === 'pair_formation'
-                    ? (t.inventory_type === 'left_only' ? '🦶I' : t.inventory_type === 'right_only' ? '🦶D' : '👟')
-                    : '👟';
+                  const typeLabel = t.inventory_type === 'left_only' ? '🦶I' : t.inventory_type === 'right_only' ? '🦶D' : '👟';
                   const key = `${t.size}|${typeLabel}`;
                   if (!sizeMap[key]) sizeMap[key] = { qty: 0, type: typeLabel };
                   sizeMap[key].qty += t.quantity;
@@ -1511,10 +1520,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                       const t = items[0];
                       const isComp = t.status === 'completed';
                       const sLabel = isComp ? 'Completada' : 'Cancelada';
-                      const invLabel = t.purpose === 'pair_formation'
-                        ? (t.inventory_type === 'left_only' ? '🦶 Izq' : t.inventory_type === 'right_only' ? '🦶 Der' : '👟 Par')
-                        : '👟 Par';
+                      const invLabel = t.inventory_type === 'left_only' ? '🦶 Izq' : t.inventory_type === 'right_only' ? '🦶 Der' : '👟 Par';
                       const isRet = String(t.purpose).toLowerCase().trim() === 'return';
+                      const isRest = String(t.purpose).toLowerCase().trim() === 'restock';
                       return (
                         <div key={refCode} className={`border rounded-xl overflow-hidden transition-all duration-300 ${isComp ? 'border-success/30' : 'border-error/30'}`}>
                           <div className={`flex items-center gap-3 p-3 ${isComp ? 'bg-success/5' : 'bg-error/5'}`}>
@@ -1529,6 +1537,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                 {t.pickup_type && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{t.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>}
                                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{invLabel}</span>
                                 {isRet && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>}
+                                {isRest && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">📦 Reposición</span>}
                               </div>
                               {t.location_name && (
                                 <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-0.5">
