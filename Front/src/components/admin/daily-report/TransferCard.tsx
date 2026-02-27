@@ -90,6 +90,9 @@ const TransferCard: React.FC<TransferCardProps> = ({ transfer, formatDate }) => 
               <p className="text-sm font-semibold text-foreground truncate">
                 {transfer.product.brand} {transfer.product.model}
               </p>
+              {transfer.request_type === 'return' && (
+                <Badge variant="error">Devolución</Badge>
+              )}
               <Badge variant={statusVariant}>{transfer.status}</Badge>
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">

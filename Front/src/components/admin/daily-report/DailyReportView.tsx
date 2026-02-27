@@ -265,7 +265,7 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
       )}
 
       {/* 3-Column Grid — stretch to fill remaining height */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 min-h-0">
         <div className="bg-card border border-border rounded-xl p-4 flex flex-col min-h-0 overflow-hidden">
           <SalesDayColumn
             sales={salesData}

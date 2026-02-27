@@ -499,21 +499,29 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
                   className="rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                 />
               </div>
-              {discountAmount > 0 && discountReason && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRequestDiscount}
-                  disabled={isRequestingDiscount}
-                  className="w-full"
-                >
-                  {isRequestingDiscount ? 'Solicitando...' : 'Solicitar Descuento'}
-                </Button>
+              {discountAmount > 0 && discountReason.trim().length > 0 && discountReason.trim().length < 10 && (
+                <p className="text-xs text-amber-600">
+                  La razón debe tener al menos 10 caracteres ({discountReason.trim().length}/10)
+                </p>
               )}
               {discountAmount > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Total con descuento: ${totalAmount.toLocaleString('es-CO')}
-                </p>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Total con descuento: ${totalAmount.toLocaleString('es-CO')}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setDiscountAmount(0);
+                      setDiscountInput('');
+                      setDiscountReason('');
+                    }}
+                    className="w-full text-red-600 border-red-300 hover:bg-red-50"
+                  >
+                    Eliminar descuento
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -578,15 +586,22 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
 
         <div className="flex flex-col items-center gap-2">
           <Button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full bg-primary text-white"
+            onClick={async () => {
+              if (discountAmount > 0 && discountReason.trim().length >= 10) {
+                await handleRequestDiscount();
+              }
+              handleSubmit();
+            }}
+            disabled={loading || isRequestingDiscount || (discountAmount > 0 && discountReason.trim().length < 10)}
+            className={`w-full text-white ${discountAmount > 0 ? 'bg-amber-600 hover:bg-amber-700' : 'bg-primary'}`}
           >
-            {loading ? (
+            {loading || isRequestingDiscount ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Registrando...
               </>
+            ) : discountAmount > 0 ? (
+              `Vender con descuento (-$${discountAmount.toLocaleString('es-CO')})`
             ) : (
               'Confirmar Venta'
             )}

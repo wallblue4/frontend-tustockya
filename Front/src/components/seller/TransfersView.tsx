@@ -945,7 +945,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     )}
                     {(transfer.status === 'delivered' && transfer.is_return && transfer.role_in_transfer === 'receiver') && (
                       <Button onClick={() => handleConfirmReception(transfer)} className={`bg-success hover:bg-success/90 text-success-foreground w-full ${compact ? 'text-[10px] h-7' : 'text-xs'}`} size="sm">
-                        <CheckCircle className="h-3 w-3 mr-1" /> Confirmar Dev.
+                        <CheckCircle className="h-3 w-3 mr-1" /> Confirmar Devolución
                       </Button>
                     )}
                     {(transfer.is_return && transfer.role_in_transfer === 'requester' && transfer.status === 'accepted') && (
@@ -993,7 +993,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                           )}
                           {transfer.purpose === 'return' && (
                             <div className="flex flex-wrap gap-1 mt-1.5">
-                              <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>
+                              <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-muted/30 text-muted-foreground">🔄 Devolución</span>
                             </div>
                           )}
                           {transfer.purpose === 'restock' && (
@@ -1097,7 +1097,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                     )}
                     {(transfer.status === 'delivered' && transfer.is_return && transfer.role_in_transfer === 'receiver') && (
                       <Button onClick={() => handleConfirmReception(transfer)} className="bg-success hover:bg-success/90 text-success-foreground text-[10px] h-7 px-2" size="sm">
-                        <CheckCircle className="h-3 w-3 mr-1" /> Confirmar Dev.
+                        <CheckCircle className="h-3 w-3 mr-1" /> Confirmar Devolución
                       </Button>
                     )}
                     {(transfer.is_return && transfer.role_in_transfer === 'requester' && transfer.status === 'accepted') && (
@@ -1128,7 +1128,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>
                         <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{inventoryLabel}</span>
                         {transfer.purpose === 'return' && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Devolución</span>
                         )}
                         {transfer.purpose === 'restock' && (
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">📦 Reposición</span>
@@ -1189,7 +1189,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                 <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${isPending ? 'bg-error/80 text-white' : 'bg-success/80 text-white'}`}>{sLabel}</span>
                                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{t.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>
                                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{invLabel}</span>
-                                {t.purpose === 'return' && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>}
+                                {t.purpose === 'return' && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Devolución</span>}
                                 {t.purpose === 'restock' && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">📦 Reposición</span>}
                               </div>
                               {t.location_name && (
@@ -1205,7 +1205,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                 )}
                                 {(t.status === 'delivered' && t.is_return && t.role_in_transfer === 'receiver') && (
                                   <Button onClick={() => handleConfirmReception(t)} className="bg-success hover:bg-success/90 text-success-foreground text-[10px] h-7 px-2" size="sm">
-                                    <CheckCircle className="h-3 w-3 mr-1" /> Confirmar Dev.
+                                    <CheckCircle className="h-3 w-3 mr-1" /> Confirmar Devolución
                                   </Button>
                                 )}
                                 {(t.is_return && t.role_in_transfer === 'requester' && t.status === 'accepted') && (
@@ -1348,7 +1348,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   if (isReturn) {
                     return (
                       <div className={`bg-muted/10 border border-muted/20 rounded-lg text-center ${compact ? 'p-1.5 mt-1.5' : 'p-2 mt-2'}`}>
-                        <span className="text-[10px] font-medium text-muted-foreground">✅ Dev. completada</span>
+                        <span className="text-[10px] font-medium text-muted-foreground">✅ Devolución completada</span>
                       </div>
                     );
                   }
@@ -1358,7 +1358,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         <DollarSign className="h-3 w-3 mr-1" /> Vender Par
                       </Button>
                       <Button onClick={() => handleGenerateReturn(transfer)} className={`bg-muted text-muted-foreground hover:bg-muted/80 w-full ${compact ? 'text-[10px] h-7' : 'text-xs'}`} size="sm">
-                        <Package className="h-3 w-3 mr-1" /> {compact ? (footLabel ? `Dev. ${footLabel}` : 'Devolver') : (footLabel ? `Devolver ${footLabel}` : 'Generar Devolución')}
+                        <Package className="h-3 w-3 mr-1" /> {compact ? (footLabel ? `Devolución ${footLabel}` : 'Devolver') : (footLabel ? `Devolver ${footLabel}` : 'Generar Devolución')}
                       </Button>
                     </div>
                   );
@@ -1399,7 +1399,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                           )}
                           {isReturn && (
                             <div className="flex flex-wrap gap-1 mt-1.5">
-                              <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>
+                              <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-muted/30 text-muted-foreground">🔄 Devolución</span>
                             </div>
                           )}
                           {isRestock && (
@@ -1506,11 +1506,11 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                       <DollarSign className="h-3 w-3 mr-1" /> Vender Par
                     </Button>
                     <Button onClick={() => handleGenerateReturn(transfer)} className="bg-muted text-muted-foreground hover:bg-muted/80 text-[10px] h-7 px-2" size="sm">
-                      <Package className="h-3 w-3 mr-1" /> {footLbl ? `Dev. ${footLbl}` : 'Devolver'}
+                      <Package className="h-3 w-3 mr-1" /> {footLbl ? `Devolución ${footLbl}` : 'Devolver'}
                     </Button>
                   </div>
                 ) : isReturn ? (
-                  <span className="text-[10px] text-muted-foreground mt-1 inline-block">✅ Dev. completada</span>
+                  <span className="text-[10px] text-muted-foreground mt-1 inline-block">✅ Devolución completada</span>
                 ) : null;
 
                 return (
@@ -1524,7 +1524,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                         <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${isCompleted ? 'bg-success/80 text-white' : 'bg-error/80 text-white'}`}>{statusLabel}</span>
                         {transfer.pickup_type && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>}
                         <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{inventoryLabel}</span>
-                        {isReturn && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>}
+                        {isReturn && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Devolución</span>}
                         {isRestock && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">📦 Reposición</span>}
                       </div>
                       {transfer.location_name && (
@@ -1583,7 +1583,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                 <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${isComp ? 'bg-success/80 text-white' : 'bg-error/80 text-white'}`}>{sLabel}</span>
                                 {t.pickup_type && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{t.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}</span>}
                                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">{invLabel}</span>
-                                {isRet && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Dev.</span>}
+                                {isRet && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/30 text-muted-foreground">🔄 Devolución</span>}
                                 {isRest && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">📦 Reposición</span>}
                               </div>
                               {t.location_name && (
@@ -1597,11 +1597,11 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                     <DollarSign className="h-3 w-3 mr-1" /> Vender Par
                                   </Button>
                                   <Button onClick={() => handleGenerateReturn(t)} className="bg-muted text-muted-foreground hover:bg-muted/80 text-[10px] h-7 px-2" size="sm">
-                                    <Package className="h-3 w-3 mr-1" /> {fLabel ? `Dev. ${fLabel}` : 'Devolver'}
+                                    <Package className="h-3 w-3 mr-1" /> {fLabel ? `Devolución ${fLabel}` : 'Devolver'}
                                   </Button>
                                 </div>
                               )}
-                              {isRet && <span className="text-[10px] text-muted-foreground mt-1 inline-block">✅ Dev. completada</span>}
+                              {isRet && <span className="text-[10px] text-muted-foreground mt-1 inline-block">✅ Devolución completada</span>}
                             </div>
                           </div>
                         </div>

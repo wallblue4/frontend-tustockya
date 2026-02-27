@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Truck } from 'lucide-react';
+import { ChevronDown, ChevronUp, Truck, Undo2 } from 'lucide-react';
+import { Badge } from '../../ui/Badge';
 import TransferCard from './TransferCard';
 import LocationSearchSelect from './LocationSearchSelect';
 
@@ -73,17 +74,22 @@ const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({
   const [locationFilter, setLocationFilter] = useState('');
 
   const filteredTransfers = useMemo(() => {
-    if (!locationFilter) return transfers;
-    const locId = parseInt(locationFilter);
-    return transfers.filter(
-      (t) => t.source_location.id === locId || t.destination_location.id === locId
-    );
+    const base = locationFilter
+      ? transfers.filter((t) => {
+          const locId = parseInt(locationFilter);
+          return t.source_location.id === locId || t.destination_location.id === locId;
+        })
+      : transfers;
+    return base;
   }, [transfers, locationFilter]);
 
-  const groupedTransfers = useMemo(() => {
+  const transfersOnly = useMemo(() => filteredTransfers.filter((t) => t.request_type !== 'return'), [filteredTransfers]);
+  const returnsOnly = useMemo(() => filteredTransfers.filter((t) => t.request_type === 'return'), [filteredTransfers]);
+
+  const groupTransferList = (list: Transfer[]) => {
     const groups: Record<string, { reference: string; brand: string; model: string; transfers: Transfer[]; totalQuantity: number; completedCount: number; pendingCount: number }> = {};
 
-    for (const transfer of filteredTransfers) {
+    for (const transfer of list) {
       const key = transfer.product.reference_code || `${transfer.product.brand}-${transfer.product.model}`;
       if (!groups[key]) {
         groups[key] = {
@@ -106,7 +112,10 @@ const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({
     }
 
     return Object.entries(groups).sort((a, b) => b[1].totalQuantity - a[1].totalQuantity);
-  }, [filteredTransfers]);
+  };
+
+  const groupedTransfers = useMemo(() => groupTransferList(transfersOnly), [transfersOnly]);
+  const groupedReturns = useMemo(() => groupTransferList(returnsOnly), [returnsOnly]);
 
   const toggleGroup = (key: string) => {
     setCollapsedGroups((prev) => {
@@ -117,16 +126,57 @@ const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({
     });
   };
 
+  const renderGroupedList = (groups: ReturnType<typeof groupTransferList>, prefix: string) =>
+    groups.map(([key, group]) => {
+      const groupKey = `${prefix}-${key}`;
+      const isCollapsed = collapsedGroups.has(groupKey);
+      return (
+        <div key={groupKey} className="space-y-2">
+          <button
+            onClick={() => toggleGroup(groupKey)}
+            className="w-full flex items-center justify-between px-3 py-2 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors"
+          >
+            <div className="flex flex-col items-start gap-0.5 min-w-0">
+              <span className="text-sm font-medium text-foreground truncate">
+                {group.brand} {group.model}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {group.totalQuantity} uds · {group.transfers.length} {prefix === 'return' ? 'devol.' : 'transf.'}
+                {group.completedCount > 0 && <span className="text-success"> · {group.completedCount} completadas</span>}
+                {group.pendingCount > 0 && <span className="text-warning"> · {group.pendingCount} en curso</span>}
+              </span>
+            </div>
+            {isCollapsed ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            ) : (
+              <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            )}
+          </button>
+
+          {!isCollapsed && (
+            <div className="space-y-2 pl-2">
+              {group.transfers.map((transfer) => (
+                <TransferCard
+                  key={transfer.transfer_id}
+                  transfer={transfer}
+                  formatDate={formatDate}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    });
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
           <Truck className="h-5 w-5 text-primary" />
           <h3 className="text-base font-semibold text-foreground">Transferencias</h3>
+          {transfersOnly.length > 0 && <Badge variant="primary">{transfersOnly.length}</Badge>}
+          {returnsOnly.length > 0 && <Badge variant="error">{returnsOnly.length} devol.</Badge>}
         </div>
-        {filteredTransfers.length > 0 && (
-          <span className="text-sm text-muted-foreground">{filteredTransfers.length}</span>
-        )}
       </div>
 
       <div className="mb-3">
@@ -146,49 +196,31 @@ const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({
         </div>
       ) : filteredTransfers.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground text-sm">
-          No hay transferencias para esta fecha
+          No hay transferencias ni devoluciones para esta fecha
         </div>
       ) : (
-        <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-          {groupedTransfers.map(([key, group]) => {
-            const isCollapsed = collapsedGroups.has(key);
-            return (
-              <div key={key} className="space-y-2">
-                <button
-                  onClick={() => toggleGroup(key)}
-                  className="w-full flex items-center justify-between px-3 py-2 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors"
-                >
-                  <div className="flex flex-col items-start gap-0.5 min-w-0">
-                    <span className="text-sm font-medium text-foreground truncate">
-                      {group.brand} {group.model}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {group.totalQuantity} uds · {group.transfers.length} transf.
-                      {group.completedCount > 0 && <span className="text-success"> · {group.completedCount} completadas</span>}
-                      {group.pendingCount > 0 && <span className="text-warning"> · {group.pendingCount} en curso</span>}
-                    </span>
-                  </div>
-                  {isCollapsed ? (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  ) : (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  )}
-                </button>
-
-                {!isCollapsed && (
-                  <div className="space-y-2 pl-2">
-                    {group.transfers.map((transfer) => (
-                      <TransferCard
-                        key={transfer.transfer_id}
-                        transfer={transfer}
-                        formatDate={formatDate}
-                      />
-                    ))}
-                  </div>
-                )}
+        <div className="space-y-4 overflow-y-auto flex-1 pr-1">
+          {/* Transferencias */}
+          {groupedTransfers.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <Truck className="h-4 w-4 text-primary" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Transferencias</span>
               </div>
-            );
-          })}
+              {renderGroupedList(groupedTransfers, 'transfer')}
+            </div>
+          )}
+
+          {/* Devoluciones */}
+          {groupedReturns.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-1 pt-2 border-t border-border">
+                <Undo2 className="h-4 w-4 text-destructive" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Devoluciones</span>
+              </div>
+              {renderGroupedList(groupedReturns, 'return')}
+            </div>
+          )}
         </div>
       )}
     </div>
