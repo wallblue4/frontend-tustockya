@@ -41,6 +41,7 @@ const DiscountApprovalsColumn: React.FC<DiscountApprovalsColumnProps> = ({
   const pendingCount = discounts.filter(
     (d) => !d.status || d.status === 'pending' || d.status === 'pendiente'
   ).length;
+  const fromSaleCount = discounts.filter((d) => d.status === 'from_sale').length;
 
   return (
     <div className="flex flex-col h-full">
@@ -50,6 +51,9 @@ const DiscountApprovalsColumn: React.FC<DiscountApprovalsColumnProps> = ({
           <h3 className="text-base font-semibold text-foreground">Descuentos</h3>
           {pendingCount > 0 && (
             <Badge variant="warning">{pendingCount}</Badge>
+          )}
+          {fromSaleCount > 0 && (
+            <Badge variant="secondary">{fromSaleCount}</Badge>
           )}
         </div>
         <Button

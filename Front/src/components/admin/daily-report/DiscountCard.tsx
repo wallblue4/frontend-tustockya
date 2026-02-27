@@ -38,9 +38,12 @@ const DiscountCard: React.FC<DiscountCardProps> = ({
   const [notes, setNotes] = useState('');
   const [showNotes, setShowNotes] = useState(false);
 
+  const isFromSale = discount.status === 'from_sale';
   const isPending = !discount.status || discount.status === 'pending' || discount.status === 'pendiente';
-  const statusVariant = isPending ? 'warning' : discount.status === 'approved' || discount.status === 'aprobado' ? 'success' : 'error';
-  const statusLabel = isPending ? 'Pendiente' : discount.status === 'approved' || discount.status === 'aprobado' ? 'Aprobado' : 'Rechazado';
+  const isApproved = discount.status === 'approved' || discount.status === 'aprobado';
+  const isRejected = discount.status === 'rejected' || discount.status === 'rechazado';
+  const statusVariant = isFromSale ? 'secondary' : isPending ? 'warning' : isApproved ? 'success' : 'error';
+  const statusLabel = isFromSale ? 'Venta con descuento' : isPending ? 'Pendiente' : isApproved ? 'Aprobado' : 'Rechazado';
 
   const sellerName = discount.requester_name || discount.seller_name || 'Desconocido';
   const dateStr = discount.requested_at || discount.created_at;

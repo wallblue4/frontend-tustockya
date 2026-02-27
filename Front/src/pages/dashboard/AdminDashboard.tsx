@@ -485,7 +485,7 @@ export const AdminDashboard: React.FC = () => {
     } else if (currentView === 'costs') {
       loadCosts();
       loadCostConfigurations();
-    } else if (currentView === 'notifications') {
+    } else if (currentView === 'notifications' || currentView === 'daily-report') {
       loadNotifications();
     } else if (currentView === 'wholesale') {
       loadMayoreoData();

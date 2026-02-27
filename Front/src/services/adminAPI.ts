@@ -528,6 +528,16 @@ export const fetchPendingDiscountRequests = async () => {
   return handleResponse(response);
 };
 
+// GET /api/v1/admin/admin/discount-requests/all
+export const fetchAllDiscountRequests = async (status?: string) => {
+  const params = status ? `?status=${status}` : '';
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/discount-requests/all${params}`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
 // POST /api/v1/admin/admin/discount-requests/approve
 export const approveDiscountRequest = async (approvalData: DiscountApproval) => {
   const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/discount-requests/approve`, {

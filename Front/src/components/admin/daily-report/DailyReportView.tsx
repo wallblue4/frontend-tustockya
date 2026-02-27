@@ -10,6 +10,7 @@ import LocationSearchSelect from './LocationSearchSelect';
 import {
   fetchDailySalesTraceability,
   fetchDailyTransfersTraceability,
+  fetchAllDiscountRequests,
 } from '../../../services/adminAPI';
 import type {
   DailySaleTraceability,
@@ -101,6 +102,8 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
   const [transfersLoading, setTransfersLoading] = useState(false);
   const [transfersError, setTransfersError] = useState<string | null>(null);
 
+  const [apiDiscounts, setApiDiscounts] = useState<DiscountRequest[]>([]);
+
   const localLocations = locations.filter(
     (loc) => loc.type?.toLowerCase() === 'local'
   );
@@ -171,11 +174,33 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
     }
   }, [targetDate]);
 
+  const fetchDiscounts = useCallback(async () => {
+    try {
+      const data = await fetchAllDiscountRequests();
+      const list = Array.isArray(data) ? data : data.requests || data.data || [];
+      setApiDiscounts(
+        list.map((d: any) => ({
+          id: d.id,
+          requester_name: d.requester_name,
+          location_name: d.location_name,
+          reason: d.reason,
+          discount_amount: d.discount_amount,
+          original_price: d.original_amount,
+          requested_at: d.requested_at,
+          status: d.status,
+          admin_notes: d.admin_notes,
+        } as DiscountRequest))
+      );
+    } catch {
+      setApiDiscounts([]);
+    }
+  }, []);
+
   const fetchAll = useCallback(() => {
     fetchSales();
     fetchTransfers();
-    loadNotifications();
-  }, [fetchSales, fetchTransfers, loadNotifications]);
+    fetchDiscounts();
+  }, [fetchSales, fetchTransfers, fetchDiscounts]);
 
   useEffect(() => {
     fetchAll();
@@ -253,9 +278,42 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
 
         <div className="bg-card border border-border rounded-xl p-4 flex flex-col min-h-0 overflow-hidden">
           <DiscountApprovalsColumn
-            discounts={notifications.discounts}
-            handleApproveDiscount={handleApproveDiscount}
-            loadNotifications={loadNotifications}
+            discounts={(() => {
+              // Generar cards de descuento implícitos desde ventas
+              const saleDiscounts: DiscountRequest[] = salesData
+                .map((sale) => {
+                  const itemsSubtotal = sale.items.reduce(
+                    (sum, item) => sum + item.unit_price * item.quantity,
+                    0
+                  );
+                  const discountAmount = itemsSubtotal - sale.total_amount;
+                  if (discountAmount <= 0) return null;
+                  return {
+                    id: -(sale.sale_id),
+                    requester_name: sale.seller_name,
+                    seller_name: sale.seller_name,
+                    location_name: sale.location_name,
+                    discount_amount: discountAmount,
+                    original_price: itemsSubtotal,
+                    final_price: sale.total_amount,
+                    requested_at: sale.sale_date,
+                    status: 'from_sale',
+                    brand: sale.items[0]?.brand,
+                    model: sale.items[0]?.model,
+                    size: sale.items.map((i) => i.size).join(', '),
+                  } as DiscountRequest;
+                })
+                .filter((d): d is DiscountRequest => d !== null);
+
+              // Combinar: primero API (pending, approved, rejected), luego de ventas
+              return [...apiDiscounts, ...saleDiscounts];
+            })()}
+            handleApproveDiscount={async (id, approved, notes) => {
+              handleApproveDiscount(id, approved, notes);
+              // Refrescar descuentos después de aprobar/rechazar
+              setTimeout(fetchDiscounts, 500);
+            }}
+            loadNotifications={fetchDiscounts}
             formatCurrency={formatCurrency}
             formatDate={formatDate}
           />

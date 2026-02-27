@@ -150,7 +150,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
 
   // Calculate totals
   const itemsSubtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-  const totalAmount = itemsSubtotal;
+  const totalAmount = itemsSubtotal - discountAmount;
   const paymentsTotal = paymentMethods.reduce((sum, payment) => sum + payment.amount, 0);
   const isValidSale = totalAmount > 0 && Math.abs(totalAmount - paymentsTotal) < 0.01 && items.every(item => 
     item.sneaker_reference_code && item.brand && item.model && item.size && item.unit_price > 0
