@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp, ShoppingBag } from 'lucide-react';
-import { Badge } from '../../ui/Badge';
 import SaleCard from './SaleCard';
 
 interface SaleItem {
@@ -42,7 +41,7 @@ const SalesDayColumn: React.FC<SalesDayColumnProps> = ({
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const groupedSales = useMemo(() => {
-    const groups: Record<string, { reference: string; brand: string; model: string; sales: Sale[]; totalItems: number }> = {};
+    const groups: Record<string, { reference: string; brand: string; model: string; sales: Sale[]; totalItems: number; totalRevenue: number }> = {};
 
     for (const sale of sales) {
       for (const item of sale.items) {
@@ -54,12 +53,14 @@ const SalesDayColumn: React.FC<SalesDayColumnProps> = ({
             model: item.model,
             sales: [],
             totalItems: 0,
+            totalRevenue: 0,
           };
         }
         if (!groups[key].sales.find((s) => s.sale_id === sale.sale_id)) {
           groups[key].sales.push(sale);
         }
         groups[key].totalItems += item.quantity;
+        groups[key].totalRevenue += item.unit_price * item.quantity;
       }
     }
 
@@ -87,14 +88,12 @@ const SalesDayColumn: React.FC<SalesDayColumnProps> = ({
           <ShoppingBag className="h-5 w-5 text-primary" />
           <h3 className="text-base font-semibold text-foreground">Ventas del Día</h3>
         </div>
-        <Badge variant="primary">{sales.length}</Badge>
+        {sales.length > 0 && (
+          <span className="text-sm text-muted-foreground">
+            {sales.length} ventas · <span className="font-semibold text-foreground">{formatCurrency(totalSalesAmount)}</span>
+          </span>
+        )}
       </div>
-
-      {sales.length > 0 && (
-        <div className="mb-3 px-1 text-sm text-muted-foreground">
-          Total: <span className="font-semibold text-foreground">{formatCurrency(totalSalesAmount)}</span>
-        </div>
-      )}
 
       {loading ? (
         <div className="space-y-3">
@@ -116,22 +115,19 @@ const SalesDayColumn: React.FC<SalesDayColumnProps> = ({
                   onClick={() => toggleGroup(key)}
                   className="w-full flex items-center justify-between px-3 py-2 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex flex-col items-start gap-0.5 min-w-0">
                     <span className="text-sm font-medium text-foreground truncate">
                       {group.brand} {group.model}
                     </span>
-                    <Badge variant="secondary">{group.reference}</Badge>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
                     <span className="text-xs text-muted-foreground">
-                      {group.totalItems} uds · {group.sales.length} ventas
+                      {group.totalItems} uds · {group.sales.length} ventas · {formatCurrency(group.totalRevenue)}
                     </span>
-                    {isCollapsed ? (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                    )}
                   </div>
+                  {isCollapsed ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  ) : (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  )}
                 </button>
 
                 {!isCollapsed && (

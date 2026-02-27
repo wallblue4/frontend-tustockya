@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Calendar, RefreshCw } from 'lucide-react';
 import { Input } from '../../ui/Input';
 import { Button } from '../../ui/Button';
-import { Badge } from '../../ui/Badge';
 import SalesDayColumn from './SalesDayColumn';
 import DiscountApprovalsColumn from './DiscountApprovalsColumn';
 import TransfersTraceColumn from './TransfersTraceColumn';
@@ -78,7 +78,19 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
   notifications,
   loadNotifications,
 }) => {
-  const [targetDate, setTargetDate] = useState(getTodayISO());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const targetDate = searchParams.get('fecha') || getTodayISO();
+  const setTargetDate = (date: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (date === getTodayISO()) {
+        next.delete('fecha');
+      } else {
+        next.set('fecha', date);
+      }
+      return next;
+    }, { replace: true });
+  };
   const [salesLocationFilter, setSalesLocationFilter] = useState('');
 
   const [salesData, setSalesData] = useState<DailySaleTraceability[]>([]);
@@ -174,7 +186,7 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
   }, [salesLocationFilter]);
 
   return (
-    <div className="space-y-4 p-4 md:p-6 bg-background min-h-screen">
+    <div className="flex flex-col p-4 md:p-6 bg-background h-full gap-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
@@ -227,10 +239,9 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
         </div>
       )}
 
-      {/* 3-Column Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Column 1: Sales */}
-        <div className="bg-card border border-border rounded-xl p-4 min-h-[400px]">
+      {/* 3-Column Grid — stretch to fill remaining height */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
+        <div className="bg-card border border-border rounded-xl p-4 flex flex-col min-h-0 overflow-hidden">
           <SalesDayColumn
             sales={salesData}
             loading={salesLoading}
@@ -240,8 +251,7 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
           />
         </div>
 
-        {/* Column 2: Discount Approvals */}
-        <div className="bg-card border border-border rounded-xl p-4 min-h-[400px]">
+        <div className="bg-card border border-border rounded-xl p-4 flex flex-col min-h-0 overflow-hidden">
           <DiscountApprovalsColumn
             discounts={notifications.discounts}
             handleApproveDiscount={handleApproveDiscount}
@@ -251,8 +261,7 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
           />
         </div>
 
-        {/* Column 3: Transfers */}
-        <div className="bg-card border border-border rounded-xl p-4 min-h-[400px]">
+        <div className="bg-card border border-border rounded-xl p-4 flex flex-col min-h-0 overflow-hidden">
           <TransfersTraceColumn
             transfers={transfersData}
             loading={transfersLoading}

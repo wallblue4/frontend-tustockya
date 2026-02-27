@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp, Truck } from 'lucide-react';
-import { Badge } from '../../ui/Badge';
 import TransferCard from './TransferCard';
 import LocationSearchSelect from './LocationSearchSelect';
 
@@ -82,7 +81,7 @@ const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({
   }, [transfers, locationFilter]);
 
   const groupedTransfers = useMemo(() => {
-    const groups: Record<string, { reference: string; brand: string; model: string; transfers: Transfer[]; totalQuantity: number }> = {};
+    const groups: Record<string, { reference: string; brand: string; model: string; transfers: Transfer[]; totalQuantity: number; completedCount: number; pendingCount: number }> = {};
 
     for (const transfer of filteredTransfers) {
       const key = transfer.product.reference_code || `${transfer.product.brand}-${transfer.product.model}`;
@@ -93,10 +92,17 @@ const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({
           model: transfer.product.model,
           transfers: [],
           totalQuantity: 0,
+          completedCount: 0,
+          pendingCount: 0,
         };
       }
       groups[key].transfers.push(transfer);
       groups[key].totalQuantity += transfer.product.quantity;
+      if (transfer.status === 'completed') {
+        groups[key].completedCount++;
+      } else {
+        groups[key].pendingCount++;
+      }
     }
 
     return Object.entries(groups).sort((a, b) => b[1].totalQuantity - a[1].totalQuantity);
@@ -118,7 +124,9 @@ const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({
           <Truck className="h-5 w-5 text-primary" />
           <h3 className="text-base font-semibold text-foreground">Transferencias</h3>
         </div>
-        <Badge variant="primary">{filteredTransfers.length}</Badge>
+        {filteredTransfers.length > 0 && (
+          <span className="text-sm text-muted-foreground">{filteredTransfers.length}</span>
+        )}
       </div>
 
       <div className="mb-3">
@@ -150,22 +158,21 @@ const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({
                   onClick={() => toggleGroup(key)}
                   className="w-full flex items-center justify-between px-3 py-2 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex flex-col items-start gap-0.5 min-w-0">
                     <span className="text-sm font-medium text-foreground truncate">
                       {group.brand} {group.model}
                     </span>
-                    <Badge variant="secondary">{group.reference}</Badge>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
                     <span className="text-xs text-muted-foreground">
                       {group.totalQuantity} uds · {group.transfers.length} transf.
+                      {group.completedCount > 0 && <span className="text-success"> · {group.completedCount} completadas</span>}
+                      {group.pendingCount > 0 && <span className="text-warning"> · {group.pendingCount} en curso</span>}
                     </span>
-                    {isCollapsed ? (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                    )}
                   </div>
+                  {isCollapsed ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  ) : (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  )}
                 </button>
 
                 {!isCollapsed && (
