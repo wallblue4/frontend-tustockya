@@ -6,8 +6,21 @@ import { HomePage } from './pages/public/HomePage';
 import { LoginPage } from './pages/auth/LoginPage';
 // Dashboard Pages
 import { SuperuserDashboard } from './pages/dashboard/SuperuserDashboard';
-import {AdminDashboard} from './pages/dashboard/AdminDashboard';
 import { BossDashboard } from './pages/dashboard/BossDashboard';
+// Admin modular layout + pages
+import { AdminContextProvider } from './context/AdminContext';
+import { AdminLayout } from './layouts/AdminLayout';
+import { DashboardPage } from './pages/admin/DashboardPage';
+import { UsersPage } from './pages/admin/UsersPage';
+import { InventoryPage } from './pages/admin/InventoryPage';
+import { WholesalePage } from './pages/admin/WholesalePage';
+import { CostsPage } from './pages/admin/CostsPage';
+import { LocationsPage } from './pages/admin/LocationsPage';
+import { AnalyticsPage } from './pages/admin/AnalyticsPage';
+import { NotificationsPage } from './pages/admin/NotificationsPage';
+import { ReportsPage } from './pages/admin/ReportsPage';
+import { TransfersPage } from './pages/admin/TransfersPage';
+import { DailyReportPage } from './pages/admin/DailyReportPage';
 import { WarehouseDashboard } from './pages/dashboard/WarehouseDashboard';
 import { SellerDashboard } from './pages/dashboard/SellerDashboard';
 import { RunnerDashboard } from './pages/dashboard/RunnerDashboard';
@@ -103,10 +116,24 @@ const AppRoutes: React.FC = () => {
       path="/administrador"
       element={
         <ProtectedRoute allowedRoles={['administrador', 'superuser']}>
-          <AdminDashboard />
+          <AdminContextProvider>
+            <AdminLayout />
+          </AdminContextProvider>
         </ProtectedRoute>
       }
-    />
+    >
+      <Route index element={<DashboardPage />} />
+      <Route path="usuarios" element={<UsersPage />} />
+      <Route path="inventario" element={<InventoryPage />} />
+      <Route path="mayoreo" element={<WholesalePage />} />
+      <Route path="costos" element={<CostsPage />} />
+      <Route path="ubicaciones" element={<LocationsPage />} />
+      <Route path="analiticas" element={<AnalyticsPage />} />
+      <Route path="notificaciones" element={<NotificationsPage />} />
+      <Route path="ventas" element={<ReportsPage />} />
+      <Route path="transferencias" element={<TransfersPage />} />
+      <Route path="reporte-dia" element={<DailyReportPage />} />
+    </Route>
     <Route
       path="/boss"
       element={

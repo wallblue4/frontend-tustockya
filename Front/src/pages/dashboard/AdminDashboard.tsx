@@ -34,8 +34,11 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
-  Camera
+  Camera,
+  ClipboardList
 } from 'lucide-react';
+
+import DailyReportView from '../../components/admin/daily-report/DailyReportView';
 
 // Import ALL correct adminAPI functions
 import {
@@ -135,7 +138,7 @@ import { EditProductInfoModal } from '../../components/admin/EditProductInfoModa
 import type { AdminInventoryLocation, AdminInventoryProduct, AdminInventorySize } from '../../types';
 import { adjustInventory, adjustProductPrice, updateProductInfo, fetchAdminInventory, deleteProductReference, updateProductImage, retrainProductVideo } from '../../services/adminAPI';
 
-type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics' | 'transfers';
+type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics' | 'transfers' | 'daily-report';
 
 interface DashboardData {
   admin_name: string;
@@ -2932,11 +2935,23 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                       className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground"
                     >
                       <option value="all">Todas las ubicaciones</option>
-                      {adminInventory.map((location) => (
+                      {[...adminInventory]
+                        .sort((a, b) => {
+                          const locA = locations.find(l => l.id === a.location_id);
+                          const locB = locations.find(l => l.id === b.location_id);
+                          const typeA = locA?.type === 'bodega' ? 0 : 1;
+                          const typeB = locB?.type === 'bodega' ? 0 : 1;
+                          return typeA - typeB;
+                        })
+                        .map((location) => {
+                          const loc = locations.find(l => l.id === location.location_id);
+                          const isBodega = loc?.type === 'bodega';
+                          return (
                         <option key={location.location_id} value={location.location_id}>
-                          {location.location_name}
+                          {isBodega ? '🏭 ' : '🏪 '}{location.location_name}
                         </option>
-                      ))}
+                          );
+                      })}
                     </select>
                   </div>
                   <div>
@@ -5084,6 +5099,18 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
         return renderReportsView();
       case 'transfers':
         return renderTransfersTraceabilityView();
+      case 'daily-report':
+        return (
+          <DailyReportView
+            locations={locations}
+            formatCurrency={formatCurrency}
+            formatDate={formatDate}
+            setReceiptPreviewUrl={setReceiptPreviewUrl}
+            handleApproveDiscount={handleApproveDiscount}
+            notifications={notifications}
+            loadNotifications={loadNotifications}
+          />
+        );
       default:
         return renderDashboardView();
     }
@@ -5122,6 +5149,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
               { key: 'reports', label: 'Ventas', icon: <FileText className="h-4 w-4" /> },
               { key: 'transfers', label: 'Transferencias', icon: <Truck className="h-4 w-4" /> },
               { key: 'analytics', label: 'Graficas', icon: <PieChart className="h-4 w-4" /> },
+              { key: 'daily-report', label: 'Reporte Día', icon: <ClipboardList className="h-4 w-4" /> },
               { key: 'notifications', label: 'Notificaciones', icon: <Bell className="h-4 w-4" /> },
             ].map((tab) => (
               <button
@@ -5155,6 +5183,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   { key: 'notifications', label: 'Notificaciones', icon: <Bell className="h-5 w-5" /> },
                   { key: 'reports', label: 'Ventas y Trazabilidad', icon: <FileText className="h-5 w-5" /> },
                   { key: 'transfers', label: 'Transferencias y Trazabilidad', icon: <Truck className="h-5 w-5" /> },
+                  { key: 'daily-report', label: 'Reporte Día', icon: <ClipboardList className="h-5 w-5" /> },
                 ].map((item) => (
                   <button
                     key={item.key}
