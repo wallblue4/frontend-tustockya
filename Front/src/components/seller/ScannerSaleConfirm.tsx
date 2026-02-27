@@ -72,7 +72,7 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
     }
   };
 
-  const totalAmount = editedPrice - discountAmount;
+  const totalAmount = editedPrice;
 
   const mixedTotal = mixedPayments.reduce((sum, mp) => sum + (parseFloat(mp.amount) || 0), 0);
   const mixedRemaining = totalAmount - mixedTotal;
