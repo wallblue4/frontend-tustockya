@@ -1352,6 +1352,13 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                       </div>
                     );
                   }
+                  if (isRestock) {
+                    return (
+                      <div className={`bg-blue-50 border border-blue-200 rounded-lg text-center ${compact ? 'p-1.5 mt-1.5' : 'p-2 mt-2'}`}>
+                        <span className="text-[10px] font-medium text-blue-700">📦 Reposición completada</span>
+                      </div>
+                    );
+                  }
                   return (
                     <div className={`flex flex-col ${compact ? 'gap-1.5 mt-2' : 'gap-1.5 mt-2'}`}>
                       <Button onClick={() => handleSellFromCompletedTransfer(transfer)} className={`bg-primary hover:bg-primary/90 text-primary-foreground w-full ${compact ? 'text-[10px] h-7' : 'text-xs'}`} size="sm">
@@ -1500,7 +1507,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 const isRestock = String(transfer.purpose).toLowerCase().trim() === 'restock';
                 const footLbl = transfer.inventory_type === 'left_only' ? 'Pie Izq.' : transfer.inventory_type === 'right_only' ? 'Pie Der.' : '';
 
-                const itemActions = isCompleted && !isReturn ? (
+                const itemActions = isCompleted && !isReturn && !isRestock ? (
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
                     <Button onClick={() => handleSellFromCompletedTransfer(transfer)} className="bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] h-7 px-2" size="sm">
                       <DollarSign className="h-3 w-3 mr-1" /> Vender Par
@@ -1511,6 +1518,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                   </div>
                 ) : isReturn ? (
                   <span className="text-[10px] text-muted-foreground mt-1 inline-block">✅ Devolución completada</span>
+                ) : isRestock ? (
+                  <span className="text-[10px] text-blue-700 mt-1 inline-block">📦 Reposición completada</span>
                 ) : null;
 
                 return (
@@ -1591,7 +1600,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                   <MapPin className="h-3 w-3 shrink-0" />{t.location_name}
                                 </p>
                               )}
-                              {isComp && !isRet && (
+                              {isComp && !isRet && !isRest && (
                                 <div className="flex flex-wrap gap-1.5 mt-1.5">
                                   <Button onClick={() => handleSellFromCompletedTransfer(t)} className="bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] h-7 px-2" size="sm">
                                     <DollarSign className="h-3 w-3 mr-1" /> Vender Par
@@ -1602,6 +1611,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                 </div>
                               )}
                               {isRet && <span className="text-[10px] text-muted-foreground mt-1 inline-block">✅ Devolución completada</span>}
+                              {isRest && isComp && <span className="text-[10px] text-muted-foreground mt-1 inline-block">📦 Reposición completada</span>}
                             </div>
                           </div>
                         </div>
