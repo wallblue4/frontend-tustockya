@@ -267,7 +267,6 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={isSubmitting}
             >
               Cancelar
             </Button>

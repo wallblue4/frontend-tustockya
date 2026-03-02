@@ -195,7 +195,6 @@ export const EditProductInfoModal: React.FC<EditProductInfoModalProps> = ({
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={isSubmitting}
             >
               Cancelar
             </Button>

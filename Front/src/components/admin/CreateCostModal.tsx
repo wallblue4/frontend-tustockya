@@ -249,9 +249,8 @@ export const CreateCostModal: React.FC<CreateCostModalProps> = ({
           <div className="flex justify-end space-x-3 pt-4">
             <Button 
               type="button" 
-              variant="outline" 
+              variant="outline"
               onClick={onClose}
-              disabled={isSubmitting}
             >
               Cancelar
             </Button>

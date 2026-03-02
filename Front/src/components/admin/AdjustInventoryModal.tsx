@@ -256,7 +256,6 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={isSubmitting}
             >
               Cancelar
             </Button>

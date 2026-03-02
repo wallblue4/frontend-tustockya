@@ -402,7 +402,6 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={isSubmitting}
             >
               Cancelar
             </Button>

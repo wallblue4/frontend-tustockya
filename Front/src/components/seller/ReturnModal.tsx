@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, User, Truck, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Package, User, Truck, Loader2, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { Card, CardContent } from '../ui/Card';
 import { vendorAPI } from '../../services/transfersAPI';
 
@@ -56,11 +56,18 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="absolute inset-0" onClick={!loading ? onClose : undefined} />
+      <div className="absolute inset-0" onClick={onClose} />
       <div className="w-full max-w-md relative z-10">
         {success ? (
           <Card className="border-green-200 bg-green-50">
-            <CardContent className="p-6 text-center space-y-4">
+            <CardContent className="p-6 text-center space-y-4 relative">
+              <button
+                type="button"
+                onClick={onClose}
+                className="absolute top-4 right-4 text-green-600 hover:text-green-800 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
               <h3 className="text-lg font-semibold text-green-800">Devolución Generada</h3>
               <p className="text-sm text-green-600">
@@ -76,7 +83,14 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
           </Card>
         ) : (
           <Card>
-            <CardContent className="p-5 space-y-4">
+            <CardContent className="p-5 space-y-4 relative">
+              <button
+                type="button"
+                onClick={onClose}
+                className="absolute top-5 right-5 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
               <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <Package className="h-5 w-5" />
                 Generar Devolución
@@ -171,8 +185,7 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  disabled={loading}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 py-1"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
                 >
                   Cancelar
                 </button>

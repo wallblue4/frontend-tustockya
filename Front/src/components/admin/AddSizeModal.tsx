@@ -245,7 +245,6 @@ export const AddSizeModal: React.FC<AddSizeModalProps> = ({
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={isSubmitting}
             >
               Cancelar
             </Button>

@@ -214,7 +214,6 @@ export const AdjustPriceModal: React.FC<AdjustPriceModalProps> = ({
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={isSubmitting}
             >
               Cancelar
             </Button>
