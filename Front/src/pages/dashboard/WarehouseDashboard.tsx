@@ -14,7 +14,8 @@ import {
   ChevronDown,
   ChevronUp,
   MapPin,
-  Warehouse
+  Warehouse,
+  ShoppingCart
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
@@ -61,6 +62,7 @@ interface PendingRequest {
   preparation_instruction?: string;
   urgent_action?: boolean;
   time_elapsed?: string;
+  cart_group_id?: string;
   // Nuevos campos de la API
   requester_info?: {
     name: string;
@@ -95,6 +97,7 @@ interface PendingRequest {
 interface AcceptedRequest {
   id: number;
   status: 'accepted' | 'in_transit' | 'courier_assigned' | 'delivered';
+  cart_group_id?: string;
   status_info?: {
     title: string;
     description: string;
@@ -176,6 +179,7 @@ export const WarehouseDashboard: React.FC = () => {
   // Estados de UI responsivo
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [expandedCartGroups, setExpandedCartGroups] = useState<Set<string>>(new Set());
 
   // Estados de filtros
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'normal'>('all');
@@ -518,6 +522,33 @@ export const WarehouseDashboard: React.FC = () => {
     return matchesPriority && matchesPurpose;
   });
 
+  // Separar solicitudes agrupadas por carrito de las individuales
+  const pendingCartGroups: Record<string, PendingRequest[]> = {};
+  const pendingUngrouped: PendingRequest[] = [];
+  filteredPendingRequests.forEach(r => {
+    if (r.cart_group_id) {
+      if (!pendingCartGroups[r.cart_group_id]) pendingCartGroups[r.cart_group_id] = [];
+      pendingCartGroups[r.cart_group_id].push(r);
+    } else {
+      pendingUngrouped.push(r);
+    }
+  });
+
+  const toggleCartGroup = (groupId: string) => {
+    setExpandedCartGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  };
+
+  const handleAcceptCartGroup = async (requests: PendingRequest[]) => {
+    for (const request of requests) {
+      await handleAcceptRequest(request.id);
+    }
+  };
+
   // *** FUNCIÓN PARA REFRESCAR DATOS MANUALMENTE ***
   const handleRefresh = async () => {
     console.log('🔄 Refrescando datos manualmente...');
@@ -710,6 +741,301 @@ export const WarehouseDashboard: React.FC = () => {
       </DashboardLayout>
     );
   }
+
+  // Función reutilizable para renderizar una tarjeta de solicitud pendiente
+  const renderPendingRequestCard = (request: PendingRequest) => (
+    <>
+      {/* MOBILE COMPACT VIEW */}
+      <div className="md:hidden">
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2 flex-wrap gap-1">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(request.priority_level)}`}>
+                {request.priority_level === 'URGENT' || request.priority === 'high' ? '🔥 URGENTE' : '📦 Normal'}
+              </span>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
+                {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' :
+                  request.purpose === 'restock' ? '📦 Reposición' :
+                  request.purpose === 'pair_formation' ? '🔗 Formar Par' : '↩️ Devolución'}
+              </span>
+              {request.request_type && (
+                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRequestTypeColor(request.request_type)}`}>
+                  {request.request_type === 'transfer' ? '📦 Transferencia' : '↩️ Devolución'}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {request.inventory_type && request.inventory_type !== 'pair' && (
+            <div className="mb-4 p-3 bg-card border border-border rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getInventoryTypeColor(request.inventory_type)}`}>
+                  {request.inventory_type_label ||
+                    (request.inventory_type === 'left_only' ? '🦶 Pie Izquierdo' :
+                      request.inventory_type === 'right_only' ? '🦶 Pie Derecho' : '🦶 Pies Separados')}
+                </span>
+              </div>
+              {request.preparation_instruction && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  {request.preparation_instruction}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="flex space-x-4 mb-4">
+            <div className="flex-shrink-0">
+              <div className="w-32 h-48 rounded-lg overflow-hidden border border-border">
+                <img
+                  src={request.product_info?.image_url || request.product_info?.image}
+                  alt={`${request.brand} ${request.model}`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    if (!e.currentTarget.dataset.fallback) {
+                      e.currentTarget.dataset.fallback = 'true';
+                      e.currentTarget.src = `https://via.placeholder.com/200x260/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-base text-foreground mb-2 leading-tight">
+                {request.brand} {request.model}
+              </h3>
+              <div className="space-y-2 mb-3">
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm font-medium text-primary">Talla {request.size}</span>
+                  <span className="text-sm text-muted-foreground">{request.quantity} unidad{request.quantity > 1 ? 'es' : ''}</span>
+                </div>
+                <div className="flex items-center space-x-1 text-sm text-foreground">
+                  <User className="h-3 w-3 text-muted-foreground" />
+                  <span className="font-medium truncate">Solicitante: {request.requester_info?.name || 'Usuario'}</span>
+                </div>
+                <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                  <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
+                  <span className="font-medium">De: {request.location_info?.from?.name || 'N/A'}</span>
+                </div>
+                <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                  <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
+                  <span className="font-medium">A: {request.location_info?.to?.name || 'N/A'}</span>
+                </div>
+              </div>
+              <div className={`p-2 rounded text-center ${((request.product_info?.stock_available ?? 0) > 0)
+                ? 'bg-success/10 text-success border border-success/20'
+                : 'bg-error/10 text-error border border-error/20'
+                }`}>
+                <div className="text-xs font-medium">
+                  {((request.product_info?.stock_available ?? 0) > 0) ? '✅ Disponible' : '❌ Sin stock'}
+                </div>
+                <div className="text-xs text-muted-foreground">Stock: {request.product_info?.stock_available ?? 0}</div>
+                {request.product_info?.unit_price && (
+                  <div className="text-xs font-medium text-success mt-1">{formatPrice(request.product_info.unit_price)}</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex space-x-2">
+            <Button
+              onClick={() => handleAcceptRequest(request.id)}
+              disabled={
+                request.request_type === 'transfer'
+                  ? !((request.product_info?.stock_available ?? 0) > 0) || actionLoading === request.id
+                  : actionLoading === request.id
+              }
+              className="flex-1 bg-success hover:bg-success/90 disabled:opacity-50 text-sm"
+              size="sm"
+            >
+              {actionLoading === request.id ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              ✅ Aceptar
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* DESKTOP FULL VIEW */}
+      <div className="hidden md:block p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(request.priority_level)}`}>
+              {request.priority_level === 'URGENT' ? '🔥 URGENTE' : '📦 Normal'}
+            </span>
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
+              {request.purpose === 'cliente' ? '🏃‍♂️ Cliente Presente' :
+                request.purpose === 'pair_formation' ? '🔗 Formar Par' : '📦 Reposición'}
+            </span>
+            {request.request_type && (
+              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRequestTypeColor(request.request_type)}`}>
+                {request.request_type === 'transfer' ? '📦 Transferencia' : '↩️ Devolución'}
+              </span>
+            )}
+            <span className="text-sm text-muted-foreground">
+              ⏱️ {request.time_elapsed || formatTimeWaiting(request.requested_at)}
+            </span>
+          </div>
+          <div className="text-sm text-muted-foreground">ID #{request.id}</div>
+        </div>
+
+        {request.inventory_type && request.inventory_type !== 'pair' && (
+          <div className="mb-6 p-4 bg-card border border-border rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getInventoryTypeColor(request.inventory_type)}`}>
+                {request.inventory_type_label ||
+                  (request.inventory_type === 'left_only' ? '🦶 Pie Izquierdo' :
+                    request.inventory_type === 'right_only' ? '🦶 Pie Derecho' : '🦶 Pies Separados')}
+              </span>
+              {request.urgent_action && (
+                <span className="px-2 py-1 rounded-full text-xs font-medium bg-error/10 text-error border border-error/20">
+                  ⚡ Acción Urgente
+                </span>
+              )}
+            </div>
+            {request.preparation_instruction && (
+              <p className="text-sm text-muted-foreground">{request.preparation_instruction}</p>
+            )}
+          </div>
+        )}
+
+        <div className="flex space-x-6">
+          <div className="flex-shrink-0">
+            <div className="w-48 h-64 rounded-xl overflow-hidden border border-border shadow-sm">
+              <img
+                src={request.product_info?.image_url || request.product_info?.image || `https://via.placeholder.com/300x400/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
+                alt={`${request.brand} ${request.model}`}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  if (!e.currentTarget.dataset.fallback) {
+                    e.currentTarget.dataset.fallback = 'true';
+                    e.currentTarget.src = `https://via.placeholder.com/300x400/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
+                  }
+                }}
+              />
+            </div>
+            {request.product_info?.unit_price && (
+              <p className="text-center mt-3 font-medium text-success text-lg">
+                💰 {formatPrice(request.product_info.unit_price)}
+              </p>
+            )}
+          </div>
+
+          <div className="flex-1 space-y-6">
+            <div>
+              <h3 className="text-3xl font-bold text-foreground mb-3 leading-tight">
+                {request.brand} {request.model}
+              </h3>
+              {request.product_color && (
+                <p className="text-lg text-muted-foreground mb-4">
+                  🎨 <strong>Color:</strong> {request.product_color}
+                </p>
+              )}
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <div className="text-xl font-bold text-blue-600">{request.size}</div>
+                  <div className="text-sm text-blue-600 font-medium">Talla</div>
+                </div>
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <div className="text-xl font-bold text-green-600">{request.quantity}</div>
+                  <div className="text-sm text-green-600 font-medium">Cantidad</div>
+                </div>
+                <div className="text-center p-4 bg-purple-50 rounded-lg">
+                  <div className="text-xl font-bold text-purple-600">{request.available_stock ?? request.stock_info?.available_stock ?? 0}</div>
+                  <div className="text-sm text-purple-600 font-medium">Stock</div>
+                </div>
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <div className="text-lg font-bold text-gray-600">📦</div>
+                  <div className="text-sm text-gray-600 font-medium">Producto</div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-gray-50 rounded-lg mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                    <User className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900 text-lg">
+                      Solicitante: {request.requester_first_name ?
+                        `${request.requester_first_name} ${request.requester_last_name}` :
+                        request.requester_name || 'Usuario'
+                      }
+                    </div>
+                    <div className="text-sm text-gray-500">Cliente</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-gray-50 rounded-lg mb-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    <div>
+                      <div className="text-sm text-gray-500">Origen</div>
+                      <div className="font-medium text-gray-900">{request.location_info?.from?.name || request.source_location_name || 'N/A'}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
+                    <div>
+                      <div className="text-sm text-gray-500">Destino</div>
+                      <div className="font-medium text-gray-900">{request.location_info?.to?.name || 'N/A'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-gray-50 rounded-lg mb-6">
+                <div className="text-sm text-gray-500 mb-1">Código de referencia</div>
+                <div className="font-mono font-medium text-gray-900">{request.sneaker_reference_code}</div>
+              </div>
+
+              <div className={`p-4 rounded-lg border-2 mb-6 ${((request.product_info?.stock_available ?? 0) > 0)
+                ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                <div className="flex justify-between items-center">
+                  <span className={`text-lg font-medium ${((request.product_info?.stock_available ?? 0) > 0)
+                    ? 'text-green-700' : 'text-red-700'}`}>
+                    {((request.product_info?.stock_available ?? 0) > 0) ? '✅ Disponible' : '❌ No disponible'}
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    Stock disponible: {request.product_info?.stock_available ?? 0} unidades
+                  </span>
+                </div>
+              </div>
+
+              {request.notes && (
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 mb-6">
+                  <p className="text-sm"><strong>📝 Notas:</strong> {request.notes}</p>
+                </div>
+              )}
+
+              <div className="flex space-x-3">
+                <Button
+                  onClick={() => handleAcceptRequest(request.id)}
+                  disabled={
+                    request.request_type === 'transfer'
+                      ? !((request.product_info?.stock_available ?? 0) > 0) || actionLoading === request.id
+                      : actionLoading === request.id
+                  }
+                  className="flex-1 bg-success hover:bg-success/90 disabled:opacity-50"
+                >
+                  {actionLoading === request.id ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
+                  ✅ Aceptar y Preparar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <DashboardLayout title="Panel de Bodega">
@@ -987,340 +1313,60 @@ export const WarehouseDashboard: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-4 md:space-y-6">
-                  {filteredPendingRequests.map((request) => (
-                    <div key={request.id} className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300">
-
-                      {/* MOBILE COMPACT VIEW */}
-                      <div className="md:hidden">
-                        <div className="p-4">
-                          {/* Header con etiquetas de prioridad y propósito */}
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center space-x-2 flex-wrap gap-1">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(request.priority_level)}`}>
-                                {request.priority_level === 'URGENT' || request.priority === 'high' ? '🔥 URGENTE' : '📦 Normal'}
-                              </span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
-                                {request.purpose === 'cliente' ? '🏃‍♂️ Cliente' :
-                                  request.purpose === 'restock' ? '📦 Reposición' :
-                                  request.purpose === 'pair_formation' ? '🔗 Formar Par' : '↩️ Devolución'}
-                              </span>
-                              {request.request_type && (
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRequestTypeColor(request.request_type)}`}>
-                                  {request.request_type === 'transfer' ? '📦 Transferencia' : '↩️ Devolución'}
-                                </span>
-                              )}
-                            </div>
+                  {/* Pedidos agrupados por carrito */}
+                  {Object.entries(pendingCartGroups).map(([groupId, groupItems]) => {
+                    const isExpanded = expandedCartGroups.has(groupId);
+                    const totalQty = groupItems.reduce((s, r) => s + r.quantity, 0);
+                    const requesterName = groupItems[0]?.requester_info?.name || 'Vendedor';
+                    const allCanFulfill = groupItems.every(r => (r.product_info?.stock_available ?? 0) > 0);
+                    return (
+                      <div key={groupId} className="border-2 border-blue-300 rounded-xl overflow-hidden bg-blue-50/30">
+                        <button
+                          type="button"
+                          onClick={() => toggleCartGroup(groupId)}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left"
+                        >
+                          <ShoppingCart className="h-5 w-5 text-blue-600 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-blue-800">
+                              Pedido Grupal &mdash; {groupItems.length} producto{groupItems.length !== 1 ? 's' : ''}, {totalQty} unidad{totalQty !== 1 ? 'es' : ''}
+                            </p>
+                            <p className="text-xs text-blue-600 truncate">
+                              Solicitante: {requesterName}
+                            </p>
                           </div>
-
-                          {/* Información específica de pies separados */}
-                          {request.inventory_type && request.inventory_type !== 'pair' && (
-                            <div className="mb-4 p-3 bg-card border border-border rounded-lg">
-                              <div className="flex items-center justify-between">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getInventoryTypeColor(request.inventory_type)}`}>
-                                  {request.inventory_type_label ||
-                                    (request.inventory_type === 'left_only' ? '🦶 Pie Izquierdo' :
-                                      request.inventory_type === 'right_only' ? '🦶 Pie Derecho' : '🦶 Pies Separados')}
-                                </span>
-                              </div>
-                              {request.preparation_instruction && (
-                                <p className="text-xs text-muted-foreground mt-2">
-                                  {request.preparation_instruction}
-                                </p>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Layout horizontal: Imagen vertical a la izquierda, info a la derecha */}
-                          <div className="flex space-x-4 mb-4">
-                            {/* Imagen vertical */}
-                            <div className="flex-shrink-0">
-                              <div className="w-32 h-48 rounded-lg overflow-hidden border border-border">
-                                <img
-                                  src={request.product_info?.image_url || request.product_info?.image}
-                                  alt={`${request.brand} ${request.model}`}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    if (!e.currentTarget.dataset.fallback) {
-                                      e.currentTarget.dataset.fallback = 'true';
-                                      e.currentTarget.src = `https://via.placeholder.com/200x260/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
-                                    }
-                                  }}
-                                />
-                              </div>
-                            </div>
-
-                            {/* Información del producto */}
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-bold text-base text-foreground mb-2 leading-tight">
-                                {request.brand} {request.model}
-                              </h3>
-                              <div className="space-y-2 mb-3">
-                                <div className="flex items-center space-x-3">
-                                  <span className="text-sm font-medium text-primary">
-                                    Talla {request.size}
-                                  </span>
-                                  <span className="text-sm text-muted-foreground">
-                                    {request.quantity} unidad{request.quantity > 1 ? 'es' : ''}
-                                  </span>
-                                </div>
-                                <div className="flex items-center space-x-1 text-sm text-foreground">
-                                  <User className="h-3 w-3 text-muted-foreground" />
-                                  <span className="font-medium truncate">
-                                    Solicitante: {request.requester_info?.name || 'Usuario'}
-                                  </span>
-                                </div>
-                                <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-                                  <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
-                                  <span className="font-medium">De: {request.location_info?.from?.name || 'N/A'}</span>
-                                </div>
-                                <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-                                  <MapPin className="h-3 w-3 text-muted-foreground mr-1" />
-                                  <span className="font-medium">A: {request.location_info?.to?.name || 'N/A'}</span>
-                                </div>
-                              </div>
-
-                              {/* Estado de disponibilidad compacto */}
-                              <div className={`p-2 rounded text-center ${((request.product_info?.stock_available ?? 0) > 0)
-                                ? 'bg-success/10 text-success border border-success/20'
-                                : 'bg-error/10 text-error border border-error/20'
-                                }`}>
-                                <div className="text-xs font-medium">
-                                  {((request.product_info?.stock_available ?? 0) > 0) ? '✅ Disponible' : '❌ Sin stock'}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  Stock: {request.product_info?.stock_available ?? 0}
-                                </div>
-                                {request.product_info?.unit_price && (
-                                  <div className="text-xs font-medium text-success mt-1">
-                                    {formatPrice(request.product_info.unit_price)}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex space-x-2">
-                            <Button
-                              onClick={() => handleAcceptRequest(request.id)}
-                              disabled={
-                                request.request_type === 'transfer'
-                                  ? !((request.product_info?.stock_available ?? 0) > 0) || actionLoading === request.id
-                                  : actionLoading === request.id
-                              }
-                              className="flex-1 bg-success hover:bg-success/90 disabled:opacity-50 text-sm"
-                              size="sm"
-                            >
-                              {actionLoading === request.id ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              ) : (
-                                <Send className="h-4 w-4 mr-2" />
-                              )}
-                              ✅ Aceptar
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* DESKTOP FULL VIEW */}
-                      <div className="hidden md:block p-6">
-                        {/* Header con etiquetas */}
-                        <div className="flex items-center justify-between mb-6">
-                          <div className="flex items-center space-x-3">
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(request.priority_level)}`}>
-                              {request.priority_level === 'URGENT' ? '🔥 URGENTE' : '📦 Normal'}
-                            </span>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPurposeColor(request.purpose)}`}>
-                              {request.purpose === 'cliente' ? '🏃‍♂️ Cliente Presente' :
-                                request.purpose === 'pair_formation' ? '🔗 Formar Par' : '📦 Reposición'}
-                            </span>
-                            {request.request_type && (
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRequestTypeColor(request.request_type)}`}>
-                                {request.request_type === 'transfer' ? '📦 Transferencia' : '↩️ Devolución'}
-                              </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {allCanFulfill && (
+                              <Button
+                                size="sm"
+                                className="bg-success hover:bg-success/90 text-xs"
+                                onClick={(e) => { e.stopPropagation(); handleAcceptCartGroup(groupItems); }}
+                                disabled={actionLoading !== null}
+                              >
+                                <Send className="h-3 w-3 mr-1" />
+                                Aceptar Todas
+                              </Button>
                             )}
-                            <span className="text-sm text-muted-foreground">
-                              ⏱️ {request.time_elapsed || formatTimeWaiting(request.requested_at)}
-                            </span>
+                            {isExpanded ? <ChevronUp className="h-4 w-4 text-blue-500" /> : <ChevronDown className="h-4 w-4 text-blue-500" />}
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            ID #{request.id}
-                          </div>
-                        </div>
-
-                        {/* Información específica de pies separados */}
-                        {request.inventory_type && request.inventory_type !== 'pair' && (
-                          <div className="mb-6 p-4 bg-card border border-border rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getInventoryTypeColor(request.inventory_type)}`}>
-                                {request.inventory_type_label ||
-                                  (request.inventory_type === 'left_only' ? '🦶 Pie Izquierdo' :
-                                    request.inventory_type === 'right_only' ? '🦶 Pie Derecho' : '🦶 Pies Separados')}
-                              </span>
-                              {request.urgent_action && (
-                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-error/10 text-error border border-error/20">
-                                  ⚡ Acción Urgente
-                                </span>
-                              )}
-                            </div>
-                            {request.preparation_instruction && (
-                              <p className="text-sm text-muted-foreground">
-                                {request.preparation_instruction}
-                              </p>
-                            )}
+                        </button>
+                        {isExpanded && (
+                          <div className="px-3 pb-3 space-y-3">
+                            {groupItems.map((request) => (
+                              <div key={request.id} className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300">
+                                {renderPendingRequestCard(request)}
+                              </div>
+                            ))}
                           </div>
                         )}
-
-                        {/* Layout horizontal: Imagen vertical a la izquierda, información a la derecha */}
-                        <div className="flex space-x-6">
-
-                          {/* Imagen del producto vertical */}
-                          <div className="flex-shrink-0">
-                            <div className="w-48 h-64 rounded-xl overflow-hidden border border-border shadow-sm">
-                              <img
-                                src={request.product_info?.image_url || request.product_info?.image || `https://via.placeholder.com/300x400/e5e7eb/6b7280?text=${encodeURIComponent(request.brand + ' ' + request.model)}`}
-                                alt={`${request.brand} ${request.model}`}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  if (!e.currentTarget.dataset.fallback) {
-                                    e.currentTarget.dataset.fallback = 'true';
-                                    e.currentTarget.src = `https://via.placeholder.com/300x400/f3f4f6/9ca3af?text=${encodeURIComponent(request.brand)}`;
-                                  }
-                                }}
-                              />
-                            </div>
-                            {request.product_info?.unit_price && (
-                              <p className="text-center mt-3 font-medium text-success text-lg">
-                                💰 {formatPrice(request.product_info.unit_price)}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Información del producto */}
-                          <div className="flex-1 space-y-6">
-                            <div>
-                              <h3 className="text-3xl font-bold text-foreground mb-3 leading-tight">
-                                {request.brand} {request.model}
-                              </h3>
-
-                              {request.product_color && (
-                                <p className="text-lg text-muted-foreground mb-4">
-                                  🎨 <strong>Color:</strong> {request.product_color}
-                                </p>
-                              )}
-
-                              <div className="grid grid-cols-4 gap-4 mb-6">
-                                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                                  <div className="text-xl font-bold text-blue-600">
-                                    {request.size}
-                                  </div>
-                                  <div className="text-sm text-blue-600 font-medium">Talla</div>
-                                </div>
-                                <div className="text-center p-4 bg-green-50 rounded-lg">
-                                  <div className="text-xl font-bold text-green-600">{request.quantity}</div>
-                                  <div className="text-sm text-green-600 font-medium">Cantidad</div>
-                                </div>
-                                <div className="text-center p-4 bg-purple-50 rounded-lg">
-                                  <div className="text-xl font-bold text-purple-600">{request.available_stock ?? request.stock_info?.available_stock ?? 0}</div>
-                                  <div className="text-sm text-purple-600 font-medium">Stock</div>
-                                </div>
-                                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                                  <div className="text-lg font-bold text-gray-600">📦</div>
-                                  <div className="text-sm text-gray-600 font-medium">Producto</div>
-                                </div>
-                              </div>
-
-                              {/* Cliente */}
-                              <div className="p-4 bg-gray-50 rounded-lg mb-6">
-                                <div className="flex items-center space-x-3">
-                                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                                    <User className="h-6 w-6 text-white" />
-                                  </div>
-                                  <div>
-                                    <div className="font-semibold text-gray-900 text-lg">
-                                      Solicitante: {request.requester_first_name ?
-                                        `${request.requester_first_name} ${request.requester_last_name}` :
-                                        request.requester_name || 'Usuario'
-                                      }
-                                    </div>
-                                    <div className="text-sm text-gray-500">Cliente</div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Origen y Destino */}
-                              <div className="p-4 bg-gray-50 rounded-lg mb-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div className="flex items-center space-x-2">
-                                    <MapPin className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                    <div>
-                                      <div className="text-sm text-gray-500">Origen</div>
-                                      <div className="font-medium text-gray-900">{request.location_info?.from?.name || request.source_location_name || 'N/A'}</div>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
-                                    <div>
-                                      <div className="text-sm text-gray-500">Destino</div>
-                                      <div className="font-medium text-gray-900">{request.location_info?.to?.name || 'N/A'}</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Código de referencia */}
-                              <div className="p-4 bg-gray-50 rounded-lg mb-6">
-                                <div className="text-sm text-gray-500 mb-1">Código de referencia</div>
-                                <div className="font-mono font-medium text-gray-900">{request.sneaker_reference_code}</div>
-                              </div>
-
-                              {/* Estado de disponibilidad */}
-                              <div className={`p-4 rounded-lg border-2 mb-6 ${((request.product_info?.stock_available ?? 0) > 0)
-                                ? 'bg-green-50 border-green-200'
-                                : 'bg-red-50 border-red-200'
-                                }`}>
-                                <div className="flex justify-between items-center">
-                                  <span className={`text-lg font-medium ${((request.product_info?.stock_available ?? 0) > 0)
-                                    ? 'text-green-700'
-                                    : 'text-red-700'
-                                    }`}>
-                                    {((request.product_info?.stock_available ?? 0) > 0) ? '✅ Disponible' : '❌ No disponible'}
-                                  </span>
-                                  <span className="text-sm text-gray-600">
-                                    Stock disponible: {request.product_info?.stock_available ?? 0} unidades
-                                  </span>
-                                </div>
-                              </div>
-
-                              {request.notes && (
-                                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 mb-6">
-                                  <p className="text-sm">
-                                    <strong>📝 Notas:</strong> {request.notes}
-                                  </p>
-                                </div>
-                              )}
-
-                              <div className="flex space-x-3">
-                                <Button
-                                  onClick={() => handleAcceptRequest(request.id)}
-                                  disabled={
-                                    request.request_type === 'transfer'
-                                      ? !((request.product_info?.stock_available ?? 0) > 0) || actionLoading === request.id
-                                      : actionLoading === request.id
-                                  }
-                                  className="flex-1 bg-success hover:bg-success/90 disabled:opacity-50"
-                                >
-                                  {actionLoading === request.id ? (
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                  ) : (
-                                    <Send className="h-4 w-4 mr-2" />
-                                  )}
-                                  ✅ Aceptar y Preparar
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
                       </div>
+                    );
+                  })}
+
+                  {/* Solicitudes individuales (sin carrito) */}
+                  {pendingUngrouped.map((request) => (
+                    <div key={request.id} className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300">
+                      {renderPendingRequestCard(request)}
                     </div>
                   ))}
                 </div>
