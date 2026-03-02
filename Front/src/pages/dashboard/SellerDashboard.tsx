@@ -34,8 +34,13 @@ import { vendorAPI } from '../../services/api';
 import { CameraCapture } from '../../components/seller/CameraCapture';
 import { transfersAPI } from '../../services/transfersAPI';
 import { useAuth } from '../../context/AuthContext';
+import { TransferCartProvider, useTransferCart } from '../../context/TransferCartContext';
+import { TransferCart } from '../../components/seller/TransferCart';
+import { CartBadge } from '../../components/seller/CartBadge';
+import { CartSaleConfirm } from '../../components/seller/CartSaleConfirm';
+import { ShoppingCart } from 'lucide-react';
 
-type ViewType = 'dashboard' | 'scan' | 'new-sale' | 'today-sales' | 'expenses' | 'expenses-list' | 'transfers' | 'notifications' | 'scanner-transfer' | 'scanner-sale';
+type ViewType = 'dashboard' | 'scan' | 'new-sale' | 'today-sales' | 'expenses' | 'expenses-list' | 'transfers' | 'notifications' | 'scanner-transfer' | 'scanner-sale' | 'cart' | 'cart-sale';
 
 // Interfaces
 interface PrefilledProduct {
@@ -88,6 +93,7 @@ export const SellerDashboard: React.FC = () => {
   // *** ESTADO ACTUALIZADO PARA TRANSFERENCIAS ***
   const [transfersSummary, setTransfersSummary] = useState<TransfersSummary | null>(null);
   const [transfersLoading, setTransfersLoading] = useState(false);
+  const [cartSaleTransferIds, setCartSaleTransferIds] = useState<number[] | undefined>(undefined);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -391,6 +397,36 @@ export const SellerDashboard: React.FC = () => {
     setCurrentView('transfers');
   };
 
+  // Funciones del carrito
+  const handleAddToCart = (productData: {
+    sneaker_reference_code: string;
+    brand: string;
+    model: string;
+    color?: string;
+    size: string;
+    quantity: number;
+    source_location_id: number;
+    location_name: string;
+    unit_price: number;
+    image?: string;
+    pickup_type: 'vendedor' | 'corredor';
+    transfer_type: 'pair' | 'left_foot' | 'right_foot';
+  }) => {
+    console.log('🛒 Agregando al carrito:', productData);
+    // addItem is called from the context - we'll pass this through ProductScanner
+    // The actual addItem call happens in ProductScanner via the context
+  };
+
+  const handleCartSellAll = () => {
+    setCartSaleTransferIds(undefined); // undefined = sell all
+    setCurrentView('cart-sale');
+  };
+
+  const handleCartSellPartial = (transferIds: number[]) => {
+    setCartSaleTransferIds(transferIds);
+    setCurrentView('cart-sale');
+  };
+
   const renderCurrentView = () => {
     switch (currentView) {
       case 'scan':
@@ -506,11 +542,47 @@ export const SellerDashboard: React.FC = () => {
             <TransfersView
               prefilledProductData={productDataForTransfer}
               onSellProduct={handleSellProduct}
+              onSellCartGroup={(transferIds) => {
+                setCartSaleTransferIds(transferIds);
+                setCurrentView('cart-sale');
+              }}
               onTransferRequested={(transferId, isUrgent) => {
                 console.log('✅ Transferencia solicitada:', { transferId, isUrgent });
                 loadTransfersSummary(); // Recargar resumen después de nueva transferencia
                 goBack(); // Volver al dashboard después de la solicitud
               }}
+            />
+          </div>
+        );
+
+      case 'cart':
+        return (
+          <div className="space-y-4">
+            <Button variant="ghost" onClick={goBack} className="mb-4">
+              <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Dashboard
+            </Button>
+            <TransferCart
+              onSellAll={handleCartSellAll}
+              onSellPartial={handleCartSellPartial}
+            />
+          </div>
+        );
+
+      case 'cart-sale':
+        return (
+          <div className="space-y-4">
+            <Button variant="ghost" onClick={() => setCurrentView('cart')} className="mb-4">
+              <ArrowLeft className="h-4 w-4 mr-2" /> Volver al Carrito
+            </Button>
+            <CartSaleConfirm
+              transferIdsToSell={cartSaleTransferIds}
+              onSaleCompleted={() => {
+                setCartSaleTransferIds(undefined);
+                loadDashboardData();
+                loadTransfersSummary();
+                goBack();
+              }}
+              onBack={() => setCurrentView('cart')}
             />
           </div>
         );
@@ -638,6 +710,17 @@ export const SellerDashboard: React.FC = () => {
             </div>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </button>
+
+          <button
+            onClick={() => setCurrentView('cart')}
+            className="flex items-center justify-between p-3.5 rounded-xl bg-card border border-border hover:border-border/80 hover:bg-accent/50 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <ShoppingCart className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-medium text-foreground">Carrito</span>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </button>
         </div>
       </div>
 
@@ -671,6 +754,8 @@ export const SellerDashboard: React.FC = () => {
          */
       }
 
+      {/* Cart floating badge */}
+      <CartBadge onClick={() => setCurrentView('cart')} />
     </div>
   );
 
@@ -699,6 +784,7 @@ export const SellerDashboard: React.FC = () => {
   }
 
   return (
+    <TransferCartProvider>
     <DashboardLayout onHome={currentView !== 'dashboard' ? goBack : undefined} title={
       currentView === 'dashboard' ? 'Panel de Vendedor' :
         currentView === 'scan' ? (isSearchMode ? 'Buscar Producto' : scanViewTitle) :
@@ -709,7 +795,9 @@ export const SellerDashboard: React.FC = () => {
                   currentView === 'expenses' ? 'Registrar Gasto' :
                     currentView === 'expenses-list' ? 'Gastos del Día' :
                       currentView === 'transfers' ? 'Gestión de Pedidos' :
-                        'Notificaciones'
+                        currentView === 'cart' ? 'Carrito de Transferencias' :
+                          currentView === 'cart-sale' ? 'Confirmar Venta del Carrito' :
+                            'Notificaciones'
     }>
       {/* MODAL DE CÁMARA */}
       {showCamera && (
@@ -725,5 +813,6 @@ export const SellerDashboard: React.FC = () => {
       )}
       {renderCurrentView()}
     </DashboardLayout>
+    </TransferCartProvider>
   );
 };

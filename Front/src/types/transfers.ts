@@ -15,6 +15,7 @@ export interface TransferRequest {
   courier_name?: string;
   estimated_arrival?: string;
   notes?: string;
+  cart_group_id?: string;
 }
 
 export interface PendingReception {

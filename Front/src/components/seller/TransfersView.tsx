@@ -23,7 +23,8 @@ import {
   Send,
   LayoutGrid,
   List,
-  Layers
+  Layers,
+  ShoppingCart
 } from 'lucide-react';
 
 interface TransfersViewProps {
@@ -70,6 +71,7 @@ interface TransfersViewProps {
     image?: string;
     transfer_id?: number; // ID de transferencia (siempre presente cuando viene desde TransfersView)
   }) => void;
+  onSellCartGroup?: (transferIds: number[]) => void;
 }
 
 // *** INTERFACES ACTUALIZADAS SEGÚN DOCUMENTACIÓN ***
@@ -97,12 +99,14 @@ interface CompletedTransfer {
   has_return_request?: boolean;
   pickup_type?: 'corredor' | 'vendedor';
   location_name?: string;
+  cart_group_id?: string;
 }
 
 export const TransfersView: React.FC<TransfersViewProps> = ({
   onTransferRequested,
   prefilledProductData,
-  onSellProduct
+  onSellProduct,
+  onSellCartGroup
 }) => {
   // Usar onSellProduct como prop, igual que en ProductScanner
   const [activeTab, setActiveTab] = useState<'pending' | 'completed' | 'history' | 'new' | 'incoming'>('pending');
@@ -1054,9 +1058,74 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
               // ===== MODO SIN AGRUPAR =====
               if (!groupByRef) {
+                // Separate cart-grouped from individual pending transfers
+                const pendingCartGroups: Record<string, PendingTransferItem[]> = {};
+                const pendingUngrouped: PendingTransferItem[] = [];
+                sorted.forEach(t => {
+                  if (t.cart_group_id) {
+                    if (!pendingCartGroups[t.cart_group_id]) pendingCartGroups[t.cart_group_id] = [];
+                    pendingCartGroups[t.cart_group_id].push(t);
+                  } else {
+                    pendingUngrouped.push(t);
+                  }
+                });
+
+                const pendingCartGroupEntries = Object.entries(pendingCartGroups);
+
+                if (pendingCartGroupEntries.length === 0) {
+                  return (
+                    <div className={pendingViewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2'}>
+                      {sorted.map(renderTransferCard)}
+                    </div>
+                  );
+                }
+
                 return (
-                  <div className={pendingViewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2'}>
-                    {sorted.map(renderTransferCard)}
+                  <div className="space-y-4">
+                    {/* Pending cart groups */}
+                    {pendingCartGroupEntries.map(([groupId, groupItems]) => {
+                      const completedCount = groupItems.filter(t => t.status === 'completed' || t.status === 'selled').length;
+                      const totalGroupQty = groupItems.reduce((s, t) => s + t.quantity, 0);
+                      const isExpanded = expandedGroups.has(groupId);
+
+                      return (
+                        <div key={groupId} className="border-2 border-blue-300 rounded-xl overflow-hidden bg-blue-50/50">
+                          <button
+                            onClick={() => {
+                              setExpandedGroups(prev => {
+                                const next = new Set(prev);
+                                if (next.has(groupId)) next.delete(groupId); else next.add(groupId);
+                                return next;
+                              });
+                            }}
+                            className="w-full flex items-center gap-3 p-3 hover:bg-blue-50 transition-colors"
+                          >
+                            <ShoppingCart className="h-5 w-5 text-blue-600 shrink-0" />
+                            <div className="flex-1 min-w-0 text-left">
+                              <p className="text-sm font-bold text-blue-800">
+                                Pedido Grupal - {groupItems.length} item{groupItems.length !== 1 ? 's' : ''}
+                              </p>
+                              <p className="text-xs text-blue-600">
+                                {completedCount}/{groupItems.length} completada{completedCount !== 1 ? 's' : ''} ({totalGroupQty} unidad{totalGroupQty !== 1 ? 'es' : ''})
+                              </p>
+                            </div>
+                            {isExpanded ? <ChevronUp className="h-4 w-4 text-blue-500" /> : <ChevronDown className="h-4 w-4 text-blue-500" />}
+                          </button>
+                          {isExpanded && (
+                            <div className="px-3 pb-3 space-y-2">
+                              {groupItems.map(renderTransferCard)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Ungrouped pending transfers */}
+                    {pendingUngrouped.length > 0 && (
+                      <div className={pendingViewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2'}>
+                        {pendingUngrouped.map(renderTransferCard)}
+                      </div>
+                    )}
                   </div>
                 );
               }
@@ -1468,9 +1537,87 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
 
               // MODO SIN AGRUPAR
               if (!completedGroupByRef) {
+                // Separate cart-grouped transfers from individual ones
+                const cartGroups: Record<string, CompletedTransfer[]> = {};
+                const ungrouped: CompletedTransfer[] = [];
+                filtered.forEach(t => {
+                  if (t.cart_group_id) {
+                    if (!cartGroups[t.cart_group_id]) cartGroups[t.cart_group_id] = [];
+                    cartGroups[t.cart_group_id].push(t);
+                  } else {
+                    ungrouped.push(t);
+                  }
+                });
+
+                const cartGroupEntries = Object.entries(cartGroups);
+
                 return (
-                  <div className={completedViewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2'}>
-                    {filtered.map(renderCompletedCard)}
+                  <div className="space-y-4">
+                    {/* Cart group cards */}
+                    {cartGroupEntries.map(([groupId, groupItems]) => {
+                      const allGroupCompleted = groupItems.every(t => t.status === 'completed');
+                      const completedCount = groupItems.filter(t => t.status === 'completed').length;
+                      const totalGroupQty = groupItems.reduce((s, t) => s + t.quantity, 0);
+                      const firstItem = groupItems[0];
+                      const isExpanded = completedExpandedGroups.has(groupId);
+
+                      return (
+                        <div key={groupId} className="border-2 border-blue-300 rounded-xl overflow-hidden bg-blue-50/50">
+                          <button
+                            onClick={() => {
+                              setCompletedExpandedGroups(prev => {
+                                const next = new Set(prev);
+                                if (next.has(groupId)) next.delete(groupId); else next.add(groupId);
+                                return next;
+                              });
+                            }}
+                            className="w-full flex items-center gap-3 p-3 hover:bg-blue-50 transition-colors"
+                          >
+                            <ShoppingCart className="h-5 w-5 text-blue-600 shrink-0" />
+                            <div className="flex-1 min-w-0 text-left">
+                              <p className="text-sm font-bold text-blue-800">
+                                Pedido Grupal - {groupItems.length} item{groupItems.length !== 1 ? 's' : ''}
+                              </p>
+                              <p className="text-xs text-blue-600">
+                                {completedCount}/{groupItems.length} completada{completedCount !== 1 ? 's' : ''} ({totalGroupQty} unidad{totalGroupQty !== 1 ? 'es' : ''})
+                              </p>
+                            </div>
+                            {allGroupCompleted && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-500 text-white shrink-0">Listo</span>
+                            )}
+                            {isExpanded ? <ChevronUp className="h-4 w-4 text-blue-500" /> : <ChevronDown className="h-4 w-4 text-blue-500" />}
+                          </button>
+
+                          {/* Sell Group button */}
+                          {allGroupCompleted && onSellCartGroup && (
+                            <div className="px-3 pb-2">
+                              <Button
+                                onClick={() => onSellCartGroup(groupItems.map(t => t.id))}
+                                className="w-full bg-green-600 hover:bg-green-700 text-white text-xs"
+                                size="sm"
+                              >
+                                <DollarSign className="h-3 w-3 mr-1" />
+                                Vender Grupo ({groupItems.length} items)
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Expanded items */}
+                          {isExpanded && (
+                            <div className="px-3 pb-3 space-y-2">
+                              {groupItems.map(renderCompletedCard)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Ungrouped transfers */}
+                    {ungrouped.length > 0 && (
+                      <div className={completedViewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2'}>
+                        {ungrouped.map(renderCompletedCard)}
+                      </div>
+                    )}
                   </div>
                 );
               }

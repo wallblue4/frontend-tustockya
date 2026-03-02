@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { User, Truck, ShoppingBag, XCircle, Info } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { User, Truck, ShoppingBag, ShoppingCart, CheckCircle, XCircle, Info } from 'lucide-react';
 import { Card, CardContent } from '../../ui/Card';
 import { formatCurrency } from '../../../services/api';
 import { getConfidenceCircleStyles, getConfidenceLevelText } from './helpers';
@@ -54,6 +54,8 @@ interface ProductOptionsCardProps {
   options: ProductOption[];
   sizesMap: Map<string, SizeInfo[]>;
   onAction: (product: ProductOption, selectedSize: string, pickupType: 'vendedor' | 'corredor') => void;
+  onAddToCart?: (product: ProductOption, selectedSize: string) => boolean;
+  cartItemCount?: number;
   error?: string | null;
   onClearError?: () => void;
   hideConfidence?: boolean;
@@ -63,9 +65,13 @@ const ProductOptionItem: React.FC<{
   option: ProductOption;
   sizes: SizeInfo[];
   onAction: (product: ProductOption, selectedSize: string, pickupType: 'vendedor' | 'corredor') => void;
+  onAddToCart?: (product: ProductOption, selectedSize: string) => boolean;
+  cartItemCount?: number;
   hideConfidence?: boolean;
-}> = ({ option, sizes, onAction, hideConfidence }) => {
+}> = ({ option, sizes, onAction, onAddToCart, cartItemCount, hideConfidence }) => {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [justAdded, setJustAdded] = useState(false);
+  const addedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const confidenceStyles = getConfidenceCircleStyles(option.confidence_level);
   const confidenceTextColor = confidenceStyles.split(' ')[1];
 
@@ -274,6 +280,42 @@ const ProductOptionItem: React.FC<{
               <Truck className="h-4 w-4" />
               Corredor
             </button>
+            {onAddToCart && (
+              <button
+                type="button"
+                disabled={!hasSelection || justAdded}
+                onClick={() => {
+                  if (!hasSelection) return;
+                  const success = onAddToCart(option, selectedSize!);
+                  if (success) {
+                    setJustAdded(true);
+                    if (addedTimerRef.current) clearTimeout(addedTimerRef.current);
+                    addedTimerRef.current = setTimeout(() => setJustAdded(false), 1500);
+                  }
+                }}
+                className={`inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-sm font-semibold transition-all
+                  ${justAdded
+                    ? 'bg-success text-success-foreground scale-[0.98]'
+                    : hasSelection
+                      ? 'bg-blue-500 text-white hover:bg-blue-600 active:scale-[0.98]'
+                      : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
+                  }`}
+              >
+                {justAdded ? (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="hidden sm:inline">Agregado</span>
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="h-4 w-4" />
+                    <span className="hidden sm:inline">
+                      {cartItemCount ? `Carrito (${cartItemCount})` : '+Carrito'}
+                    </span>
+                  </>
+                )}
+              </button>
+            )}
           </>
         )}
       </div>
@@ -281,7 +323,7 @@ const ProductOptionItem: React.FC<{
   );
 };
 
-export const ProductOptionsCard: React.FC<ProductOptionsCardProps> = ({ options, sizesMap, onAction, error, onClearError, hideConfidence }) => {
+export const ProductOptionsCard: React.FC<ProductOptionsCardProps> = ({ options, sizesMap, onAction, onAddToCart, cartItemCount, error, onClearError, hideConfidence }) => {
   const errorRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -314,6 +356,8 @@ export const ProductOptionsCard: React.FC<ProductOptionsCardProps> = ({ options,
               option={option}
               sizes={sizesMap.get(option.id) || []}
               onAction={onAction}
+              onAddToCart={onAddToCart}
+              cartItemCount={cartItemCount}
               hideConfidence={hideConfidence}
             />
           ))}

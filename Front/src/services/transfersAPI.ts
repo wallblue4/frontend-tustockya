@@ -615,6 +615,33 @@ export const vendorAPI = {
     }
   },
 
+  async sellFromCart(transferIds: number[], totalAmount: number, paymentMethods: any[], notes?: string, receiptImage?: File) {
+    console.log('🛒 Registrando venta desde carrito...', { transferIds, totalAmount });
+
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('transfer_ids', JSON.stringify(transferIds));
+    formData.append('total_amount', totalAmount.toString());
+    formData.append('payment_methods', JSON.stringify(paymentMethods));
+    if (notes) formData.append('notes', notes);
+    if (receiptImage) formData.append('receipt_image', receiptImage);
+
+    const response = await fetch(`${BACKEND_URL}/api/v1/vendor/sell-from-cart`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token || ''}` },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const err: any = new Error(body.message || body.detail || `Error ${response.status}`);
+      err.detail = body.detail || null;
+      throw err;
+    }
+
+    return response.json();
+  },
+
   async deliverReturnToWarehouse(returnId: number, deliveryNotes: string) {
     console.log('🔄 Entregando devolución a bodega...', { returnId, deliveryNotes });
 

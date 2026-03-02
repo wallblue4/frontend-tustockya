@@ -198,6 +198,8 @@ export interface PendingTransferItem {
   courier_name: string | null;
   warehouse_keeper_name: string | null;
   location_name?: string;
+  cart_group_id?: string;
+  inventory_type?: 'pair' | 'left_only' | 'right_only';
 }
 
 export interface PendingTransfersSummary {

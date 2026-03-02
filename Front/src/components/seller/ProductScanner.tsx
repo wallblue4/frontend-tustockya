@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { vendorAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { useTransferCart } from '../../context/TransferCartContext';
 import { ErrorCard } from './product-scanner/ErrorCard';
 import {
   extractLocationFromKey,
@@ -85,6 +86,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
   searchMode
 }) => {
   const { user } = useAuth();
+  const { addItem, phase: cartPhase, totalItems } = useTransferCart();
 
   const [isScanning, setIsScanning] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -973,6 +975,117 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     });
   };
 
+  const handleAddToCart = (product: ProductOption, selectedSizeStr: string): boolean => {
+    if (!user) return false;
+    setError(null);
+
+    const sizes = sizesMap.get(product.id) || [];
+    const matchingSizes = sizes.filter(s => s.size === selectedSizeStr);
+
+    if (matchingSizes.length === 0) {
+      setError('No se encontró información para la talla seleccionada');
+      return false;
+    }
+
+    // Find best remote source (same logic as handleDirectAction)
+    const remoteEntries = matchingSizes.filter(s => !s.is_local);
+    const localEntry = matchingSizes.find(s => s.is_local);
+
+    // If can sell locally, no need for cart (transfer)
+    const localSellable = matchingSizes.find(s => s.can_sell === true);
+    if (localSellable) {
+      setError('Este producto está disponible localmente. Usa "Vender" en su lugar.');
+      return false;
+    }
+
+    if (remoteEntries.length === 0) {
+      setError('No hay stock disponible en otras ubicaciones para agregar al carrito');
+      return false;
+    }
+
+    // Determine transfer type based on local + remote inventory (same logic as handleDirectAction)
+    let transferType: 'pair' | 'left_foot' | 'right_foot' = 'pair';
+
+    if (localEntry && localEntry.missing_foot) {
+      // Check if any remote has a complete pair → prioritize over requesting single foot
+      const remoteWithCompletePair = remoteEntries.find(
+        e => (e.pairs || 0) > 0 && e.location_type === 'bodega'
+      ) || remoteEntries.find(e => (e.pairs || 0) > 0);
+
+      if (remoteWithCompletePair) {
+        transferType = 'pair';
+      } else if (localEntry.missing_foot === 'right' && (localEntry.left_feet || 0) > 0) {
+        transferType = 'right_foot';
+      } else if (localEntry.missing_foot === 'left' && (localEntry.right_feet || 0) > 0) {
+        transferType = 'left_foot';
+      }
+    }
+
+    // Find best source matching the transfer type (prefer bodega)
+    let sourceInfo;
+    if (transferType === 'pair') {
+      sourceInfo = remoteEntries.find(e => (e.pairs || 0) > 0 && e.location_type === 'bodega')
+        || remoteEntries.find(e => (e.pairs || 0) > 0)
+        || remoteEntries.find(e => ((e.left_feet || 0) > 0 && (e.right_feet || 0) > 0) && e.location_type === 'bodega')
+        || remoteEntries.find(e => (e.left_feet || 0) > 0 && (e.right_feet || 0) > 0);
+    } else if (transferType === 'right_foot') {
+      sourceInfo = remoteEntries.find(e => (e.right_feet || 0) > 0 && e.location_type === 'bodega')
+        || remoteEntries.find(e => (e.right_feet || 0) > 0);
+    } else {
+      sourceInfo = remoteEntries.find(e => (e.left_feet || 0) > 0 && e.location_type === 'bodega')
+        || remoteEntries.find(e => (e.left_feet || 0) > 0);
+    }
+
+    if (!sourceInfo) {
+      setError('No hay stock suficiente para completar un par de esta talla');
+      return false;
+    }
+
+    const sourceLocationId = sourceInfo.location_id || sourceInfo.location_number;
+    if (!sourceLocationId) {
+      setError('No se pudo determinar la ubicación de origen');
+      return false;
+    }
+
+    // Compute max available stock at source matching the transfer type
+    let maxStock: number;
+    if (transferType === 'pair') {
+      maxStock = sourceInfo.pairs || 0;
+      if (maxStock === 0) {
+        // form_pair: source has both feet separately
+        maxStock = Math.min(sourceInfo.left_feet || 0, sourceInfo.right_feet || 0);
+      }
+    } else if (transferType === 'right_foot') {
+      maxStock = sourceInfo.right_feet || 0;
+    } else {
+      maxStock = sourceInfo.left_feet || 0;
+    }
+    if (maxStock <= 0) maxStock = 1;
+
+    const result = addItem({
+      sneaker_reference_code: product.code,
+      brand: product.brand,
+      model: product.model,
+      color: product.color,
+      size: selectedSizeStr,
+      quantity: 1,
+      max_stock: maxStock,
+      source_location_id: sourceLocationId,
+      destination_location_id: user.location_id || 0,
+      location_name: sourceInfo.location_name || sourceInfo.location || '',
+      unit_price: product.inventory.pricing.unit_price,
+      image: product.image,
+      pickup_type: 'vendedor',
+      transfer_type: transferType,
+    });
+
+    if (!result.success) {
+      setError(result.message);
+      return false;
+    }
+    return true;
+  };
+
   const goBackToOptions = () => {
     setSelectedProduct(null);
     setSelectedSize('');
@@ -991,7 +1104,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
       {/* Resultados de búsqueda / escaneo */}
       {currentStep === 'options' && scanOptions.length > 0 && (
-        <ProductOptionsCard options={scanOptions} sizesMap={sizesMap} onAction={handleDirectAction} error={error} onClearError={() => setError(null)} hideConfidence={searchMode} />
+        <ProductOptionsCard options={scanOptions} sizesMap={sizesMap} onAction={handleDirectAction} onAddToCart={cartPhase === 'building' ? handleAddToCart : undefined} cartItemCount={cartPhase === 'building' ? totalItems : 0} error={error} onClearError={() => setError(null)} hideConfidence={searchMode} />
       )}
 
       {currentStep === 'options' && scanOptions.length === 0 && !isScanning && !isSearching && !searchMode && (
