@@ -334,7 +334,7 @@ export const vendorAPI = {
   },
 
   // Search by brand/model text
-  searchProducts: (brand: string, model: string, limit: number = 5) => {
+  searchProducts: (brand: string, model: string, limit: number = 20) => {
     const params = new URLSearchParams();
     if (brand) params.append('brand', brand);
     if (model) params.append('model', model);

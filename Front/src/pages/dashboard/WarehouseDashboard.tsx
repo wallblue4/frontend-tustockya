@@ -387,9 +387,9 @@ export const WarehouseDashboard: React.FC = () => {
       addNotification(
         'success',
         '✅ Solicitud Aceptada',
-        `Transferencia #${requestId} aceptada y en preparación`,
+        `Transferencia #${requestId} aceptada y lista para entrega`,
         {
-          label: 'Ver en Preparación',
+          label: 'Ver Entregas',
           onClick: () => setActiveTab('accepted')
         }
       );
@@ -738,8 +738,8 @@ export const WarehouseDashboard: React.FC = () => {
                 className="flex-1 md:flex-none text-xs md:text-sm"
               >
                 <Package className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-                <span className="hidden sm:inline">Preparación</span>
-                <span className="sm:hidden">Prep.</span>
+                <span className="hidden sm:inline">Entregas</span>
+                <span className="sm:hidden">Entreg.</span>
                 ({acceptedRequests.length})
               </Button>
               <Button
@@ -1356,12 +1356,12 @@ export const WarehouseDashboard: React.FC = () => {
             <CardHeader>
               <h2 className="text-lg md:text-xl font-semibold flex items-center">
                 <Package className="h-5 w-5 md:h-6 md:w-6 text-primary mr-2" />
-                Transferencias en Preparación
+                Entregas
               </h2>
             </CardHeader>
             <CardContent>
               {(() => {
-                // Filtrar transferencias que están en preparación:
+                // Filtrar transferencias que están listas para entrega:
                 // 1. Status "courier_assigned" (para entregar a corredor)
                 // 2. Status "accepted" con pickup_type "vendedor" (para entregar a vendedor)
                 // Solo estos estados permiten realizar entregas (excluye "delivered", "in_transit", etc.)
@@ -1373,7 +1373,7 @@ export const WarehouseDashboard: React.FC = () => {
                 return preparationRequests.length === 0 ? (
                   <div className="text-center py-8 md:py-12">
                     <CheckCircle className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
-                    <h3 className="text-base md:text-lg font-medium">No hay transferencias en preparación</h3>
+                    <h3 className="text-base md:text-lg font-medium">No hay entregas pendientes</h3>
                     <p className="text-muted-foreground text-sm">Las solicitudes aceptadas aparecerán aquí para ser entregadas a corredores.</p>
                   </div>
                 ) : (
@@ -2191,7 +2191,7 @@ export const WarehouseDashboard: React.FC = () => {
                   </div>
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm md:text-base">Tiempo promedio de preparación</span>
+                      <span className="text-sm md:text-base">Tiempo promedio de entrega</span>
                       <span className="font-bold text-blue-600">12 min</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">

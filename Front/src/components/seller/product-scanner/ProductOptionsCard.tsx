@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Truck, ShoppingBag, XCircle, Info } from 'lucide-react';
+import { User, ShoppingBag, XCircle, Info } from 'lucide-react';
 import { Card, CardContent } from '../../ui/Card';
 import { formatCurrency } from '../../../services/api';
 import { getConfidenceCircleStyles, getConfidenceLevelText } from './helpers';
@@ -256,23 +256,6 @@ const ProductOptionItem: React.FC<{
             >
               <User className="h-4 w-4" />
               Vendedor
-            </button>
-            <button
-              type="button"
-              disabled={!hasSelection}
-              onClick={() => hasSelection && onAction(option, selectedSize!, 'corredor')}
-              className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-sm font-semibold transition-all
-                ${hasSelection
-                  ? selectedCategory === 'request_piece'
-                    ? 'bg-warning/80 text-warning-foreground hover:bg-warning/70 active:scale-[0.98] border border-warning'
-                    : selectedCategory === 'request_multi'
-                      ? 'bg-orange-400 text-white hover:bg-orange-500 active:scale-[0.98] border border-orange-500'
-                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/90 active:scale-[0.98] border border-border'
-                  : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
-                }`}
-            >
-              <Truck className="h-4 w-4" />
-              Corredor
             </button>
           </>
         )}
