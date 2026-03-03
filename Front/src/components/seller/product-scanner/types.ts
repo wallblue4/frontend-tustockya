@@ -67,6 +67,7 @@ export interface SizeInfo {
   sibling_pair_id?: number | null;
   formation_opportunities?: any[];
   suggestions?: any[];
+  global_total_potential_pairs?: number;
 }
 
 export interface SelectedProductDetails {

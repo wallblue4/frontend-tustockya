@@ -74,6 +74,7 @@ const ProductOptionItem: React.FC<{
     const sizeMap = new Map<string, {
       size: string; totalStock: number; canSell: boolean;
       hasLocalParts: boolean; hasRemoteCompletePair: boolean; remotePartsCount: number;
+      globalTotalPairs: number;
     }>();
     sizes.forEach((s) => {
       const effectiveStock = s.quantity + (s.left_feet || 0) + (s.right_feet || 0);
@@ -86,11 +87,15 @@ const ProductOptionItem: React.FC<{
         if (s.is_local) existing.hasLocalParts = true;
         if (remoteHasPair) existing.hasRemoteCompletePair = true;
         if (remoteHasParts) existing.remotePartsCount += 1;
+        if ((s.global_total_potential_pairs || 0) > existing.globalTotalPairs) {
+          existing.globalTotalPairs = s.global_total_potential_pairs || 0;
+        }
       } else {
         sizeMap.set(s.size, {
           size: s.size, totalStock: effectiveStock, canSell: !!s.can_sell,
           hasLocalParts: !!s.is_local, hasRemoteCompletePair: remoteHasPair,
           remotePartsCount: remoteHasParts ? 1 : 0,
+          globalTotalPairs: s.global_total_potential_pairs || 0,
         });
       }
     });
@@ -191,7 +196,7 @@ const ProductOptionItem: React.FC<{
         <div className="mt-3">
           <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground mb-1.5 block">Tallas:</span>
           <div className="grid grid-cols-4 gap-2 sm:flex sm:gap-1.5 sm:flex-wrap">
-            {uniqueSizes.map(({ size, totalStock, canSell, hasLocalParts, hasRemoteCompletePair, remotePartsCount }) => {
+            {uniqueSizes.map(({ size, totalStock, canSell, hasLocalParts, hasRemoteCompletePair, remotePartsCount, globalTotalPairs }) => {
               const hasStock = totalStock > 0;
               const isSelected = selectedSize === size;
               const category = getSizeCategory({ totalStock, canSell, hasLocalParts, hasRemoteCompletePair, remotePartsCount });
@@ -201,9 +206,14 @@ const ProductOptionItem: React.FC<{
                   type="button"
                   disabled={!hasStock}
                   onClick={() => handleSizeToggle(size, hasStock)}
-                  className={`py-2.5 sm:py-1 sm:px-2.5 rounded-lg text-sm font-medium border transition-all
+                  className={`relative py-2.5 sm:py-1 sm:px-2.5 rounded-lg text-sm font-medium border transition-all
                     ${isSelected ? SIZE_STYLES[category].selected : SIZE_STYLES[category].unselected}`}
                 >
+                  {globalTotalPairs > 0 && (
+                    <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shadow-sm ring-1 ring-background">
+                      {globalTotalPairs}
+                    </span>
+                  )}
                   {size}
                 </button>
               );

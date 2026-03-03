@@ -157,9 +157,12 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
           const canSell = localAvail.summary?.can_sell_now || false;
           const canFormPair = localAvail.individual_feet?.can_form_pair || false;
           const missing = localAvail.individual_feet?.missing || null;
-          
+
           // Total disponible para venta (pares completos disponibles)
           const availableForSale = localAvail.pairs?.quantity_available_sale || 0;
+
+          // Total global de pares potenciales para esta talla
+          const globalTotalPotentialPairs = globalDistro.totals?.total_potential_pairs ?? 0;
           
           console.log(`Processing size ${size}:`, {
             pairs,
@@ -193,10 +196,11 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
               is_local: true,
               sibling_pair_id: localAvail.sibling_pair_id ?? null,
               formation_opportunities: sizeDetails.formation_opportunities || [],
-              suggestions: sizeDetails.suggestions || []
+              suggestions: sizeDetails.suggestions || [],
+              global_total_potential_pairs: globalTotalPotentialPairs
             });
           }
-          
+
           // Agregar entradas para otras ubicaciones con stock de esta talla
           if (globalDistro.by_location && Array.isArray(globalDistro.by_location)) {
             globalDistro.by_location.forEach((locDistro: any) => {
@@ -230,7 +234,8 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                   is_local: false,
                   sibling_pair_id: locDistro.sibling_pair_id ?? null,
                   formation_opportunities: sizeDetails.formation_opportunities || [],
-                  suggestions: sizeDetails.suggestions || []
+                  suggestions: sizeDetails.suggestions || [],
+                  global_total_potential_pairs: globalTotalPotentialPairs
                 });
               }
             });
