@@ -849,7 +849,15 @@ export const WarehouseDashboard: React.FC = () => {
               ) : (
                 <div className="space-y-3">
                   {transferHistory.map(item => (
-                    <article key={item.id} className="border border-border rounded-md p-3 bg-card shadow-sm">
+                    <article key={item.id} className={`border rounded-md p-3 bg-card shadow-sm ${
+                      item.request_type === 'return' || item.purpose === 'return'
+                        ? 'border-orange-300 border-l-4 border-l-orange-500'
+                        : item.purpose === 'restock'
+                          ? 'border-blue-300 border-l-4 border-l-blue-500'
+                          : item.purpose === 'cliente'
+                            ? 'border-emerald-300 border-l-4 border-l-emerald-500'
+                            : 'border-border'
+                    }`}>
                       <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4">
                         <div className="flex-shrink-0 self-center sm:self-start">
                           <img
@@ -862,14 +870,28 @@ export const WarehouseDashboard: React.FC = () => {
                         <div className="mt-3 sm:mt-0 flex-1 min-w-0">
                           <div className="flex items-start justify-between">
                             <div className="truncate">
+                              {/* Título de tipo: Devolución / Reposición / Pedido */}
+                              <div className={`text-sm font-semibold mb-1 ${
+                                item.request_type === 'return' || item.purpose === 'return'
+                                  ? 'text-orange-600'
+                                  : item.purpose === 'restock'
+                                    ? 'text-blue-600'
+                                    : item.purpose === 'cliente'
+                                      ? 'text-emerald-600'
+                                      : 'text-primary'
+                              }`}>
+                                {item.request_type === 'return' || item.purpose === 'return'
+                                  ? '↩️ Devolución'
+                                  : item.purpose === 'restock'
+                                    ? '📦 Reposición'
+                                    : item.purpose === 'cliente'
+                                      ? '🏃 Pedido'
+                                      : item.purpose === 'pair_formation'
+                                        ? '🔗 Formar Par'
+                                        : '📦 Transferencia'}
+                              </div>
                               <div className="font-medium text-sm truncate">{item.product_info?.brand} {item.product_info?.model}</div>
                               <div className="flex items-center flex-wrap gap-2 mt-1">
-                                {/* Si hay request_type, mostrarlo */}
-                                {item.request_type && (
-                                  <span className={`inline-block text-xs px-2 py-0.5 rounded font-medium ${item.request_type === 'return' ? 'bg-warning/10 text-warning border-warning/20' : item.request_type === 'transfer' ? 'bg-success/10 text-success border-success/20' : 'bg-muted/10 text-muted-foreground border-muted/20'}`}>
-                                    {item.request_type === 'transfer' ? 'Transferencia' : item.request_type === 'return' ? 'devolucion' : item.request_type}
-                                  </span>
-                                )}
                                 <span className="inline-block text-xs px-2 py-0.5 rounded bg-card border border-border text-muted-foreground">{item.pickup_info?.type || '—'}</span>
                               </div>
                             </div>
