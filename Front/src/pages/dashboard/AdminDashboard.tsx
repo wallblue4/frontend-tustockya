@@ -136,7 +136,7 @@ import { EditProductInfoModal } from '../../components/admin/EditProductInfoModa
 
 // Import inventory types and API
 import type { AdminInventoryLocation, AdminInventoryProduct, AdminInventorySize } from '../../types';
-import { adjustInventory, adjustProductPrice, updateProductInfo, fetchAdminInventory, deleteProductReference, updateProductImage, retrainProductVideo } from '../../services/adminAPI';
+import { adjustInventory, adjustProductPrice, updateProductInfo, fetchAdminInventory, deleteProductReference, updateProductImage, retrainProductVideo, fetchMyPermissions } from '../../services/adminAPI';
 
 type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics' | 'transfers' | 'daily-report';
 
@@ -359,6 +359,7 @@ export const AdminDashboard: React.FC = () => {
   const [selectedAdminLocation, setSelectedAdminLocation] = useState<number | 'all'>('all');
   const [adminInventorySearchTerm, setAdminInventorySearchTerm] = useState('');
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
+  const [canModifyInventory, setCanModifyInventory] = useState(true);
 
   // Inventory adjustment modal states
   const [showAdjustInventoryModal, setShowAdjustInventoryModal] = useState(false);
@@ -1292,8 +1293,13 @@ Por favor verifica que:
       setAdminInventoryError(null);
       console.log('Cargando inventario administrativo...');
 
-      const response = await fetchAdminInventory();
+      const [response, permissions] = await Promise.all([
+        fetchAdminInventory(),
+        fetchMyPermissions().catch(() => ({ can_modify_inventory: true }))
+      ]);
       console.log('Inventario administrativo cargado:', response);
+
+      setCanModifyInventory(permissions.can_modify_inventory ?? true);
 
       const inventoryLocations = response.locations || [];
       setAdminInventory(inventoryLocations);
@@ -2854,13 +2860,20 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
           }}
         />
 
+        {!canModifyInventory && (
+          <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 flex items-center space-x-2">
+            <AlertCircle className="h-5 w-5 text-warning flex-shrink-0" />
+            <p className="text-sm text-warning font-medium">Solo lectura. Contacta al Boss para permisos de modificacion de inventario.</p>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <h2 className="text-2xl font-bold text-foreground">Gestion de Inventario</h2>
           <div className="flex space-x-2">
             <Button
               onClick={() => setShowAssignProductModal(true)}
               size="sm"
-              disabled={adminInventoryLoading || adminInventory.length === 0}
+              disabled={adminInventoryLoading || adminInventory.length === 0 || !canModifyInventory}
             >
               <MapPin className="h-4 w-4 mr-2" />
               Asignar a Ubicacion
@@ -3141,6 +3154,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                                     location.location_name
                                                   )}
                                                   className="text-xs h-7 px-2"
+                                                  disabled={!canModifyInventory}
                                                 >
                                                   <Edit className="h-3 w-3" />
                                                 </Button>
@@ -3154,6 +3168,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                                     location.location_name
                                                   )}
                                                   className="text-xs h-7 px-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                                                  disabled={!canModifyInventory}
                                                 >
                                                   <Trash2 className="h-3 w-3" />
                                                 </Button>
@@ -3172,6 +3187,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                           location.location_name
                                         )}
                                         className="w-full mt-3 text-sm border-dashed"
+                                        disabled={!canModifyInventory}
                                       >
                                         <Plus className="h-4 w-4 mr-2" />
                                         Agregar Talla
@@ -5288,8 +5304,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                 style={{ top, left: left }}
               >
                 <button
-                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
-                  onClick={() => { closeEditDropdown(); handleOpenAdjustPriceModal(product); }}
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center ${!canModifyInventory ? 'text-muted-foreground cursor-not-allowed opacity-50' : 'text-foreground'}`}
+                  onClick={() => { if (!canModifyInventory) return; closeEditDropdown(); handleOpenAdjustPriceModal(product); }}
+                  disabled={!canModifyInventory}
                 >
                   <DollarSign className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
                   Precio

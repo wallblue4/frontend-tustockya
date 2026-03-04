@@ -220,6 +220,14 @@ interface CostPaymentCreate {
 // ========== 1. GESTIÓN DE USUARIOS (5 endpoints) ==========
 
 // POST /api/v1/admin/admin/users
+export const fetchMyPermissions = async () => {
+  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/my-permissions`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
 export const createUser = async (userData: UserCreate) => {
   const payload = {
     email: userData.email,

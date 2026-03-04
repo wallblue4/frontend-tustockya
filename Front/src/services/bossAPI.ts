@@ -157,6 +157,7 @@ export const bossAPI = {
     last_name: string;
     location_ids: number[];
     role: string;
+    can_modify_inventory?: boolean;
   }) {
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/admin`, {
       method: 'POST',
@@ -185,6 +186,7 @@ export const bossAPI = {
     password?: string;
     location_ids?: number[];
     is_active?: boolean;
+    can_modify_inventory?: boolean;
   }) {
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/admin/${adminId}`, {
       method: 'PUT',

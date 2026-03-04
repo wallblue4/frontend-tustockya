@@ -100,7 +100,8 @@ export const BossDashboard: React.FC = () => {
     password: '',
     first_name: '',
     last_name: '',
-    location_ids: [] as number[]
+    location_ids: [] as number[],
+    can_modify_inventory: true
   });
 
   // Estados para lista y edicion de admins
@@ -117,7 +118,8 @@ export const BossDashboard: React.FC = () => {
     last_name: '',
     password: '',
     location_ids: [] as number[],
-    is_active: true
+    is_active: true,
+    can_modify_inventory: true
   });
 
   // Estados para editar ubicaciones
@@ -521,7 +523,8 @@ export const BossDashboard: React.FC = () => {
         first_name: adminFormData.first_name,
         last_name: adminFormData.last_name,
         location_ids: adminFormData.location_ids,
-        role: 'administrador'
+        role: 'administrador',
+        can_modify_inventory: adminFormData.can_modify_inventory
       };
 
       await bossAPI.createAdmin(dataToSend);
@@ -535,7 +538,8 @@ export const BossDashboard: React.FC = () => {
         password: '',
         first_name: '',
         last_name: '',
-        location_ids: []
+        location_ids: [],
+        can_modify_inventory: true
       });
       setPasswordError('');
       setShowPassword(false);
@@ -559,7 +563,8 @@ export const BossDashboard: React.FC = () => {
       last_name: admin.last_name,
       password: '',
       location_ids: admin.assigned_locations?.map((loc: any) => loc.id) || [],
-      is_active: admin.is_active
+      is_active: admin.is_active,
+      can_modify_inventory: admin.can_modify_inventory ?? true
     });
     setEditPasswordError('');
     setShowEditPassword(false);
@@ -588,7 +593,8 @@ export const BossDashboard: React.FC = () => {
         first_name: editAdminFormData.first_name,
         last_name: editAdminFormData.last_name,
         location_ids: editAdminFormData.location_ids,
-        is_active: editAdminFormData.is_active
+        is_active: editAdminFormData.is_active,
+        can_modify_inventory: editAdminFormData.can_modify_inventory
       };
 
       // Solo incluir password si se proporciona
@@ -609,7 +615,8 @@ export const BossDashboard: React.FC = () => {
         last_name: '',
         password: '',
         location_ids: [],
-        is_active: true
+        is_active: true,
+        can_modify_inventory: true
       });
 
       alert('Administrador actualizado exitosamente');
@@ -2022,6 +2029,30 @@ export const BossDashboard: React.FC = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* Permiso de inventario */}
+                    <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">Modificar inventario (cantidades y precios)</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={admin.can_modify_inventory ?? true}
+                          onChange={async (e) => {
+                            const newValue = e.target.checked;
+                            try {
+                              await bossAPI.updateAdmin(admin.id, { can_modify_inventory: newValue });
+                              await loadAdmins();
+                            } catch (err: any) {
+                              alert('Error actualizando permiso: ' + (err.message || 'Error desconocido'));
+                            }
+                          }}
+                        />
+                        <div className="w-9 h-5 bg-muted-foreground/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                      </label>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -2162,11 +2193,25 @@ export const BossDashboard: React.FC = () => {
                 )}
               </div>
 
+              {/* Permiso de inventario */}
+              <label className="flex items-center space-x-3 p-3 border border-border rounded-md hover:bg-muted/40 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={adminFormData.can_modify_inventory}
+                  onChange={(e) => setAdminFormData({ ...adminFormData, can_modify_inventory: e.target.checked })}
+                  className="w-4 h-4 text-primary border-border rounded focus:ring-primary"
+                />
+                <div>
+                  <span className="font-medium text-sm">Puede modificar inventario (cantidades y precios)</span>
+                  <p className="text-xs text-muted-foreground">Si se desactiva, el admin solo podra consultar inventario</p>
+                </div>
+              </label>
+
               <div className="flex justify-end space-x-3 pt-4">
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setAdminFormData({ email: '', password: '', first_name: '', last_name: '', location_ids: [] });
+                    setAdminFormData({ email: '', password: '', first_name: '', last_name: '', location_ids: [], can_modify_inventory: true });
                     setPasswordError('');
                     setShowPassword(false);
                   }}
@@ -2869,6 +2914,28 @@ export const BossDashboard: React.FC = () => {
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {editAdminFormData.is_active ? 'El administrador puede acceder al sistema' : 'El administrador no puede acceder al sistema'}
+                    </p>
+                  </div>
+
+                  {/* Permiso de inventario */}
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Permiso de Inventario
+                    </label>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        id="edit_can_modify_inventory"
+                        checked={editAdminFormData.can_modify_inventory}
+                        onChange={(e) => setEditAdminFormData({ ...editAdminFormData, can_modify_inventory: e.target.checked })}
+                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                      />
+                      <label htmlFor="edit_can_modify_inventory" className="text-sm text-foreground">
+                        Puede modificar inventario (cantidades y precios)
+                      </label>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {editAdminFormData.can_modify_inventory ? 'Puede ajustar cantidades y precios' : 'Solo puede consultar inventario'}
                     </p>
                   </div>
                 </div>
