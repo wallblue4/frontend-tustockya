@@ -137,6 +137,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   const [totalPending, setTotalPending] = useState(0);
 
   const [loading, setLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Estados para UI responsivo
@@ -219,7 +220,9 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   const loadTransfersData = async () => {
     try {
       setError(null);
-      setLoading(true);
+      if (isInitialLoad) {
+        setLoading(true);
+      }
 
       // Cargar transferencias pendientes (recepciones por confirmar)
       console.log('🔄 Cargando transferencias pendientes...');
@@ -291,6 +294,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       setTotalPending(0);
     } finally {
       setLoading(false);
+      setIsInitialLoad(false);
     }
   };
 

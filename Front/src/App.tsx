@@ -22,8 +22,17 @@ import { ReportsPage } from './pages/admin/ReportsPage';
 import { TransfersPage } from './pages/admin/TransfersPage';
 import { DailyReportPage } from './pages/admin/DailyReportPage';
 import { WarehouseDashboard } from './pages/dashboard/WarehouseDashboard';
-import { SellerDashboard } from './pages/dashboard/SellerDashboard';
 import { RunnerDashboard } from './pages/dashboard/RunnerDashboard';
+// Seller modular layout + pages
+import { SellerContextProvider } from './context/SellerContext';
+import { SellerLayout } from './layouts/SellerLayout';
+import { SellerHomePage } from './pages/seller/SellerHomePage';
+import { SellerScanPage } from './pages/seller/SellerScanPage';
+import { SellerNewSalePage } from './pages/seller/SellerSalesPage';
+import { SellerSalesListPage } from './pages/seller/SellerSalesListPage';
+import { SellerExpensesPage } from './pages/seller/SellerExpensesPage';
+import { SellerExpensesListPage } from './pages/seller/SellerExpensesListPage';
+import { SellerTransfersPage } from './pages/seller/SellerTransfersPage';
 
 // Loading Component
 const LoadingSpinner: React.FC = () => (
@@ -150,10 +159,20 @@ const AppRoutes: React.FC = () => {
         path="/seller"
         element={
           <ProtectedRoute allowedRoles={['seller', 'admin', 'superuser']}>
-            <SellerDashboard />
+            <SellerContextProvider>
+              <SellerLayout />
+            </SellerContextProvider>
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<SellerHomePage />} />
+        <Route path="scan" element={<SellerScanPage />} />
+        <Route path="new-sale" element={<SellerNewSalePage />} />
+        <Route path="sales" element={<SellerSalesListPage />} />
+        <Route path="expenses" element={<SellerExpensesPage />} />
+        <Route path="expenses-list" element={<SellerExpensesListPage />} />
+        <Route path="transfers" element={<SellerTransfersPage />} />
+      </Route>
       <Route
         path="/runner"
         element={
