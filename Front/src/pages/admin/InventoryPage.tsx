@@ -1148,9 +1148,14 @@ Por favor verifica que:
                                           Sin stock
                                         </Badge>
                                       )}
-                                      {product.total_quantity > 0 && product.total_quantity <= 5 && (
+                                      {location.location_type === 'bodega' && product.total_quantity > 0 && product.total_quantity <= 3 && (
                                         <Badge variant="warning" className="text-xs">
                                           Stock bajo
+                                        </Badge>
+                                      )}
+                                      {product.total_quantity > 0 && !(location.location_type === 'bodega' && product.total_quantity <= 3) && (
+                                        <Badge variant="success" className="text-xs">
+                                          Con stock
                                         </Badge>
                                       )}
                                     </div>
