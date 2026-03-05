@@ -41,7 +41,10 @@ const SalesDayColumn: React.FC<SalesDayColumnProps> = ({
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const groupedSales = useMemo(() => {
-    const groups: Record<string, { reference: string; brand: string; model: string; sales: Sale[]; totalItems: number; totalRevenue: number }> = {};
+    const groups: Record<
+      string,
+      { reference: string; brand: string; model: string; sales: Sale[]; totalItems: number; totalRevenue: number }
+    > = {};
 
     for (const sale of sales) {
       for (const item of sale.items) {
@@ -76,10 +79,7 @@ const SalesDayColumn: React.FC<SalesDayColumnProps> = ({
     });
   };
 
-  const totalSalesAmount = useMemo(
-    () => sales.reduce((sum, s) => sum + s.total_amount, 0),
-    [sales]
-  );
+  const totalSalesAmount = useMemo(() => sales.reduce((sum, s) => sum + s.total_amount, 0), [sales]);
 
   return (
     <div className="flex flex-col h-full">
@@ -90,7 +90,8 @@ const SalesDayColumn: React.FC<SalesDayColumnProps> = ({
         </div>
         {sales.length > 0 && (
           <span className="text-sm text-muted-foreground">
-            {sales.length} ventas · <span className="font-semibold text-foreground">{formatCurrency(totalSalesAmount)}</span>
+            {sales.length} ventas ·{' '}
+            <span className="font-semibold text-foreground">{formatCurrency(totalSalesAmount)}</span>
           </span>
         )}
       </div>
@@ -102,9 +103,7 @@ const SalesDayColumn: React.FC<SalesDayColumnProps> = ({
           ))}
         </div>
       ) : sales.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground text-sm">
-          No hay ventas registradas para esta fecha
-        </div>
+        <div className="text-center py-8 text-muted-foreground text-sm">No hay ventas registradas para esta fecha</div>
       ) : (
         <div className="space-y-3 overflow-y-auto flex-1 pr-1">
           {groupedSales.map(([key, group]) => {

@@ -142,9 +142,13 @@ const SizeCard: React.FC<{
           <span className="font-bold text-primary">{formatCurrency(sizeInfo.unit_price)}</span>
         </div>
 
-        {sizeInfo.formation_opportunities && sizeInfo.formation_opportunities.length > 0 && sizeInfo.location_id === userLocationId && (
-          <div className="text-xs text-warning bg-warning/10 p-2 rounded">💡 {sizeInfo.formation_opportunities[0].action}</div>
-        )}
+        {sizeInfo.formation_opportunities &&
+          sizeInfo.formation_opportunities.length > 0 &&
+          sizeInfo.location_id === userLocationId && (
+            <div className="text-xs text-warning bg-warning/10 p-2 rounded">
+              💡 {sizeInfo.formation_opportunities[0].action}
+            </div>
+          )}
 
         {sizeInfo.suggestions && sizeInfo.suggestions.length > 0 && sizeInfo.location_id !== userLocationId && (
           <div className="text-xs text-primary bg-primary/10 p-2 rounded">📦 {sizeInfo.suggestions[0].action}</div>
@@ -255,7 +259,9 @@ const SelectedSizeDetails: React.FC<{
                     {opp.from_locations && (
                       <div className="text-xs text-muted-foreground mt-2">
                         {opp.from_locations.map((loc: any, locIdx: number) => (
-                          <div key={locIdx}>• {loc.quantity} {loc.type === 'left' ? 'izq' : 'der'} en {loc.location_name}</div>
+                          <div key={locIdx}>
+                            • {loc.quantity} {loc.type === 'left' ? 'izq' : 'der'} en {loc.location_name}
+                          </div>
                         ))}
                       </div>
                     )}
@@ -311,10 +317,12 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
 
   // Determine if the selected size is in the seller's local stock and can be sold directly
   const selectedSizeInfo = selectedSize ? findSizeByKey(selectedProduct.sizes, selectedSize) : undefined;
-  const isLocalAndCanSell = selectedSizeInfo && selectedSizeInfo.location_id === userLocationId && selectedSizeInfo.can_sell;
+  const isLocalAndCanSell =
+    selectedSizeInfo && selectedSizeInfo.location_id === userLocationId && selectedSizeInfo.can_sell;
 
   const showPrimaryRequestButton =
-    selectedSize && (selectedProduct.product.availability.can_sell || selectedProduct.product.inventory.total_stock > 0);
+    selectedSize &&
+    (selectedProduct.product.availability.can_sell || selectedProduct.product.inventory.total_stock > 0);
 
   return (
     <Card>
@@ -331,13 +339,16 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
             <div className="flex items-start justify-between">
               <div>
                 <h4 className="font-semibold text-xl mb-2 text-foreground">
-                  {selectedProduct.product.description || `${selectedProduct.product.brand} ${selectedProduct.product.model}`}
+                  {selectedProduct.product.description ||
+                    `${selectedProduct.product.brand} ${selectedProduct.product.model}`}
                 </h4>
                 <p className="text-muted-foreground mb-1">Modelo: {selectedProduct.product.model}</p>
                 <p className="text-sm text-muted-foreground mb-3">Marca: {selectedProduct.product.brand}</p>
               </div>
               <div className="flex flex-col items-center ml-6">
-                <div className={`w-14 h-14 rounded-full border-[3px] flex items-center justify-center ${confidenceStyles}`}>
+                <div
+                  className={`w-14 h-14 rounded-full border-[3px] flex items-center justify-center ${confidenceStyles}`}
+                >
                   <span className="text-sm font-bold">{selectedProduct.product.confidence?.toFixed(0)}%</span>
                 </div>
                 <span className={`text-[10px] font-semibold mt-1 ${confidenceTextColor}`}>
@@ -372,7 +383,11 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
             </div>
           )}
 
-          <SelectedSizeDetails selectedProduct={selectedProduct} selectedSize={selectedSize} userLocationId={userLocationId} />
+          <SelectedSizeDetails
+            selectedProduct={selectedProduct}
+            selectedSize={selectedSize}
+            userLocationId={userLocationId}
+          />
 
           <div className="flex space-x-4">
             {isLocalAndCanSell && onSell ? (

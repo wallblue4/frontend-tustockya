@@ -52,7 +52,7 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
   prefilledProductData,
   onTransferRequested,
   onBack,
-  onViewTransfers
+  onViewTransfers,
 }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -142,7 +142,7 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
           quantity: 1,
           purpose: 'pair_formation',
           pickup_type: prefilledProductData.pickup_type || 'vendedor',
-          notes: prefilledProductData.request_notes || null
+          notes: prefilledProductData.request_notes || null,
         };
         response = await vendorAPI.instantSingleFoot(singleFootPayload);
       } else {
@@ -157,7 +157,9 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
           purpose: 'cliente' as const,
           pickup_type: prefilledProductData.pickup_type || 'vendedor',
           destination_type: 'exhibicion',
-          notes: prefilledProductData.request_notes || `Solicitud desde escáner - Color: ${prefilledProductData.color || 'N/A'}`
+          notes:
+            prefilledProductData.request_notes ||
+            `Solicitud desde escáner - Color: ${prefilledProductData.color || 'N/A'}`,
         };
         response = await vendorAPI.requestTransfer(transferPayload);
       }
@@ -186,23 +188,24 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
               : 'Tu solicitud ha sido enviada. Recibirás una notificación cuando sea procesada.'}
           </p>
           {onBack && (
-            <>              <button
-              onClick={onBack}
-              className="w-full bg-green-500 text-white hover:bg-green-600 text-sm px-4 py-2 rounded-md"
-            >
-              Volver a resultados de búsqueda
-            </button>
-            {onViewTransfers && (
+            <>
+              {' '}
               <button
-                type="button"
-                onClick={onViewTransfers}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
+                onClick={onBack}
+                className="w-full bg-green-500 text-white hover:bg-green-600 text-sm px-4 py-2 rounded-md"
               >
-                Ver transferencias
+                Volver a resultados de búsqueda
               </button>
-            )}
+              {onViewTransfers && (
+                <button
+                  type="button"
+                  onClick={onViewTransfers}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
+                >
+                  Ver transferencias
+                </button>
+              )}
             </>
-
           )}
         </CardContent>
       </Card>
@@ -232,11 +235,15 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
               <div className="flex flex-col justify-between flex-1 gap-4 min-h-[132px]">
                 <div>
                   <p className="text-xs text-muted-foreground">Origen 1 — Pie Izquierdo</p>
-                  <p className="text-sm font-semibold">{prefilledProductData.dual_transfer!.left_foot_source.location_name}</p>
+                  <p className="text-sm font-semibold">
+                    {prefilledProductData.dual_transfer!.left_foot_source.location_name}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Origen 2 — Pie Derecho</p>
-                  <p className="text-sm font-semibold">{prefilledProductData.dual_transfer!.right_foot_source.location_name}</p>
+                  <p className="text-sm font-semibold">
+                    {prefilledProductData.dual_transfer!.right_foot_source.location_name}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Destino</p>
@@ -270,7 +277,9 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
                   <p className="text-sm font-semibold flex items-center gap-1.5">
                     {prefilledProductData.location_name || 'Bodega Principal'}
                     {isSiblingSource && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200 uppercase tracking-wide">DUO</span>
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200 uppercase tracking-wide">
+                        DUO
+                      </span>
                     )}
                   </p>
                 </div>
@@ -316,7 +325,7 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
 
           // Caso dual: pies desde ubicaciones distintas
           if (isDualTransfer) {
-            const dual = prefilledProductData.dual_transfer!;
+            const _dual = prefilledProductData.dual_transfer!;
             return (
               <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-3">
                 <div className="flex items-center gap-2">
@@ -330,9 +339,7 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Se transferirá:</p>
-                    <p className="text-sm font-medium text-indigo-700">
-                      🦶 1 Pie Izquierdo + 🦶 1 Pie Derecho
-                    </p>
+                    <p className="text-sm font-medium text-indigo-700">🦶 1 Pie Izquierdo + 🦶 1 Pie Derecho</p>
                   </div>
                 </div>
               </div>
@@ -350,8 +357,10 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
                   <div>
                     <p className="text-xs text-muted-foreground">En tu local:</p>
                     <p className="text-sm font-medium text-black">
-                      {local_left_feet > 0 && `🦶 ${local_left_feet} Pie${local_left_feet > 1 ? 's' : ''} Izquierdo${local_left_feet > 1 ? 's' : ''}`}
-                      {local_right_feet > 0 && `🦶 ${local_right_feet} Pie${local_right_feet > 1 ? 's' : ''} Derecho${local_right_feet > 1 ? 's' : ''}`}
+                      {local_left_feet > 0 &&
+                        `🦶 ${local_left_feet} Pie${local_left_feet > 1 ? 's' : ''} Izquierdo${local_left_feet > 1 ? 's' : ''}`}
+                      {local_right_feet > 0 &&
+                        `🦶 ${local_right_feet} Pie${local_right_feet > 1 ? 's' : ''} Derecho${local_right_feet > 1 ? 's' : ''}`}
                       {local_pairs > 0 && `📦 ${local_pairs} Par${local_pairs > 1 ? 'es' : ''}`}
                     </p>
                   </div>
@@ -376,8 +385,12 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
                   <span className="text-sm font-semibold text-slate-800">Detalle de Transferencia</span>
                 </div>
                 <div className="space-y-1 pl-7">
-                  <p className="text-xs text-muted-foreground">En tu local: <span className="font-medium text-red-800">Sin stock de esta talla</span></p>
-                  <p className="text-xs text-muted-foreground">Se transferirá: <span className="font-medium text-slate-700">1 Par Completo</span></p>
+                  <p className="text-xs text-muted-foreground">
+                    En tu local: <span className="font-medium text-red-800">Sin stock de esta talla</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Se transferirá: <span className="font-medium text-slate-700">1 Par Completo</span>
+                  </p>
                   {prefilledProductData.request_notes && (
                     <p className="text-xs text-muted-foreground mt-1">💡 {prefilledProductData.request_notes}</p>
                   )}
@@ -422,11 +435,22 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
                 <span className="text-sm font-semibold text-gray-700">Info de Transferencia</span>
               </div>
               <div className="space-y-1 pl-7 text-xs text-muted-foreground">
-                <p>Tipo: <span className="font-medium text-gray-700">{transfer_type || 'no definido'}</span></p>
-                <p>Stock local: <span className="font-medium text-gray-700">{local_pairs} pares, {local_left_feet} izq, {local_right_feet} der</span></p>
-                <p>Se solicita: <span className="font-medium text-gray-700">{getInventoryLabel()}</span></p>
+                <p>
+                  Tipo: <span className="font-medium text-gray-700">{transfer_type || 'no definido'}</span>
+                </p>
+                <p>
+                  Stock local:{' '}
+                  <span className="font-medium text-gray-700">
+                    {local_pairs} pares, {local_left_feet} izq, {local_right_feet} der
+                  </span>
+                </p>
+                <p>
+                  Se solicita: <span className="font-medium text-gray-700">{getInventoryLabel()}</span>
+                </p>
                 {prefilledProductData.request_notes && (
-                  <p>Nota: <span className="font-medium text-gray-700">{prefilledProductData.request_notes}</span></p>
+                  <p>
+                    Nota: <span className="font-medium text-gray-700">{prefilledProductData.request_notes}</span>
+                  </p>
                 )}
               </div>
             </div>
@@ -441,18 +465,16 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
         )}
 
         <div className="flex flex-col items-center gap-2">
-          <Button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full bg-primary text-white"
-          >
+          <Button onClick={handleSubmit} disabled={loading} className="w-full bg-primary text-white">
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 {isDualTransfer ? 'Solicitando 2 transferencias...' : 'Solicitando...'}
               </>
+            ) : isDualTransfer ? (
+              'Solicitar 2 Transferencias'
             ) : (
-              isDualTransfer ? 'Solicitar 2 Transferencias' : 'Solicitar Transferencia'
+              'Solicitar Transferencia'
             )}
           </Button>
           {onBack && (

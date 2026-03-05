@@ -1,19 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  Home, 
-  Package, 
-  Users, 
-  ShoppingBag, 
-  BarChart2, 
-  Settings, 
-  Database, 
-  Camera, 
-  Truck, 
-  User,
-  LogOut
-} from 'lucide-react';
+import { Home, Package, Users, ShoppingBag, BarChart2, Settings, Database, Camera, Truck, LogOut } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -83,7 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
 
   return (
     <>
-      <div 
+      <div
         className={`${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } fixed top-0 left-0 z-30 w-64 h-full bg-card shadow-xl border-r border-border transition-transform duration-300 ease-in-out md:translate-x-0 flex flex-col`}
@@ -92,27 +80,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         <div className="flex-shrink-0">
           <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border">
             <div className="flex items-center min-w-0">
-              <img 
-                src={user?.avatar || 'https://via.placeholder.com/40'} 
-                alt="User" 
-                className="h-8 w-8 sm:h-10 sm:w-10 rounded-full mr-2 sm:mr-3 flex-shrink-0" 
+              <img
+                src={user?.avatar || 'https://via.placeholder.com/40'}
+                alt="User"
+                className="h-8 w-8 sm:h-10 sm:w-10 rounded-full mr-2 sm:mr-3 flex-shrink-0"
               />
               <div className="min-w-0">
                 <p className="font-medium text-foreground text-sm sm:text-base truncate">{user?.name}</p>
                 <p className="text-xs text-muted-foreground capitalize truncate">{user?.role}</p>
               </div>
             </div>
-            <button 
+            <button
               className="md:hidden text-muted-foreground hover:text-foreground flex-shrink-0"
               onClick={toggleSidebar}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 sm:h-6 sm:w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
         </div>
-        
+
         {/* Navigation - Scrollable */}
         <div className="flex-1 overflow-y-auto">
           <nav className="py-2 sm:py-4 px-2">
@@ -121,11 +115,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 <li key={index}>
                   <NavLink
                     to={link.to}
-                    className={({ isActive }) => 
+                    className={({ isActive }) =>
                       `flex items-center px-3 sm:px-4 py-2 sm:py-3 text-foreground rounded-md transition-colors text-sm sm:text-base ${
-                        isActive 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'hover:bg-muted/20'
+                        isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/20'
                       }`
                     }
                     onClick={() => {
@@ -142,11 +134,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
             </ul>
           </nav>
         </div>
-        
+
         {/* Footer - Fixed */}
         <div className="flex-shrink-0 border-t border-border">
           <div className="p-3 sm:p-4">
-            <button 
+            <button
               onClick={logout}
               className="flex items-center w-full px-3 sm:px-4 py-2 text-foreground rounded-md hover:bg-muted/20 transition-colors text-sm sm:text-base"
             >
@@ -156,13 +148,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           </div>
         </div>
       </div>
-      
+
       {/* Overlay for mobile */}
       {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-20 md:hidden"
-          onClick={toggleSidebar}
-        ></div>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-20 md:hidden" onClick={toggleSidebar}></div>
       )}
     </>
   );

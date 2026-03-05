@@ -5,41 +5,41 @@
 @layer base {
   :root {
     /* Colores principales */
-    --primary: 206 100% 50%;           /* #0EA5E9 - Sky Blue 500 */
-    --primary-dark: 204 96% 42%;       /* #0284C7 - Sky Blue 600 */
+    --primary: 206 100% 50%; /* #0EA5E9 - Sky Blue 500 */
+    --primary-dark: 204 96% 42%; /* #0284C7 - Sky Blue 600 */
     --primary-foreground: 210 40% 98%; /* Texto sobre azul */
-    
-    --secondary: 215 28% 17%;          /* #1E293B - Slate 800 */
+
+    --secondary: 215 28% 17%; /* #1E293B - Slate 800 */
     --secondary-foreground: 210 40% 98%;
-    
-    --accent: 206 100% 50%;            /* Mismo azul para acentos */
+
+    --accent: 206 100% 50%; /* Mismo azul para acentos */
     --accent-foreground: 210 40% 98%;
-    
+
     /* Estados */
-    --success: 142 76% 36%;            /* Verde para éxito */
+    --success: 142 76% 36%; /* Verde para éxito */
     --success-foreground: 0 0% 100%;
-    --warning: 45 100% 51%;            /* Amarillo para advertencias */
+    --warning: 45 100% 51%; /* Amarillo para advertencias */
     --warning-foreground: 0 0% 0%;
-    --error: 0 100% 50%;               /* Rojo para errores */
+    --error: 0 100% 50%; /* Rojo para errores */
     --error-foreground: 0 0% 100%;
-    
+
     /* Fondos y superficies */
-    --background: 222 84% 5%;          /* #0F172A - Slate 900 Negro azulado */
-    --foreground: 210 40% 98%;         /* #F8FAFC - Slate 50 Blanco */
-    --card: 215 28% 17%;               /* #1E293B - Slate 800 Gris oscuro */
+    --background: 222 84% 5%; /* #0F172A - Slate 900 Negro azulado */
+    --foreground: 210 40% 98%; /* #F8FAFC - Slate 50 Blanco */
+    --card: 215 28% 17%; /* #1E293B - Slate 800 Gris oscuro */
     --card-foreground: 210 40% 98%;
-    --popover: 215 28% 17%;            /* #1E293B - Slate 800 */
+    --popover: 215 28% 17%; /* #1E293B - Slate 800 */
     --popover-foreground: 210 40% 98%;
-    
+
     /* Bordes y elementos */
-    --border: 215 20% 27%;             /* #334155 - Slate 700 para bordes */
+    --border: 215 20% 27%; /* #334155 - Slate 700 para bordes */
     --input: 215 20% 27%;
-    --ring: 206 100% 50%;              /* Azul para focus */
-    
+    --ring: 206 100% 50%; /* Azul para focus */
+
     /* Elementos mutados */
-    --muted: 215 16% 47%;              /* #64748B - Slate 500 Gris medio */
+    --muted: 215 16% 47%; /* #64748B - Slate 500 Gris medio */
     --muted-foreground: 215 20% 65%;
-    
+
     /* Elementos destructivos */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -48,12 +48,17 @@
   * {
     @apply border-border;
   }
-  
+
   body {
     @apply bg-background text-foreground font-sans min-h-screen;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-semibold leading-tight text-foreground;
   }
 
@@ -62,21 +67,21 @@
     width: 6px;
     height: 6px;
   }
-  
+
   ::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   ::-webkit-scrollbar-thumb {
     background: hsl(var(--muted) / 0.3);
     border-radius: 3px;
     transition: background 0.2s ease;
   }
-  
+
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted) / 0.5);
   }
-  
+
   ::-webkit-scrollbar-corner {
     background: transparent;
   }

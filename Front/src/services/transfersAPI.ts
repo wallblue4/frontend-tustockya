@@ -5,8 +5,8 @@ import { BACKEND_URL } from '../config/env';
 const getHeaders = () => {
   const token = localStorage.getItem('token');
   return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
   };
 };
 
@@ -43,7 +43,7 @@ export const vendorAPI = {
       const response = await fetch(`${BACKEND_URL}/api/v1/transfers/request`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify(transferData)
+        body: JSON.stringify(transferData),
       });
       return handleResponse(response);
     };
@@ -55,7 +55,7 @@ export const vendorAPI = {
     } else {
       // Fallback a mock
       console.log('📦 Usando respuesta mock para requestTransfer');
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       const transferId = Math.floor(Math.random() * 1000) + 100;
 
       return {
@@ -64,7 +64,7 @@ export const vendorAPI = {
         status: 'pending',
         estimated_time: transferData.purpose === 'cliente' ? '30 minutos' : '45 minutos',
         priority: transferData.purpose === 'cliente' ? 'high' : 'normal',
-        reservation_expires_at: new Date(Date.now() + 2700000).toISOString()
+        reservation_expires_at: new Date(Date.now() + 2700000).toISOString(),
       };
     }
   },
@@ -72,29 +72,15 @@ export const vendorAPI = {
   async sellFromTransfer(transferId: number, formData: FormData) {
     console.log('🔄 Registrando venta desde transferencia...', { transferId });
 
-    const backendCall = async () => {
-      const token = localStorage.getItem('token');
-      const headers: Record<string, string> = {
-        'Authorization': `Bearer ${token || ''}`
-      };
-
-      const response = await fetch(`${BACKEND_URL}/api/v1/vendor/sell-from-transfer/${transferId}`, {
-        method: 'POST',
-        headers,
-        body: formData
-      });
-      return handleResponse(response);
-    };
-
     const token = localStorage.getItem('token');
     const headers: Record<string, string> = {
-      'Authorization': `Bearer ${token || ''}`
+      Authorization: `Bearer ${token || ''}`,
     };
 
     const response = await fetch(`${BACKEND_URL}/api/v1/vendor/sell-from-transfer/${transferId}`, {
       method: 'POST',
       headers,
-      body: formData
+      body: formData,
     });
 
     if (!response.ok) {
@@ -114,7 +100,7 @@ export const vendorAPI = {
       const response = await fetch(`${BACKEND_URL}/api/v1/transfers/instant-single-foot`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       });
       return handleResponse(response);
     };
@@ -125,7 +111,7 @@ export const vendorAPI = {
       return result.data;
     } else {
       console.log('📦 Usando respuesta mock para instantSingleFoot');
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       const transferId = Math.floor(Math.random() * 1000) + 100;
 
       return {
@@ -135,7 +121,7 @@ export const vendorAPI = {
         estimated_time: 'Instantáneo',
         priority: 'high',
         pair_formation_available: true,
-        pairs_can_be_formed: 1
+        pairs_can_be_formed: 1,
       };
     }
   },
@@ -147,7 +133,7 @@ export const vendorAPI = {
       const response = await fetch(`${BACKEND_URL}/api/v1/transfers/request-single-foot`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify(singleFootData)
+        body: JSON.stringify(singleFootData),
       });
       return handleResponse(response);
     };
@@ -158,7 +144,7 @@ export const vendorAPI = {
       return result.data;
     } else {
       console.log('📦 Usando respuesta mock para requestSingleFoot');
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       const transferId = Math.floor(Math.random() * 1000) + 100;
 
       return {
@@ -169,7 +155,7 @@ export const vendorAPI = {
         priority: 'high',
         reservation_expires_at: new Date(Date.now() + 2700000).toISOString(),
         pair_formation_available: true,
-        pairs_can_be_formed: 1
+        pairs_can_be_formed: 1,
       };
     }
   },
@@ -179,7 +165,7 @@ export const vendorAPI = {
 
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/vendor/pending-transfers`, {
-        headers: getHeaders()
+        headers: getHeaders(),
       });
       return handleResponse(response);
     };
@@ -190,7 +176,7 @@ export const vendorAPI = {
       return result.data;
     } else {
       console.log('📦 Usando datos mock para pending transfers');
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       return {
         success: true,
         pending_transfers: [
@@ -208,12 +194,12 @@ export const vendorAPI = {
             warehouse_keeper_name: 'Bodega Central',
             next_action: 'Confirmar recepción',
             product_image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff',
-            priority: 'normal'
-          }
+            priority: 'normal',
+          },
         ],
         urgent_count: 0,
         normal_count: 1,
-        total_pending: 1
+        total_pending: 1,
       };
     }
   },
@@ -223,7 +209,7 @@ export const vendorAPI = {
 
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/vendor/completed-transfers`, {
-        headers: getHeaders()
+        headers: getHeaders(),
       });
       return handleResponse(response);
     };
@@ -234,7 +220,7 @@ export const vendorAPI = {
       return result.data;
     } else {
       console.log('📦 Usando datos mock para completed transfers');
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       return {
         success: true,
         completed_transfers: [],
@@ -246,8 +232,8 @@ export const vendorAPI = {
           success_rate: 0,
           total_value_completed: 0,
           average_duration: '0h',
-          performance: 'N/A'
-        }
+          performance: 'N/A',
+        },
       };
     }
   },
@@ -257,7 +243,7 @@ export const vendorAPI = {
 
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/vendor/transfer-history`, {
-        headers: getHeaders()
+        headers: getHeaders(),
       });
       return handleResponse(response);
     };
@@ -268,7 +254,7 @@ export const vendorAPI = {
       return result.data;
     } else {
       console.log('📦 Usando datos mock para transfer history');
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       return {
         success: true,
         date: new Date().toISOString().split('T')[0],
@@ -279,8 +265,8 @@ export const vendorAPI = {
           selled_count: 0,
           cancelled_count: 0,
           returned_count: 0,
-          total_sales_amount: 0
-        }
+          total_sales_amount: 0,
+        },
       };
     }
   },
@@ -300,7 +286,7 @@ export const vendorAPI = {
           model: 'Air Force 1',
           size: '42',
           product_image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff',
-          pickup_type: 'vendedor'
+          pickup_type: 'vendedor',
         },
         {
           id: 202,
@@ -314,7 +300,7 @@ export const vendorAPI = {
           model: 'Ultra Boost',
           size: '40',
           product_image: 'https://images.unsplash.com/photo-1587563871167-1ee79736a4c5',
-          pickup_type: 'vendedor'
+          pickup_type: 'vendedor',
         },
         {
           id: 203,
@@ -328,13 +314,13 @@ export const vendorAPI = {
           model: 'Air Jordan 1',
           size: '43',
           product_image: 'https://images.unsplash.com/photo-1581101767113-1677fc2beaa8',
-          pickup_type: 'corredor'
-        }
+          pickup_type: 'corredor',
+        },
       ];
 
       const backendCall = async () => {
         const response = await fetch(`${BACKEND_URL}/api/v1/vendor/incoming-transfers`, {
-          headers: getHeaders()
+          headers: getHeaders(),
         });
         return handleResponse(response);
       };
@@ -357,7 +343,7 @@ export const vendorAPI = {
       const backendCall = async () => {
         const response = await fetch(`${BACKEND_URL}/api/v1/vendor/incoming-transfers/${transferId}/accept`, {
           method: 'POST',
-          headers: getHeaders()
+          headers: getHeaders(),
         });
         return handleResponse(response);
       };
@@ -376,7 +362,7 @@ export const vendorAPI = {
         const response = await fetch(`${BACKEND_URL}/api/v1/vendor/incoming-transfers/${transferId}/dispatch`, {
           method: 'POST',
           headers: getHeaders(),
-          body: JSON.stringify(data)
+          body: JSON.stringify(data),
         });
         return handleResponse(response);
       };
@@ -389,13 +375,16 @@ export const vendorAPI = {
     }
   },
 
-  async confirmReturnReception(returnId: number, data: { received_quantity: number; condition: string; notes: string }) {
+  async confirmReturnReception(
+    returnId: number,
+    data: { received_quantity: number; condition: string; notes: string }
+  ) {
     try {
       const backendCall = async () => {
         const response = await fetch(`${BACKEND_URL}/api/v1/vendor/returns/${returnId}/confirm-reception`, {
           method: 'POST',
           headers: getHeaders(),
-          body: JSON.stringify(data)
+          body: JSON.stringify(data),
         });
         return handleResponse(response);
       };
@@ -405,7 +394,7 @@ export const vendorAPI = {
         success: true,
         message: 'Devolución recibida correctamente',
         inventory_restored: { reversed: true },
-        pair_reversal: { reversed: true, quantity_reversed: 1, pairs_remaining: 5 }
+        pair_reversal: { reversed: true, quantity_reversed: 1, pairs_remaining: 5 },
       };
     } catch (error) {
       console.error('Error confirming return reception:', error);
@@ -420,12 +409,12 @@ export const vendorAPI = {
       const params = new URLSearchParams({
         received_quantity: quantity.toString(),
         condition_ok: conditionOk.toString(),
-        notes: notes || ''
+        notes: notes || '',
       });
 
       const response = await fetch(`${BACKEND_URL}/api/v1/vendor/confirm-reception/${requestId}?${params}`, {
         method: 'POST',
-        headers: getHeaders()
+        headers: getHeaders(),
       });
       return handleResponse(response);
     };
@@ -436,14 +425,14 @@ export const vendorAPI = {
       return result.data;
     } else {
       console.log('📦 Usando respuesta mock para confirm reception');
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       return {
         success: true,
         message: 'Recepción confirmada - Inventario actualizado automáticamente',
         request_id: requestId,
         received_quantity: quantity,
         inventory_updated: true,
-        confirmed_at: new Date().toISOString()
+        confirmed_at: new Date().toISOString(),
       };
     }
   },
@@ -456,8 +445,8 @@ export const vendorAPI = {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
-          cancellation_reason: reason || 'Cliente ya no necesita el producto'
-        })
+          cancellation_reason: reason || 'Cliente ya no necesita el producto',
+        }),
       });
       return handleResponse(response);
     };
@@ -468,13 +457,13 @@ export const vendorAPI = {
       return result.data;
     } else {
       console.log('📦 Usando respuesta mock para cancel transfer');
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       return {
         success: true,
         message: 'Transferencia cancelada exitosamente',
         transfer_id: transferId,
         cancelled_at: new Date().toISOString(),
-        reason: reason || 'Cliente ya no necesita el producto'
+        reason: reason || 'Cliente ya no necesita el producto',
       };
     }
   },
@@ -484,7 +473,7 @@ export const vendorAPI = {
 
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/vendor/transfer-details/${transferId}`, {
-        headers: getHeaders()
+        headers: getHeaders(),
       });
       return handleResponse(response);
     };
@@ -495,7 +484,7 @@ export const vendorAPI = {
       return result.data;
     } else {
       console.log('📦 Usando respuesta mock para transfer details');
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       return {
         success: true,
         transfer: {},
@@ -504,14 +493,14 @@ export const vendorAPI = {
             name: 'Carlos Bodeguero',
             email: 'carlos@bodega.com',
             location: 'Bodega Central',
-            location_phone: '+57 300 1234567'
+            location_phone: '+57 300 1234567',
           },
           courier: {
             name: 'Luis Corredor',
             email: 'luis@corredor.com',
-            phone: '+57 301 9876543'
-          }
-        }
+            phone: '+57 301 9876543',
+          },
+        },
       };
     }
   },
@@ -521,7 +510,7 @@ export const vendorAPI = {
 
     const backendCall = async () => {
       const response = await fetch(`${BACKEND_URL}/api/v1/vendor/dashboard`, {
-        headers: getHeaders()
+        headers: getHeaders(),
       });
       return handleResponse(response);
     };
@@ -532,7 +521,7 @@ export const vendorAPI = {
       return result.data;
     } else {
       console.log('📦 Usando datos mock para dashboard');
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, 800));
       return {
         success: true,
         dashboard_timestamp: new Date().toISOString(),
@@ -541,7 +530,7 @@ export const vendorAPI = {
           email: 'juan@tustockya.com',
           location_name: 'Local #1',
           role: 'seller',
-          location_id: 1
+          location_id: 1,
         },
         today_summary: {
           date: new Date().toISOString().split('T')[0],
@@ -550,14 +539,14 @@ export const vendorAPI = {
             pending_confirmations: 3,
             total_amount: 2450000,
             confirmed_amount: 2000000,
-            pending_amount: 450000
+            pending_amount: 450000,
           },
           expenses: {
             count: 2,
-            total_amount: 150000
+            total_amount: 150000,
           },
-          net_income: 2300000
-        }
+          net_income: 2300000,
+        },
       };
     }
   },
@@ -569,7 +558,7 @@ export const vendorAPI = {
       const response = await fetch(`${BACKEND_URL}/api/v1/returns/request`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify(returnData)
+        body: JSON.stringify(returnData),
       });
 
       const result = await handleResponse(response);
@@ -588,7 +577,7 @@ export const vendorAPI = {
       const response = await fetch(`${BACKEND_URL}/api/v1/transfers/create-return`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify(returnData)
+        body: JSON.stringify(returnData),
       });
       return handleResponse(response);
     };
@@ -599,7 +588,7 @@ export const vendorAPI = {
       return result.data;
     } else {
       console.log('📦 Usando respuesta mock para createReturn');
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       return {
         success: true,
@@ -610,7 +599,7 @@ export const vendorAPI = {
         pickup_type: returnData.pickup_type,
         estimated_return_time: '2-3 horas',
         workflow_steps: [],
-        next_action: 'Esperar'
+        next_action: 'Esperar',
       };
     }
   },
@@ -622,7 +611,7 @@ export const vendorAPI = {
       const response = await fetch(`${BACKEND_URL}/api/v1/vendor/deliver-return-to-warehouse/${returnId}`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ delivery_notes: deliveryNotes })
+        body: JSON.stringify({ delivery_notes: deliveryNotes }),
       });
       return handleResponse(response);
     };
@@ -633,17 +622,17 @@ export const vendorAPI = {
       return result.data;
     } else {
       console.log('📦 Usando respuesta mock para deliver return to warehouse');
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       return {
         success: true,
         message: 'Entrega confirmada',
         return_id: returnId,
         status: 'delivered',
-        delivered_at: new Date().toISOString()
+        delivered_at: new Date().toISOString(),
       };
     }
-  }
+  },
 };
 
 // ========== BODEGUERO APIs ==========
@@ -665,7 +654,7 @@ export const warehouseAPI = {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/accept-request`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify(requestData)
+        body: JSON.stringify(requestData),
       });
       return handleResponse(response);
     };
@@ -691,7 +680,7 @@ export const warehouseAPI = {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/deliver-to-courier`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify(requestData)
+        body: JSON.stringify(requestData),
       });
       return handleResponse(response);
     };
@@ -706,7 +695,7 @@ export const warehouseAPI = {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/deliver-to-vendor/${transferId}`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify(requestData)
+        body: JSON.stringify(requestData),
       });
       return handleResponse(response);
     };
@@ -725,8 +714,8 @@ export const warehouseAPI = {
           transfer_request_id: returnData.transfer_request_id,
           accepted: returnData.accepted,
           estimated_preparation_time: returnData.estimated_preparation_time || 15,
-          warehouse_notes: returnData.warehouse_notes || 'Return aceptado'
-        })
+          warehouse_notes: returnData.warehouse_notes || 'Return aceptado',
+        }),
       });
       return handleResponse(response);
     };
@@ -741,14 +730,14 @@ export const warehouseAPI = {
       const response = await fetch(`${BACKEND_URL}/api/v1/warehouse/confirm-return-reception/${returnId}`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify(confirmationData)
+        body: JSON.stringify(confirmationData),
       });
       return handleResponse(response);
     };
     const result = await tryBackendFirst(backendCall);
     if (result.success) return result.data;
     return { success: true, message: 'Devolución recibida', status: 'completed' };
-  }
+  },
 };
 
 // ========== CORREDOR APIs ==========
@@ -770,7 +759,7 @@ export const courierAPI = {
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/accept-request/${requestId}`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ estimated_pickup_time: estimatedTime, notes })
+        body: JSON.stringify({ estimated_pickup_time: estimatedTime, notes }),
       });
       return handleResponse(response);
     };
@@ -796,7 +785,7 @@ export const courierAPI = {
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/confirm-pickup/${requestId}`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ pickup_notes: notes })
+        body: JSON.stringify({ pickup_notes: notes }),
       });
       return handleResponse(response);
     };
@@ -810,11 +799,11 @@ export const courierAPI = {
     const backendCall = async () => {
       const params = new URLSearchParams({
         delivery_successful: successful.toString(),
-        notes: notes || ''
+        notes: notes || '',
       });
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/confirm-delivery/${requestId}?${params}`, {
         method: 'POST',
-        headers: getHeaders()
+        headers: getHeaders(),
       });
       return handleResponse(response);
     };
@@ -840,7 +829,7 @@ export const courierAPI = {
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/accept-request/${returnId}`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ estimated_pickup_time: estimatedTime, notes })
+        body: JSON.stringify({ estimated_pickup_time: estimatedTime, notes }),
       });
       return handleResponse(response);
     };
@@ -855,7 +844,7 @@ export const courierAPI = {
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/confirm-pickup/${returnId}`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ pickup_notes: pickupNotes })
+        body: JSON.stringify({ pickup_notes: pickupNotes }),
       });
       return handleResponse(response);
     };
@@ -869,22 +858,22 @@ export const courierAPI = {
     const backendCall = async () => {
       const params = new URLSearchParams({
         delivery_successful: successful.toString(),
-        notes: notes || ''
+        notes: notes || '',
       });
       const response = await fetch(`${BACKEND_URL}/api/v1/courier/confirm-delivery/${returnId}?${params}`, {
         method: 'POST',
-        headers: getHeaders()
+        headers: getHeaders(),
       });
       return handleResponse(response);
     };
     const result = await tryBackendFirst(backendCall);
     if (result.success) return result.data;
     return { success: true, message: 'Entrega confirmada', status: 'delivered' };
-  }
+  },
 };
 
 export const transfersAPI = {
   vendor: vendorAPI,
   warehouse: warehouseAPI,
-  courier: courierAPI
+  courier: courierAPI,
 };

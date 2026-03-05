@@ -11,11 +11,14 @@ export const SearchBar: React.FC<SearchBarProps> = React.memo(({ onSearch, isSea
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
 
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    if (!brand.trim() && !model.trim()) return;
-    onSearch(brand.trim(), model.trim());
-  }, [brand, model, onSearch]);
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!brand.trim() && !model.trim()) return;
+      onSearch(brand.trim(), model.trim());
+    },
+    [brand, model, onSearch]
+  );
 
   const canSearch = (brand.trim() || model.trim()) && !isSearching;
 
@@ -51,9 +54,10 @@ export const SearchBar: React.FC<SearchBarProps> = React.memo(({ onSearch, isSea
             type="submit"
             disabled={!canSearch}
             className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all
-              ${canSearch
-                ? 'bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]'
-                : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
+              ${
+                canSearch
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]'
+                  : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
               }`}
           >
             {isSearching ? (

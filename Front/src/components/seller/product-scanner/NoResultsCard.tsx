@@ -16,8 +16,7 @@ export const NoResultsCard: React.FC<NoResultsCardProps> = ({ onRetry }) => {
           <div>
             <h3 className="text-lg font-semibold text-warning">No se encontraron productos</h3>
             <p className="text-warning">
-              No se pudieron identificar productos en la imagen. Intenta con una imagen mas clara o un angulo
-              diferente.
+              No se pudieron identificar productos en la imagen. Intenta con una imagen mas clara o un angulo diferente.
             </p>
           </div>
           <Button variant="outline" onClick={onRetry} className="mt-4">

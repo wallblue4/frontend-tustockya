@@ -4,7 +4,7 @@ import {
   fetchManagedLocations,
   fetchPendingDiscountRequests,
   approveDiscountRequest,
-  fetchAvailableLocationsForUsers
+  fetchAvailableLocationsForUsers,
 } from '../services/adminAPI';
 
 interface AdminContextType {
@@ -26,7 +26,7 @@ export const AdminContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [notifications, setNotifications] = useState<Notifications>({
     discounts: [],
     returns: [],
-    inventory: []
+    inventory: [],
   });
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
 
@@ -54,9 +54,11 @@ export const AdminContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       const discountsResponse = await fetchPendingDiscountRequests();
       setNotifications({
-        discounts: Array.isArray(discountsResponse) ? discountsResponse : discountsResponse.requests || discountsResponse.data || [],
+        discounts: Array.isArray(discountsResponse)
+          ? discountsResponse
+          : discountsResponse.requests || discountsResponse.data || [],
         returns: [],
-        inventory: []
+        inventory: [],
       });
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -64,20 +66,23 @@ export const AdminContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, []);
 
-  const handleApproveDiscount = useCallback(async (discountId: number, approved: boolean, notes?: string) => {
-    try {
-      await approveDiscountRequest({
-        discount_request_id: discountId,
-        approved,
-        admin_notes: notes
-      });
-      await loadNotifications();
-      alert(approved ? 'Descuento aprobado exitosamente' : 'Descuento rechazado');
-    } catch (error: any) {
-      console.error('Error processing discount:', error);
-      alert('Error al procesar descuento: ' + (error.message || 'Error desconocido'));
-    }
-  }, [loadNotifications]);
+  const handleApproveDiscount = useCallback(
+    async (discountId: number, approved: boolean, notes?: string) => {
+      try {
+        await approveDiscountRequest({
+          discount_request_id: discountId,
+          approved,
+          admin_notes: notes,
+        });
+        await loadNotifications();
+        alert(approved ? 'Descuento aprobado exitosamente' : 'Descuento rechazado');
+      } catch (error: any) {
+        console.error('Error processing discount:', error);
+        alert('Error al procesar descuento: ' + (error.message || 'Error desconocido'));
+      }
+    },
+    [loadNotifications]
+  );
 
   useEffect(() => {
     loadLocations();
@@ -95,7 +100,7 @@ export const AdminContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setReceiptPreviewUrl,
         loadLocations,
         loadNotifications,
-        handleApproveDiscount
+        handleApproveDiscount,
       }}
     >
       {children}

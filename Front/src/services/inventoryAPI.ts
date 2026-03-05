@@ -4,9 +4,9 @@ import { BACKEND_URL } from '../config/env';
 const getHeaders = () => {
   const token = localStorage.getItem('token');
   return {
-    'Authorization': `Bearer ${token}`,
+    Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    Accept: 'application/json',
   };
 };
 
@@ -35,5 +35,5 @@ export const inventoryAPI = {
       console.error('❌ Error obteniendo inventario:', error);
       throw error;
     }
-  }
+  },
 };

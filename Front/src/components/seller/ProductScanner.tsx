@@ -2,17 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { vendorAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ErrorCard } from './product-scanner/ErrorCard';
-import {
-  extractLocationFromKey,
-  extractSizeFromKey,
-} from './product-scanner/helpers';
+// extractLocationFromKey and extractSizeFromKey removed with handleSolicitar
 import { NoResultsCard } from './product-scanner/NoResultsCard';
 import { ProcessingCard } from './product-scanner/ProcessingCard';
-import { ProductDetailsCard } from './product-scanner/ProductDetailsCard';
 import { ProductOptionsCard } from './product-scanner/ProductOptionsCard';
 import { SearchBar } from './product-scanner/SearchBar';
-import { ScanInfoCard } from './product-scanner/ScanInfoCard';
-import { AvailabilityInfo, InventoryInfo, ProductOption, SelectedProductDetails, SizeInfo } from './product-scanner/types';
+import {
+  AvailabilityInfo,
+  InventoryInfo,
+  ProductOption,
+  SelectedProductDetails,
+  SizeInfo,
+} from './product-scanner/types';
 
 interface ProductScannerProps {
   onRequestTransfer?: (productData: {
@@ -82,18 +83,18 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
   onStepTitleChange,
   onSellProduct,
   capturedImage,
-  searchMode
+  searchMode,
 }) => {
   const { user } = useAuth();
 
   const [isScanning, setIsScanning] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [scanOptions, setScanOptions] = useState<ProductOption[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<SelectedProductDetails | null>(null);
-  const [selectedSize, setSelectedSize] = useState<string>(''); // Ahora guardará "talla-ubicacion" como clave única
+  const [_selectedProduct, _setSelectedProduct] = useState<SelectedProductDetails | null>(null);
+  const [_selectedSize, _setSelectedSize] = useState<string>(''); // Ahora guardará "talla-ubicacion" como clave única
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<'processing' | 'options' | 'details'>('processing');
-  const [scanInfo, setScanInfo] = useState<any>(null);
+  const [_scanInfo, setScanInfo] = useState<any>(null);
   const [sizesMap, setSizesMap] = useState<Map<string, SizeInfo[]>>(new Map());
 
   // Effect para procesar imagen automáticamente cuando llega desde la cámara
@@ -102,6 +103,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       console.log('Imagen recibida desde cámara, procesando...', capturedImage.name);
       handleScanFromCamera(capturedImage);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [capturedImage]);
 
   // En searchMode, ir directo a la vista de opciones (con barra de búsqueda)
@@ -141,15 +143,15 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     if ((product as any).sizesData) {
       const allSizes: SizeInfo[] = [];
       const sizesData = (product as any).sizesData;
-      
+
       console.log('Processing product with sizesData:', sizesData);
-      
+
       // Procesar cada talla desde detailed_by_size
       if (sizesData.detailed_by_size) {
         Object.entries(sizesData.detailed_by_size).forEach(([size, sizeDetails]: [string, any]) => {
           const localAvail = sizeDetails.local_availability || {};
           const globalDistro = sizeDetails.global_distribution || {};
-          
+
           // Información de pares y pies en el local actual
           const pairs = localAvail.pairs?.quantity || 0;
           const leftFeet = localAvail.individual_feet?.left?.quantity || 0;
@@ -163,16 +165,16 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
           // Total global de pares potenciales para esta talla
           const globalTotalPotentialPairs = globalDistro.totals?.total_potential_pairs ?? 0;
-          
+
           console.log(`Processing size ${size}:`, {
             pairs,
             leftFeet,
             rightFeet,
             canSell,
             canFormPair,
-            missing
+            missing,
           });
-          
+
           // Agregar entrada para el local actual si hay stock
           if (pairs > 0 || leftFeet > 0 || rightFeet > 0) {
             allSizes.push({
@@ -197,7 +199,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
               sibling_pair_id: localAvail.sibling_pair_id ?? null,
               formation_opportunities: sizeDetails.formation_opportunities || [],
               suggestions: sizeDetails.suggestions || [],
-              global_total_potential_pairs: globalTotalPotentialPairs
+              global_total_potential_pairs: globalTotalPotentialPairs,
             });
           }
 
@@ -206,12 +208,12 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
             globalDistro.by_location.forEach((locDistro: any) => {
               // Saltar si es el local actual (ya lo agregamos arriba)
               if (locDistro.location_id === localAvail.location_id) return;
-              
+
               // Solo agregar si hay stock en esa ubicación
               const locationPairs = locDistro.pairs || 0;
               const locationLeftFeet = locDistro.left_feet || 0;
               const locationRightFeet = locDistro.right_feet || 0;
-              
+
               if (locationPairs > 0 || locationLeftFeet > 0 || locationRightFeet > 0) {
                 allSizes.push({
                   size,
@@ -235,14 +237,14 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
                   sibling_pair_id: locDistro.sibling_pair_id ?? null,
                   formation_opportunities: sizeDetails.formation_opportunities || [],
                   suggestions: sizeDetails.suggestions || [],
-                  global_total_potential_pairs: globalTotalPotentialPairs
+                  global_total_potential_pairs: globalTotalPotentialPairs,
                 });
               }
             });
           }
         });
       }
-      
+
       console.log('All sizes processed with new structure:', allSizes);
       return allSizes;
     }
@@ -250,14 +252,14 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     // Fallback para estructura antigua (locations)
     if ((product as any).locations) {
       const allSizes: SizeInfo[] = [];
-      
+
       console.log('Processing product with locations (fallback):', (product as any).locations);
-      
+
       // current_location - ubicaciones en el local actual del usuario (estructura simple)
       if ((product as any).locations.current_location && Array.isArray((product as any).locations.current_location)) {
         (product as any).locations.current_location.forEach((sizeObj: any) => {
           console.log('Processing current location size:', sizeObj);
-          
+
           if (sizeObj.quantity > 0) {
             allSizes.push({
               size: sizeObj.size,
@@ -269,17 +271,17 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
               quantity: sizeObj.quantity,
               unit_price: product.inventory.pricing.unit_price,
               box_price: product.inventory.pricing.box_price,
-              total_quantity: sizeObj.quantity
+              total_quantity: sizeObj.quantity,
             });
           }
         });
       }
-      
+
       // other_locations - ubicaciones en otros locales/bodegas (estructura simple)
       if ((product as any).locations.other_locations && Array.isArray((product as any).locations.other_locations)) {
         (product as any).locations.other_locations.forEach((sizeObj: any) => {
           console.log('Processing other location size:', sizeObj);
-          
+
           // Agregar todas las tallas de other_locations, incluso si quantity es 0, para permitir transferencias
           allSizes.push({
             size: sizeObj.size,
@@ -291,11 +293,11 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
             quantity: sizeObj.quantity || 0,
             unit_price: product.inventory.pricing.unit_price,
             box_price: product.inventory.pricing.box_price,
-            total_quantity: sizeObj.quantity || 0
+            total_quantity: sizeObj.quantity || 0,
           });
         });
       }
-      
+
       console.log('All sizes processed:', allSizes);
       return allSizes;
     }
@@ -303,7 +305,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     // Fallbacks antiguos:
     if (product.inventory.total_stock === 0 && product.inventory.available_sizes.length === 0) {
       const commonSizes = ['7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5', '11'];
-      return commonSizes.map(size => ({
+      return commonSizes.map((size) => ({
         size,
         location: product.inventory.local_info.location_name || 'Sin ubicación',
         location_name: product.inventory.local_info.location_name || 'Sin ubicación',
@@ -312,11 +314,11 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         quantity: 0,
         unit_price: product.inventory.pricing.unit_price,
         box_price: product.inventory.pricing.box_price,
-        total_quantity: 0
+        total_quantity: 0,
       }));
     }
     if (product.inventory.available_sizes.length > 0) {
-      return product.inventory.available_sizes.map(size => ({
+      return product.inventory.available_sizes.map((size) => ({
         size,
         location: product.inventory.local_info.location_name || 'Local',
         location_name: product.inventory.local_info.location_name || 'Local',
@@ -325,7 +327,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         quantity: 0,
         unit_price: product.inventory.pricing.unit_price,
         box_price: product.inventory.pricing.box_price,
-        total_quantity: 0
+        total_quantity: 0,
       }));
     }
     if (product.inventory.stock_by_size && product.inventory.stock_by_size.length > 0) {
@@ -339,42 +341,44 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         quantity: stockInfo.quantity_stock,
         unit_price: product.inventory.pricing.unit_price,
         box_price: product.inventory.pricing.box_price,
-        total_quantity: stockInfo.quantity_stock + stockInfo.quantity_exhibition
+        total_quantity: stockInfo.quantity_stock + stockInfo.quantity_exhibition,
       }));
     }
-    return [{
-      size: 'Consultar',
-      location: product.inventory.local_info.location_name || 'Local',
-      location_name: product.inventory.local_info.location_name || 'Local',
-      location_type: undefined,
-      storage_type: 'warehouse' as const,
-      quantity: 0,
-      unit_price: product.inventory.pricing.unit_price,
-      box_price: product.inventory.pricing.box_price,
-      total_quantity: 0
-    }];
+    return [
+      {
+        size: 'Consultar',
+        location: product.inventory.local_info.location_name || 'Local',
+        location_name: product.inventory.local_info.location_name || 'Local',
+        location_type: undefined,
+        storage_type: 'warehouse' as const,
+        quantity: 0,
+        unit_price: product.inventory.pricing.unit_price,
+        box_price: product.inventory.pricing.box_price,
+        total_quantity: 0,
+      },
+    ];
   };
 
   // Convierte la respuesta de la API a ProductOption[]
   function convertScanResponseToProductOptions(scanResponse: any): ProductOption[] {
     // La nueva estructura tiene results.matches con TODOS los matches
     if (!scanResponse || !scanResponse.success || !scanResponse.results?.matches?.length) return [];
-    
+
     const allMatches = scanResponse.results.matches;
     const options: ProductOption[] = [];
-    
+
     // Procesar CADA match
     allMatches.forEach((match: any, index: number) => {
       const product = match.product || {};
       const sizes = match.sizes || {};
       const classification = match.classification || {};
-      
+
       // Calcular stock total de la nueva estructura con pies separados
       const calculateTotalStock = () => {
         let totalPairs = 0;
         let totalLeftFeet = 0;
         let totalRightFeet = 0;
-        
+
         if (sizes.detailed_by_size) {
           Object.values(sizes.detailed_by_size).forEach((sizeData: any) => {
             if (sizeData.local_availability) {
@@ -384,7 +388,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
             }
           });
         }
-        
+
         // Retornar el total de pares equivalentes (pares + pies que pueden formar pares)
         const formablePairs = Math.min(totalLeftFeet, totalRightFeet);
         return totalPairs + formablePairs;
@@ -398,30 +402,31 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       // Crear stock_by_size para current_location (adaptado a nueva estructura)
       const createStockBySize = () => {
         if (!sizes.detailed_by_size) return [];
-        
+
         return Object.entries(sizes.detailed_by_size).map(([size, sizeData]: [string, any]) => {
           const localAvail = sizeData.local_availability || {};
           const pairs = localAvail.pairs?.quantity || 0;
           const leftFeet = localAvail.individual_feet?.left?.quantity || 0;
           const rightFeet = localAvail.individual_feet?.right?.quantity || 0;
           const formablePairs = Math.min(leftFeet, rightFeet);
-          
+
           return {
             size,
             quantity_stock: pairs + formablePairs,
             quantity_exhibition: localAvail.pairs?.quantity_exhibition || 0,
-            location: localAvail.location_name || ''
+            location: localAvail.location_name || '',
           };
         });
       };
-      
+
       // Unificar estructura de inventory para el componente
       const inventory: InventoryInfo = {
         local_info: {
           location_number: scanResponse.scanned_by?.location_id || 0,
-          location_name: sizes.detailed_by_size && Object.values(sizes.detailed_by_size)[0] 
-            ? (Object.values(sizes.detailed_by_size)[0] as any).local_availability?.location_name || ''
-            : '',
+          location_name:
+            sizes.detailed_by_size && Object.values(sizes.detailed_by_size)[0]
+              ? (Object.values(sizes.detailed_by_size)[0] as any).local_availability?.location_name || ''
+              : '',
         },
         pricing: {
           unit_price: product.unit_price || 0,
@@ -431,38 +436,51 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         total_stock: calculateTotalStock(),
         total_exhibition: 0,
         available_sizes: getAvailableSizes(),
-        other_locations: [] // Se llenará desde detailed_by_size
+        other_locations: [], // Se llenará desde detailed_by_size
       };
-      
+
       // Adaptar availability con datos del global_summary
       const availability: AvailabilityInfo = {
         in_stock: match.global_summary?.inventory_local?.pairs_available > 0,
         can_sell: match.global_summary?.inventory_local?.can_sell_immediately || false,
-        can_request_from_other_locations: match.global_summary?.total_opportunities > 0 || match.global_summary?.total_suggestions > 0,
-        recommended_action: match.global_summary?.inventory_local?.can_sell_immediately 
-          ? 'Puede vender ahora' 
-          : 'Requiere transferencia o formación de pares'
+        can_request_from_other_locations:
+          match.global_summary?.total_opportunities > 0 || match.global_summary?.total_suggestions > 0,
+        recommended_action: match.global_summary?.inventory_local?.can_sell_immediately
+          ? 'Puede vender ahora'
+          : 'Requiere transferencia o formación de pares',
       };
-      
+
       // Obtener confianza real desde el match
       const confidencePercentage = match.confidence_percentage || 0;
       const similarityScore = match.similarity_score || 0;
-      
+
       // Mapear confidence_level de la API
       const mapConfidenceLevel = (level?: string): 'very_high' | 'high' | 'medium' | 'low' => {
-        if (!level) return confidencePercentage >= 90 ? 'very_high' : confidencePercentage >= 70 ? 'high' : confidencePercentage >= 50 ? 'medium' : 'low';
-        switch(level.toLowerCase()) {
-          case 'very_high': return 'very_high';
-          case 'high': return 'high';
-          case 'medium': return 'medium';
-          case 'low': return 'low';
-          default: return confidencePercentage >= 90 ? 'very_high' : confidencePercentage >= 70 ? 'high' : 'medium';
+        if (!level)
+          return confidencePercentage >= 90
+            ? 'very_high'
+            : confidencePercentage >= 70
+              ? 'high'
+              : confidencePercentage >= 50
+                ? 'medium'
+                : 'low';
+        switch (level.toLowerCase()) {
+          case 'very_high':
+            return 'very_high';
+          case 'high':
+            return 'high';
+          case 'medium':
+            return 'medium';
+          case 'low':
+            return 'low';
+          default:
+            return confidencePercentage >= 90 ? 'very_high' : confidencePercentage >= 70 ? 'high' : 'medium';
         }
       };
-      
+
       // Crear el objeto ProductOption con la estructura nueva
       const productOption = {
-        id: `${product.reference_code}-${index}` || `product-${index}`,
+        id: product.reference_code ? `${product.reference_code}-${index}` : `product-${index}`,
         brand: product.brand || classification.brand_detected || '',
         model: product.model || classification.model_detected || '',
         code: product.reference_code || '',
@@ -477,17 +495,17 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         inventory,
         availability,
       };
-      
+
       // Preservar la estructura completa de sizes para que convertAvailabilityToSizes pueda acceder a ella
       (productOption as any).sizesData = sizes;
       (productOption as any).globalSummary = match.global_summary;
       (productOption as any).distributionMatrix = match.distribution_matrix;
       (productOption as any).matchRank = match.rank;
       (productOption as any).classification = classification;
-      
+
       options.push(productOption);
     });
-    
+
     return options; // Retornar TODOS los matches
   }
 
@@ -501,7 +519,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       console.log('Enviando imagen al servidor...', {
         fileName: imageFile.name,
         fileSize: imageFile.size,
-        fileType: imageFile.type
+        fileType: imageFile.type,
       });
 
       // Usar la función del API actualizada
@@ -520,28 +538,31 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
         processing_time: scanResponse.processing_time_ms,
         availability_summary: scanResponse.availability_summary,
         classification_service: scanResponse.classification_service,
-        total_matches: scanResponse.results?.total_matches || 0
+        total_matches: scanResponse.results?.total_matches || 0,
       });
 
       // Convertir la respuesta a formato compatible con el componente
       let options = convertScanResponseToProductOptions(scanResponse);
       // Corregir image: null -> undefined para cumplir con ProductOption
-      options = options.map(opt => ({
+      options = options.map((opt) => ({
         ...opt,
-        image: opt.image === null ? undefined : opt.image
+        image: opt.image === null ? undefined : opt.image,
       }));
-      console.log('Opciones procesadas:', options.map(opt => ({
-        id: opt.id,
-        brand: opt.brand,
-        model: opt.model,
-        image: opt.image,
-        availability: opt.availability
-      })));
+      console.log(
+        'Opciones procesadas:',
+        options.map((opt) => ({
+          id: opt.id,
+          brand: opt.brand,
+          model: opt.model,
+          image: opt.image,
+          availability: opt.availability,
+        }))
+      );
       setScanOptions(options);
 
       // Pre-computar sizesMap para todas las opciones
       const map = new Map<string, SizeInfo[]>();
-      options.forEach(opt => map.set(opt.id, convertAvailabilityToSizes(opt)));
+      options.forEach((opt) => map.set(opt.id, convertAvailabilityToSizes(opt)));
       setSizesMap(map);
 
       setCurrentStep('options');
@@ -580,22 +601,22 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
           processing_time: searchResponse.processing_time_ms,
           availability_summary: searchResponse.availability_summary,
           classification_service: searchResponse.classification_service,
-          total_matches: searchResponse.results?.total_matches || 0
+          total_matches: searchResponse.results?.total_matches || 0,
         });
       }
 
       // Convertir la respuesta usando la misma lógica que el escaneo
       let options = convertScanResponseToProductOptions(searchResponse);
-      options = options.map(opt => ({
+      options = options.map((opt) => ({
         ...opt,
-        image: opt.image === null ? undefined : opt.image
+        image: opt.image === null ? undefined : opt.image,
       }));
       console.log('Opciones de búsqueda procesadas:', options.length);
       setScanOptions(options);
 
       // Pre-computar sizesMap
       const map = new Map<string, SizeInfo[]>();
-      options.forEach(opt => map.set(opt.id, convertAvailabilityToSizes(opt)));
+      options.forEach((opt) => map.set(opt.id, convertAvailabilityToSizes(opt)));
       setSizesMap(map);
 
       setCurrentStep('options');
@@ -608,144 +629,10 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     }
   }, []);
 
-  const handleProductSelect = async (product: ProductOption) => {
-    try {
-      // Convertir los datos de disponibilidad al formato de tallas
-      const sizes = convertAvailabilityToSizes(product);
-
-      setSelectedProduct({
-        product,
-        sizes
-      });
-      setCurrentStep('details');
-      setSelectedSize('');
-    } catch (error) {
-      setError('Error al cargar detalles del producto');
-    }
-  };
-
-  const handleSolicitar = () => {
-    if (selectedProduct && selectedSize && onRequestTransfer && user) {
-      // Extraer la talla y ubicación de la clave única
-      const size = extractSizeFromKey(selectedSize);
-      const location = extractLocationFromKey(selectedSize);
-      
-      // Buscar la información exacta de esa talla en esa ubicación
-      const sizeInfo = selectedProduct.sizes.find(
-        s => s.size === size && (s.location_name || s.location) === location
-      );
-
-      if (!sizeInfo) {
-        console.error('No se encontró información de la talla seleccionada');
-        alert('Error: No se encontró información de la talla seleccionada');
-        return;
-      }
-
-      // Obtener el source_location_id directamente de sizeInfo (ya lo guardamos ahí)
-      let sourceLocationId = sizeInfo.location_id || sizeInfo.location_number;
-
-      // Si aún no tenemos source_location_id, mostrar error
-      if (!sourceLocationId) {
-        console.error('No se pudo determinar source_location_id para la transferencia');
-        alert('Error: No se pudo determinar la ubicación de origen para la transferencia');
-        return;
-      }
-
-      // Determinar las opciones disponibles en la ubicación de origen
-      const availableOptions = {
-        pairs_available: (sizeInfo.pairs || 0) > 0,
-        left_feet_available: (sizeInfo.left_feet || 0) > 0,
-        right_feet_available: (sizeInfo.right_feet || 0) > 0,
-        pairs_quantity: sizeInfo.pairs || 0,
-        left_feet_quantity: sizeInfo.left_feet || 0,
-        right_feet_quantity: sizeInfo.right_feet || 0
-      };
-
-      // Determinar el tipo de transferencia por defecto basado en el estado del inventario
-      let transferType: 'pair' | 'left_foot' | 'right_foot' | 'form_pair' = 'pair';
-      let requestNotes = '';
-      
-      if (sizeInfo.can_sell && (sizeInfo.pairs || 0) > 0) {
-        // Hay pares completos disponibles
-        transferType = 'pair';
-        requestNotes = `Solicitar ${sizeInfo.pairs} par(es) completo(s) desde ${sizeInfo.location_name}`;
-      } else if (sizeInfo.can_form_pair && (sizeInfo.left_feet || 0) > 0 && (sizeInfo.right_feet || 0) > 0) {
-        // Se pueden formar pares juntando pies separados
-        transferType = 'form_pair';
-        requestNotes = `Formar pares: ${Math.min(sizeInfo.left_feet || 0, sizeInfo.right_feet || 0)} par(es) desde ${sizeInfo.location_name}`;
-      } else if (sizeInfo.missing_foot === 'right' && (sizeInfo.left_feet || 0) > 0) {
-        // Falta pie derecho, solicitar pie derecho
-        transferType = 'right_foot';
-        requestNotes = `Solicitar pie derecho para completar par con ${sizeInfo.left_feet} pie(s) izquierdo(s) en ${sizeInfo.location_name}`;
-      } else if (sizeInfo.missing_foot === 'left' && (sizeInfo.right_feet || 0) > 0) {
-        // Falta pie izquierdo, solicitar pie izquierdo
-        transferType = 'left_foot';
-        requestNotes = `Solicitar pie izquierdo para completar par con ${sizeInfo.right_feet} pie(s) derecho(s) en ${sizeInfo.location_name}`;
-      } else {
-        // Caso por defecto: solicitar par completo
-        transferType = 'pair';
-        requestNotes = `Solicitar par completo desde ${sizeInfo.location_name}`;
-      }
-
-      const transferData = {
-        sneaker_reference_code: selectedProduct.product.code,
-        brand: selectedProduct.product.brand,
-        model: selectedProduct.product.model,
-        color: selectedProduct.product.color,
-        size: size,
-        product: selectedProduct.product,
-        source_location_id: sourceLocationId,
-        destination_location_id: user.location_id || 0,
-        // Información específica de pies separados
-        pairs: sizeInfo.pairs,
-        left_feet: sizeInfo.left_feet,
-        right_feet: sizeInfo.right_feet,
-        can_sell: sizeInfo.can_sell,
-        can_form_pair: sizeInfo.can_form_pair,
-        missing_foot: sizeInfo.missing_foot,
-        location_name: sizeInfo.location_name,
-        transfer_type: transferType,
-        request_notes: requestNotes,
-        // Opciones disponibles para solicitar
-        available_options: availableOptions
-      };
-      console.log('Enviando datos para transferencia:', transferData);
-      onRequestTransfer(transferData);
-    }
-  };
-
-  const handleSell = () => {
-    if (selectedProduct && selectedSize && onSellProduct) {
-      const size = extractSizeFromKey(selectedSize);
-      const location = extractLocationFromKey(selectedSize);
-
-      const sizeInfo = selectedProduct.sizes.find(
-        s => s.size === size && (s.location_name || s.location) === location
-      );
-
-      if (!sizeInfo) {
-        console.error('No se encontró información de la talla seleccionada para venta');
-        return;
-      }
-
-      onSellProduct({
-        code: selectedProduct.product.code,
-        brand: selectedProduct.product.brand,
-        model: selectedProduct.product.model,
-        size: size,
-        price: sizeInfo.unit_price,
-        location: sizeInfo.location_name || sizeInfo.location,
-        storage_type: sizeInfo.storage_type,
-        color: selectedProduct.product.color,
-        image: selectedProduct.product.image,
-      });
-    }
-  };
-
   const handleDirectAction = (product: ProductOption, selectedSizeStr: string, pickupType: 'vendedor' | 'corredor') => {
     setError(null);
     const sizes = sizesMap.get(product.id) || [];
-    const matchingSizes = sizes.filter(s => s.size === selectedSizeStr);
+    const matchingSizes = sizes.filter((s) => s.size === selectedSizeStr);
 
     if (matchingSizes.length === 0) {
       setError('No se encontró información para la talla seleccionada');
@@ -753,7 +640,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     }
 
     // Buscar si hay alguna entrada local con can_sell
-    const localSellable = matchingSizes.find(s => s.can_sell === true);
+    const localSellable = matchingSizes.find((s) => s.can_sell === true);
 
     if (localSellable && onSellProduct) {
       // Si es local y can_sell=true -> siempre ir a Nueva Venta (sin importar botón)
@@ -775,8 +662,8 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     if (!onRequestTransfer || !user) return;
 
     // Separar entry local (destino) de entries remotos (posibles orígenes)
-    const localEntry = matchingSizes.find(s => s.is_local);
-    const remoteEntries = matchingSizes.filter(s => !s.is_local);
+    const localEntry = matchingSizes.find((s) => s.is_local);
+    const remoteEntries = matchingSizes.filter((s) => !s.is_local);
 
     if (remoteEntries.length === 0) {
       setError('No hay stock disponible en otras ubicaciones');
@@ -789,9 +676,9 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
     if (localEntry) {
       // Prioridad: si hay un par completo en algún remoto (bodega primero), preferirlo sobre completar el par con piezas sueltas
-      const remoteWithCompletePair = remoteEntries.find(
-        e => (e.pairs || 0) > 0 && e.location_type === 'bodega'
-      ) || remoteEntries.find(e => (e.pairs || 0) > 0);
+      const remoteWithCompletePair =
+        remoteEntries.find((e) => (e.pairs || 0) > 0 && e.location_type === 'bodega') ||
+        remoteEntries.find((e) => (e.pairs || 0) > 0);
 
       if (remoteWithCompletePair && localEntry.missing_foot) {
         // Remoto tiene par completo → priorizar sobre solicitar pieza suelta de otro local
@@ -810,16 +697,16 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     } else {
       // Sin stock local: verificar si necesitamos transferencia dual
       const canSingleRemoteSatisfy = remoteEntries.some(
-        e => (e.pairs || 0) > 0 || ((e.left_feet || 0) > 0 && (e.right_feet || 0) > 0)
+        (e) => (e.pairs || 0) > 0 || ((e.left_feet || 0) > 0 && (e.right_feet || 0) > 0)
       );
 
       if (!canSingleRemoteSatisfy) {
         // Ningún remoto puede satisfacer solo → buscar pies en ubicaciones distintas
         const remoteWithLeft = remoteEntries.find(
-          e => (e.left_feet || 0) > 0 && (e.right_feet || 0) === 0 && (e.pairs || 0) === 0
+          (e) => (e.left_feet || 0) > 0 && (e.right_feet || 0) === 0 && (e.pairs || 0) === 0
         );
         const remoteWithRight = remoteEntries.find(
-          e => (e.right_feet || 0) > 0 && (e.left_feet || 0) === 0 && (e.pairs || 0) === 0
+          (e) => (e.right_feet || 0) > 0 && (e.left_feet || 0) === 0 && (e.pairs || 0) === 0
         );
 
         if (remoteWithLeft && remoteWithRight) {
@@ -874,13 +761,12 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       }
 
       // Selección inteligente de fuente y tipo (priorizar bodegas sobre otros locales)
-      const sourceWithPairs = remoteEntries.find(e => (e.pairs || 0) > 0 && e.location_type === 'bodega')
-        || remoteEntries.find(e => (e.pairs || 0) > 0);
-      const sourceWithBothFeet = remoteEntries.find(
-        e => (e.left_feet || 0) > 0 && (e.right_feet || 0) > 0 && e.location_type === 'bodega'
-      ) || remoteEntries.find(
-        e => (e.left_feet || 0) > 0 && (e.right_feet || 0) > 0
-      );
+      const sourceWithPairs =
+        remoteEntries.find((e) => (e.pairs || 0) > 0 && e.location_type === 'bodega') ||
+        remoteEntries.find((e) => (e.pairs || 0) > 0);
+      const sourceWithBothFeet =
+        remoteEntries.find((e) => (e.left_feet || 0) > 0 && (e.right_feet || 0) > 0 && e.location_type === 'bodega') ||
+        remoteEntries.find((e) => (e.left_feet || 0) > 0 && (e.right_feet || 0) > 0);
 
       if (sourceWithPairs) {
         transferType = 'pair';
@@ -901,11 +787,11 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     const findPreferSource = (predicate: (e: SizeInfo) => boolean) => {
       // 1. Sibling (mismo sibling_pair_id que el local) — máxima prioridad
       if (localSiblingPairId) {
-        const fromSibling = remoteEntries.find(e => predicate(e) && e.sibling_pair_id === localSiblingPairId);
+        const fromSibling = remoteEntries.find((e) => predicate(e) && e.sibling_pair_id === localSiblingPairId);
         if (fromSibling) return fromSibling;
       }
       // 2. Bodega
-      const fromBodega = remoteEntries.find(e => predicate(e) && e.location_type === 'bodega');
+      const fromBodega = remoteEntries.find((e) => predicate(e) && e.location_type === 'bodega');
       if (fromBodega) return fromBodega;
       // 3. Cualquier remoto
       return remoteEntries.find(predicate);
@@ -913,13 +799,13 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
 
     let sourceInfo;
     if (transferType === 'pair') {
-      sourceInfo = findPreferSource(e => (e.pairs || 0) > 0);
+      sourceInfo = findPreferSource((e) => (e.pairs || 0) > 0);
     } else if (transferType === 'form_pair') {
-      sourceInfo = findPreferSource(e => (e.left_feet || 0) > 0 && (e.right_feet || 0) > 0);
+      sourceInfo = findPreferSource((e) => (e.left_feet || 0) > 0 && (e.right_feet || 0) > 0);
     } else if (transferType === 'right_foot') {
-      sourceInfo = findPreferSource(e => (e.right_feet || 0) > 0);
+      sourceInfo = findPreferSource((e) => (e.right_feet || 0) > 0);
     } else if (transferType === 'left_foot') {
-      sourceInfo = findPreferSource(e => (e.left_feet || 0) > 0);
+      sourceInfo = findPreferSource((e) => (e.left_feet || 0) > 0);
     } else {
       sourceInfo = remoteEntries[0];
     }
@@ -947,7 +833,7 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
       right_feet_available: (sourceInfo.right_feet || 0) > 0,
       pairs_quantity: sourceInfo.pairs || 0,
       left_feet_quantity: sourceInfo.left_feet || 0,
-      right_feet_quantity: sourceInfo.right_feet || 0
+      right_feet_quantity: sourceInfo.right_feet || 0,
     };
 
     onRequestTransfer({
@@ -978,25 +864,23 @@ export const ProductScanner: React.FC<ProductScannerProps> = ({
     });
   };
 
-  const goBackToOptions = () => {
-    setSelectedProduct(null);
-    setSelectedSize('');
-    setCurrentStep('options');
-  };
-
   return (
     <div className="space-y-6">
-
       {currentStep === 'processing' && !searchMode && <ProcessingCard />}
 
       {/* SearchBar solo visible en modo búsqueda por texto, nunca tras escaneo por imagen */}
-      {searchMode && currentStep !== 'details' && (
-        <SearchBar onSearch={handleTextSearch} isSearching={isSearching} />
-      )}
+      {searchMode && currentStep !== 'details' && <SearchBar onSearch={handleTextSearch} isSearching={isSearching} />}
 
       {/* Resultados de búsqueda / escaneo */}
       {currentStep === 'options' && scanOptions.length > 0 && (
-        <ProductOptionsCard options={scanOptions} sizesMap={sizesMap} onAction={handleDirectAction} error={error} onClearError={() => setError(null)} hideConfidence={searchMode} />
+        <ProductOptionsCard
+          options={scanOptions}
+          sizesMap={sizesMap}
+          onAction={handleDirectAction}
+          error={error}
+          onClearError={() => setError(null)}
+          hideConfidence={searchMode}
+        />
       )}
 
       {currentStep === 'options' && scanOptions.length === 0 && !isScanning && !isSearching && !searchMode && (

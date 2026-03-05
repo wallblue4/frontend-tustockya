@@ -3,8 +3,8 @@ import { BACKEND_URL } from '../config/env';
 const getHeaders = () => {
   const token = localStorage.getItem('token');
   return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
   };
 };
 
@@ -18,30 +18,11 @@ const handleResponse = async (response: Response) => {
 
 // ========== INTERFACES ==========
 
-interface ProductoMayoreoCreate {
-  modelo: string;                        // Obligatorio
-  cantidad_cajas_disponibles: number;    // Obligatorio
-  pares_por_caja: number;               // Obligatorio
-  precio: number;                       // Obligatorio
-  foto?: string;                        // Opcional
-  tallas?: string;                      // Opcional
-}
-
-interface ProductoMayoreoUpdate {
-  modelo?: string;
-  cantidad_cajas_disponibles?: number;
-  pares_por_caja?: number;
-  precio?: number;
-  foto?: string;
-  tallas?: string;
-  is_active?: boolean;
-}
-
 interface VentaMayoreoCreate {
-  mayoreo_id: number;                   // Obligatorio
-  cantidad_cajas_vendidas: number;      // Obligatorio
-  precio_unitario_venta: number;        // Obligatorio
-  notas?: string;                       // Opcional
+  mayoreo_id: number; // Obligatorio
+  cantidad_cajas_vendidas: number; // Obligatorio
+  precio_unitario_venta: number; // Obligatorio
+  notas?: string; // Opcional
 }
 
 interface ProductoMayoreoResponse {
@@ -114,29 +95,29 @@ export const crearProductoMayoreo = async (productoData: {
   foto?: File | null;
 }): Promise<ProductoMayoreoResponse> => {
   const formData = new FormData();
-  
+
   // Campos obligatorios
   formData.append('modelo', productoData.modelo);
   formData.append('cantidad_cajas_disponibles', productoData.cantidad_cajas_disponibles.toString());
   formData.append('pares_por_caja', productoData.pares_por_caja.toString());
   formData.append('precio', productoData.precio.toString());
-  
+
   // Campos opcionales
   if (productoData.tallas && productoData.tallas.trim()) {
     formData.append('tallas', productoData.tallas);
   }
-  
+
   // Archivo de foto
   if (productoData.foto && productoData.foto instanceof File) {
     formData.append('foto', productoData.foto);
   }
-  
+
   // Headers sin Content-Type (el navegador lo establece automáticamente con el boundary)
   const token = localStorage.getItem('token');
   const headers: HeadersInit = {
-    'Authorization': `Bearer ${token}`
+    Authorization: `Bearer ${token}`,
   };
-  
+
   const response = await fetch(`${BACKEND_URL}/api/v1/mayoreo/productos/crear`, {
     method: 'POST',
     headers: headers,
@@ -165,7 +146,7 @@ export const listarProductosMayoreo = async () => {
  * Soporta FormData para actualizar la foto
  */
 export const actualizarProductoMayoreo = async (
-  mayoreoId: number, 
+  mayoreoId: number,
   productoData: {
     modelo?: string;
     cantidad_cajas_disponibles?: number;
@@ -179,20 +160,22 @@ export const actualizarProductoMayoreo = async (
   // Si hay un archivo de foto, usar FormData
   if (productoData.foto instanceof File) {
     const formData = new FormData();
-    
+
     if (productoData.modelo !== undefined) formData.append('modelo', productoData.modelo);
-    if (productoData.cantidad_cajas_disponibles !== undefined) formData.append('cantidad_cajas_disponibles', productoData.cantidad_cajas_disponibles.toString());
-    if (productoData.pares_por_caja !== undefined) formData.append('pares_por_caja', productoData.pares_por_caja.toString());
+    if (productoData.cantidad_cajas_disponibles !== undefined)
+      formData.append('cantidad_cajas_disponibles', productoData.cantidad_cajas_disponibles.toString());
+    if (productoData.pares_por_caja !== undefined)
+      formData.append('pares_por_caja', productoData.pares_por_caja.toString());
     if (productoData.precio !== undefined) formData.append('precio', productoData.precio.toString());
     if (productoData.tallas !== undefined) formData.append('tallas', productoData.tallas);
     if (productoData.is_active !== undefined) formData.append('is_active', productoData.is_active.toString());
     formData.append('foto', productoData.foto);
-    
+
     const token = localStorage.getItem('token');
     const headers: HeadersInit = {
-      'Authorization': `Bearer ${token}`
+      Authorization: `Bearer ${token}`,
     };
-    
+
     const response = await fetch(`${BACKEND_URL}/api/v1/mayoreo/productos/${mayoreoId}/actualizar`, {
       method: 'PUT',
       headers: headers,
@@ -201,15 +184,15 @@ export const actualizarProductoMayoreo = async (
     return handleResponse(response);
   } else {
     // Si no hay foto, enviar JSON normal (excluyendo el campo foto)
-    const { foto, ...dataWithoutFoto } = productoData;
-    
+    const { foto: _foto, ...dataWithoutFoto } = productoData;
+
     // Filtrar campos undefined/null para evitar enviar datos vacíos
     const filteredData = Object.fromEntries(
-      Object.entries(dataWithoutFoto).filter(([_, value]) => value !== undefined && value !== null)
+      Object.entries(dataWithoutFoto).filter(([, value]) => value !== undefined && value !== null)
     );
-    
+
     console.log('Actualizando producto mayoreo:', { mayoreoId, filteredData });
-    
+
     const response = await fetch(`${BACKEND_URL}/api/v1/mayoreo/productos/${mayoreoId}/actualizar`, {
       method: 'PUT',
       headers: getHeaders(),
@@ -238,7 +221,7 @@ export const eliminarProductoMayoreo = async (mayoreoId: number) => {
  * POST /api/v1/mayoreo/ventas/registrar
  * Registrar nueva venta de mayoreo (descuenta stock automáticamente)
  * Requiere rol: administrador
- * 
+ *
  * Proceso automático:
  * - Calcula total_venta = cantidad_cajas_vendidas × precio_unitario_venta
  * - Descuenta cantidad del inventario
@@ -286,7 +269,7 @@ export const obtenerVentasProductoMayoreo = async (mayoreoId: number) => {
  * GET /api/v1/mayoreo/estadisticas
  * Obtener estadísticas generales de mayoreo
  * Requiere rol: administrador
- * 
+ *
  * Métricas incluidas:
  * - total_productos: Cantidad de productos activos
  * - total_cajas_disponibles: Total de cajas en inventario

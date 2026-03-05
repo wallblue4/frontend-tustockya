@@ -20,11 +20,7 @@ interface ReturnModalProps {
   onSuccess?: () => void;
 }
 
-export const ReturnModal: React.FC<ReturnModalProps> = ({
-  transfer,
-  onClose,
-  onSuccess
-}) => {
+export const ReturnModal: React.FC<ReturnModalProps> = ({ transfer, onClose, onSuccess }) => {
   const [pickupType, setPickupType] = useState<'vendedor' | 'corredor' | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -43,7 +39,7 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
         product_condition: 'good',
         pickup_type: pickupType,
         inventory_type: transfer.inventory_type,
-        notes: ''
+        notes: '',
       });
       setSuccess(true);
       onSuccess?.();
@@ -113,9 +109,7 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
                     <p className="text-xs text-muted-foreground">
                       Talla {transfer.size} · Cantidad: {transfer.quantity}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Ref: {transfer.sneaker_reference_code}
-                    </p>
+                    <p className="text-xs text-muted-foreground">Ref: {transfer.sneaker_reference_code}</p>
                   </div>
                 </div>
               </div>

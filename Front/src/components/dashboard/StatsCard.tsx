@@ -10,13 +10,7 @@ interface StatsCardProps {
   icon?: React.ReactNode;
 }
 
-export const StatsCard: React.FC<StatsCardProps> = ({
-  title,
-  value,
-  change,
-  period = 'vs last period',
-  icon,
-}) => {
+export const StatsCard: React.FC<StatsCardProps> = ({ title, value, change, period = 'vs last period', icon }) => {
   const isPositive = change && change > 0;
   const isNegative = change && change < 0;
 
@@ -30,13 +24,9 @@ export const StatsCard: React.FC<StatsCardProps> = ({
         <div className="flex items-end space-x-2">
           <p className="text-2xl font-bold text-primary">{value}</p>
           {change !== undefined && (
-            <div 
+            <div
               className={`flex items-center text-sm ${
-                isPositive 
-                  ? 'text-success' 
-                  : isNegative 
-                  ? 'text-error' 
-                  : 'text-muted-foreground'
+                isPositive ? 'text-success' : isNegative ? 'text-error' : 'text-muted-foreground'
               }`}
             >
               {isPositive ? (
@@ -48,9 +38,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
             </div>
           )}
         </div>
-        {period && change !== undefined && (
-          <p className="mt-1 text-xs text-muted-foreground">{period}</p>
-        )}
+        {period && change !== undefined && <p className="mt-1 text-xs text-muted-foreground">{period}</p>}
       </div>
     </Card>
   );

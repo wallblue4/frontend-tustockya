@@ -2,17 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { vendorAPI, formatCurrency } from '../../services/api';
-import { 
-  ShoppingBag, 
-  Clock,
-  CheckCircle,
-  CreditCard,
-  DollarSign,
-  ArrowRight,
-  Filter,
-  Receipt,
-  AlertCircle
-} from 'lucide-react';
+import { ShoppingBag, Clock, CheckCircle, DollarSign, Filter, Receipt, AlertCircle } from 'lucide-react';
 
 interface Sale {
   id: number;
@@ -88,20 +78,20 @@ export const SalesList: React.FC = () => {
     try {
       setError(null);
       console.log('Cargando ventas del día...');
-      
+
       const response = await vendorAPI.getTodaySales();
       console.log('Respuesta de ventas:', response);
-      
+
       setSalesData(response);
     } catch (error) {
       console.error('Error al cargar ventas:', error);
       console.warn('Backend API not available, using mock data for sales');
       setError('Conectando con el servidor...');
-      
+
       // Mock data for development
       setSalesData({
         success: true,
-        message: "Ventas de prueba",
+        message: 'Ventas de prueba',
         timestamp: new Date().toISOString(),
         date: new Date().toISOString().split('T')[0],
         sales: [
@@ -112,36 +102,40 @@ export const SalesList: React.FC = () => {
             total_amount: 180000,
             receipt_image: null,
             sale_date: new Date().toISOString(),
-          status: 'completed',
-          items_count: 1,
-          notes: null,
-          requires_confirmation: false,
-          confirmed: true,
+            status: 'completed',
+            items_count: 1,
+            notes: null,
+            requires_confirmation: false,
+            confirmed: true,
             confirmed_at: new Date().toISOString(),
             first_name: 'Vendedor',
             last_name: 'Prueba',
             location_name: 'Local #1',
-            items: [{
-              id: 1,
-              sale_id: 1,
-              sneaker_reference_code: 'NK001',
-              brand: 'Nike',
-              model: 'Air Max 90',
-              color: 'Blanco/Negro',
-              size: '9.5',
-              quantity: 1,
-              unit_price: 180000,
-              subtotal: 180000
-            }],
-            payment_methods: [{
-              id: 1,
-              sale_id: 1,
-              payment_type: 'tarjeta',
-              amount: 180000,
-              reference: '****1234',
-              created_at: new Date().toISOString()
-            }]
-          }
+            items: [
+              {
+                id: 1,
+                sale_id: 1,
+                sneaker_reference_code: 'NK001',
+                brand: 'Nike',
+                model: 'Air Max 90',
+                color: 'Blanco/Negro',
+                size: '9.5',
+                quantity: 1,
+                unit_price: 180000,
+                subtotal: 180000,
+              },
+            ],
+            payment_methods: [
+              {
+                id: 1,
+                sale_id: 1,
+                payment_type: 'tarjeta',
+                amount: 180000,
+                reference: '****1234',
+                created_at: new Date().toISOString(),
+              },
+            ],
+          },
         ],
         summary: {
           total_sales: 1,
@@ -150,11 +144,11 @@ export const SalesList: React.FC = () => {
           total_amount: 180000,
           pending_amount: 0,
           confirmed_amount: 180000,
-          average_sale: 180000
+          average_sale: 180000,
         },
         seller_info: {
-          seller_id: 1
-        }
+          seller_id: 1,
+        },
       });
     } finally {
       setLoading(false);
@@ -165,7 +159,7 @@ export const SalesList: React.FC = () => {
     try {
       console.log('Confirmando venta:', saleId);
       await vendorAPI.confirmSale(saleId, true);
-      
+
       // Reload sales after confirmation
       loadTodaySales();
       alert('Venta confirmada exitosamente');
@@ -175,25 +169,13 @@ export const SalesList: React.FC = () => {
     }
   };
 
-  const filteredSales = salesData?.sales?.filter(sale => {
-    if (filter === 'all') return true;
-    if (filter === 'confirmed') return sale.confirmed;
-    if (filter === 'pending') return !sale.confirmed && sale.requires_confirmation;
-    return true;
-  }) || [];
-
-  const getPaymentMethodIcon = (type: string) => {
-    switch (type) {
-      case 'efectivo':
-        return <DollarSign className="h-4 w-4" />;
-      case 'tarjeta':
-        return <CreditCard className="h-4 w-4" />;
-      case 'transferencia':
-        return <ArrowRight className="h-4 w-4" />;
-      default:
-        return <DollarSign className="h-4 w-4" />;
-    }
-  };
+  const filteredSales =
+    salesData?.sales?.filter((sale) => {
+      if (filter === 'all') return true;
+      if (filter === 'confirmed') return sale.confirmed;
+      if (filter === 'pending') return !sale.confirmed && sale.requires_confirmation;
+      return true;
+    }) || [];
 
   const getPaymentMethodLabel = (type: string) => {
     switch (type) {
@@ -214,7 +196,7 @@ export const SalesList: React.FC = () => {
       hour: '2-digit',
       minute: '2-digit',
       day: '2-digit',
-      month: '2-digit'
+      month: '2-digit',
     });
   };
 
@@ -267,7 +249,9 @@ export const SalesList: React.FC = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Confirmadas</p>
                 <p className="text-xl font-bold text-success">{salesData.summary.confirmed_sales}</p>
-                <p className="text-xs text-muted-foreground">{salesData.sales.reduce((total, sale) => total + (sale.items_count || 0), 0)} productos</p>
+                <p className="text-xs text-muted-foreground">
+                  {salesData.sales.reduce((total, sale) => total + (sale.items_count || 0), 0)} productos
+                </p>
               </div>
               <CheckCircle className="h-8 w-8 text-success" />
             </div>
@@ -343,14 +327,16 @@ export const SalesList: React.FC = () => {
               <p className="text-sm text-warning">Modo de desarrollo - Usando datos de prueba</p>
             </div>
           )}
-          
+
           {filteredSales.length === 0 ? (
             <div className="text-center py-8">
               <ShoppingBag className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
               <p className="text-muted-foreground">
-                {filter === 'all' ? 'No hay ventas registradas hoy' : 
-                 filter === 'confirmed' ? 'No hay ventas confirmadas' : 
-                 'No hay ventas pendientes'}
+                {filter === 'all'
+                  ? 'No hay ventas registradas hoy'
+                  : filter === 'confirmed'
+                    ? 'No hay ventas confirmadas'
+                    : 'No hay ventas pendientes'}
               </p>
             </div>
           ) : (
@@ -360,29 +346,32 @@ export const SalesList: React.FC = () => {
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          sale.confirmed 
-                            ? 'bg-success/10 text-success' 
-                            : 'bg-warning/10 text-warning'
-                        }`}>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            sale.confirmed ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
+                          }`}
+                        >
                           {sale.confirmed ? 'Confirmada' : 'Pendiente'}
                         </span>
-                        <span className="text-sm text-muted-foreground">
-                          Fecha: {formatSaleDate(sale.sale_date)}
-                        </span>
-                        {sale.receipt_image && (
-                          <Receipt className="h-4 w-4 text-primary" />
-                        )}
-                      </div>                      
+                        <span className="text-sm text-muted-foreground">Fecha: {formatSaleDate(sale.sale_date)}</span>
+                        {sale.receipt_image && <Receipt className="h-4 w-4 text-primary" />}
+                      </div>
                       {/* Items */}
                       <div className="space-y-1 mb-3">
                         {sale.items && sale.items.length > 0 ? (
                           sale.items.map((item, index) => (
                             <div key={index} className="text-sm">
-                              <span className="font-medium text-foreground">{item.brand} {item.model}</span>
-                              <span className="text-muted-foreground"> - {item.color} • Talla {item.size} × {item.quantity}</span>
+                              <span className="font-medium text-foreground">
+                                {item.brand} {item.model}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {' '}
+                                - {item.color} • Talla {item.size} × {item.quantity}
+                              </span>
                               <span className="ml-2 text-muted-foreground">({formatCurrency(item.unit_price)})</span>
-                              <span className="text-xs text-muted-foreground ml-1">Ref: {item.sneaker_reference_code}</span>
+                              <span className="text-xs text-muted-foreground ml-1">
+                                Ref: {item.sneaker_reference_code}
+                              </span>
                             </div>
                           ))
                         ) : (
@@ -396,8 +385,10 @@ export const SalesList: React.FC = () => {
                       <div className="flex flex-wrap gap-2 mb-2">
                         {sale.payment_methods && sale.payment_methods.length > 0 ? (
                           sale.payment_methods.map((payment, index) => (
-                            <div key={index} className="flex items-center space-x-1 text-xs bg-muted/30 px-2 py-1 rounded">
-                              
+                            <div
+                              key={index}
+                              className="flex items-center space-x-1 text-xs bg-muted/30 px-2 py-1 rounded"
+                            >
                               <span className="text-foreground">{getPaymentMethodLabel(payment.type)}</span>
                               {payment.reference && (
                                 <span className="text-muted-foreground">({payment.reference})</span>
@@ -411,15 +402,11 @@ export const SalesList: React.FC = () => {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="text-right ml-4">
                       <p className="text-xl font-bold text-foreground">{formatCurrency(sale.total_amount)}</p>
                       {!sale.confirmed && sale.requires_confirmation && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleConfirmSale(sale.id)}
-                          className="mt-2"
-                        >
+                        <Button size="sm" onClick={() => handleConfirmSale(sale.id)} className="mt-2">
                           <CheckCircle className="h-4 w-4 mr-1" />
                           Confirmar
                         </Button>

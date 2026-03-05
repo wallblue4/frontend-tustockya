@@ -57,25 +57,34 @@ export const HomePage: React.FC = () => {
           <div className="grid md:grid-cols-2 gap-8 items-center">
             <div className="animate-fade-in">
               <h1 className="text-4xl md:text-5xl font-bold mb-4">Tenis Premium para Campeones</h1>
-              <p className="text-lg mb-8">Eleva tu juego con nuestros tenis profesionales diseñados para comodidad, rendimiento y estilo.</p>
+              <p className="text-lg mb-8">
+                Eleva tu juego con nuestros tenis profesionales diseñados para comodidad, rendimiento y estilo.
+              </p>
               <div className="flex space-x-4">
                 <Link to="/products">
-                  <Button size="lg" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 shadow-xl">
+                  <Button
+                    size="lg"
+                    className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 shadow-xl"
+                  >
                     Comprar Ahora <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
                 <Link to="/about">
-                  <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10 backdrop-blur-sm">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10 backdrop-blur-sm"
+                  >
                     Saber Más
                   </Button>
                 </Link>
               </div>
             </div>
             <div className="hidden md:block animate-slide-up">
-              <img 
-                src="https://images.pexels.com/photos/1032110/pexels-photo-1032110.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" 
-                alt="Tenis premium" 
-                className="rounded-xl shadow-2xl h-auto max-h-[400px] w-full object-cover border border-primary/20" 
+              <img
+                src="https://images.pexels.com/photos/1032110/pexels-photo-1032110.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+                alt="Tenis premium"
+                className="rounded-xl shadow-2xl h-auto max-h-[400px] w-full object-cover border border-primary/20"
               />
             </div>
           </div>
@@ -96,10 +105,10 @@ export const HomePage: React.FC = () => {
             {productosDestacados.map((producto) => (
               <Card key={producto.id} hoverable className="group bg-card border-border">
                 <div className="relative overflow-hidden">
-                  <img 
-                    src={producto.image} 
-                    alt={producto.name} 
-                    className="w-full h-60 object-cover transform transition-transform group-hover:scale-105" 
+                  <img
+                    src={producto.image}
+                    alt={producto.name}
+                    className="w-full h-60 object-cover transform transition-transform group-hover:scale-105"
                   />
                   {producto.originalPrice && (
                     <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-full shadow-lg">
@@ -107,7 +116,11 @@ export const HomePage: React.FC = () => {
                     </div>
                   )}
                   <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                    <Button variant="primary" size="sm" className="transform translate-y-4 group-hover:translate-y-0 transition-transform shadow-xl">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="transform translate-y-4 group-hover:translate-y-0 transition-transform shadow-xl"
+                    >
                       <ShoppingBag className="mr-2 h-4 w-4" /> Añadir al Carrito
                     </Button>
                   </div>
@@ -148,7 +161,8 @@ export const HomePage: React.FC = () => {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-foreground">¿Por qué elegir TennisHub?</h2>
             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Nos dedicamos a proporcionar la mejor experiencia en calzado deportivo con productos premium y servicio excepcional.
+              Nos dedicamos a proporcionar la mejor experiencia en calzado deportivo con productos premium y servicio
+              excepcional.
             </p>
           </div>
 
@@ -170,7 +184,9 @@ export const HomePage: React.FC = () => {
                 </div>
               </div>
               <h3 className="text-lg font-semibold mb-2 text-foreground">Entrega Rápida</h3>
-              <p className="text-muted-foreground">Sistema eficiente para que recibas tus tenis lo más rápido posible.</p>
+              <p className="text-muted-foreground">
+                Sistema eficiente para que recibas tus tenis lo más rápido posible.
+              </p>
             </Card>
 
             <Card className="text-center p-6 hover:border-primary/30 transition-all duration-300">
@@ -180,7 +196,9 @@ export const HomePage: React.FC = () => {
                 </div>
               </div>
               <h3 className="text-lg font-semibold mb-2 text-foreground">Pago Seguro</h3>
-              <p className="text-muted-foreground">Múltiples opciones de pago seguro para una experiencia sin problemas.</p>
+              <p className="text-muted-foreground">
+                Múltiples opciones de pago seguro para una experiencia sin problemas.
+              </p>
             </Card>
 
             <Card className="text-center p-6 hover:border-primary/30 transition-all duration-300">
@@ -190,7 +208,9 @@ export const HomePage: React.FC = () => {
                 </div>
               </div>
               <h3 className="text-lg font-semibold mb-2 text-foreground">Soporte 24/7</h3>
-              <p className="text-muted-foreground">Nuestro equipo de atención al cliente siempre está listo para ayudarte.</p>
+              <p className="text-muted-foreground">
+                Nuestro equipo de atención al cliente siempre está listo para ayudarte.
+              </p>
             </Card>
           </div>
         </div>

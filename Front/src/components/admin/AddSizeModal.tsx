@@ -30,17 +30,12 @@ interface AddSizeModalProps {
   siblingLocationInfo?: { sibling_location_name: string } | null;
 }
 
-export const AddSizeModal: React.FC<AddSizeModalProps> = ({
-  onClose,
-  onSubmit,
-  productData,
-  siblingLocationInfo
-}) => {
+export const AddSizeModal: React.FC<AddSizeModalProps> = ({ onClose, onSubmit, productData, siblingLocationInfo }) => {
   const [formData, setFormData] = useState({
     size: '',
     quantity: 1,
     reason: '',
-    inventory_type: 'pair' as 'pair' | 'left_only' | 'right_only'
+    inventory_type: 'pair' as 'pair' | 'left_only' | 'right_only',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -48,10 +43,14 @@ export const AddSizeModal: React.FC<AddSizeModalProps> = ({
 
   const getInventoryTypeLabel = (type: string) => {
     switch (type) {
-      case 'pair': return 'Par completo';
-      case 'left_only': return 'Pie izquierdo';
-      case 'right_only': return 'Pie derecho';
-      default: return type;
+      case 'pair':
+        return 'Par completo';
+      case 'left_only':
+        return 'Pie izquierdo';
+      case 'right_only':
+        return 'Pie derecho';
+      default:
+        return type;
     }
   };
 
@@ -60,9 +59,11 @@ export const AddSizeModal: React.FC<AddSizeModalProps> = ({
 
     if (!formData.size.trim()) {
       newErrors.size = 'La talla es requerida';
-    } else if (productData.existing_sizes.some(
-      entry => entry.size === formData.size.trim() && entry.inventory_type === formData.inventory_type
-    )) {
+    } else if (
+      productData.existing_sizes.some(
+        (entry) => entry.size === formData.size.trim() && entry.inventory_type === formData.inventory_type
+      )
+    ) {
       newErrors.size = `La talla ${formData.size.trim()} ya existe como "${getInventoryTypeLabel(formData.inventory_type)}" en esta ubicacion`;
     }
 
@@ -94,7 +95,7 @@ export const AddSizeModal: React.FC<AddSizeModalProps> = ({
         adjustment_type: 'set_quantity',
         quantity: formData.quantity,
         reason: formData.reason.trim(),
-        inventory_type: formData.inventory_type
+        inventory_type: formData.inventory_type,
       });
       onClose();
     } catch (error) {
@@ -105,18 +106,15 @@ export const AddSizeModal: React.FC<AddSizeModalProps> = ({
   };
 
   const handleInputChange = (field: string, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div
-        className="absolute inset-0"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0" onClick={onClose} />
 
       <div className="bg-card rounded-lg shadow-xl w-full max-w-md relative z-10 max-h-[90vh] overflow-y-auto border border-border">
         <div className="flex justify-between items-center p-6 border-b border-border">
@@ -124,10 +122,7 @@ export const AddSizeModal: React.FC<AddSizeModalProps> = ({
             <Plus className="h-5 w-5 mr-2" />
             Agregar Nueva Talla
           </h3>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
-          >
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -137,7 +132,9 @@ export const AddSizeModal: React.FC<AddSizeModalProps> = ({
           <div className="bg-muted/50 rounded-lg p-4 space-y-2">
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Producto:</span>
-              <span className="text-sm font-medium text-foreground">{productData.brand} {productData.model}</span>
+              <span className="text-sm font-medium text-foreground">
+                {productData.brand} {productData.model}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Referencia:</span>
@@ -152,8 +149,12 @@ export const AddSizeModal: React.FC<AddSizeModalProps> = ({
                 <span className="text-sm text-muted-foreground">Tallas existentes:</span>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {productData.existing_sizes.map((entry, idx) => (
-                    <span key={`${entry.size}-${entry.inventory_type}-${idx}`} className="px-2 py-0.5 bg-muted rounded text-xs text-foreground">
-                      {entry.size} ({entry.inventory_type === 'pair' ? 'Par' : entry.inventory_type === 'left_only' ? 'Izq' : 'Der'})
+                    <span
+                      key={`${entry.size}-${entry.inventory_type}-${idx}`}
+                      className="px-2 py-0.5 bg-muted rounded text-xs text-foreground"
+                    >
+                      {entry.size} (
+                      {entry.inventory_type === 'pair' ? 'Par' : entry.inventory_type === 'left_only' ? 'Izq' : 'Der'})
                     </span>
                   ))}
                 </div>
@@ -226,26 +227,26 @@ export const AddSizeModal: React.FC<AddSizeModalProps> = ({
           <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-start space-x-2">
             <AlertCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
             <p className="text-sm text-primary">
-              Se creara una nueva talla "{formData.size || '...'}" con {formData.quantity} unidad(es) de tipo "{getInventoryTypeLabel(formData.inventory_type)}" en {productData.location_name}.
+              Se creara una nueva talla "{formData.size || '...'}" con {formData.quantity} unidad(es) de tipo "
+              {getInventoryTypeLabel(formData.inventory_type)}" en {productData.location_name}.
             </p>
           </div>
 
           {/* Sibling sync warning */}
-          {siblingLocationInfo && (formData.inventory_type === 'left_only' || formData.inventory_type === 'right_only') && (
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex items-start space-x-2">
-              <Link className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-blue-500">
-                Esta talla tambien se creara como <strong>{formData.inventory_type === 'left_only' ? 'Pie derecho' : 'Pie izquierdo'}</strong> en <strong>{siblingLocationInfo.sibling_location_name}</strong>.
-              </p>
-            </div>
-          )}
+          {siblingLocationInfo &&
+            (formData.inventory_type === 'left_only' || formData.inventory_type === 'right_only') && (
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex items-start space-x-2">
+                <Link className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-blue-500">
+                  Esta talla tambien se creara como{' '}
+                  <strong>{formData.inventory_type === 'left_only' ? 'Pie derecho' : 'Pie izquierdo'}</strong> en{' '}
+                  <strong>{siblingLocationInfo.sibling_location_name}</strong>.
+                </p>
+              </div>
+            )}
 
           <div className="flex justify-end space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-            >
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
             <Button

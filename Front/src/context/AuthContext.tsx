@@ -16,15 +16,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Mapeo de roles de la API a los tipos de la aplicación
 const mapApiRoleToUserRole = (apiRole: string): UserRole => {
   const roleMapping: { [key: string]: UserRole } = {
-    'administrador': 'administrador',
-    'superuser': 'superuser',
-    'superadmin': 'superuser',  // Backend usa 'superadmin', mapeamos a 'superuser'
-    'bodeguero': 'bodeguero',
-    'seller': 'seller',
-    'corredor': 'corredor',
-    'boss': 'boss'
+    administrador: 'administrador',
+    superuser: 'superuser',
+    superadmin: 'superuser', // Backend usa 'superadmin', mapeamos a 'superuser'
+    bodeguero: 'bodeguero',
+    seller: 'seller',
+    corredor: 'corredor',
+    boss: 'boss',
   };
-  
+
   return roleMapping[apiRole] || 'seller'; // fallback a seller si no encuentra el rol
 };
 
@@ -49,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     checkAuthStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkAuthStatus = async () => {
@@ -56,22 +57,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const storedUser = localStorage.getItem('user');
       const storedToken = localStorage.getItem('token');
-      
+
       if (storedUser && storedToken) {
         const userData = JSON.parse(storedUser);
-        
+
         try {
           // Verificar que el token sigue siendo válido
           const currentUser = await authAPI.getCurrentUser();
-          
+
           // Mapear la respuesta actualizada de la API
           const mappedUser = mapApiUserToUser(currentUser, storedToken, userData.token_type || 'bearer');
           setUser(mappedUser);
-          
+
           // Actualizar localStorage con datos actualizados
           localStorage.setItem('user', JSON.stringify(mappedUser));
-          
-        } catch (error) {
+        } catch (_error) {
           console.log('Token inválido, limpiando sesión');
           logout();
         }
@@ -88,27 +88,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       const response = await authAPI.login({ email, password });
-      
+
       if (response.access_token && response.user) {
         // Mapear la respuesta de la API al tipo User
-        const userData = mapApiUserToUser(
-          response.user, 
-          response.access_token, 
-          response.token_type
-        );
-        
+        const userData = mapApiUserToUser(response.user, response.access_token, response.token_type);
+
         // Guardar en estado y localStorage
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('token', response.access_token);
-        
+
         console.log('✅ Login exitoso:', userData);
         console.log('🔍 Rol del usuario:', userData.role);
         return userData;
       } else {
         throw new Error('Respuesta inválida del servidor');
       }
-
     } catch (error: any) {
       console.error('❌ Error en login:', error);
       logout();
@@ -128,7 +123,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const hasRole = (roles: UserRole[]): boolean => {
     if (!user) return false;
     const hasAccess = roles.includes(user.role);
-    console.log(`🔐 Verificando acceso: usuario tiene rol "${user.role}", se requiere uno de [${roles.join(', ')}] = ${hasAccess}`);
+    console.log(
+      `🔐 Verificando acceso: usuario tiene rol "${user.role}", se requiere uno de [${roles.join(', ')}] = ${hasAccess}`
+    );
     return hasAccess;
   };
 

@@ -1,26 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Camera,
-  Search,
-  ShoppingBag,
-  Package,
-  Clock,
-  ArrowLeft,
-  DollarSign,
-  Plus,
-  Receipt,
-  TrendingUp,
-  Bell,
-  AlertCircle,
-  List,
-  ChevronRight,
-  Truck,
-  CheckCircle
-} from 'lucide-react';
+import { Camera, Clock, ArrowLeft, Receipt, TrendingUp, AlertCircle, List, ChevronRight, Truck } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
-import { DashboardStats } from '../../components/seller/DashboardStats';
 import { ProductScanner } from '../../components/seller/ProductScanner';
 import { SalesForm } from '../../components/seller/SalesForm';
 import { ExpensesForm } from '../../components/seller/ExpensesForm';
@@ -29,13 +11,22 @@ import { SalesList } from '../../components/seller/SalesList';
 import { TransfersView } from '../../components/seller/TransfersView';
 import { ScannerTransferRequest } from '../../components/seller/ScannerTransferRequest';
 import { ScannerSaleConfirm } from '../../components/seller/ScannerSaleConfirm';
-import { useNavigate } from 'react-router-dom';
 import { vendorAPI } from '../../services/api';
 import { CameraCapture } from '../../components/seller/CameraCapture';
 import { transfersAPI } from '../../services/transfersAPI';
 import { useAuth } from '../../context/AuthContext';
 
-type ViewType = 'dashboard' | 'scan' | 'new-sale' | 'today-sales' | 'expenses' | 'expenses-list' | 'transfers' | 'notifications' | 'scanner-transfer' | 'scanner-sale';
+type ViewType =
+  | 'dashboard'
+  | 'scan'
+  | 'new-sale'
+  | 'today-sales'
+  | 'expenses'
+  | 'expenses-list'
+  | 'transfers'
+  | 'notifications'
+  | 'scanner-transfer'
+  | 'scanner-sale';
 
 // Interfaces
 interface PrefilledProduct {
@@ -59,14 +50,13 @@ interface PredictionResult {
 // *** INTERFAZ ACTUALIZADA PARA RESUMEN DE TRANSFERENCIAS ***
 interface TransfersSummary {
   total_pending: number;
-  urgent_count: number;     // Transferencias que requieren atención urgente
-  normal_count: number;     // Transferencias en proceso normal
-  completed_today: number;  // Transferencias completadas hoy
-  success_rate: number;     // Porcentaje de éxito del día
+  urgent_count: number; // Transferencias que requieren atención urgente
+  normal_count: number; // Transferencias en proceso normal
+  completed_today: number; // Transferencias completadas hoy
+  success_rate: number; // Porcentaje de éxito del día
 }
 
 export const SellerDashboard: React.FC = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [scanViewTitle, setScanViewTitle] = useState('Escanear Producto');
@@ -87,7 +77,7 @@ export const SellerDashboard: React.FC = () => {
 
   // *** ESTADO ACTUALIZADO PARA TRANSFERENCIAS ***
   const [transfersSummary, setTransfersSummary] = useState<TransfersSummary | null>(null);
-  const [transfersLoading, setTransfersLoading] = useState(false);
+  const [_transfersLoading, setTransfersLoading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -101,11 +91,10 @@ export const SellerDashboard: React.FC = () => {
       setApiError(null);
       const response = await vendorAPI.getDashboard();
       setApiData(response);
-    } catch (error) {
+    } catch {
       console.warn('Backend API not available');
 
       setApiError('Conectando con el servidor...');
-
     } finally {
       setLoading(false);
     }
@@ -119,16 +108,16 @@ export const SellerDashboard: React.FC = () => {
 
       // Cargar datos de ambos endpoints
       const [pendingResponse, completedResponse] = await Promise.allSettled([
-        transfersAPI.vendor.getPendingTransfers(),   // /vendor/pending-transfers
-        transfersAPI.vendor.getCompletedTransfers()  // /vendor/completed-transfers
+        transfersAPI.vendor.getPendingTransfers(), // /vendor/pending-transfers
+        transfersAPI.vendor.getCompletedTransfers(), // /vendor/completed-transfers
       ]);
 
-      let summary: TransfersSummary = {
+      const summary: TransfersSummary = {
         total_pending: 0,
         urgent_count: 0,
         normal_count: 0,
         completed_today: 0,
-        success_rate: 0
+        success_rate: 0,
       };
 
       // Procesar transferencias pendientes
@@ -156,7 +145,6 @@ export const SellerDashboard: React.FC = () => {
 
       console.log('📈 Resumen final calculado:', summary);
       setTransfersSummary(summary);
-
     } catch (error) {
       console.warn('⚠️ Error loading transfers summary:', error);
       // Fallback a datos mock para mostrar algo mientras debuggeamos
@@ -165,7 +153,7 @@ export const SellerDashboard: React.FC = () => {
         urgent_count: 1,
         normal_count: 0,
         completed_today: 2,
-        success_rate: 75.0
+        success_rate: 75.0,
       };
       console.log('📦 Usando datos mock:', mockSummary);
       setTransfersSummary(mockSummary);
@@ -219,14 +207,6 @@ export const SellerDashboard: React.FC = () => {
     setIsProcessingImage(false);
   };
 
-  // Función para backup - input file (cámara)
-  const handleFileInputCapture = () => {
-    setScanResult(null);
-    setErrorMessage(null);
-    setCapturedImage(null);
-    fileInputRef.current?.click();
-  };
-
   const handleImageCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -244,19 +224,18 @@ export const SellerDashboard: React.FC = () => {
       console.log('Simulando procesamiento de imagen:', imageFile.name);
 
       // Simular delay de procesamiento
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Resultado simulado
       const mockResult: PredictionResult = {
         class_name: 'tenis_nike',
-        confidence: 0.85
+        confidence: 0.85,
       };
 
       setScanResult(mockResult);
 
       // Navegar a la vista de scan después del procesamiento exitoso
       setCurrentView('scan');
-
     } catch (error: any) {
       console.error('Error simulando escaneo:', error);
       setErrorMessage('Error en la simulación del escaneo');
@@ -285,12 +264,7 @@ export const SellerDashboard: React.FC = () => {
         <Card className="border-red-200 bg-red-50">
           <CardContent className="p-4 text-center">
             <p className="text-red-800 font-semibold">{errorMessage}</p>
-            <Button
-              onClick={() => setErrorMessage(null)}
-              className="mt-2"
-              variant="ghost"
-              size="sm"
-            >
+            <Button onClick={() => setErrorMessage(null)} className="mt-2" variant="ghost" size="sm">
               Cerrar
             </Button>
           </CardContent>
@@ -349,7 +323,7 @@ export const SellerDashboard: React.FC = () => {
       storage_type: productData.storage_type,
       color: productData.color,
       image: productData.image ? [productData.image] : undefined, // Convertir string a array
-      transfer_id: productData.transfer_id // ✅ COPIAR EL TRANSFER_ID (puede ser undefined)
+      transfer_id: productData.transfer_id, // ✅ COPIAR EL TRANSFER_ID (puede ser undefined)
     };
 
     console.log('🔍 SellerDashboard - Datos preparados para SalesForm:', prefilledData);
@@ -358,7 +332,10 @@ export const SellerDashboard: React.FC = () => {
     // Siempre usar vista simplificada (ScannerSaleConfirm) para todas las ventas
     setPrefilledProduct(prefilledData);
     setCurrentView('scanner-sale');
-    console.log('✅ SellerDashboard - Vista cambiada a scanner-sale', prefilledData.transfer_id ? '(desde transferencia)' : '(venta directa)');
+    console.log(
+      '✅ SellerDashboard - Vista cambiada a scanner-sale',
+      prefilledData.transfer_id ? '(desde transferencia)' : '(venta directa)'
+    );
   };
 
   const goBack = () => {
@@ -378,11 +355,6 @@ export const SellerDashboard: React.FC = () => {
     setProductDataForTransfer(null);
     setPrefilledProduct(null);
     setCurrentView('scan');
-  };
-
-  const handleNewSaleClick = () => {
-    setPrefilledProduct(null);
-    setCurrentView('new-sale');
   };
 
   // Nueva función para manejar click en transferencias
@@ -656,21 +628,16 @@ export const SellerDashboard: React.FC = () => {
                 <span className="text-xs text-green-800 font-bold bg-green-300 px-2 py-1 rounded-md">
                   Rol: {apiData.vendor_info.role === 'seller' ? 'Vendedor' : apiData.vendor_info.role}
                 </span>
-                <p className="text-xs text-gray-400 mt-1">
-                  Fecha: {new Date().toLocaleDateString('es-ES')}
-                </p>
+                <p className="text-xs text-gray-400 mt-1">Fecha: {new Date().toLocaleDateString('es-ES')}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {
-        /* Stats
+      {/* Stats
         {apiData && <DashboardStats data={apiData} />}
-         */
-      }
-
+         */}
     </div>
   );
 
@@ -699,18 +666,34 @@ export const SellerDashboard: React.FC = () => {
   }
 
   return (
-    <DashboardLayout onHome={currentView !== 'dashboard' ? goBack : undefined} title={
-      currentView === 'dashboard' ? 'Panel de Vendedor' :
-        currentView === 'scan' ? (isSearchMode ? 'Buscar Producto' : scanViewTitle) :
-          currentView === 'scanner-transfer' ? 'Solicitar Transferencia' :
-            currentView === 'scanner-sale' ? 'Confirmar Venta' :
-              currentView === 'new-sale' ? (prefilledProduct ? 'Nueva Venta - Producto Escaneado' : 'Nueva Venta') :
-                currentView === 'today-sales' ? 'Ventas del Día' :
-                  currentView === 'expenses' ? 'Registrar Gasto' :
-                    currentView === 'expenses-list' ? 'Gastos del Día' :
-                      currentView === 'transfers' ? 'Gestión de Pedidos' :
-                        'Notificaciones'
-    }>
+    <DashboardLayout
+      onHome={currentView !== 'dashboard' ? goBack : undefined}
+      title={
+        currentView === 'dashboard'
+          ? 'Panel de Vendedor'
+          : currentView === 'scan'
+            ? isSearchMode
+              ? 'Buscar Producto'
+              : scanViewTitle
+            : currentView === 'scanner-transfer'
+              ? 'Solicitar Transferencia'
+              : currentView === 'scanner-sale'
+                ? 'Confirmar Venta'
+                : currentView === 'new-sale'
+                  ? prefilledProduct
+                    ? 'Nueva Venta - Producto Escaneado'
+                    : 'Nueva Venta'
+                  : currentView === 'today-sales'
+                    ? 'Ventas del Día'
+                    : currentView === 'expenses'
+                      ? 'Registrar Gasto'
+                      : currentView === 'expenses-list'
+                        ? 'Gastos del Día'
+                        : currentView === 'transfers'
+                          ? 'Gestión de Pedidos'
+                          : 'Notificaciones'
+      }
+    >
       {/* MODAL DE CÁMARA */}
       {showCamera && (
         <CameraCapture

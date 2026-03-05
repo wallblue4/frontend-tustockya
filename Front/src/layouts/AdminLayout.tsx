@@ -1,6 +1,5 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import { Home } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { AdminSidebar } from '../components/dashboard/AdminSidebar';
 import { AdminMobileNav } from '../components/dashboard/AdminMobileNav';

@@ -29,29 +29,18 @@ interface SaleCardProps {
   setReceiptPreviewUrl: (url: string | null) => void;
 }
 
-const SaleCard: React.FC<SaleCardProps> = ({
-  sale,
-  formatCurrency,
-  formatDate,
-  setReceiptPreviewUrl,
-}) => {
+const SaleCard: React.FC<SaleCardProps> = ({ sale, formatCurrency, formatDate, setReceiptPreviewUrl }) => {
   return (
     <div className="border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 bg-card">
       <div className="p-3 space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-foreground truncate">
-            {sale.seller_name}
-          </p>
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {formatDate(sale.sale_date)}
-          </span>
+          <p className="text-sm font-semibold text-foreground truncate">{sale.seller_name}</p>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(sale.sale_date)}</span>
         </div>
 
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">{sale.location_name}</span>
-          <span className="text-sm font-bold text-primary">
-            {formatCurrency(sale.total_amount)}
-          </span>
+          <span className="text-sm font-bold text-primary">{formatCurrency(sale.total_amount)}</span>
         </div>
 
         <div className="space-y-1.5 border-t border-border pt-2">
@@ -68,9 +57,7 @@ const SaleCard: React.FC<SaleCardProps> = ({
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <span className="text-muted-foreground">x{item.quantity}</span>
-                <span className="font-medium text-foreground">
-                  {formatCurrency(item.unit_price)}
-                </span>
+                <span className="font-medium text-foreground">{formatCurrency(item.unit_price)}</span>
               </div>
             </div>
           ))}

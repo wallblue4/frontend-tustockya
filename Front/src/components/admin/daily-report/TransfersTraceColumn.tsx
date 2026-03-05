@@ -64,12 +64,7 @@ interface TransfersTraceColumnProps {
   locations: Location[];
 }
 
-const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({
-  transfers,
-  loading,
-  formatDate,
-  locations,
-}) => {
+const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({ transfers, loading, formatDate, locations }) => {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [locationFilter, setLocationFilter] = useState('');
 
@@ -83,11 +78,25 @@ const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({
     return base;
   }, [transfers, locationFilter]);
 
-  const transfersOnly = useMemo(() => filteredTransfers.filter((t) => t.request_type !== 'return'), [filteredTransfers]);
+  const transfersOnly = useMemo(
+    () => filteredTransfers.filter((t) => t.request_type !== 'return'),
+    [filteredTransfers]
+  );
   const returnsOnly = useMemo(() => filteredTransfers.filter((t) => t.request_type === 'return'), [filteredTransfers]);
 
   const groupTransferList = (list: Transfer[]) => {
-    const groups: Record<string, { reference: string; brand: string; model: string; transfers: Transfer[]; totalQuantity: number; completedCount: number; pendingCount: number }> = {};
+    const groups: Record<
+      string,
+      {
+        reference: string;
+        brand: string;
+        model: string;
+        transfers: Transfer[];
+        totalQuantity: number;
+        completedCount: number;
+        pendingCount: number;
+      }
+    > = {};
 
     for (const transfer of list) {
       const key = transfer.product.reference_code || `${transfer.product.brand}-${transfer.product.model}`;
@@ -142,7 +151,9 @@ const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({
               </span>
               <span className="text-xs text-muted-foreground">
                 {group.totalQuantity} uds · {group.transfers.length} {prefix === 'return' ? 'devol.' : 'transf.'}
-                {group.completedCount > 0 && <span className="text-success"> · {group.completedCount} completadas</span>}
+                {group.completedCount > 0 && (
+                  <span className="text-success"> · {group.completedCount} completadas</span>
+                )}
                 {group.pendingCount > 0 && <span className="text-warning"> · {group.pendingCount} en curso</span>}
               </span>
             </div>
@@ -156,11 +167,7 @@ const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({
           {!isCollapsed && (
             <div className="space-y-2 pl-2">
               {group.transfers.map((transfer) => (
-                <TransferCard
-                  key={transfer.transfer_id}
-                  transfer={transfer}
-                  formatDate={formatDate}
-                />
+                <TransferCard key={transfer.transfer_id} transfer={transfer} formatDate={formatDate} />
               ))}
             </div>
           )}
@@ -205,7 +212,9 @@ const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({
             <div className="space-y-3">
               <div className="flex items-center gap-2 px-1">
                 <Truck className="h-4 w-4 text-primary" />
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Transferencias</span>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Transferencias
+                </span>
               </div>
               {renderGroupedList(groupedTransfers, 'transfer')}
             </div>
@@ -216,7 +225,9 @@ const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({
             <div className="space-y-3">
               <div className="flex items-center gap-2 px-1 pt-2 border-t border-border">
                 <Undo2 className="h-4 w-4 text-destructive" />
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Devoluciones</span>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Devoluciones
+                </span>
               </div>
               {renderGroupedList(groupedReturns, 'return')}
             </div>

@@ -3,17 +3,7 @@ import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Input } from '../../components/ui/Input';
-import {
-  Package,
-  ShoppingBag,
-  DollarSign,
-  TrendingUp,
-  BarChart3,
-  Plus,
-  Edit,
-  Eye,
-  RefreshCw,
-} from 'lucide-react';
+import { Package, ShoppingBag, DollarSign, TrendingUp, BarChart3, Plus, Edit, Eye, RefreshCw } from 'lucide-react';
 import { EmptyState } from '../../components/admin/ErrorState';
 import { FullScreenPhotoCapture } from '../../components/admin/FullScreenPhotoCapture';
 import {
@@ -60,10 +50,22 @@ const CreateProductoMayoreoModal: React.FC<{
   };
 
   const handleSubmit = async () => {
-    if (!modelo.trim()) { alert('El modelo es obligatorio'); return; }
-    if (cantidadCajas <= 0) { alert('La cantidad de cajas debe ser mayor a 0'); return; }
-    if (paresPorCaja <= 0) { alert('Los pares por caja deben ser mayor a 0'); return; }
-    if (precio <= 0) { alert('El precio debe ser mayor a 0'); return; }
+    if (!modelo.trim()) {
+      alert('El modelo es obligatorio');
+      return;
+    }
+    if (cantidadCajas <= 0) {
+      alert('La cantidad de cajas debe ser mayor a 0');
+      return;
+    }
+    if (paresPorCaja <= 0) {
+      alert('Los pares por caja deben ser mayor a 0');
+      return;
+    }
+    if (precio <= 0) {
+      alert('El precio debe ser mayor a 0');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -85,7 +87,9 @@ const CreateProductoMayoreoModal: React.FC<{
       <div className="bg-card rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-border">
         <div className="px-6 py-4 border-b border-border flex justify-between items-center">
           <h3 className="text-lg font-semibold text-foreground">Nuevo Producto Mayoreo</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl">&times;</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl">
+            &times;
+          </button>
         </div>
         <div className="px-6 py-4 space-y-4">
           <Input
@@ -129,14 +133,22 @@ const CreateProductoMayoreoModal: React.FC<{
             <FullScreenPhotoCapture onPhotoTaken={handlePhotoTaken} hideInternalPreview />
             {fotoPreview && (
               <div className="mt-3">
-                <img src={fotoPreview} alt="Preview" className="w-full max-w-xs rounded-lg shadow border object-cover" />
+                <img
+                  src={fotoPreview}
+                  alt="Preview"
+                  className="w-full max-w-xs rounded-lg shadow border object-cover"
+                />
               </div>
             )}
           </div>
         </div>
         <div className="px-6 py-4 border-t border-border flex justify-end space-x-3">
-          <Button variant="outline" onClick={onClose} disabled={submitting}>Cancelar</Button>
-          <Button onClick={handleSubmit} isLoading={submitting}>Crear Producto</Button>
+          <Button variant="outline" onClick={onClose} disabled={submitting}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} isLoading={submitting}>
+            Crear Producto
+          </Button>
         </div>
       </div>
     </div>
@@ -204,7 +216,9 @@ const EditProductoMayoreoModal: React.FC<{
       <div className="bg-card rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-border">
         <div className="px-6 py-4 border-b border-border flex justify-between items-center">
           <h3 className="text-lg font-semibold text-foreground">Editar Producto Mayoreo</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl">&times;</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl">
+            &times;
+          </button>
         </div>
         <div className="px-6 py-4 space-y-4">
           <Input
@@ -234,12 +248,7 @@ const EditProductoMayoreoModal: React.FC<{
             onChange={(e) => setPrecio(parseFloat(e.target.value) || 0)}
             min={0}
           />
-          <Input
-            label="Tallas"
-            value={tallas}
-            onChange={(e) => setTallas(e.target.value)}
-            placeholder="Ej: 35-42"
-          />
+          <Input label="Tallas" value={tallas} onChange={(e) => setTallas(e.target.value)} placeholder="Ej: 35-42" />
           <div className="flex items-center space-x-3">
             <input
               type="checkbox"
@@ -257,23 +266,37 @@ const EditProductoMayoreoModal: React.FC<{
             {producto.foto && !fotoPreview && (
               <div className="mb-3">
                 <p className="text-xs text-muted-foreground mb-1">Foto actual:</p>
-                <img src={producto.foto} alt={producto.modelo} className="w-full max-w-xs rounded-lg shadow border object-cover" />
+                <img
+                  src={producto.foto}
+                  alt={producto.modelo}
+                  className="w-full max-w-xs rounded-lg shadow border object-cover"
+                />
               </div>
             )}
             <FullScreenPhotoCapture onPhotoTaken={handlePhotoTaken} hideInternalPreview />
             {fotoPreview && (
               <div className="mt-3">
                 <p className="text-xs text-muted-foreground mb-1">Nueva foto:</p>
-                <img src={fotoPreview} alt="Preview" className="w-full max-w-xs rounded-lg shadow border object-cover" />
+                <img
+                  src={fotoPreview}
+                  alt="Preview"
+                  className="w-full max-w-xs rounded-lg shadow border object-cover"
+                />
               </div>
             )}
           </div>
         </div>
         <div className="px-6 py-4 border-t border-border flex justify-between">
-          <Button variant="destructive" onClick={handleDelete} disabled={submitting}>Eliminar</Button>
+          <Button variant="destructive" onClick={handleDelete} disabled={submitting}>
+            Eliminar
+          </Button>
           <div className="flex space-x-3">
-            <Button variant="outline" onClick={onClose} disabled={submitting}>Cancelar</Button>
-            <Button onClick={handleSubmit} isLoading={submitting}>Guardar Cambios</Button>
+            <Button variant="outline" onClick={onClose} disabled={submitting}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSubmit} isLoading={submitting}>
+              Guardar Cambios
+            </Button>
           </div>
         </div>
       </div>
@@ -301,12 +324,18 @@ const RegistrarVentaMayoreoModal: React.FC<{
   const totalVenta = cantidadCajasVendidas * precioUnitarioVenta;
 
   const handleSubmit = async () => {
-    if (cantidadCajasVendidas <= 0) { alert('La cantidad de cajas debe ser mayor a 0'); return; }
+    if (cantidadCajasVendidas <= 0) {
+      alert('La cantidad de cajas debe ser mayor a 0');
+      return;
+    }
     if (cantidadCajasVendidas > producto.cantidad_cajas_disponibles) {
       alert(`Solo hay ${producto.cantidad_cajas_disponibles} cajas disponibles`);
       return;
     }
-    if (precioUnitarioVenta <= 0) { alert('El precio unitario debe ser mayor a 0'); return; }
+    if (precioUnitarioVenta <= 0) {
+      alert('El precio unitario debe ser mayor a 0');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -326,14 +355,20 @@ const RegistrarVentaMayoreoModal: React.FC<{
       <div className="bg-card rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-border">
         <div className="px-6 py-4 border-b border-border flex justify-between items-center">
           <h3 className="text-lg font-semibold text-foreground">Registrar Venta Mayoreo</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl">&times;</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl">
+            &times;
+          </button>
         </div>
         <div className="px-6 py-4 space-y-4">
           {/* Info del producto */}
           <div className="bg-muted/20 rounded-lg p-4 border border-border">
             <div className="flex items-center space-x-3">
               {producto.foto ? (
-                <img src={producto.foto} alt={producto.modelo} className="w-16 h-16 rounded-lg object-cover border border-border" />
+                <img
+                  src={producto.foto}
+                  alt={producto.modelo}
+                  className="w-16 h-16 rounded-lg object-cover border border-border"
+                />
               ) : (
                 <div className="w-16 h-16 rounded-lg bg-muted/30 flex items-center justify-center border border-border">
                   <Package className="h-8 w-8 text-muted-foreground" />
@@ -341,7 +376,9 @@ const RegistrarVentaMayoreoModal: React.FC<{
               )}
               <div>
                 <p className="font-semibold text-foreground">{producto.modelo}</p>
-                <p className="text-sm text-muted-foreground">Cajas disponibles: {producto.cantidad_cajas_disponibles}</p>
+                <p className="text-sm text-muted-foreground">
+                  Cajas disponibles: {producto.cantidad_cajas_disponibles}
+                </p>
                 <p className="text-sm text-muted-foreground">Precio: {formatCurrency(producto.precio)}/caja</p>
                 {producto.tallas && <p className="text-sm text-muted-foreground">Tallas: {producto.tallas}</p>}
               </div>
@@ -375,13 +412,18 @@ const RegistrarVentaMayoreoModal: React.FC<{
             <p className="text-sm text-muted-foreground">Total de la venta:</p>
             <p className="text-2xl font-bold text-primary">{formatCurrency(totalVenta)}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {cantidadCajasVendidas} caja{cantidadCajasVendidas !== 1 ? 's' : ''} x {formatCurrency(precioUnitarioVenta)}
+              {cantidadCajasVendidas} caja{cantidadCajasVendidas !== 1 ? 's' : ''} x{' '}
+              {formatCurrency(precioUnitarioVenta)}
             </p>
           </div>
         </div>
         <div className="px-6 py-4 border-t border-border flex justify-end space-x-3">
-          <Button variant="outline" onClick={onClose} disabled={submitting}>Cancelar</Button>
-          <Button onClick={handleSubmit} isLoading={submitting}>Registrar Venta</Button>
+          <Button variant="outline" onClick={onClose} disabled={submitting}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} isLoading={submitting}>
+            Registrar Venta
+          </Button>
         </div>
       </div>
     </div>
@@ -399,10 +441,10 @@ const VentasProductoModal: React.FC<{
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
       <div className="bg-card rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-border">
         <div className="px-6 py-4 border-b border-border flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-foreground">
-            Ventas de: {producto.modelo}
-          </h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl">&times;</button>
+          <h3 className="text-lg font-semibold text-foreground">Ventas de: {producto.modelo}</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl">
+            &times;
+          </button>
         </div>
         <div className="px-6 py-4">
           {ventas.length > 0 ? (
@@ -410,17 +452,32 @@ const VentasProductoModal: React.FC<{
               <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
                 <thead className="bg-popover text-popover-foreground">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">ID</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Fecha</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Cajas</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Precio/Caja</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Total</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Notas</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      ID
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Fecha
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Cajas
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Precio/Caja
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Total
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Notas
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {ventas.map((venta) => (
-                    <tr key={venta.id} className="border-b border-border last:border-b-0 hover:bg-muted/10 transition-colors">
+                    <tr
+                      key={venta.id}
+                      className="border-b border-border last:border-b-0 hover:bg-muted/10 transition-colors"
+                    >
                       <td className="px-4 py-3 text-sm">#{venta.id}</td>
                       <td className="px-4 py-3 text-sm">{formatDate(venta.fecha_venta)}</td>
                       <td className="px-4 py-3 text-sm">{venta.cantidad_cajas_vendidas}</td>
@@ -441,7 +498,9 @@ const VentasProductoModal: React.FC<{
           )}
         </div>
         <div className="px-6 py-4 border-t border-border flex justify-end">
-          <Button variant="outline" onClick={onClose}>Cerrar</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cerrar
+          </Button>
         </div>
       </div>
     </div>
@@ -474,7 +533,9 @@ export const WholesalePage: React.FC = () => {
         listarVentasMayoreo(),
         obtenerEstadisticasMayoreo(),
       ]);
-      setProductosMayoreo(Array.isArray(productosRes) ? productosRes : productosRes.data || productosRes.productos || []);
+      setProductosMayoreo(
+        Array.isArray(productosRes) ? productosRes : productosRes.data || productosRes.productos || []
+      );
       setVentasMayoreo(Array.isArray(ventasRes) ? ventasRes : ventasRes.data || ventasRes.ventas || []);
       setEstadisticasMayoreo(estadisticasRes);
     } catch (error) {
@@ -548,9 +609,9 @@ export const WholesalePage: React.FC = () => {
       setSelectedProductoMayoreo(null);
       alert(
         `Venta registrada exitosamente!\n\n` +
-        `Cajas vendidas: ${ventaData.cantidad_cajas_vendidas}\n` +
-        `Precio unitario: ${formatCurrency(ventaData.precio_unitario_venta)}\n` +
-        `Total: ${formatCurrency(result.total_venta || ventaData.cantidad_cajas_vendidas * ventaData.precio_unitario_venta)}`
+          `Cajas vendidas: ${ventaData.cantidad_cajas_vendidas}\n` +
+          `Precio unitario: ${formatCurrency(ventaData.precio_unitario_venta)}\n` +
+          `Total: ${formatCurrency(result.total_venta || ventaData.cantidad_cajas_vendidas * ventaData.precio_unitario_venta)}`
       );
     } catch (error: any) {
       console.error('Error registering venta mayoreo:', error);
@@ -572,9 +633,9 @@ export const WholesalePage: React.FC = () => {
 
   // ---------- Render ----------
 
-  const recentVentas = [...ventasMayoreo].sort((a, b) =>
-    new Date(b.fecha_venta).getTime() - new Date(a.fecha_venta).getTime()
-  ).slice(0, 10);
+  const recentVentas = [...ventasMayoreo]
+    .sort((a, b) => new Date(b.fecha_venta).getTime() - new Date(a.fecha_venta).getTime())
+    .slice(0, 10);
 
   return (
     <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
@@ -645,18 +706,35 @@ export const WholesalePage: React.FC = () => {
               <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
                 <thead className="bg-popover text-popover-foreground">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Modelo</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Tallas</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Cajas Disp.</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Pares/Caja</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Precio</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Estado</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Acciones</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Modelo
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Tallas
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Cajas Disp.
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Pares/Caja
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Precio
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Estado
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {productosMayoreo.map((producto) => (
-                    <tr key={producto.id} className="border-b border-border last:border-b-0 bg-card hover:bg-muted/10 transition-colors">
+                    <tr
+                      key={producto.id}
+                      className="border-b border-border last:border-b-0 bg-card hover:bg-muted/10 transition-colors"
+                    >
                       <td className="px-4 py-3">
                         <div className="flex items-center space-x-3">
                           {producto.foto ? (
@@ -678,12 +756,22 @@ export const WholesalePage: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-sm text-foreground">{producto.tallas || '-'}</td>
                       <td className="px-4 py-3">
-                        <Badge variant={producto.cantidad_cajas_disponibles > 5 ? 'success' : producto.cantidad_cajas_disponibles > 0 ? 'warning' : 'error'}>
+                        <Badge
+                          variant={
+                            producto.cantidad_cajas_disponibles > 5
+                              ? 'success'
+                              : producto.cantidad_cajas_disponibles > 0
+                                ? 'warning'
+                                : 'error'
+                          }
+                        >
                           {producto.cantidad_cajas_disponibles}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-sm text-foreground">{producto.pares_por_caja}</td>
-                      <td className="px-4 py-3 text-sm font-semibold text-foreground">{formatCurrency(producto.precio)}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-foreground">
+                        {formatCurrency(producto.precio)}
+                      </td>
                       <td className="px-4 py-3">
                         <Badge variant={producto.is_active ? 'success' : 'error'}>
                           {producto.is_active ? 'Activo' : 'Inactivo'}
@@ -703,11 +791,7 @@ export const WholesalePage: React.FC = () => {
                             <DollarSign className="h-3 w-3 mr-1" />
                             Vender
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleVerVentasProducto(producto)}
-                          >
+                          <Button size="sm" variant="outline" onClick={() => handleVerVentasProducto(producto)}>
                             <Eye className="h-3 w-3 mr-1" />
                             Ventas
                           </Button>
@@ -757,18 +841,35 @@ export const WholesalePage: React.FC = () => {
               <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
                 <thead className="bg-popover text-popover-foreground">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">ID</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Producto</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Fecha</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Cajas</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Precio/Caja</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Total</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Notas</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      ID
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Producto
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Fecha
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Cajas
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Precio/Caja
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Total
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Notas
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentVentas.map((venta) => (
-                    <tr key={venta.id} className="border-b border-border last:border-b-0 hover:bg-muted/10 transition-colors">
+                    <tr
+                      key={venta.id}
+                      className="border-b border-border last:border-b-0 hover:bg-muted/10 transition-colors"
+                    >
                       <td className="px-4 py-3 text-sm">#{venta.id}</td>
                       <td className="px-4 py-3 text-sm font-medium">
                         {venta.mayoreo_producto?.modelo || `Producto #${venta.mayoreo_id}`}
@@ -798,7 +899,10 @@ export const WholesalePage: React.FC = () => {
       {showEditProductoMayoreoModal && selectedProductoMayoreo && (
         <EditProductoMayoreoModal
           producto={selectedProductoMayoreo}
-          onClose={() => { setShowEditProductoMayoreoModal(false); setSelectedProductoMayoreo(null); }}
+          onClose={() => {
+            setShowEditProductoMayoreoModal(false);
+            setSelectedProductoMayoreo(null);
+          }}
           onSubmit={handleUpdateProductoMayoreo}
           onDelete={handleDeleteProductoMayoreo}
         />
@@ -807,7 +911,10 @@ export const WholesalePage: React.FC = () => {
       {showRegistrarVentaMayoreoModal && selectedProductoMayoreo && (
         <RegistrarVentaMayoreoModal
           producto={selectedProductoMayoreo}
-          onClose={() => { setShowRegistrarVentaMayoreoModal(false); setSelectedProductoMayoreo(null); }}
+          onClose={() => {
+            setShowRegistrarVentaMayoreoModal(false);
+            setSelectedProductoMayoreo(null);
+          }}
           onSubmit={handleRegistrarVentaMayoreo}
         />
       )}
@@ -816,7 +923,11 @@ export const WholesalePage: React.FC = () => {
         <VentasProductoModal
           producto={selectedProductoMayoreo}
           ventas={ventasProductoSeleccionado}
-          onClose={() => { setShowVentasProductoModal(false); setSelectedProductoMayoreo(null); setVentasProductoSeleccionado([]); }}
+          onClose={() => {
+            setShowVentasProductoModal(false);
+            setSelectedProductoMayoreo(null);
+            setVentasProductoSeleccionado([]);
+          }}
         />
       )}
     </div>

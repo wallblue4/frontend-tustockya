@@ -16,13 +16,28 @@ export const Footer: React.FC = () => {
               Providing premium sports tennis footwear for athletes and enthusiasts since 2022.
             </p>
             <div className="flex space-x-4">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors p-2 rounded-lg hover:bg-primary/10">
+              <a
+                href="https://facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary transition-colors p-2 rounded-lg hover:bg-primary/10"
+              >
                 <Facebook className="h-5 w-5" />
               </a>
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors p-2 rounded-lg hover:bg-primary/10">
+              <a
+                href="https://twitter.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary transition-colors p-2 rounded-lg hover:bg-primary/10"
+              >
                 <Twitter className="h-5 w-5" />
               </a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors p-2 rounded-lg hover:bg-primary/10">
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary transition-colors p-2 rounded-lg hover:bg-primary/10"
+              >
                 <Instagram className="h-5 w-5" />
               </a>
             </div>
@@ -31,16 +46,24 @@ export const Footer: React.FC = () => {
             <h3 className="text-lg font-semibold mb-4 text-foreground">Quick Links</h3>
             <ul className="space-y-2">
               <li>
-                <Link to="/" className="text-muted-foreground hover:text-primary transition-colors">Home</Link>
+                <Link to="/" className="text-muted-foreground hover:text-primary transition-colors">
+                  Home
+                </Link>
               </li>
               <li>
-                <Link to="/products" className="text-muted-foreground hover:text-primary transition-colors">Products</Link>
+                <Link to="/products" className="text-muted-foreground hover:text-primary transition-colors">
+                  Products
+                </Link>
               </li>
               <li>
-                <Link to="/about" className="text-muted-foreground hover:text-primary transition-colors">About Us</Link>
+                <Link to="/about" className="text-muted-foreground hover:text-primary transition-colors">
+                  About Us
+                </Link>
               </li>
               <li>
-                <Link to="/contact" className="text-muted-foreground hover:text-primary transition-colors">Contact</Link>
+                <Link to="/contact" className="text-muted-foreground hover:text-primary transition-colors">
+                  Contact
+                </Link>
               </li>
             </ul>
           </div>
@@ -48,16 +71,36 @@ export const Footer: React.FC = () => {
             <h3 className="text-lg font-semibold mb-4 text-foreground">Categories</h3>
             <ul className="space-y-2">
               <li>
-                <Link to="/products?category=running" className="text-muted-foreground hover:text-primary transition-colors">Running</Link>
+                <Link
+                  to="/products?category=running"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Running
+                </Link>
               </li>
               <li>
-                <Link to="/products?category=tennis" className="text-muted-foreground hover:text-primary transition-colors">Tennis</Link>
+                <Link
+                  to="/products?category=tennis"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Tennis
+                </Link>
               </li>
               <li>
-                <Link to="/products?category=basketball" className="text-muted-foreground hover:text-primary transition-colors">Basketball</Link>
+                <Link
+                  to="/products?category=basketball"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Basketball
+                </Link>
               </li>
               <li>
-                <Link to="/products?category=casual" className="text-muted-foreground hover:text-primary transition-colors">Casual</Link>
+                <Link
+                  to="/products?category=casual"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Casual
+                </Link>
               </li>
             </ul>
           </div>
@@ -74,7 +117,12 @@ export const Footer: React.FC = () => {
               </li>
               <li className="flex items-center">
                 <Mail className="h-5 w-5 text-primary mr-2" />
-                <a href="mailto:info@tennishub.com" className="text-muted-foreground hover:text-primary transition-colors">info@tennishub.com</a>
+                <a
+                  href="mailto:info@tennishub.com"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  info@tennishub.com
+                </a>
               </li>
             </ul>
           </div>

@@ -30,8 +30,14 @@ export const DashboardPage: React.FC = () => {
   const loadDashboardData = async () => {
     try {
       const [dashboardResponse, metricsResponse] = await Promise.all([
-        fetchAdminDashboard().catch(err => { console.warn('Dashboard endpoint failed:', err); return null; }),
-        fetchDashboardMetrics().catch(err => { console.warn('Metrics endpoint failed:', err); return null; })
+        fetchAdminDashboard().catch((err) => {
+          console.warn('Dashboard endpoint failed:', err);
+          return null;
+        }),
+        fetchDashboardMetrics().catch((err) => {
+          console.warn('Metrics endpoint failed:', err);
+          return null;
+        }),
       ]);
       if (dashboardResponse) setDashboardData(dashboardResponse);
       if (metricsResponse) setMetricsData(metricsResponse);
@@ -62,12 +68,20 @@ export const DashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
           title="Ventas Hoy"
-          value={metricsData?.total_sales_today ? formatCurrency(parseFloat(metricsData.total_sales_today)) : formatCurrency(0)}
+          value={
+            metricsData?.total_sales_today
+              ? formatCurrency(parseFloat(metricsData.total_sales_today))
+              : formatCurrency(0)
+          }
           icon={<DollarSign className="h-6 w-6" />}
         />
         <StatsCard
           title="Ventas del Mes"
-          value={metricsData?.total_sales_month ? formatCurrency(parseFloat(metricsData.total_sales_month)) : formatCurrency(0)}
+          value={
+            metricsData?.total_sales_month
+              ? formatCurrency(parseFloat(metricsData.total_sales_month))
+              : formatCurrency(0)
+          }
           icon={<TrendingUp className="h-6 w-6" />}
         />
         <StatsCard
@@ -83,20 +97,40 @@ export const DashboardPage: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <Button className="h-20 flex flex-col items-center justify-center space-y-2 text-xs" onClick={() => navigate('/administrador/usuarios')}>
-              <Users className="h-5 w-5" /><span>Gestionar Usuarios</span>
+            <Button
+              className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
+              onClick={() => navigate('/administrador/usuarios')}
+            >
+              <Users className="h-5 w-5" />
+              <span>Gestionar Usuarios</span>
             </Button>
-            <Button className="h-20 flex flex-col items-center justify-center space-y-2 text-xs" onClick={() => navigate('/administrador/inventario')}>
-              <Package className="h-5 w-5" /><span>Ver Inventario</span>
+            <Button
+              className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
+              onClick={() => navigate('/administrador/inventario')}
+            >
+              <Package className="h-5 w-5" />
+              <span>Ver Inventario</span>
             </Button>
-            <Button className="h-20 flex flex-col items-center justify-center space-y-2 text-xs" onClick={() => navigate('/administrador/mayoreo')}>
-              <ShoppingBag className="h-5 w-5" /><span>Ventas Mayoreo</span>
+            <Button
+              className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
+              onClick={() => navigate('/administrador/mayoreo')}
+            >
+              <ShoppingBag className="h-5 w-5" />
+              <span>Ventas Mayoreo</span>
             </Button>
-            <Button className="h-20 flex flex-col items-center justify-center space-y-2 text-xs" onClick={() => navigate('/administrador/analiticas')}>
-              <BarChart3 className="h-5 w-5" /><span>Análisis</span>
+            <Button
+              className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
+              onClick={() => navigate('/administrador/analiticas')}
+            >
+              <BarChart3 className="h-5 w-5" />
+              <span>Análisis</span>
             </Button>
-            <Button className="h-20 flex flex-col items-center justify-center space-y-2 text-xs" onClick={() => navigate('/administrador/costos')}>
-              <DollarSign className="h-5 w-5" /><span>Ver Costos</span>
+            <Button
+              className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
+              onClick={() => navigate('/administrador/costos')}
+            >
+              <DollarSign className="h-5 w-5" />
+              <span>Ver Costos</span>
             </Button>
           </div>
         </CardContent>

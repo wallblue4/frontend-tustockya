@@ -19,14 +19,10 @@ interface AdjustPriceModalProps {
   };
 }
 
-export const AdjustPriceModal: React.FC<AdjustPriceModalProps> = ({
-  onClose,
-  onSubmit,
-  productData
-}) => {
+export const AdjustPriceModal: React.FC<AdjustPriceModalProps> = ({ onClose, onSubmit, productData }) => {
   const [formData, setFormData] = useState({
     new_unit_price: productData.current_price,
-    update_all_locations: true
+    update_all_locations: true,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -36,7 +32,7 @@ export const AdjustPriceModal: React.FC<AdjustPriceModalProps> = ({
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',
-      minimumFractionDigits: 0
+      minimumFractionDigits: 0,
     }).format(value);
   };
 
@@ -65,7 +61,7 @@ export const AdjustPriceModal: React.FC<AdjustPriceModalProps> = ({
       await onSubmit({
         product_reference: productData.reference_code,
         new_unit_price: formData.new_unit_price,
-        update_all_locations: formData.update_all_locations
+        update_all_locations: formData.update_all_locations,
       });
       onClose();
     } catch (error) {
@@ -76,9 +72,9 @@ export const AdjustPriceModal: React.FC<AdjustPriceModalProps> = ({
   };
 
   const handleInputChange = (field: string, value: number | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
@@ -93,10 +89,7 @@ export const AdjustPriceModal: React.FC<AdjustPriceModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div
-        className="absolute inset-0"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0" onClick={onClose} />
 
       <div className="bg-card rounded-lg shadow-xl w-full max-w-md relative z-10 max-h-[90vh] overflow-y-auto border border-border">
         <div className="flex justify-between items-center p-6 border-b border-border">
@@ -104,10 +97,7 @@ export const AdjustPriceModal: React.FC<AdjustPriceModalProps> = ({
             <DollarSign className="h-5 w-5 mr-2" />
             Ajustar Precio
           </h3>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
-          >
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -129,7 +119,9 @@ export const AdjustPriceModal: React.FC<AdjustPriceModalProps> = ({
             )}
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Producto:</span>
-              <span className="text-sm font-medium text-foreground">{productData.brand} {productData.model}</span>
+              <span className="text-sm font-medium text-foreground">
+                {productData.brand} {productData.model}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Referencia:</span>
@@ -161,22 +153,23 @@ export const AdjustPriceModal: React.FC<AdjustPriceModalProps> = ({
 
           {/* Preview del cambio */}
           {formData.new_unit_price > 0 && formData.new_unit_price !== productData.current_price && (
-            <div className={`rounded-lg p-3 ${priceChange > 0
-              ? 'bg-success/10 border border-success/20'
-              : 'bg-error/10 border border-error/20'
-              }`}>
+            <div
+              className={`rounded-lg p-3 ${
+                priceChange > 0 ? 'bg-success/10 border border-success/20' : 'bg-error/10 border border-error/20'
+              }`}
+            >
               <div className="flex items-center justify-between">
-                <span className={`text-sm ${priceChange > 0 ? 'text-success' : 'text-error'}`}>
-                  Cambio de precio:
-                </span>
+                <span className={`text-sm ${priceChange > 0 ? 'text-success' : 'text-error'}`}>Cambio de precio:</span>
                 <span className={`text-lg font-bold ${priceChange > 0 ? 'text-success' : 'text-error'}`}>
-                  {priceChange > 0 ? '+' : ''}{formatCurrency(priceChange)}
+                  {priceChange > 0 ? '+' : ''}
+                  {formatCurrency(priceChange)}
                 </span>
               </div>
               <div className="flex items-center justify-between mt-1">
                 <span className="text-xs text-muted-foreground">Variacion porcentual:</span>
                 <span className={`text-sm font-medium ${priceChange > 0 ? 'text-success' : 'text-error'}`}>
-                  {parseFloat(priceChangePercentage) > 0 ? '+' : ''}{priceChangePercentage}%
+                  {parseFloat(priceChangePercentage) > 0 ? '+' : ''}
+                  {priceChangePercentage}%
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
@@ -210,16 +203,14 @@ export const AdjustPriceModal: React.FC<AdjustPriceModalProps> = ({
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-            >
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || formData.new_unit_price <= 0 || formData.new_unit_price === productData.current_price}
+              disabled={
+                isSubmitting || formData.new_unit_price <= 0 || formData.new_unit_price === productData.current_price
+              }
               isLoading={isSubmitting}
             >
               Confirmar Cambio de Precio

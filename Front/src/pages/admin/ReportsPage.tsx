@@ -6,10 +6,7 @@ import Select from '../../components/ui/Select';
 import { BarChart3, Calendar, Download } from 'lucide-react';
 import { EmptyState } from '../../components/admin/ErrorState';
 import { useAdmin } from '../../context/AdminContext';
-import {
-  generateSalesReports,
-  fetchDailySalesTraceability,
-} from '../../services/adminAPI';
+import { generateSalesReports, fetchDailySalesTraceability } from '../../services/adminAPI';
 import type { DailySaleTraceability } from '../../services/adminAPI';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
@@ -19,13 +16,13 @@ export const ReportsPage: React.FC = () => {
 
   const [dailyTraceabilityFilters, setDailyTraceabilityFilters] = useState({
     target_date: todayISO,
-    location_id: ''
+    location_id: '',
   });
   const [dailyTraceabilityData, setDailyTraceabilityData] = useState<DailySaleTraceability[]>([]);
   const [dailyTraceabilityLoading, setDailyTraceabilityLoading] = useState(false);
   const [dailyTraceabilityError, setDailyTraceabilityError] = useState<string | null>(null);
 
-  const localLocations = locations.filter(location => location.type?.toLowerCase() === 'local');
+  const localLocations = locations.filter((location) => location.type?.toLowerCase() === 'local');
 
   const handleFetchDailyTraceability = async () => {
     if (!dailyTraceabilityFilters.location_id) {
@@ -37,10 +34,11 @@ export const ReportsPage: React.FC = () => {
     try {
       const response = await fetchDailySalesTraceability({
         target_date: dailyTraceabilityFilters.target_date,
-        location_id: parseInt(dailyTraceabilityFilters.location_id, 10)
+        location_id: parseInt(dailyTraceabilityFilters.location_id, 10),
       });
       const normalizedData: DailySaleTraceability[] = Array.isArray(response)
-        ? response : response.data || response.sales || [];
+        ? response
+        : response.data || response.sales || [];
       setDailyTraceabilityData(normalizedData);
     } catch (error: any) {
       console.error('Error fetching daily sales traceability:', error);
@@ -78,7 +76,7 @@ export const ReportsPage: React.FC = () => {
                   try {
                     const report = await generateSalesReports({
                       start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                      end_date: new Date().toISOString().split('T')[0]
+                      end_date: new Date().toISOString().split('T')[0],
                     });
                     console.log('Sales report:', report);
                     alert('Reporte de ventas generado - revisar consola');
@@ -102,9 +100,7 @@ export const ReportsPage: React.FC = () => {
                 <Input
                   type="date"
                   value={dailyTraceabilityFilters.target_date}
-                  onChange={(e) =>
-                    setDailyTraceabilityFilters(prev => ({ ...prev, target_date: e.target.value }))
-                  }
+                  onChange={(e) => setDailyTraceabilityFilters((prev) => ({ ...prev, target_date: e.target.value }))}
                   max={todayISO}
                 />
               </div>
@@ -113,15 +109,13 @@ export const ReportsPage: React.FC = () => {
                 <label className="text-sm font-medium text-foreground">Local</label>
                 <Select
                   value={dailyTraceabilityFilters.location_id}
-                  onChange={(e) =>
-                    setDailyTraceabilityFilters(prev => ({ ...prev, location_id: e.target.value }))
-                  }
+                  onChange={(e) => setDailyTraceabilityFilters((prev) => ({ ...prev, location_id: e.target.value }))}
                   options={[
                     { value: '', label: 'Selecciona un local' },
-                    ...localLocations.map(location => ({
+                    ...localLocations.map((location) => ({
                       value: location.id.toString(),
-                      label: `${location.name}`
-                    }))
+                      label: `${location.name}`,
+                    })),
                   ]}
                 />
                 <p className="text-xs text-muted-foreground">
@@ -133,7 +127,11 @@ export const ReportsPage: React.FC = () => {
                 <Button
                   className="w-full"
                   onClick={handleFetchDailyTraceability}
-                  disabled={dailyTraceabilityLoading || !dailyTraceabilityFilters.location_id || !dailyTraceabilityFilters.target_date}
+                  disabled={
+                    dailyTraceabilityLoading ||
+                    !dailyTraceabilityFilters.location_id ||
+                    !dailyTraceabilityFilters.target_date
+                  }
                 >
                   {dailyTraceabilityLoading ? 'Consultando...' : 'Consultar'}
                 </Button>
@@ -160,7 +158,9 @@ export const ReportsPage: React.FC = () => {
                       <div className="text-right space-y-2 flex flex-col items-end">
                         <p className="text-sm text-muted-foreground">Total vendido</p>
                         <p className="text-xl font-bold text-primary">{formatCurrency(sale.total_amount)}</p>
-                        <p className="text-sm text-muted-foreground">{(sale as any).payments?.[0]?.payment_type || 'N/A'}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {(sale as any).payments?.[0]?.payment_type || 'N/A'}
+                        </p>
                         <p className="text-xs text-muted-foreground">{formatDate(sale.sale_date)}</p>
                       </div>
                     </div>
@@ -168,10 +168,14 @@ export const ReportsPage: React.FC = () => {
                       {sale.items.map((item, index) => (
                         <div key={`${sale.sale_id}-${index}`} className="flex flex-wrap justify-between text-sm gap-3">
                           <div>
-                            <p className="font-medium text-foreground">{item.brand} · {item.model}</p>
+                            <p className="font-medium text-foreground">
+                              {item.brand} · {item.model}
+                            </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-foreground">Talla {item.size} · {item.quantity} uds   ·  C/U = {formatCurrency(item.unit_price)}</p>
+                            <p className="text-foreground">
+                              Talla {item.size} · {item.quantity} uds · C/U = {formatCurrency(item.unit_price)}
+                            </p>
                           </div>
                           {sale.receipt_image && (
                             <Button

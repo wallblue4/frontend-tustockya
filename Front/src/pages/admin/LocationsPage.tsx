@@ -2,14 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import {
-  Store,
-  Warehouse,
-  Activity,
-  MapPin,
-  Eye,
-  RefreshCw,
-} from 'lucide-react';
+import { Store, Warehouse, Activity, MapPin, Eye, RefreshCw } from 'lucide-react';
 import { EmptyState } from '../../components/admin/ErrorState';
 import { fetchLocationStatistics } from '../../services/adminAPI';
 import { formatCurrency } from '../../utils/formatters';
@@ -32,21 +25,21 @@ export const LocationsPage: React.FC = () => {
         <Card>
           <CardContent className="p-4 text-center">
             <Store className="h-8 w-8 text-primary mx-auto mb-2" />
-            <p className="text-2xl font-bold">{locations.filter(l => l.type === 'local').length}</p>
+            <p className="text-2xl font-bold">{locations.filter((l) => l.type === 'local').length}</p>
             <p className="text-sm text-gray-600">Locales de Venta</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <Warehouse className="h-8 w-8 text-secondary mx-auto mb-2" />
-            <p className="text-2xl font-bold">{locations.filter(l => l.type === 'bodega').length}</p>
+            <p className="text-2xl font-bold">{locations.filter((l) => l.type === 'bodega').length}</p>
             <p className="text-sm text-gray-600">Bodegas</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <Activity className="h-8 w-8 text-success mx-auto mb-2" />
-            <p className="text-2xl font-bold">{locations.filter(l => l.is_active).length}</p>
+            <p className="text-2xl font-bold">{locations.filter((l) => l.is_active).length}</p>
             <p className="text-sm text-gray-600">Activas</p>
           </CardContent>
         </Card>
@@ -62,11 +55,14 @@ export const LocationsPage: React.FC = () => {
               {locations.map((location) => (
                 <div key={location.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center space-x-4">
-                    <div className={`p-3 rounded-lg ${location.type === 'local' ? 'bg-primary/10' : 'bg-secondary/10'}`}>
-                      {location.type === 'local' ?
-                        <Store className="h-6 w-6 text-primary" /> :
+                    <div
+                      className={`p-3 rounded-lg ${location.type === 'local' ? 'bg-primary/10' : 'bg-secondary/10'}`}
+                    >
+                      {location.type === 'local' ? (
+                        <Store className="h-6 w-6 text-primary" />
+                      ) : (
                         <Warehouse className="h-6 w-6 text-secondary" />
-                      }
+                      )}
                     </div>
                     <div>
                       <h4 className="font-semibold">{location.name}</h4>
@@ -78,9 +74,7 @@ export const LocationsPage: React.FC = () => {
                         <Badge variant={location.is_active ? 'success' : 'error'}>
                           {location.is_active ? 'Activo' : 'Inactivo'}
                         </Badge>
-                        <span className="text-xs text-gray-500">
-                          {location.assigned_users_count} usuarios
-                        </span>
+                        <span className="text-xs text-gray-500">{location.assigned_users_count} usuarios</span>
                       </div>
                     </div>
                   </div>

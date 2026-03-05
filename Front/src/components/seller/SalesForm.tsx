@@ -4,14 +4,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { vendorAPI as apiVendorAPI, formatCurrency } from '../../services/api';
 import { vendorAPI as transferVendorAPI } from '../../services/transfersAPI';
-import { 
-  Plus, 
-  Trash2, 
-  DollarSign, 
-  CheckCircle,
-  Percent,
-  AlertCircle
-} from 'lucide-react';
+import { Plus, Trash2, DollarSign, CheckCircle, Percent, AlertCircle } from 'lucide-react';
 
 interface SaleItem {
   id: string;
@@ -48,19 +41,17 @@ interface SalesFormProps {
 export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
   const [items, setItems] = useState<SaleItem[]>([]);
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
-    { type: 'efectivo', amount: 0 }
-  ]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([{ type: 'efectivo', amount: 0 }]);
   const [paymentAmountInputs, setPaymentAmountInputs] = useState<string[]>(['0']);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [notes, setNotes] = useState('');
   const [requiresConfirmation, setRequiresConfirmation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
-  
+
   // Transfer ID - guardado desde prefilledProduct
   const [transferId, setTransferId] = useState<number | undefined>(undefined);
-  
+
   // Discount fields
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [discountInput, setDiscountInput] = useState<string>('0');
@@ -72,10 +63,10 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
     if (prefilledProduct) {
       console.log('📦 Datos recibidos en SalesForm:', prefilledProduct);
       console.log('🔑 Transfer ID recibido:', prefilledProduct.transfer_id);
-      
+
       // Guardar el transfer_id
       setTransferId(prefilledProduct.transfer_id);
-      
+
       const newItem: SaleItem = {
         id: Date.now().toString(),
         sneaker_reference_code: prefilledProduct.code,
@@ -83,18 +74,20 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
         model: prefilledProduct.model,
         size: prefilledProduct.size,
         quantity: 1,
-        unit_price: prefilledProduct.price
+        unit_price: prefilledProduct.price,
       };
       setItems([newItem]);
       setPriceInputs({ [newItem.id]: String(newItem.unit_price ?? 0) });
-      
+
       // Set payment amount to product price
       setPaymentMethods([{ type: 'efectivo', amount: prefilledProduct.price }]);
       setPaymentAmountInputs([String(prefilledProduct.price ?? 0)]);
-      
+
       // Add note about the product source
       if (prefilledProduct.location && prefilledProduct.storage_type) {
-        setNotes(`Venta desde transferencia #${prefilledProduct.transfer_id} - Ubicación: ${prefilledProduct.location} (${prefilledProduct.storage_type === 'warehouse' ? 'Bodega' : 'Exhibición'})`);
+        setNotes(
+          `Venta desde transferencia #${prefilledProduct.transfer_id} - Ubicación: ${prefilledProduct.location} (${prefilledProduct.storage_type === 'warehouse' ? 'Bodega' : 'Exhibición'})`
+        );
       }
     }
   }, [prefilledProduct]);
@@ -109,28 +102,26 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
       color: '',
       size: '',
       quantity: 1,
-      unit_price: 0
+      unit_price: 0,
     };
     setItems([...items, newItem]);
-    setPriceInputs(prev => ({ ...prev, [newItem.id]: '0' }));
+    setPriceInputs((prev) => ({ ...prev, [newItem.id]: '0' }));
   };
 
   // Update item
   const updateItem = (id: string, field: keyof SaleItem, value: any) => {
-    setItems(items.map(item => 
-      item.id === id ? { ...item, [field]: value } : item
-    ));
+    setItems(items.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
   };
 
   // Remove item
   const removeItem = (id: string) => {
-    setItems(items.filter(item => item.id !== id));
+    setItems(items.filter((item) => item.id !== id));
   };
 
   // Add payment method
   const addPaymentMethod = () => {
     setPaymentMethods([...paymentMethods, { type: 'efectivo', amount: 0 }]);
-    setPaymentAmountInputs(prev => [...prev, '0']);
+    setPaymentAmountInputs((prev) => [...prev, '0']);
   };
 
   // Update payment method
@@ -149,12 +140,13 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
   };
 
   // Calculate totals
-  const itemsSubtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+  const itemsSubtotal = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
   const totalAmount = itemsSubtotal - discountAmount;
   const paymentsTotal = paymentMethods.reduce((sum, payment) => sum + payment.amount, 0);
-  const isValidSale = totalAmount > 0 && Math.abs(totalAmount - paymentsTotal) < 0.01 && items.every(item => 
-    item.sneaker_reference_code && item.brand && item.model && item.size && item.unit_price > 0
-  );
+  const isValidSale =
+    totalAmount > 0 &&
+    Math.abs(totalAmount - paymentsTotal) < 0.01 &&
+    items.every((item) => item.sneaker_reference_code && item.brand && item.model && item.size && item.unit_price > 0);
 
   // Request discount from API
   const requestDiscount = async () => {
@@ -167,16 +159,17 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
     try {
       const discountData = {
         amount: discountAmount,
-        reason: discountReason
+        reason: discountReason,
       };
 
       console.log('Solicitando descuento:', discountData);
-      
+
       const response = await apiVendorAPI.requestDiscount(discountData);
       console.log('Respuesta del descuento:', response);
-      
-      alert(`Descuento solicitado exitosamente!\nID: ${response.discount_id || 'N/A'}\nMonto: ${formatCurrency(discountAmount)}\nEstado: ${response.status || 'pending'}`);
-      
+
+      alert(
+        `Descuento solicitado exitosamente!\nID: ${response.discount_id || 'N/A'}\nMonto: ${formatCurrency(discountAmount)}\nEstado: ${response.status || 'pending'}`
+      );
     } catch (error) {
       console.error('Error al solicitar descuento:', error);
       alert('Error al solicitar descuento: ' + (error instanceof Error ? error.message : 'Error desconocido'));
@@ -194,13 +187,13 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
         alert('Por favor seleccione una imagen válida');
         return;
       }
-      
+
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         alert('El archivo es demasiado grande. Máximo 5MB');
         return;
       }
-      
+
       setReceiptFile(file);
     }
   };
@@ -221,41 +214,43 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
       console.log('🔄 Registrando venta desde transferencia. ID:', transferId);
       console.log('💰 Total Amount:', totalAmount);
       console.log('💳 Payment Methods:', paymentMethods);
-      
+
       // Crear FormData para incluir el archivo del comprobante
       const formData = new FormData();
       formData.append('total_amount', String(totalAmount));
-      formData.append('payment_methods', JSON.stringify(paymentMethods.map(pm => ({
-        type: pm.type,
-        amount: pm.amount,
-        reference: pm.reference || null
-      }))));
+      formData.append(
+        'payment_methods',
+        JSON.stringify(
+          paymentMethods.map((pm) => ({
+            type: pm.type,
+            amount: pm.amount,
+            reference: pm.reference || null,
+          }))
+        )
+      );
       formData.append('notes', notes || '');
-      
+
       // Agregar el archivo del comprobante si existe
       if (receiptFile) {
         formData.append('receipt_image', receiptFile);
         console.log('📎 Comprobante adjunto:', receiptFile.name);
       }
-      
-      const response = await transferVendorAPI.sellFromTransfer(
-        transferId,
-        formData
-      );
-      
+
+      const response = await transferVendorAPI.sellFromTransfer(transferId, formData);
+
       console.log('✅ Venta desde transferencia registrada:', response);
-      
+
       console.log('Respuesta completa de la API:', response);
       console.log('Estructura de la respuesta:', JSON.stringify(response, null, 2));
-      
+
       // Show success message with all the details from the response
       let successMessage = `¡Venta registrada exitosamente!\n\n`;
-      
+
       // Safe access to response properties with fallbacks
       if (response.sale_id) {
         successMessage += `ID de Venta: ${response.sale_id}\n`;
       }
-      
+
       // Try different possible structures for total amount
       let responseTotalAmount = null;
       if (response.sale_details?.total_amount) {
@@ -265,11 +260,11 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
       } else if (response.amount) {
         responseTotalAmount = response.amount;
       }
-      
+
       if (responseTotalAmount !== null) {
         successMessage += `Total: ${formatCurrency(responseTotalAmount)}\n`;
       }
-      
+
       // Try different possible structures for status
       let status = null;
       if (response.status_info?.status) {
@@ -277,11 +272,11 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
       } else if (response.status) {
         status = response.status;
       }
-      
+
       if (status) {
         successMessage += `Estado: ${status}\n`;
       }
-      
+
       // Try different possible structures for timestamp
       let timestamp = null;
       if (response.sale_timestamp) {
@@ -291,27 +286,27 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
       } else if (response.created_at) {
         timestamp = response.created_at;
       }
-      
+
       if (timestamp) {
         successMessage += `Fecha: ${new Date(timestamp).toLocaleString('es-CO')}\n`;
       }
-      
+
       // Try different possible structures for receipt info
       if (response.receipt_info?.has_receipt && response.receipt_info?.stored_in) {
         successMessage += `\nComprobante guardado: ${response.receipt_info.stored_in}`;
       } else if (response.receipt_info) {
         successMessage += `\nComprobante: ${response.receipt_info}`;
       }
-      
+
       // Try different possible structures for seller info
       if (response.seller_info?.seller_name) {
         successMessage += `\nVendedor: ${response.seller_info.seller_name}`;
       } else if (response.seller_info) {
         successMessage += `\nVendedor: ${response.seller_info}`;
       }
-      
+
       alert(successMessage);
-      
+
       // Reset form
       setItems([]);
       setPaymentMethods([{ type: 'efectivo', amount: 0 }]);
@@ -322,26 +317,26 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
       setRequiresConfirmation(false);
       setShowSummary(false);
       setTransferId(undefined);
-      
     } catch (error) {
       console.error('Error al registrar la venta:', error);
-      
+
       // Detectar si es un error de stock insuficiente
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      
+
       if (errorMessage.includes('Stock insuficiente') || errorMessage.includes('no existe en')) {
         // Extraer el mensaje de error y formatearlo mejor
         const detailMatch = errorMessage.match(/Stock insuficiente:\s*(.*)/);
         const stockDetails = detailMatch ? detailMatch[1] : errorMessage;
-        
+
         alert(
           '❌ ERROR DE INVENTARIO\n\n' +
-          '⚠️ No se puede completar la venta porque:\n\n' +
-          stockDetails + '\n\n' +
-          '💡 Soluciones:\n' +
-          '• Verifica el código de referencia del producto\n' +
-          '• Solicita un traslado desde otra ubicación\n' +
-          '• Verifica el inventario disponible antes de vender'
+            '⚠️ No se puede completar la venta porque:\n\n' +
+            stockDetails +
+            '\n\n' +
+            '💡 Soluciones:\n' +
+            '• Verifica el código de referencia del producto\n' +
+            '• Solicita un traslado desde otra ubicación\n' +
+            '• Verifica el inventario disponible antes de vender'
         );
       } else {
         // Otros tipos de errores
@@ -363,10 +358,15 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
           <div>
             <h3 className="font-medium mb-3">Productos</h3>
             <div className="space-y-2">
-              {items.map(item => (
-                <div key={item.id} className="flex justify-between items-center p-3 bg-muted/20 rounded-lg border border-border">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex justify-between items-center p-3 bg-muted/20 rounded-lg border border-border"
+                >
                   <div>
-                    <p className="font-medium text-foreground">{item.brand} {item.model}</p>
+                    <p className="font-medium text-foreground">
+                      {item.brand} {item.model}
+                    </p>
                     {item.color && <p className="text-sm text-muted-foreground">Color: {item.color}</p>}
                     <p className="text-sm text-muted-foreground">
                       Talla {item.size} × {item.quantity}
@@ -400,12 +400,13 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
             <h3 className="font-medium mb-3 text-foreground">Métodos de Pago</h3>
             <div className="space-y-2">
               {paymentMethods.map((payment, index) => (
-                <div key={index} className="flex justify-between items-center p-3 bg-muted/20 rounded-lg border border-border">
+                <div
+                  key={index}
+                  className="flex justify-between items-center p-3 bg-muted/20 rounded-lg border border-border"
+                >
                   <div>
                     <p className="font-medium capitalize text-foreground">{payment.type}</p>
-                    {payment.reference && (
-                      <p className="text-sm text-muted-foreground">Ref: {payment.reference}</p>
-                    )}
+                    {payment.reference && <p className="text-sm text-muted-foreground">Ref: {payment.reference}</p>}
                   </div>
                   <p className="font-semibold text-foreground">{formatCurrency(payment.amount)}</p>
                 </div>
@@ -447,7 +448,9 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
               {receiptFile && (
                 <div className="flex items-center text-sm text-muted-foreground">
                   <CheckCircle className="h-4 w-4 mr-1 text-success" />
-                  <span>Comprobante adjunto: {receiptFile.name} ({(receiptFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                  <span>
+                    Comprobante adjunto: {receiptFile.name} ({(receiptFile.size / 1024 / 1024).toFixed(2)} MB)
+                  </span>
                 </div>
               )}
               {requiresConfirmation && (
@@ -482,18 +485,15 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
             <div className="flex items-center space-x-3">
               <CheckCircle className="h-5 w-5 text-blue-600" />
               <div>
-                <p className="text-sm font-medium text-blue-600">
-                  📦 Venta desde Transferencia #{transferId}
-                </p>
+                <p className="text-sm font-medium text-blue-600">📦 Venta desde Transferencia #{transferId}</p>
                 <p className="text-sm text-gray-700">
                   {prefilledProduct.brand} {prefilledProduct.model} - Talla {prefilledProduct.size}
                 </p>
-                <p className="text-xs text-gray-600">
-                  Código: {prefilledProduct.code}
-                </p>
+                <p className="text-xs text-gray-600">Código: {prefilledProduct.code}</p>
                 {prefilledProduct.location && prefilledProduct.storage_type && (
                   <p className="text-xs text-gray-600">
-                    Ubicación: {prefilledProduct.location} ({prefilledProduct.storage_type === 'warehouse' ? 'Bodega' : 'Exhibición'})
+                    Ubicación: {prefilledProduct.location} (
+                    {prefilledProduct.storage_type === 'warehouse' ? 'Bodega' : 'Exhibición'})
                   </p>
                 )}
               </div>
@@ -566,13 +566,13 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
                     <Input
                       label="Precio"
                       type="number"
-                    value={priceInputs[item.id] ?? String(item.unit_price ?? 0)}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      setPriceInputs(prev => ({ ...prev, [item.id]: raw }));
-                      const parsed = raw.trim() === '' ? 0 : (Number.isNaN(parseFloat(raw)) ? 0 : parseFloat(raw));
-                      updateItem(item.id, 'unit_price', parsed);
-                    }}
+                      value={priceInputs[item.id] ?? String(item.unit_price ?? 0)}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setPriceInputs((prev) => ({ ...prev, [item.id]: raw }));
+                        const parsed = raw.trim() === '' ? 0 : Number.isNaN(parseFloat(raw)) ? 0 : parseFloat(raw);
+                        updateItem(item.id, 'unit_price', parsed);
+                      }}
                       placeholder="0"
                       step="0.01"
                       min="0"
@@ -611,7 +611,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
               onChange={(e) => {
                 const raw = e.target.value;
                 setDiscountInput(raw);
-                const parsed = raw.trim() === '' ? 0 : (Number.isNaN(parseFloat(raw)) ? 0 : parseFloat(raw));
+                const parsed = raw.trim() === '' ? 0 : Number.isNaN(parseFloat(raw)) ? 0 : parseFloat(raw);
                 setDiscountAmount(parsed);
               }}
               placeholder="0"
@@ -640,7 +640,8 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
           {discountAmount > 0 && (
             <div className="mt-3 p-3 bg-blue-50 rounded-lg">
               <p className="text-primary text-sm">
-                💡 <strong>Tip:</strong> Haz clic en "Solicitar Descuento" para registrar la solicitud en el sistema antes de proceder con la venta.
+                💡 <strong>Tip:</strong> Haz clic en "Solicitar Descuento" para registrar la solicitud en el sistema
+                antes de proceder con la venta.
               </p>
             </div>
           )}
@@ -680,12 +681,12 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
                   value={paymentAmountInputs[index] ?? String(payment.amount ?? 0)}
                   onChange={(e) => {
                     const raw = e.target.value;
-                    setPaymentAmountInputs(prev => {
+                    setPaymentAmountInputs((prev) => {
                       const copy = [...prev];
                       copy[index] = raw;
                       return copy;
                     });
-                    const parsed = raw.trim() === '' ? 0 : (Number.isNaN(parseFloat(raw)) ? 0 : parseFloat(raw));
+                    const parsed = raw.trim() === '' ? 0 : Number.isNaN(parseFloat(raw)) ? 0 : parseFloat(raw);
                     updatePaymentMethod(index, 'amount', parsed);
                   }}
                   placeholder="0"
@@ -738,16 +739,18 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
               <span>Total Pagos:</span>
               <span>{formatCurrency(paymentsTotal)}</span>
             </div>
-            <div className={`flex justify-between items-center font-bold ${
-              isValidSale ? 'text-success' : 'text-destructive'
-            }`}>
+            <div
+              className={`flex justify-between items-center font-bold ${
+                isValidSale ? 'text-success' : 'text-destructive'
+              }`}
+            >
               <span>Diferencia:</span>
               <span>{formatCurrency(Math.abs(totalAmount - paymentsTotal))}</span>
             </div>
             {!isValidSale && totalAmount > 0 && (
               <p className="text-destructive text-sm mt-2">
-                {Math.abs(totalAmount - paymentsTotal) > 0.01 
-                  ? 'Los montos no coinciden' 
+                {Math.abs(totalAmount - paymentsTotal) > 0.01
+                  ? 'Los montos no coinciden'
                   : 'Complete todos los campos requeridos'}
               </p>
             )}
@@ -763,38 +766,25 @@ export const SalesForm: React.FC<SalesFormProps> = ({ prefilledProduct }) => {
         <CardContent className="space-y-4">
           {/* Receipt Upload */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Comprobante (Opcional)
-            </label>
+            <label className="block text-sm font-medium text-foreground mb-2">Comprobante (Opcional)</label>
             <div className="flex items-center space-x-4">
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={handleReceiptUpload}
-                className="flex-1"
-              />
+              <Input type="file" accept="image/*" onChange={handleReceiptUpload} className="flex-1" />
               {receiptFile && (
                 <div className="flex items-center text-success">
                   <CheckCircle className="h-4 w-4 mr-1" />
                   <div className="text-sm">
                     <p>{receiptFile.name}</p>
-                    <p className="text-xs text-gray-500">
-                      {(receiptFile.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
+                    <p className="text-xs text-gray-500">{(receiptFile.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
                 </div>
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Formatos soportados: JPG, PNG, GIF. Tamaño máximo: 5MB
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Formatos soportados: JPG, PNG, GIF. Tamaño máximo: 5MB</p>
           </div>
 
           {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Notas Adicionales
-            </label>
+            <label className="block text-sm font-medium text-foreground mb-2">Notas Adicionales</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}

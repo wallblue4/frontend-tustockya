@@ -1,5 +1,5 @@
 //api.ts
-import { API_BASE_URL } from '../config/env'
+import { API_BASE_URL } from '../config/env';
 
 // Get token from localStorage
 const getAuthToken = () => {
@@ -16,7 +16,7 @@ const getHeaders = () => {
   const token = getAuthToken();
   return {
     'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
+    ...(token && { Authorization: `Bearer ${token}` }),
   };
 };
 
@@ -24,7 +24,7 @@ const getHeaders = () => {
 const getFormDataHeaders = () => {
   const token = getAuthToken();
   return {
-    ...(token && { 'Authorization': `Bearer ${token}` })
+    ...(token && { Authorization: `Bearer ${token}` }),
   };
 };
 
@@ -43,12 +43,12 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
     console.log('API Request:', { url, method: config.method, body: config.body });
     const response = await fetch(url, config);
     const data = await response.json();
-    
+
     if (!response.ok) {
       console.error('API Error Response:', { status: response.status, data });
       throw new Error(data.message || JSON.stringify(data) || 'API request failed');
     }
-    
+
     return data;
   } catch (error) {
     console.error('API Error:', error);
@@ -68,13 +68,13 @@ const apiFormDataRequest = async (endpoint: string, formData: FormData) => {
   try {
     const response = await fetch(url, config);
     const data = await response.json();
-    
+
     if (!response.ok) {
       const err: any = new Error(data.message || data.detail || 'API request failed');
       err.detail = data.detail || null;
       throw err;
     }
-    
+
     return data;
   } catch (error) {
     console.error('API Error:', error);
@@ -106,12 +106,6 @@ interface SaleData {
   receipt_image?: File | null; // Now expects File object, not base64 string
   notes?: string;
   requires_confirmation?: boolean;
-}
-
-interface SaleConfirmation {
-  sale_id: number; // Backend expects number, not string
-  confirmed: boolean;
-  confirmation_notes?: string; // Backend expects confirmation_notes, not notes
 }
 
 // ExpenseData interface - Ahora usando FormData directamente
@@ -304,28 +298,26 @@ export const authAPI = {
     }),
   getCurrentUser: () => apiRequest('/api/v1/auth/me'),                   
 };
-*/      
+*/
 
 export const authAPI = {
-  login: (credentials: { email: string; password: string }) => 
-  apiRequest('/api/v1/auth/auth/login-json', {
-    method: 'POST',
-    body: JSON.stringify({
-      email: credentials.email,
-      password: credentials.password
+  login: (credentials: { email: string; password: string }) =>
+    apiRequest('/api/v1/auth/auth/login-json', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: credentials.email,
+        password: credentials.password,
+      }),
     }),
-  }),
   getCurrentUser: () => apiRequest('/api/v1/auth/auth/me'),
 };
-
-
 
 export const vendorAPI = {
   // Dashboard
   getDashboard: () => {
-    return apiRequest('/api/v1/vendor/dashboard')
+    return apiRequest('/api/v1/vendor/dashboard');
   },
-  
+
   // Scanning - UPDATED to return the new scan response structure
   scanProduct: (imageFile: File): Promise<ScanResponse> => {
     const formData = new FormData();
@@ -341,72 +333,73 @@ export const vendorAPI = {
     params.append('limit', limit.toString());
     return apiRequest(`/api/v1/classify/search?${params.toString()}`);
   },
-  
+
   // Sales - ACTUALIZADO para usar FormData según el endpoint
   createSale: (saleData: SaleData) => {
     const formData = new FormData();
-    
+
     // Convert items array to JSON string
     formData.append('items', JSON.stringify(saleData.items));
-    
+
     // Add total amount
     formData.append('total_amount', saleData.total_amount.toString());
-    
+
     // Convert payment methods array to JSON string
     formData.append('payment_methods', JSON.stringify(saleData.payment_methods));
-    
+
     // Add optional fields
     if (saleData.notes) {
       formData.append('notes', saleData.notes);
     }
-    
+
     // Add requires_confirmation (default to false if not provided)
     formData.append('requires_confirmation', (saleData.requires_confirmation || false).toString());
-    
+
     // Add receipt image if provided
     if (saleData.receipt_image) {
       formData.append('receipt_image', saleData.receipt_image);
     }
-    
+
     return apiFormDataRequest('/api/v1/sales/create', formData);
   },
-  
+
   getTodaySales: () => apiRequest('/api/v1/sales/today'),
   getPendingConfirmation: () => apiRequest('/api/v1/sales/pending-confirmation'),
-  
+
   // CORREGIDO: Backend espera { sale_id: number, confirmed: boolean, confirmation_notes?: string }
-  confirmSale: (saleId: number, confirmed: boolean, confirmationNotes?: string) => 
+  confirmSale: (saleId: number, confirmed: boolean, confirmationNotes?: string) =>
     apiRequest('/api/v1/sales/confirm', {
       method: 'POST',
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         sale_id: saleId, // number, no string
         confirmed: confirmed, // boolean requerido
-        confirmation_notes: confirmationNotes // confirmation_notes, no notes
+        confirmation_notes: confirmationNotes, // confirmation_notes, no notes
       }),
     }),
-  
+
   // Expenses - ACTUALIZADO para usar FormData
   createExpense: (formData: FormData) => {
     console.log('API createExpense - FormData recibido:');
     // Log FormData contents for debugging
-    for (let [key, value] of formData.entries()) {
+    for (const [key, value] of formData.entries()) {
       if (value instanceof File) {
         console.log(`- ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
       } else {
         console.log(`- ${key}: ${value}`);
       }
     }
-    
+
     return apiFormDataRequest('/api/v1/expenses/create', formData);
   },
   getTodayExpenses: () => apiRequest('/api/v1/expenses/today'),
-  
+
   // Transfers - CORREGIDO para coincidir con backend
   getLocations: () => apiRequest('/api/v1/locations'),
-  requestTransfer: (transferData: TransferData) => apiRequest('/api/v1/transfers/request', {
-    method: 'POST',
-    body: JSON.stringify(transferData),
-  }),
+  requestTransfer: (transferData: TransferData) =>
+    apiRequest('/api/v1/transfers/request', {
+      method: 'POST',
+      body: JSON.stringify(transferData),
+    }),
   requestSingleFoot: (singleFootData: {
     source_location_id: number;
     destination_location_id: number;
@@ -417,40 +410,43 @@ export const vendorAPI = {
     purpose: string;
     pickup_type: string;
     notes?: string;
-  }) => apiRequest('/api/v1/transfers/request-single-foot', {
-    method: 'POST',
-    body: JSON.stringify(singleFootData),
-  }),
+  }) =>
+    apiRequest('/api/v1/transfers/request-single-foot', {
+      method: 'POST',
+      body: JSON.stringify(singleFootData),
+    }),
   getMyTransferRequests: () => apiRequest('/api/v1/transfers/my-requests'),
-  
+
   // Discounts - CORREGIDO para coincidir con backend
-  requestDiscount: (discountData: DiscountData) => 
+  requestDiscount: (discountData: DiscountData) =>
     apiRequest('/api/v1/discounts/request', {
       method: 'POST',
       body: JSON.stringify(discountData),
     }),
   getMyDiscountRequests: () => apiRequest('/api/v1/discounts/my-requests'),
-  
+
   // Returns - CORREGIDO para coincidir con backend
-  requestReturn: (returnData: ReturnData) => 
+  requestReturn: (returnData: ReturnData) =>
     apiRequest('/api/v1/returns/request', {
       method: 'POST',
       body: JSON.stringify(returnData),
     }),
-  
+
   // Notifications
   getReturnNotifications: () => apiRequest('/api/v1/notifications/returns'),
-  markReturnAsRead: (notificationId: string) => apiRequest(`/api/v1/notifications/returns/${notificationId}/mark-read`, {
-    method: 'POST',
-  }),
+  markReturnAsRead: (notificationId: string) =>
+    apiRequest(`/api/v1/notifications/returns/${notificationId}/mark-read`, {
+      method: 'POST',
+    }),
 
   // Warehouse: daily transfer history for the warehouse keeper
   getWarehouseDailyTransferHistory: () => apiRequest('/api/v1/warehouse/daily-transfer-history'),
-  
+
   // Admin - CORREGIDO para coincidir con backend
-  createTestData: () => apiRequest('/api/v1/admin/create-test-data', {
-    method: 'POST',
-  }),
+  createTestData: () =>
+    apiRequest('/api/v1/admin/create-test-data', {
+      method: 'POST',
+    }),
 };
 
 // Health Check API - CORREGIDO para coincidir con backend
@@ -470,15 +466,15 @@ export const createSaleData = (
     requiresConfirmation?: boolean;
   } = {}
 ): SaleData => {
-  const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-  
+  const totalAmount = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+
   return {
     items,
     total_amount: totalAmount,
     payment_methods: paymentMethods,
     receipt_image: options.receiptImage,
     notes: options.notes,
-    requires_confirmation: options.requiresConfirmation || false
+    requires_confirmation: options.requiresConfirmation || false,
   };
 };
 
@@ -509,12 +505,12 @@ export const createTransferData = (
     purpose: transferDetails.purpose,
     pickup_type: transferDetails.pickup_type,
     destination_type: transferDetails.destination_type,
-    notes: transferDetails.notes
+    notes: transferDetails.notes,
   };
 };
 
 // NEW: Helper function to convert ScanMatch to ProductOption format (for compatibility)
-export const convertScanMatchToProductOption = (match: ScanMatch, index: number = 0) => {
+export const convertScanMatchToProductOption = (match: ScanMatch, _index: number = 0) => {
   return {
     id: match.original_db_id.toString(),
     brand: match.reference.brand,
@@ -533,43 +529,43 @@ export const convertScanMatchToProductOption = (match: ScanMatch, index: number 
       in_stock: match.availability.can_sell_now,
       can_sell: match.availability.can_sell_now,
       can_request_from_other_locations: match.availability.can_request_transfer,
-      recommended_action: match.availability.recommended_action
+      recommended_action: match.availability.recommended_action,
     },
     // Convert new structure to old inventory format for compatibility
     inventory: {
       local_info: {
         location_number: 10, // From scanned_by.location_id in the example
-        location_name: 'Local #10' // From user_location in the example
+        location_name: 'Local #10', // From user_location in the example
       },
       pricing: {
         unit_price: match.pricing.unit_price,
-        box_price: match.pricing.box_price
+        box_price: match.pricing.box_price,
       },
       stock_by_size: [], // No detailed size info in new structure, will be empty
       total_stock: match.availability.summary.total_system.total_stock,
       total_exhibition: 0, // Not available in new structure
       available_sizes: match.availability.summary.total_system.all_available_sizes,
-      other_locations: match.locations.other_locations
-    }
+      other_locations: match.locations.other_locations,
+    },
   };
 };
 
 // NEW: Helper function to convert full scan response to product options array
 export const convertScanResponseToProductOptions = (scanResponse: ScanResponse) => {
   const options = [];
-  
+
   // Add best match first
   if (scanResponse.results.best_match) {
     options.push(convertScanMatchToProductOption(scanResponse.results.best_match, 0));
   }
-  
+
   // Add alternative matches
   if (scanResponse.results.alternative_matches) {
     scanResponse.results.alternative_matches.forEach((match, index) => {
       options.push(convertScanMatchToProductOption(match, index + 1));
     });
   }
-  
+
   return options;
 };
 

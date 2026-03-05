@@ -3,15 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardHeader, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { vendorAPI, warehouseAPI, courierAPI } from '../../services/transfersAPI';
-import { 
-  Play, 
-  CheckCircle, 
-  XCircle, 
-  Clock,
-  Package,
-  Truck,
-  User
-} from 'lucide-react';
+import { Play, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 interface TestStep {
   id: string;
@@ -45,12 +37,12 @@ export const TransferFlowTester: React.FC = () => {
           purpose: 'cliente',
           pickup_type: 'corredor',
           destination_type: 'exhibicion',
-          notes: 'Cliente presente esperando - URGENTE'
+          notes: 'Cliente presente esperando - URGENTE',
         });
         setTransferId(response.transfer_request_id);
         return response;
       },
-      status: 'pending'
+      status: 'pending',
     },
     {
       id: 'warehouse-accept',
@@ -62,10 +54,10 @@ export const TransferFlowTester: React.FC = () => {
           transfer_request_id: transferId,
           accepted: true,
           estimated_preparation_time: 15,
-          notes: 'Producto disponible. Preparando para entrega inmediata.'
+          notes: 'Producto disponible. Preparando para entrega inmediata.',
         });
       },
-      status: 'pending'
+      status: 'pending',
     },
     {
       id: 'courier-accept',
@@ -75,7 +67,7 @@ export const TransferFlowTester: React.FC = () => {
         if (!transferId) throw new Error('No hay transfer ID');
         return await courierAPI.acceptRequest(transferId, 20, 'Voy en camino a la bodega.');
       },
-      status: 'pending'
+      status: 'pending',
     },
     {
       id: 'warehouse-deliver',
@@ -86,10 +78,10 @@ export const TransferFlowTester: React.FC = () => {
         return await warehouseAPI.deliverToCourier({
           transfer_request_id: transferId,
           delivered: true,
-          delivery_notes: 'Producto entregado al corredor en perfecto estado.'
+          delivery_notes: 'Producto entregado al corredor en perfecto estado.',
         });
       },
-      status: 'pending'
+      status: 'pending',
     },
     {
       id: 'courier-pickup',
@@ -99,7 +91,7 @@ export const TransferFlowTester: React.FC = () => {
         if (!transferId) throw new Error('No hay transfer ID');
         return await courierAPI.confirmPickup(transferId, 'Producto recogido. En camino al destino.');
       },
-      status: 'pending'
+      status: 'pending',
     },
     {
       id: 'courier-delivery',
@@ -109,7 +101,7 @@ export const TransferFlowTester: React.FC = () => {
         if (!transferId) throw new Error('No hay transfer ID');
         return await courierAPI.confirmDelivery(transferId, true, 'Entrega exitosa.');
       },
-      status: 'pending'
+      status: 'pending',
     },
     {
       id: 'vendor-confirm',
@@ -119,8 +111,8 @@ export const TransferFlowTester: React.FC = () => {
         if (!transferId) throw new Error('No hay transfer ID');
         return await vendorAPI.confirmReception(transferId, 1, true, 'Producto recibido correctamente');
       },
-      status: 'pending'
-    }
+      status: 'pending',
+    },
   ];
 
   const restockFlowSteps: TestStep[] = [
@@ -139,12 +131,12 @@ export const TransferFlowTester: React.FC = () => {
           purpose: 'restock',
           pickup_type: 'corredor',
           destination_type: 'exhibicion',
-          notes: 'Restock semanal'
+          notes: 'Restock semanal',
         });
         setTransferId(response.transfer_request_id);
         return response;
       },
-      status: 'pending'
+      status: 'pending',
     },
     // ... resto de pasos similares al flujo cliente
   ];
@@ -153,46 +145,39 @@ export const TransferFlowTester: React.FC = () => {
     setIsRunning(true);
     const flowSteps = currentFlow === 'cliente' ? clienteFlowSteps : restockFlowSteps;
     setSteps([...flowSteps]);
-    
+
     for (let i = 0; i < flowSteps.length; i++) {
       const step = flowSteps[i];
-      
+
       // Actualizar estado a "running"
-      setSteps(prevSteps => 
-        prevSteps.map(s => 
-          s.id === step.id ? { ...s, status: 'running' } : s
-        )
-      );
+      setSteps((prevSteps) => prevSteps.map((s) => (s.id === step.id ? { ...s, status: 'running' } : s)));
 
       try {
         // Ejecutar el paso
         const result = await step.action();
-        
+
         // Actualizar estado a "success"
-        setSteps(prevSteps => 
-          prevSteps.map(s => 
-            s.id === step.id ? { ...s, status: 'success', result } : s
-          )
-        );
+        setSteps((prevSteps) => prevSteps.map((s) => (s.id === step.id ? { ...s, status: 'success', result } : s)));
 
         // Esperar un poco entre pasos para simular realismo
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       } catch (error) {
         // Actualizar estado a "error"
-        setSteps(prevSteps => 
-          prevSteps.map(s => 
-            s.id === step.id ? { 
-              ...s, 
-              status: 'error', 
-              error: error instanceof Error ? error.message : 'Error desconocido'
-            } : s
+        setSteps((prevSteps) =>
+          prevSteps.map((s) =>
+            s.id === step.id
+              ? {
+                  ...s,
+                  status: 'error',
+                  error: error instanceof Error ? error.message : 'Error desconocido',
+                }
+              : s
           )
         );
         break; // Detener el flujo en caso de error
       }
     }
-    
+
     setIsRunning(false);
   };
 
@@ -260,19 +245,11 @@ export const TransferFlowTester: React.FC = () => {
           </div>
 
           <div className="flex space-x-4 mb-6">
-            <Button
-              onClick={runFlow}
-              disabled={isRunning}
-              className="flex-1 bg-green-600 hover:bg-green-700"
-            >
+            <Button onClick={runFlow} disabled={isRunning} className="flex-1 bg-green-600 hover:bg-green-700">
               <Play className="h-4 w-4 mr-2" />
               {isRunning ? 'Ejecutando Flujo...' : 'Iniciar Flujo de Prueba'}
             </Button>
-            <Button
-              onClick={resetFlow}
-              disabled={isRunning}
-              variant="outline"
-            >
+            <Button onClick={resetFlow} disabled={isRunning} variant="outline">
               Resetear
             </Button>
           </div>
@@ -296,16 +273,14 @@ export const TransferFlowTester: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {steps.map((step, index) => (
+              {steps.map((step, _index) => (
                 <div key={step.id} className={`border rounded-lg p-4 ${getStepColor(step.status)}`}>
                   <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0">
-                      {getStepIcon(step.status)}
-                    </div>
+                    <div className="flex-shrink-0">{getStepIcon(step.status)}</div>
                     <div className="flex-grow">
                       <h4 className="font-semibold">{step.title}</h4>
                       <p className="text-sm text-gray-600 mb-2">{step.description}</p>
-                      
+
                       {step.status === 'success' && step.result && (
                         <div className="mt-2 p-2 bg-white rounded border">
                           <p className="text-xs text-green-600 font-medium">✅ Resultado:</p>
@@ -314,7 +289,7 @@ export const TransferFlowTester: React.FC = () => {
                           </pre>
                         </div>
                       )}
-                      
+
                       {step.status === 'error' && step.error && (
                         <div className="mt-2 p-2 bg-white rounded border border-red-200">
                           <p className="text-xs text-red-600 font-medium">❌ Error:</p>
@@ -345,7 +320,7 @@ export const TransferFlowTester: React.FC = () => {
                 <li>• Tiempo límite reducido</li>
               </ul>
             </div>
-            
+
             <div className="p-4 border rounded-lg">
               <h4 className="font-semibold text-blue-600 mb-2">📦 Flujo Restock</h4>
               <ul className="text-sm space-y-1">

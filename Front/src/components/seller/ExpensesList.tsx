@@ -1,12 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { vendorAPI, formatCurrency, formatDate } from '../../services/api';
-import { 
-  Receipt, 
-  FileImage,
-  Calendar,
-  DollarSign
-} from 'lucide-react';
+import { Receipt, FileImage, Calendar, DollarSign } from 'lucide-react';
 
 interface Expense {
   id: string;
@@ -31,10 +26,10 @@ export const ExpensesList: React.FC = () => {
       setError(null);
       const response = await vendorAPI.getTodayExpenses();
       setExpenses(response.data || []);
-    } catch (error) {
+    } catch (_error) {
       console.warn('Backend API not available, using mock data for expenses');
       setError('Conectando con el servidor...');
-      
+
       // Mock data for development
       setExpenses([
         {
@@ -43,15 +38,15 @@ export const ExpensesList: React.FC = () => {
           amount: 15000,
           notes: 'Taxi al centro comercial',
           has_receipt: true,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         },
         {
           id: '2',
           concept: 'Almuerzo',
           amount: 12000,
           has_receipt: false,
-          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-        }
+          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        },
       ]);
     } finally {
       setLoading(false);
@@ -111,7 +106,7 @@ export const ExpensesList: React.FC = () => {
               <p className="text-sm text-warning">Modo de desarrollo - Usando datos de prueba</p>
             </div>
           )}
-          
+
           {expenses.length === 0 ? (
             <div className="text-center py-8">
               <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
@@ -139,7 +134,7 @@ export const ExpensesList: React.FC = () => {
                       <p className="text-xl font-bold text-destructive">{formatCurrency(expense.amount)}</p>
                     </div>
                   </div>
-                  
+
                   {expense.notes && (
                     <div className="mt-3 p-3 bg-muted/20 rounded-md">
                       <p className="text-sm text-foreground">{expense.notes}</p>

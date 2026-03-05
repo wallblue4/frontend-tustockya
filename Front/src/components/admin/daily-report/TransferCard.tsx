@@ -79,7 +79,9 @@ const TransferCard: React.FC<TransferCardProps> = ({ transfer, formatDate }) => 
   ].filter((e) => e.value);
 
   return (
-    <div className={`border ${borderColor} rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 bg-card`}>
+    <div
+      className={`border ${borderColor} rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 bg-card`}
+    >
       <div
         className="p-3 cursor-pointer hover:bg-muted/10 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
@@ -90,9 +92,7 @@ const TransferCard: React.FC<TransferCardProps> = ({ transfer, formatDate }) => 
               <p className="text-sm font-semibold text-foreground truncate">
                 {transfer.product.brand} {transfer.product.model}
               </p>
-              {transfer.request_type === 'return' && (
-                <Badge variant="error">Devolución</Badge>
-              )}
+              {transfer.request_type === 'return' && <Badge variant="error">Devolución</Badge>}
               <Badge variant={statusVariant}>{transfer.status}</Badge>
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -177,9 +177,7 @@ const TransferCard: React.FC<TransferCardProps> = ({ transfer, formatDate }) => 
           </div>
 
           {transfer.notes && (
-            <p className="text-xs text-muted-foreground italic border-l-2 border-border pl-2">
-              {transfer.notes}
-            </p>
+            <p className="text-xs text-muted-foreground italic border-l-2 border-border pl-2">{transfer.notes}</p>
           )}
         </div>
       )}

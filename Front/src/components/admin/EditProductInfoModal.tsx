@@ -5,11 +5,7 @@ import { Input } from '../ui/Input';
 
 interface EditProductInfoModalProps {
   onClose: () => void;
-  onSubmit: (data: {
-    product_reference: string;
-    brand: string;
-    model: string;
-  }) => Promise<void>;
+  onSubmit: (data: { product_reference: string; brand: string; model: string }) => Promise<void>;
   productData: {
     brand: string;
     model: string;
@@ -18,14 +14,10 @@ interface EditProductInfoModalProps {
   };
 }
 
-export const EditProductInfoModal: React.FC<EditProductInfoModalProps> = ({
-  onClose,
-  onSubmit,
-  productData
-}) => {
+export const EditProductInfoModal: React.FC<EditProductInfoModalProps> = ({ onClose, onSubmit, productData }) => {
   const [formData, setFormData] = useState({
     brand: productData.brand,
-    model: productData.model
+    model: productData.model,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -62,7 +54,7 @@ export const EditProductInfoModal: React.FC<EditProductInfoModalProps> = ({
       await onSubmit({
         product_reference: productData.reference_code,
         brand: formData.brand.trim(),
-        model: formData.model.trim()
+        model: formData.model.trim(),
       });
       onClose();
     } catch (error) {
@@ -73,21 +65,18 @@ export const EditProductInfoModal: React.FC<EditProductInfoModalProps> = ({
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
     if (errors.general) {
-      setErrors(prev => ({ ...prev, general: '' }));
+      setErrors((prev) => ({ ...prev, general: '' }));
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div
-        className="absolute inset-0"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0" onClick={onClose} />
 
       <div className="bg-card rounded-lg shadow-xl w-full max-w-md relative z-10 max-h-[90vh] overflow-y-auto border border-border">
         <div className="flex justify-between items-center p-6 border-b border-border">
@@ -95,10 +84,7 @@ export const EditProductInfoModal: React.FC<EditProductInfoModalProps> = ({
             <Edit className="h-5 w-5 mr-2" />
             Editar Informacion del Producto
           </h3>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
-          >
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -178,9 +164,7 @@ export const EditProductInfoModal: React.FC<EditProductInfoModalProps> = ({
           )}
 
           {/* Error general */}
-          {errors.general && (
-            <p className="text-sm text-destructive">{errors.general}</p>
-          )}
+          {errors.general && <p className="text-sm text-destructive">{errors.general}</p>}
 
           {/* Warning */}
           <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 flex items-start space-x-2">
@@ -191,11 +175,7 @@ export const EditProductInfoModal: React.FC<EditProductInfoModalProps> = ({
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-            >
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
             <Button

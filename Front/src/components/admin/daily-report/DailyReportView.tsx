@@ -12,10 +12,7 @@ import {
   fetchDailyTransfersTraceability,
   fetchAllDiscountRequests,
 } from '../../../services/adminAPI';
-import type {
-  DailySaleTraceability,
-  DailyTransferTraceability,
-} from '../../../services/adminAPI';
+import type { DailySaleTraceability, DailyTransferTraceability } from '../../../services/adminAPI';
 
 interface Location {
   id: number;
@@ -76,21 +73,24 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
   formatDate,
   setReceiptPreviewUrl,
   handleApproveDiscount,
-  notifications,
-  loadNotifications,
+  notifications: _notifications,
+  loadNotifications: _loadNotifications,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const targetDate = searchParams.get('fecha') || getTodayISO();
   const setTargetDate = (date: string) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (date === getTodayISO()) {
-        next.delete('fecha');
-      } else {
-        next.set('fecha', date);
-      }
-      return next;
-    }, { replace: true });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (date === getTodayISO()) {
+          next.delete('fecha');
+        } else {
+          next.set('fecha', date);
+        }
+        return next;
+      },
+      { replace: true }
+    );
   };
   const [salesLocationFilter, setSalesLocationFilter] = useState('');
 
@@ -104,9 +104,7 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
 
   const [apiDiscounts, setApiDiscounts] = useState<DiscountRequest[]>([]);
 
-  const localLocations = locations.filter(
-    (loc) => loc.type?.toLowerCase() === 'local'
-  );
+  const localLocations = locations.filter((loc) => loc.type?.toLowerCase() === 'local');
 
   const fetchSales = useCallback(async () => {
     setSalesLoading(true);
@@ -179,17 +177,20 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
       const data = await fetchAllDiscountRequests();
       const list = Array.isArray(data) ? data : data.requests || data.data || [];
       setApiDiscounts(
-        list.map((d: any) => ({
-          id: d.id,
-          requester_name: d.requester_name,
-          location_name: d.location_name,
-          reason: d.reason,
-          discount_amount: d.discount_amount,
-          original_price: d.original_amount,
-          requested_at: d.requested_at,
-          status: d.status,
-          admin_notes: d.admin_notes,
-        } as DiscountRequest))
+        list.map(
+          (d: any) =>
+            ({
+              id: d.id,
+              requester_name: d.requester_name,
+              location_name: d.location_name,
+              reason: d.reason,
+              discount_amount: d.discount_amount,
+              original_price: d.original_amount,
+              requested_at: d.requested_at,
+              status: d.status,
+              admin_notes: d.admin_notes,
+            }) as DiscountRequest
+        )
       );
     } catch {
       setApiDiscounts([]);
@@ -204,10 +205,12 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
 
   useEffect(() => {
     fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetDate]);
 
   useEffect(() => {
     fetchSales();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [salesLocationFilter]);
 
   return (
@@ -216,9 +219,7 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-foreground">Reporte del Día</h2>
-          <p className="text-sm text-muted-foreground">
-            Consolidado de ventas, descuentos y transferencias
-          </p>
+          <p className="text-sm text-muted-foreground">Consolidado de ventas, descuentos y transferencias</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -240,13 +241,8 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
               filterType="all"
             />
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={fetchAll}
-            disabled={salesLoading || transfersLoading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-1.5 ${(salesLoading || transfersLoading) ? 'animate-spin' : ''}`} />
+          <Button size="sm" variant="outline" onClick={fetchAll} disabled={salesLoading || transfersLoading}>
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${salesLoading || transfersLoading ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
         </div>
@@ -282,14 +278,11 @@ const DailyReportView: React.FC<DailyReportViewProps> = ({
               // Generar cards de descuento implícitos desde ventas
               const saleDiscounts: DiscountRequest[] = salesData
                 .map((sale) => {
-                  const itemsSubtotal = sale.items.reduce(
-                    (sum, item) => sum + item.unit_price * item.quantity,
-                    0
-                  );
+                  const itemsSubtotal = sale.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
                   const discountAmount = itemsSubtotal - sale.total_amount;
                   if (discountAmount <= 0) return null;
                   return {
-                    id: -(sale.sale_id),
+                    id: -sale.sale_id,
                     requester_name: sale.seller_name,
                     seller_name: sale.seller_name,
                     location_name: sale.location_name,

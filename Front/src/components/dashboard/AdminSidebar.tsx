@@ -13,7 +13,7 @@ import {
   Truck,
   ClipboardList,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
 } from 'lucide-react';
 import { useAdmin } from '../../context/AdminContext';
 
@@ -48,7 +48,9 @@ export const AdminSidebar: React.FC = () => {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, String(collapsed));
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [collapsed]);
 
   return (
@@ -57,7 +59,7 @@ export const AdminSidebar: React.FC = () => {
     >
       <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-end'} p-2 border-b border-border`}>
         <button
-          onClick={() => setCollapsed(c => !c)}
+          onClick={() => setCollapsed((c) => !c)}
           className="p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent transition-colors"
           title={collapsed ? 'Expandir menú' : 'Colapsar menú'}
         >
@@ -75,9 +77,7 @@ export const AdminSidebar: React.FC = () => {
               end={item.end}
               className={({ isActive }) =>
                 `flex items-center ${collapsed ? 'justify-center' : 'space-x-3'} px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-foreground hover:bg-muted/20'
+                  isActive ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted/20'
                 }`
               }
               title={collapsed ? item.label : undefined}
@@ -85,7 +85,9 @@ export const AdminSidebar: React.FC = () => {
               <Icon className="h-5 w-5 flex-shrink-0" />
               {!collapsed && <span className="truncate">{item.label}</span>}
               {item.badge && badgeCount > 0 && (
-                <span className={`${collapsed ? 'absolute -mt-4 -mr-4' : 'ml-auto'} bg-error text-white text-xs rounded-full h-5 w-5 flex items-center justify-center flex-shrink-0`}>
+                <span
+                  className={`${collapsed ? 'absolute -mt-4 -mr-4' : 'ml-auto'} bg-error text-white text-xs rounded-full h-5 w-5 flex items-center justify-center flex-shrink-0`}
+                >
                   {badgeCount}
                 </span>
               )}

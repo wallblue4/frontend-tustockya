@@ -10,10 +10,9 @@ interface AssignProductToLocationModalProps {
   onSubmit: (data: {
     location_id: number;
     product_reference: string;
-    size: string;
+    sizes: string[];
     adjustment_type: 'set_quantity';
     quantity: number;
-    reason: string;
     inventory_type: 'pair' | 'left_only' | 'right_only';
   }) => Promise<void>;
   allInventory: AdminInventoryLocation[];
@@ -34,26 +33,30 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
   onClose,
   onSubmit,
   allInventory,
-  allLocations
+  allLocations,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<UniqueProduct | null>(null);
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [sizeInput, setSizeInput] = useState('');
   const [formData, setFormData] = useState({
-    size: '',
     quantity: 1,
-    reason: '',
-    inventory_type: 'pair' as 'pair' | 'left_only' | 'right_only'
+    inventory_type: 'pair' as 'pair' | 'left_only' | 'right_only',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const getInventoryTypeLabel = (type: string) => {
     switch (type) {
-      case 'pair': return 'Par completo';
-      case 'left_only': return 'Pie izquierdo';
-      case 'right_only': return 'Pie derecho';
-      default: return type;
+      case 'pair':
+        return 'Par completo';
+      case 'left_only':
+        return 'Pie izquierdo';
+      case 'right_only':
+        return 'Pie derecho';
+      default:
+        return type;
     }
   };
 
@@ -75,7 +78,7 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
             model: product.model,
             unit_price: product.unit_price,
             image_url: product.image_url,
-            location_ids: [location.location_id]
+            location_ids: [location.location_id],
           });
         }
       }
@@ -87,29 +90,50 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
   const filteredProducts = useMemo(() => {
     if (!searchTerm.trim()) return uniqueProducts;
     const term = searchTerm.toLowerCase();
-    return uniqueProducts.filter(p =>
-      p.brand.toLowerCase().includes(term) ||
-      p.model.toLowerCase().includes(term) ||
-      p.reference_code.toLowerCase().includes(term)
+    return uniqueProducts.filter(
+      (p) =>
+        p.brand.toLowerCase().includes(term) ||
+        p.model.toLowerCase().includes(term) ||
+        p.reference_code.toLowerCase().includes(term)
     );
   }, [uniqueProducts, searchTerm]);
 
   // Locations where the selected product does NOT exist
   const availableLocations = useMemo(() => {
     if (!selectedProduct) return [];
-    return allLocations.filter(l => !selectedProduct.location_ids.includes(l.id));
+    return allLocations.filter((l) => !selectedProduct.location_ids.includes(l.id));
   }, [selectedProduct, allLocations]);
 
   // Detect sibling location for selected location
   const siblingInfo = useMemo(() => {
     if (!selectedLocationId) return null;
-    const currentLoc = allInventory.find(loc => loc.location_id === selectedLocationId);
+    const currentLoc = allInventory.find((loc) => loc.location_id === selectedLocationId);
     if (!currentLoc?.sibling_pair_id) return null;
     const sibling = allInventory.find(
-      loc => loc.sibling_pair_id === currentLoc.sibling_pair_id && loc.location_id !== selectedLocationId
+      (loc) => loc.sibling_pair_id === currentLoc.sibling_pair_id && loc.location_id !== selectedLocationId
     );
     return sibling ? { sibling_location_name: sibling.location_name } : null;
   }, [selectedLocationId, allInventory]);
+
+  const addSize = () => {
+    const trimmed = sizeInput.trim();
+    if (trimmed && !selectedSizes.includes(trimmed)) {
+      setSelectedSizes((prev) => [...prev, trimmed]);
+      setSizeInput('');
+      if (errors.sizes) setErrors((prev) => ({ ...prev, sizes: '' }));
+    }
+  };
+
+  const removeSize = (size: string) => {
+    setSelectedSizes((prev) => prev.filter((s) => s !== size));
+  };
+
+  const handleSizeKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addSize();
+    }
+  };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -120,16 +144,11 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
     if (!selectedLocationId) {
       newErrors.location = 'Selecciona una ubicacion';
     }
-    if (!formData.size.trim()) {
-      newErrors.size = 'La talla es requerida';
+    if (selectedSizes.length === 0) {
+      newErrors.sizes = 'Agrega al menos una talla';
     }
     if (formData.quantity <= 0) {
       newErrors.quantity = 'La cantidad debe ser mayor a 0';
-    }
-    if (!formData.reason.trim()) {
-      newErrors.reason = 'El motivo es requerido';
-    } else if (formData.reason.trim().length < 5) {
-      newErrors.reason = 'El motivo debe tener al menos 5 caracteres';
     }
 
     setErrors(newErrors);
@@ -145,11 +164,10 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
       await onSubmit({
         location_id: selectedLocationId,
         product_reference: selectedProduct.reference_code,
-        size: formData.size.trim(),
+        sizes: selectedSizes,
         adjustment_type: 'set_quantity',
         quantity: formData.quantity,
-        reason: formData.reason.trim(),
-        inventory_type: formData.inventory_type
+        inventory_type: formData.inventory_type,
       });
     } catch (error) {
       console.error('Error assigning product:', error);
@@ -165,13 +183,13 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
   };
 
   const handleInputChange = (field: string, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
-  const selectedLocationName = allLocations.find(l => l.id === selectedLocationId)?.name || '';
+  const selectedLocationName = allLocations.find((l) => l.id === selectedLocationId)?.name || '';
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -184,10 +202,7 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
             <MapPin className="h-5 w-5 mr-2" />
             Asignar Producto a Ubicacion
           </h3>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
-          >
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -203,9 +218,7 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
 
           {/* Search product */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              Buscar Producto
-            </label>
+            <label className="block text-sm font-medium text-foreground mb-1">Buscar Producto</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
@@ -221,19 +234,18 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
           {/* Product list */}
           <div className="max-h-48 overflow-y-auto border border-border rounded-md">
             {filteredProducts.length === 0 ? (
-              <div className="p-4 text-center text-muted-foreground text-sm">
-                No se encontraron productos
-              </div>
+              <div className="p-4 text-center text-muted-foreground text-sm">No se encontraron productos</div>
             ) : (
-              filteredProducts.map(product => (
+              filteredProducts.map((product) => (
                 <button
                   key={product.reference_code}
                   type="button"
                   onClick={() => handleSelectProduct(product)}
-                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/50 transition-colors border-b border-border last:border-b-0 ${selectedProduct?.reference_code === product.reference_code
+                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/50 transition-colors border-b border-border last:border-b-0 ${
+                    selectedProduct?.reference_code === product.reference_code
                       ? 'bg-primary/10 border-l-2 border-l-primary'
                       : ''
-                    }`}
+                  }`}
                 >
                   {product.image_url ? (
                     <img
@@ -266,7 +278,9 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Producto:</span>
-                <span className="text-sm font-medium text-foreground">{selectedProduct.brand} {selectedProduct.model}</span>
+                <span className="text-sm font-medium text-foreground">
+                  {selectedProduct.brand} {selectedProduct.model}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Referencia:</span>
@@ -274,7 +288,9 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Precio:</span>
-                <span className="text-sm text-foreground">{formatCurrency(parseFloat(selectedProduct.unit_price))}</span>
+                <span className="text-sm text-foreground">
+                  {formatCurrency(parseFloat(selectedProduct.unit_price))}
+                </span>
               </div>
             </div>
           )}
@@ -288,9 +304,7 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
               {availableLocations.length === 0 ? (
                 <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-start space-x-2">
                   <AlertCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-primary">
-                    Este producto ya existe en todas las ubicaciones disponibles.
-                  </p>
+                  <p className="text-sm text-primary">Este producto ya existe en todas las ubicaciones disponibles.</p>
                 </div>
               ) : (
                 <>
@@ -298,13 +312,15 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
                     value={selectedLocationId || ''}
                     onChange={(e) => {
                       setSelectedLocationId(Number(e.target.value) || null);
-                      if (errors.location) setErrors(prev => ({ ...prev, location: '' }));
+                      if (errors.location) setErrors((prev) => ({ ...prev, location: '' }));
                     }}
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground"
                   >
                     <option value="">Seleccionar ubicacion...</option>
-                    {availableLocations.map(loc => (
-                      <option key={loc.id} value={loc.id}>{loc.name}</option>
+                    {availableLocations.map((loc) => (
+                      <option key={loc.id} value={loc.id}>
+                        {loc.name}
+                      </option>
                     ))}
                   </select>
                   {errors.location && <p className="mt-1 text-sm text-destructive">{errors.location}</p>}
@@ -316,17 +332,47 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
           {/* Size, inventory type, quantity, reason — only when product and location selected */}
           {selectedProduct && selectedLocationId && (
             <>
-              {/* Size */}
+              {/* Sizes */}
               <div>
-                <Input
-                  label="Talla"
-                  type="text"
-                  value={formData.size}
-                  onChange={(e) => handleInputChange('size', e.target.value)}
-                  error={errors.size}
-                  placeholder="Ej: 42, 38.5, 10 US"
-                  required
-                />
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Tallas <span className="text-destructive">*</span>
+                </label>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={sizeInput}
+                    onChange={(e) => setSizeInput(e.target.value)}
+                    onKeyDown={handleSizeKeyDown}
+                    placeholder="Ej: 42, 38.5, 10 US"
+                    className="flex-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground"
+                  />
+                  <Button type="button" variant="outline" onClick={addSize} disabled={!sizeInput.trim()}>
+                    Agregar
+                  </Button>
+                </div>
+                {selectedSizes.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedSizes.map((size) => (
+                      <span
+                        key={size}
+                        className="inline-flex items-center bg-primary/10 text-primary text-sm px-2.5 py-1 rounded-full"
+                      >
+                        {size}
+                        <button
+                          type="button"
+                          onClick={() => removeSize(size)}
+                          className="ml-1.5 text-primary/60 hover:text-primary"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {errors.sizes && <p className="mt-1 text-sm text-destructive">{errors.sizes}</p>}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Escribe una talla y presiona Enter o Agregar. Puedes agregar varias.
+                </p>
               </div>
 
               {/* Inventory type */}
@@ -359,28 +405,13 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
                 />
               </div>
 
-              {/* Reason */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Motivo <span className="text-destructive">*</span>
-                </label>
-                <textarea
-                  value={formData.reason}
-                  onChange={(e) => handleInputChange('reason', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground min-h-[80px] ${errors.reason ? 'border-destructive' : 'border-border'
-                    }`}
-                  placeholder="Ej: Producto trasladado desde bodega, Asignacion inicial de inventario, etc."
-                  required
-                />
-                {errors.reason && <p className="mt-1 text-sm text-destructive">{errors.reason}</p>}
-                <p className="mt-1 text-xs text-muted-foreground">Minimo 5 caracteres</p>
-              </div>
-
               {/* Summary info box */}
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-start space-x-2">
                 <AlertCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-primary">
-                  Se creara el producto "{selectedProduct.reference_code}" con talla "{formData.size || '...'}" ({formData.quantity} unidad(es), {getInventoryTypeLabel(formData.inventory_type)}) en {selectedLocationName}.
+                  Se creara el producto "{selectedProduct.reference_code}" con{' '}
+                  {selectedSizes.length > 0 ? `talla(s) "${selectedSizes.join(', ')}"` : '...'} ({formData.quantity}{' '}
+                  unidad(es) c/u, {getInventoryTypeLabel(formData.inventory_type)}) en {selectedLocationName}.
                 </p>
               </div>
 
@@ -389,7 +420,9 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex items-start space-x-2">
                   <Link className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-blue-500">
-                    Esta asignacion tambien se aplicara como <strong>{formData.inventory_type === 'left_only' ? 'Pie derecho' : 'Pie izquierdo'}</strong> en <strong>{siblingInfo.sibling_location_name}</strong>.
+                    Esta asignacion tambien se aplicara como{' '}
+                    <strong>{formData.inventory_type === 'left_only' ? 'Pie derecho' : 'Pie izquierdo'}</strong> en{' '}
+                    <strong>{siblingInfo.sibling_location_name}</strong>.
                   </p>
                 </div>
               )}
@@ -398,11 +431,7 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
 
           {/* Buttons */}
           <div className="flex justify-end space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-            >
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
             <Button
@@ -411,9 +440,8 @@ export const AssignProductToLocationModal: React.FC<AssignProductToLocationModal
                 isSubmitting ||
                 !selectedProduct ||
                 !selectedLocationId ||
-                !formData.size.trim() ||
-                formData.quantity <= 0 ||
-                formData.reason.length < 5
+                selectedSizes.length === 0 ||
+                formData.quantity <= 0
               }
               isLoading={isSubmitting}
             >

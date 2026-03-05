@@ -12,7 +12,7 @@ import {
   RefreshCw,
   Filter,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
@@ -100,54 +100,56 @@ export const RunnerDashboard: React.FC = () => {
   // Estados de filtros
   const [purposeFilter, setPurposeFilter] = useState<'all' | 'cliente' | 'restock'>('all');
 
-
   // HOOKS
-  const { } = useAuth();
+  const _auth = useAuth();
   const { notifyTransportAvailable, addNotification } = useTransferNotifications();
 
   // Callback para manejar actualizaciones de polling
-  const handlePollingUpdate = useCallback((data: any) => {
-    // 1. LOG DE DEPURACIÓN (Crucial para ver qué llega exactamente)
-    console.log("📡 Polling Data:", data);
+  const handlePollingUpdate = useCallback(
+    (data: any) => {
+      // 1. LOG DE DEPURACIÓN (Crucial para ver qué llega exactamente)
+      console.log('📡 Polling Data:', data);
 
-    // 2. Normalización de la data: intentamos buscar los transportes en varias rutas posibles
-    const newAvailable = data?.available?.transports || data?.available || [];
+      // 2. Normalización de la data: intentamos buscar los transportes en varias rutas posibles
+      const newAvailable = data?.available?.transports || data?.available || [];
 
-    if (!Array.isArray(newAvailable)) {
-      console.error("❌ La data recibida no es un arreglo:", newAvailable);
-      return;
-    }
-
-    // 3. Actualización con comparación de IDs
-    setAvailableRequests(prevAvailable => {
-      // Si la nueva data está vacía pero antes teníamos algo, 
-      // verificamos si realmente queremos borrarlo o si es un error de la API
-      if (newAvailable.length === 0 && prevAvailable.length > 0) {
-        console.warn("⚠️ El polling dice que no hay nada, pero el estado tenía datos.");
+      if (!Array.isArray(newAvailable)) {
+        console.error('❌ La data recibida no es un arreglo:', newAvailable);
+        return;
       }
 
-      const reallyNewOnes = newAvailable.filter(
-        (newItem: AvailableRequest) => !prevAvailable.find(oldItem => oldItem.id === newItem.id)
-      );
+      // 3. Actualización con comparación de IDs
+      setAvailableRequests((prevAvailable) => {
+        // Si la nueva data está vacía pero antes teníamos algo,
+        // verificamos si realmente queremos borrarlo o si es un error de la API
+        if (newAvailable.length === 0 && prevAvailable.length > 0) {
+          console.warn('⚠️ El polling dice que no hay nada, pero el estado tenía datos.');
+        }
 
-      if (reallyNewOnes.length > 0) {
-        reallyNewOnes.forEach((transport: AvailableRequest) => {
-          notifyTransportAvailable({
-            product: `${transport.brand} ${transport.model}`,
-            distance: transport.transport_info?.pickup_location?.name || 'Ubicación cercana',
-            purpose: transport.purpose
+        const reallyNewOnes = newAvailable.filter(
+          (newItem: AvailableRequest) => !prevAvailable.find((oldItem) => oldItem.id === newItem.id)
+        );
+
+        if (reallyNewOnes.length > 0) {
+          reallyNewOnes.forEach((transport: AvailableRequest) => {
+            notifyTransportAvailable({
+              product: `${transport.brand} ${transport.model}`,
+              distance: transport.transport_info?.pickup_location?.name || 'Ubicación cercana',
+              purpose: transport.purpose,
+            });
           });
-        });
-      }
-      return newAvailable;
-    });
+        }
+        return newAvailable;
+      });
 
-    // 4. Actualizar asignados (con validación)
-    const myTransports = data?.my_transports?.assigned_transports || data?.assigned_transports;
-    if (myTransports) {
-      setAssignedTransports(myTransports);
-    }
-  }, [notifyTransportAvailable]);
+      // 4. Actualizar asignados (con validación)
+      const myTransports = data?.my_transports?.assigned_transports || data?.assigned_transports;
+      if (myTransports) {
+        setAssignedTransports(myTransports);
+      }
+    },
+    [notifyTransportAvailable]
+  );
   // POLLING para corredor
   const { error: pollingError, refetch } = useTransferPolling('corredor', {
     enabled: true,
@@ -156,7 +158,7 @@ export const RunnerDashboard: React.FC = () => {
     onError: (error) => {
       console.error('Error en polling de corredor:', error);
       setError('Error de conexión con el servidor');
-    }
+    },
   });
 
   // Cargar datos inicial
@@ -172,7 +174,7 @@ export const RunnerDashboard: React.FC = () => {
       const [availableResponse, assignedResponse, historyResponse] = await Promise.all([
         courierAPI.getAvailableRequests(),
         courierAPI.getMyAssignedTransports(), // my-transports - entregas asignadas/pendientes
-        courierAPI.getMyDeliveries() // my-deliveries - historial de entregas completadas del día
+        courierAPI.getMyDeliveries(), // my-deliveries - historial de entregas completadas del día
       ]);
 
       setAvailableRequests(availableResponse.available_requests || []);
@@ -201,14 +203,12 @@ export const RunnerDashboard: React.FC = () => {
         quantity: item.quantity || 1,
         delivered_at: item.delivered_at,
         delivery_successful: item.delivery_successful || item.status === 'completed',
-        notes: item.notes || null
+        notes: item.notes || null,
       }));
       setDeliveryHistory(deliveries);
-
     } catch (err) {
       console.error('Error loading courier data:', err);
       setError('Error conectando con el servidor');
-
     } finally {
       setLoading(false);
     }
@@ -220,11 +220,12 @@ export const RunnerDashboard: React.FC = () => {
     setActionLoading(requestId);
 
     try {
-      const request = availableRequests.find(r => r.id === requestId);
+      const request = availableRequests.find((r) => r.id === requestId);
       const estimatedTime = request?.purpose === 'cliente' ? 15 : 20;
 
       // Detectar si es una devolución
-      const isReturn = request?.cargo_description?.includes('devolución') ||
+      const isReturn =
+        request?.cargo_description?.includes('devolución') ||
         request?.cargo_description?.includes('return') ||
         request?.purpose === 'return';
 
@@ -251,19 +252,14 @@ export const RunnerDashboard: React.FC = () => {
         `${isReturn ? 'Devolución' : 'Transferencia'} #${requestId} aceptada. ${response.message}`,
         {
           label: 'Ver Mis Entregas',
-          onClick: () => setActiveTab('assigned')
+          onClick: () => setActiveTab('assigned'),
         }
       );
 
       await refetch();
-
     } catch (err) {
       console.error('❌ Error al aceptar:', err);
-      addNotification(
-        'error',
-        '❌ Error al Aceptar',
-        err instanceof Error ? err.message : 'Error desconocido'
-      );
+      addNotification('error', '❌ Error al Aceptar', err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setActionLoading(null);
     }
@@ -275,9 +271,8 @@ export const RunnerDashboard: React.FC = () => {
 
     try {
       // Detectar si es una devolución
-      const transport = assignedTransports.find(t => t.id === requestId);
-      const isReturn = transport?.courier_notes?.includes('return') ||
-        transport?.purpose === 'return';
+      const transport = assignedTransports.find((t) => t.id === requestId);
+      const isReturn = transport?.courier_notes?.includes('return') || transport?.purpose === 'return';
 
       let response;
       if (isReturn) {
@@ -299,14 +294,9 @@ export const RunnerDashboard: React.FC = () => {
       );
 
       await refetch();
-
     } catch (err) {
       console.error('❌ Error en recolección:', err);
-      addNotification(
-        'error',
-        '❌ Error en Recolección',
-        err instanceof Error ? err.message : 'Error desconocido'
-      );
+      addNotification('error', '❌ Error en Recolección', err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setActionLoading(null);
     }
@@ -318,9 +308,8 @@ export const RunnerDashboard: React.FC = () => {
 
     try {
       // Detectar si es una devolución
-      const transport = assignedTransports.find(t => t.id === requestId);
-      const isReturn = transport?.courier_notes?.includes('return') ||
-        transport?.purpose === 'return';
+      const transport = assignedTransports.find((t) => t.id === requestId);
+      const isReturn = transport?.courier_notes?.includes('return') || transport?.purpose === 'return';
 
       let response;
       if (isReturn) {
@@ -343,19 +332,14 @@ export const RunnerDashboard: React.FC = () => {
         `${isReturn ? 'Devolución' : 'Transferencia'} #${requestId} entregada exitosamente. ${response.message}`,
         {
           label: 'Ver Historial',
-          onClick: () => setActiveTab('history')
+          onClick: () => setActiveTab('history'),
         }
       );
 
       await refetch();
-
     } catch (err) {
       console.error('❌ Error en entrega:', err);
-      addNotification(
-        'error',
-        '❌ Error en Entrega',
-        err instanceof Error ? err.message : 'Error desconocido'
-      );
+      addNotification('error', '❌ Error en Entrega', err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setActionLoading(null);
     }
@@ -369,34 +353,36 @@ export const RunnerDashboard: React.FC = () => {
       case 'courier_assigned':
         return {
           action: 'confirm_pickup',
-          description: isReturn ? '🔄 Devolución - Recibir de Vendedor' : 'Asignado - Confirmar Recolección'
+          description: isReturn ? '🔄 Devolución - Recibir de Vendedor' : 'Asignado - Confirmar Recolección',
         };
       case 'in_transit':
         return {
           action: 'confirm_delivery',
-          description: isReturn ? '🔄 Devolución - Entregar a Bodeguero' : 'En Tránsito - Confirmar Entrega'
+          description: isReturn ? '🔄 Devolución - Entregar a Bodeguero' : 'En Tránsito - Confirmar Entrega',
         };
       case 'delivered':
         return {
           action: 'delivered',
-          description: isReturn ? 'Devolución Entregada - Esperando confirmación del bodeguero' : 'Entregado - Esperando confirmación del vendedor'
+          description: isReturn
+            ? 'Devolución Entregada - Esperando confirmación del bodeguero'
+            : 'Entregado - Esperando confirmación del vendedor',
         };
       default:
         return {
           action: 'confirm_pickup',
-          description: isReturn ? '🔄 Devolución - Recibir de Vendedor' : 'Asignado - Confirmar Recolección'
+          description: isReturn ? '🔄 Devolución - Recibir de Vendedor' : 'Asignado - Confirmar Recolección',
         };
     }
   };
 
   // Funciones de filtrado
-  const filteredAvailableRequests = availableRequests.filter(request => {
+  const filteredAvailableRequests = availableRequests.filter((request) => {
     return purposeFilter === 'all' || request.purpose === purposeFilter;
   });
 
   // Separar transportes activos de los completados
   // Filtrar transportes que no estén en status "delivered"
-  const activeTransports = assignedTransports.filter(transport => transport.status !== 'delivered');
+  const activeTransports = assignedTransports.filter((transport) => transport.status !== 'delivered');
   const completedTransports: AssignedTransport[] = []; // No hay transportes completados en el sistema actual
 
   // Funciones para obtener acciones según estado
@@ -465,18 +451,14 @@ export const RunnerDashboard: React.FC = () => {
     }
 
     // Para todos los otros status, no mostrar botón
-    return (
-      <div className="w-full text-center text-muted-foreground py-2 text-sm">
-        Esperando siguiente acción...
-      </div>
-    );
+    return <div className="w-full text-center text-muted-foreground py-2 text-sm">Esperando siguiente acción...</div>;
   };
 
   const formatDistance = (pickup: string, delivery: string) => {
     const distances: Record<string, number> = {
       'Bodega Norte-Local Principal': 3.2,
       'Bodega Sur-Local Mall': 4.5,
-      'Bodega Central-Local Centro': 2.1
+      'Bodega Central-Local Centro': 2.1,
     };
     return distances[`${pickup}-${delivery}`] || 3.5;
   };
@@ -491,7 +473,7 @@ export const RunnerDashboard: React.FC = () => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',
-      minimumFractionDigits: 0
+      minimumFractionDigits: 0,
     }).format(amount);
   };
 
@@ -529,8 +511,7 @@ export const RunnerDashboard: React.FC = () => {
               >
                 <Package className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                 <span className="hidden sm:inline">Disponibles</span>
-                <span className="sm:hidden">Disp.</span>
-                ({filteredAvailableRequests.length})
+                <span className="sm:hidden">Disp.</span>({filteredAvailableRequests.length})
               </Button>
               <Button
                 variant={activeTab === 'assigned' ? 'primary' : 'outline'}
@@ -540,8 +521,7 @@ export const RunnerDashboard: React.FC = () => {
               >
                 <Truck className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                 <span className="hidden sm:inline">Mis Entregas</span>
-                <span className="sm:hidden">Entregas</span>
-                ({activeTransports.length})
+                <span className="sm:hidden">Entregas</span>({activeTransports.length})
               </Button>
               <Button
                 variant={activeTab === 'history' ? 'primary' : 'outline'}
@@ -551,8 +531,7 @@ export const RunnerDashboard: React.FC = () => {
               >
                 <CheckCircle className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                 <span className="hidden sm:inline">Historial</span>
-                <span className="sm:hidden">Hist.</span>
-                ({deliveryHistory.length})
+                <span className="sm:hidden">Hist.</span>({deliveryHistory.length})
               </Button>
               <Button
                 variant={activeTab === 'stats' ? 'primary' : 'outline'}
@@ -651,8 +630,7 @@ export const RunnerDashboard: React.FC = () => {
                   <p className="text-muted-foreground text-sm">
                     {purposeFilter !== 'all'
                       ? 'No hay entregas que coincidan con el filtro'
-                      : 'Revisa en unos minutos para nuevas solicitudes.'
-                    }
+                      : 'Revisa en unos minutos para nuevas solicitudes.'}
                   </p>
                 </div>
               ) : (
@@ -667,18 +645,23 @@ export const RunnerDashboard: React.FC = () => {
                       const earnings = calculateEarnings(distance, request.purpose === 'cliente');
 
                       return (
-                        <div key={request.id} className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300">
-
+                        <div
+                          key={request.id}
+                          className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300"
+                        >
                           {/* MOBILE COMPACT VIEW */}
                           <div className="md:hidden">
                             <div className="p-4">
                               {/* Header con etiquetas de prioridad */}
                               <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center space-x-2">
-                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${request.purpose === 'cliente'
-                                    ? 'bg-error/20 text-error border border-error/30'
-                                    : 'bg-primary/20 text-primary border border-primary/30'
-                                    }`}>
+                                  <span
+                                    className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      request.purpose === 'cliente'
+                                        ? 'bg-error/20 text-error border border-error/30'
+                                        : 'bg-primary/20 text-primary border border-primary/30'
+                                    }`}
+                                  >
                                     {request.urgency}
                                   </span>
                                 </div>
@@ -745,9 +728,13 @@ export const RunnerDashboard: React.FC = () => {
                                 className="w-full text-sm mb-3"
                               >
                                 {expandedCard === request.id ? (
-                                  <>Menos detalles <ChevronUp className="h-4 w-4 ml-2" /></>
+                                  <>
+                                    Menos detalles <ChevronUp className="h-4 w-4 ml-2" />
+                                  </>
                                 ) : (
-                                  <>Ver detalles <ChevronDown className="h-4 w-4 ml-2" /></>
+                                  <>
+                                    Ver detalles <ChevronDown className="h-4 w-4 ml-2" />
+                                  </>
                                 )}
                               </Button>
 
@@ -759,22 +746,31 @@ export const RunnerDashboard: React.FC = () => {
                                         <MapPin className="h-4 w-4 text-primary mr-1" />
                                         <span className="font-medium text-primary text-sm">Recoger</span>
                                       </div>
-                                      <p className="text-sm font-medium text-card-foreground">{request.transport_info.pickup_location.name}</p>
-                                      <p className="text-xs text-muted-foreground">{request.transport_info.pickup_location.address}</p>
+                                      <p className="text-sm font-medium text-card-foreground">
+                                        {request.transport_info.pickup_location.name}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {request.transport_info.pickup_location.address}
+                                      </p>
                                     </div>
                                     <div className="p-3 bg-success/10 rounded-lg border border-success/20">
                                       <div className="flex items-center mb-1">
                                         <Navigation className="h-4 w-4 text-success mr-1" />
                                         <span className="font-medium text-success text-sm">Entregar</span>
                                       </div>
-                                      <p className="text-sm font-medium text-card-foreground">{request.transport_info.delivery_location.name}</p>
-                                      <p className="text-xs text-muted-foreground">{request.transport_info.delivery_location.address}</p>
+                                      <p className="text-sm font-medium text-card-foreground">
+                                        {request.transport_info.delivery_location.name}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {request.transport_info.delivery_location.address}
+                                      </p>
                                     </div>
                                   </div>
 
                                   <div className="p-2 bg-muted/20 rounded-lg border border-border">
                                     <p className="text-xs text-card-foreground">
-                                      <strong>📋 Siguiente:</strong> {request.action_required} - {request.status_description}
+                                      <strong>📋 Siguiente:</strong> {request.action_required} -{' '}
+                                      {request.status_description}
                                     </p>
                                   </div>
                                 </div>
@@ -801,10 +797,13 @@ export const RunnerDashboard: React.FC = () => {
                             {/* Header con etiquetas */}
                             <div className="flex items-center justify-between mb-6">
                               <div className="flex items-center space-x-3">
-                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${request.purpose === 'cliente'
-                                  ? 'bg-error/20 text-error border border-error/30'
-                                  : 'bg-primary/20 text-primary border border-primary/30'
-                                  }`}>
+                                <span
+                                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                    request.purpose === 'cliente'
+                                      ? 'bg-error/20 text-error border border-error/30'
+                                      : 'bg-primary/20 text-primary border border-primary/30'
+                                  }`}
+                                >
                                   {request.urgency}
                                 </span>
                                 <span className="text-sm text-muted-foreground">
@@ -815,7 +814,6 @@ export const RunnerDashboard: React.FC = () => {
 
                             {/* Layout horizontal: Imagen vertical a la izquierda, información a la derecha */}
                             <div className="flex space-x-6">
-
                               {/* Imagen del producto vertical */}
                               <div className="flex-shrink-0">
                                 <div className="w-48 h-64 rounded-xl overflow-hidden border border-border shadow-sm bg-muted/20">
@@ -837,9 +835,7 @@ export const RunnerDashboard: React.FC = () => {
 
                                 {/* Ganancia estimada debajo de la imagen */}
                                 <div className="mt-3 bg-success/10 border border-success/20 rounded-lg p-3 text-center">
-                                  <p className="text-lg font-bold text-success">
-                                    {formatPrice(earnings)}
-                                  </p>
+                                  <p className="text-lg font-bold text-success">{formatPrice(earnings)}</p>
                                   <p className="text-xs text-success/80">Ganancia estimada</p>
                                 </div>
                               </div>
@@ -860,8 +856,12 @@ export const RunnerDashboard: React.FC = () => {
                                           <MapPin className="h-5 w-5 text-primary" />
                                           <h4 className="font-semibold text-primary text-base">Recoger en</h4>
                                         </div>
-                                        <p className="font-semibold text-card-foreground text-lg mb-1">{request.transport_info.pickup_location.name}</p>
-                                        <p className="text-sm text-muted-foreground mb-2">{request.transport_info.pickup_location.address}</p>
+                                        <p className="font-semibold text-card-foreground text-lg mb-1">
+                                          {request.transport_info.pickup_location.name}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground mb-2">
+                                          {request.transport_info.pickup_location.address}
+                                        </p>
                                         {request.transport_info.pickup_location.contact && (
                                           <p className="text-xs text-primary">
                                             📞 {request.transport_info.pickup_location.contact}
@@ -885,15 +885,20 @@ export const RunnerDashboard: React.FC = () => {
                                           <Navigation className="h-5 w-5 text-success" />
                                           <h4 className="font-semibold text-success text-base">Entregar en</h4>
                                         </div>
-                                        <p className="font-semibold text-card-foreground text-lg mb-1">{request.transport_info.delivery_location.name}</p>
-                                        <p className="text-sm text-muted-foreground">{request.transport_info.delivery_location.address}</p>
+                                        <p className="font-semibold text-card-foreground text-lg mb-1">
+                                          {request.transport_info.delivery_location.name}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                          {request.transport_info.delivery_location.address}
+                                        </p>
                                       </div>
                                     </div>
                                   </div>
 
                                   <div className="p-4 bg-muted/20 rounded-lg border border-border mb-6">
                                     <p className="text-sm text-card-foreground">
-                                      <strong>📋 Siguiente paso:</strong> {request.action_required} - {request.status_description}
+                                      <strong>📋 Siguiente paso:</strong> {request.action_required} -{' '}
+                                      {request.status_description}
                                     </p>
                                   </div>
 
@@ -956,26 +961,43 @@ export const RunnerDashboard: React.FC = () => {
                   {activeTransports.map((transport) => {
                     const { description } = getActionRequired(transport);
                     return (
-                      <div key={transport.id} className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300">
-
+                      <div
+                        key={transport.id}
+                        className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300"
+                      >
                         {/* MOBILE VIEW */}
                         <div className="md:hidden">
                           <div className="p-4">
                             {/* Header con estado */}
                             <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center space-x-2">
-                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${transport.status === 'courier_assigned' ? 'bg-warning/20 text-warning border border-warning/30' :
-                                  transport.status === 'in_transit' ? 'bg-primary/20 text-primary border border-primary/30' :
-                                    transport.status === 'delivered' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
-                                      'bg-success/20 text-success border border-success/30'
-                                  }`}>
+                                <span
+                                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                    transport.status === 'courier_assigned'
+                                      ? 'bg-warning/20 text-warning border border-warning/30'
+                                      : transport.status === 'in_transit'
+                                        ? 'bg-primary/20 text-primary border border-primary/30'
+                                        : transport.status === 'delivered'
+                                          ? 'bg-orange-100 text-orange-800 border border-orange-200'
+                                          : 'bg-success/20 text-success border border-success/30'
+                                  }`}
+                                >
                                   {description}
                                 </span>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${transport.purpose === 'cliente' ? 'bg-blue-100 text-blue-800' :
-                                  transport.purpose === 'return' ? 'bg-orange-100 text-orange-800' : 'bg-purple-100 text-purple-800'
-                                  }`}>
-                                  {transport.purpose === 'cliente' ? 'Cliente' :
-                                    transport.purpose === 'return' ? '🔄 Devolución' : 'Restock'}
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    transport.purpose === 'cliente'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : transport.purpose === 'return'
+                                        ? 'bg-orange-100 text-orange-800'
+                                        : 'bg-purple-100 text-purple-800'
+                                  }`}
+                                >
+                                  {transport.purpose === 'cliente'
+                                    ? 'Cliente'
+                                    : transport.purpose === 'return'
+                                      ? '🔄 Devolución'
+                                      : 'Restock'}
                                 </span>
                               </div>
                             </div>
@@ -1004,12 +1026,8 @@ export const RunnerDashboard: React.FC = () => {
                                 {transport.brand} {transport.model}
                               </h3>
                               <div className="flex items-center space-x-3 mb-3">
-                                <span className="text-sm font-medium text-primary">
-                                  Talla {transport.size}
-                                </span>
-                                <span className="text-sm text-muted-foreground">
-                                  Cantidad: {transport.quantity}
-                                </span>
+                                <span className="text-sm font-medium text-primary">Talla {transport.size}</span>
+                                <span className="text-sm text-muted-foreground">Cantidad: {transport.quantity}</span>
                                 <span className="text-xs text-muted-foreground">
                                   Ref: {transport.sneaker_reference_code}
                                 </span>
@@ -1055,25 +1073,39 @@ export const RunnerDashboard: React.FC = () => {
                           {/* Header con estado */}
                           <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center space-x-3">
-                              <span className={`px-4 py-2 rounded-full text-sm font-medium ${transport.status === 'courier_assigned' ? 'bg-warning/20 text-warning border border-warning/30' :
-                                transport.status === 'in_transit' ? 'bg-primary/20 text-primary border border-primary/30' :
-                                  transport.status === 'delivered' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
-                                    'bg-success/20 text-success border border-success/30'
-                                }`}>
+                              <span
+                                className={`px-4 py-2 rounded-full text-sm font-medium ${
+                                  transport.status === 'courier_assigned'
+                                    ? 'bg-warning/20 text-warning border border-warning/30'
+                                    : transport.status === 'in_transit'
+                                      ? 'bg-primary/20 text-primary border border-primary/30'
+                                      : transport.status === 'delivered'
+                                        ? 'bg-orange-100 text-orange-800 border border-orange-200'
+                                        : 'bg-success/20 text-success border border-success/30'
+                                }`}
+                              >
                                 {description}
                               </span>
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${transport.purpose === 'cliente' ? 'bg-blue-100 text-blue-800' :
-                                transport.purpose === 'return' ? 'bg-orange-100 text-orange-800' : 'bg-purple-100 text-purple-800'
-                                }`}>
-                                {transport.purpose === 'cliente' ? 'Cliente' :
-                                  transport.purpose === 'return' ? '🔄 Devolución' : 'Restock'}
+                              <span
+                                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                  transport.purpose === 'cliente'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : transport.purpose === 'return'
+                                      ? 'bg-orange-100 text-orange-800'
+                                      : 'bg-purple-100 text-purple-800'
+                                }`}
+                              >
+                                {transport.purpose === 'cliente'
+                                  ? 'Cliente'
+                                  : transport.purpose === 'return'
+                                    ? '🔄 Devolución'
+                                    : 'Restock'}
                               </span>
                             </div>
                           </div>
 
                           {/* Contenido principal con imagen más grande */}
                           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
                             {/* Imagen del producto - más grande */}
                             <div className="lg:col-span-1">
                               <div className="w-full h-80 bg-gradient-to-br from-muted/20 to-muted/40 rounded-xl flex items-center justify-center shadow-inner p-6">
@@ -1101,9 +1133,7 @@ export const RunnerDashboard: React.FC = () => {
 
                                 <div className="grid grid-cols-4 gap-4 mb-6">
                                   <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/20">
-                                    <div className="text-xl font-bold text-primary">
-                                      {transport.size}
-                                    </div>
+                                    <div className="text-xl font-bold text-primary">{transport.size}</div>
                                     <div className="text-sm text-primary font-medium">Talla</div>
                                   </div>
                                   <div className="text-center p-4 bg-success/10 rounded-lg border border-success/20">
@@ -1112,15 +1142,24 @@ export const RunnerDashboard: React.FC = () => {
                                   </div>
                                   <div className="text-center p-4 bg-accent/10 rounded-lg border border-accent/20">
                                     <div className="text-xl font-bold text-accent">
-                                      {transport.purpose === 'cliente' ? '👤' : transport.purpose === 'return' ? '🔄' : '📦'}
+                                      {transport.purpose === 'cliente'
+                                        ? '👤'
+                                        : transport.purpose === 'return'
+                                          ? '🔄'
+                                          : '📦'}
                                     </div>
                                     <div className="text-sm text-accent font-medium">
-                                      {transport.purpose === 'cliente' ? 'Cliente' :
-                                        transport.purpose === 'return' ? 'Devolución' : 'Restock'}
+                                      {transport.purpose === 'cliente'
+                                        ? 'Cliente'
+                                        : transport.purpose === 'return'
+                                          ? 'Devolución'
+                                          : 'Restock'}
                                     </div>
                                   </div>
                                   <div className="text-center p-4 bg-warning/10 rounded-lg border border-warning/20">
-                                    <div className="text-lg font-bold text-warning">{transport.sneaker_reference_code}</div>
+                                    <div className="text-lg font-bold text-warning">
+                                      {transport.sneaker_reference_code}
+                                    </div>
                                     <div className="text-sm text-warning font-medium">Referencia</div>
                                   </div>
                                 </div>
@@ -1133,12 +1172,18 @@ export const RunnerDashboard: React.FC = () => {
                                     </div>
                                     <div>
                                       <div className="font-semibold text-card-foreground text-lg">
-                                        {transport.purpose === 'cliente' ? 'Entrega a Cliente' :
-                                          transport.purpose === 'return' ? '🔄 Devolución a Bodega' : 'Restock'}
+                                        {transport.purpose === 'cliente'
+                                          ? 'Entrega a Cliente'
+                                          : transport.purpose === 'return'
+                                            ? '🔄 Devolución a Bodega'
+                                            : 'Restock'}
                                       </div>
                                       <div className="text-sm text-muted-foreground">
-                                        {transport.purpose === 'cliente' ? 'Producto para cliente final' :
-                                          transport.purpose === 'return' ? 'Producto devuelto - retornar a inventario' : 'Producto para restock'}
+                                        {transport.purpose === 'cliente'
+                                          ? 'Producto para cliente final'
+                                          : transport.purpose === 'return'
+                                            ? 'Producto devuelto - retornar a inventario'
+                                            : 'Producto para restock'}
                                       </div>
                                     </div>
                                   </div>
@@ -1220,7 +1265,9 @@ export const RunnerDashboard: React.FC = () => {
                                     <div className="flex items-start space-x-2">
                                       <div className="text-green-600">📝</div>
                                       <div>
-                                        <div className="text-sm font-medium text-green-800 mb-1">Notas de Recolección</div>
+                                        <div className="text-sm font-medium text-green-800 mb-1">
+                                          Notas de Recolección
+                                        </div>
                                         <div className="text-sm text-green-700">{transport.pickup_notes}</div>
                                       </div>
                                     </div>
@@ -1233,9 +1280,12 @@ export const RunnerDashboard: React.FC = () => {
                                     <div className="flex items-start space-x-2">
                                       <div className="text-orange-600">⏳</div>
                                       <div>
-                                        <div className="text-sm font-medium text-orange-800 mb-1">Esperando Confirmación</div>
+                                        <div className="text-sm font-medium text-orange-800 mb-1">
+                                          Esperando Confirmación
+                                        </div>
                                         <div className="text-sm text-orange-700">
-                                          El producto fue entregado al vendedor. Estamos esperando que confirme la recepción para completar la transferencia.
+                                          El producto fue entregado al vendedor. Estamos esperando que confirme la
+                                          recepción para completar la transferencia.
                                         </div>
                                       </div>
                                     </div>
@@ -1244,12 +1294,16 @@ export const RunnerDashboard: React.FC = () => {
 
                                 {/* Timestamps */}
                                 <div className="p-3 bg-muted/20 rounded-lg border border-border mb-4">
-                                  <div className="text-sm font-medium text-card-foreground mb-2">Historial de Estados</div>
+                                  <div className="text-sm font-medium text-card-foreground mb-2">
+                                    Historial de Estados
+                                  </div>
                                   <div className="space-y-1 text-xs text-muted-foreground">
                                     {transport.courier_accepted_at && (
                                       <div className="flex items-center space-x-2">
                                         <div className="w-2 h-2 bg-primary rounded-full"></div>
-                                        <span>✅ Aceptado: {new Date(transport.courier_accepted_at).toLocaleString()}</span>
+                                        <span>
+                                          ✅ Aceptado: {new Date(transport.courier_accepted_at).toLocaleString()}
+                                        </span>
                                       </div>
                                     )}
                                     {transport.picked_up_at && (
@@ -1308,7 +1362,9 @@ export const RunnerDashboard: React.FC = () => {
                       <div className="md:hidden">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-sm truncate">{delivery.brand} {delivery.model}</h4>
+                            <h4 className="font-semibold text-sm truncate">
+                              {delivery.brand} {delivery.model}
+                            </h4>
                             <p className="text-xs text-gray-600">
                               Talla {delivery.size} • Cantidad: {delivery.quantity}
                             </p>
@@ -1319,8 +1375,11 @@ export const RunnerDashboard: React.FC = () => {
                           </div>
 
                           <div className="text-right ml-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${delivery.delivery_successful ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                              }`}>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                delivery.delivery_successful ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}
+                            >
                               {delivery.delivery_successful ? '✅' : '❌'}
                             </span>
                           </div>
@@ -1358,7 +1417,9 @@ export const RunnerDashboard: React.FC = () => {
                       <div className="hidden md:block">
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex-1">
-                            <h4 className="font-semibold text-lg">{delivery.brand} {delivery.model}</h4>
+                            <h4 className="font-semibold text-lg">
+                              {delivery.brand} {delivery.model}
+                            </h4>
                             <p className="text-sm text-gray-600">
                               Talla {delivery.size} • Cantidad: {delivery.quantity}
                               {delivery.sneaker_reference_code && ` • Ref: ${delivery.sneaker_reference_code}`}
@@ -1370,8 +1431,11 @@ export const RunnerDashboard: React.FC = () => {
                           </div>
 
                           <div className="text-right">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${delivery.delivery_successful ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                              }`}>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                delivery.delivery_successful ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}
+                            >
                               {delivery.delivery_successful ? '✅ Exitosa' : '❌ Fallida'}
                             </span>
                           </div>
@@ -1475,13 +1539,13 @@ export const RunnerDashboard: React.FC = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                         <div className="text-lg font-bold text-blue-600">
-                          {assignedTransports.filter(t => t.purpose === 'cliente').length}
+                          {assignedTransports.filter((t) => t.purpose === 'cliente').length}
                         </div>
                         <div className="text-xs text-blue-600 font-medium">Cliente</div>
                       </div>
                       <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
                         <div className="text-lg font-bold text-orange-600">
-                          {assignedTransports.filter(t => t.purpose === 'return').length}
+                          {assignedTransports.filter((t) => t.purpose === 'return').length}
                         </div>
                         <div className="text-xs text-orange-600 font-medium">Devolución</div>
                       </div>

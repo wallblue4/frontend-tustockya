@@ -14,7 +14,7 @@ import {
   BarChart3,
   Building,
   Calendar,
-  Settings
+  Settings,
 } from 'lucide-react';
 import { EmptyState } from '../../components/admin/ErrorState';
 import { CreateCostModal } from '../../components/admin/CreateCostModal';
@@ -25,7 +25,7 @@ import {
   updateCostConfiguration,
   deleteCostConfiguration,
   deactivateCostConfiguration,
-  createCostPayment
+  createCostPayment,
 } from '../../services/adminAPI';
 import { formatCurrency, formatDate, capitalize } from '../../utils/formatters';
 import { useAdmin } from '../../context/AdminContext';
@@ -43,7 +43,7 @@ export const CostsPage: React.FC = () => {
     category: '' as '' | 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros',
     location: '',
     dateFrom: '',
-    dateTo: ''
+    dateTo: '',
   });
 
   // Cost configurations list
@@ -62,7 +62,7 @@ export const CostsPage: React.FC = () => {
     amount: '',
     frequency: '' as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual',
     description: '',
-    is_active: true
+    is_active: true,
   });
 
   // Payment modal
@@ -75,7 +75,7 @@ export const CostsPage: React.FC = () => {
     payment_date: '',
     payment_method: 'efectivo' as 'efectivo' | 'transferencia' | 'tarjeta' | 'cheque',
     payment_reference: '',
-    notes: ''
+    notes: '',
   });
 
   const todayISO = new Date().toISOString().split('T')[0];
@@ -90,6 +90,7 @@ export const CostsPage: React.FC = () => {
     if (showCostsList) {
       loadCostConfigurations();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [costFilters.category, costFilters.location]);
 
   // ─── Handler: load operational dashboard ───────────────────────────
@@ -143,7 +144,7 @@ export const CostsPage: React.FC = () => {
         frequency: mapFrequencyToAPI(costData.frequency),
         description: costData.description,
         start_date: new Date().toISOString().split('T')[0],
-        end_date: costData.due_date || undefined
+        end_date: costData.due_date || undefined,
       };
 
       console.log('Enviando datos al API:', apiData);
@@ -205,7 +206,7 @@ export const CostsPage: React.FC = () => {
       amount: cost.amount?.toString() || '',
       frequency: cost.frequency || 'monthly',
       description: cost.description || '',
-      is_active: cost.is_active !== false
+      is_active: cost.is_active !== false,
     });
     setShowEditCostModal(true);
   };
@@ -261,7 +262,7 @@ export const CostsPage: React.FC = () => {
       payment_date: todayISO,
       payment_method: 'efectivo',
       payment_reference: '',
-      notes: ''
+      notes: '',
     });
     setShowPaymentModal(true);
   };
@@ -284,7 +285,7 @@ export const CostsPage: React.FC = () => {
         payment_date: paymentFormData.payment_date || todayISO,
         payment_method: paymentFormData.payment_method,
         payment_reference: paymentFormData.payment_reference || undefined,
-        notes: paymentFormData.notes || undefined
+        notes: paymentFormData.notes || undefined,
       };
 
       await createCostPayment(paymentData);
@@ -307,32 +308,37 @@ export const CostsPage: React.FC = () => {
   // ─── Helper: frequency label in Spanish ────────────────────────────
   const getFrequencyLabel = (frequency: string) => {
     const labels: Record<string, string> = {
-      'daily': 'Diario',
-      'weekly': 'Semanal',
-      'monthly': 'Mensual',
-      'quarterly': 'Trimestral',
-      'annual': 'Anual'
+      daily: 'Diario',
+      weekly: 'Semanal',
+      monthly: 'Mensual',
+      quarterly: 'Trimestral',
+      annual: 'Anual',
     };
     return labels[frequency] || frequency;
   };
 
   // ─── Helper: map cost type to API values ───────────────────────────
-  const mapCostTypeToAPI = (category: string): 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros' => {
-    const mapping: Record<string, 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros'> = {
+  const mapCostTypeToAPI = (
+    category: string
+  ): 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros' => {
+    const mapping: Record<
+      string,
+      'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros'
+    > = {
       // Costos Fijos
-      'Arriendo': 'arriendo',
+      Arriendo: 'arriendo',
       'Servicios Publicos': 'servicios',
-      'Internet': 'servicios',
-      'Seguros': 'otros',
-      'Nomina': 'nomina',
+      Internet: 'servicios',
+      Seguros: 'otros',
+      Nomina: 'nomina',
       'Otros Fijos': 'otros',
       // Costos Variables
-      'Mercancia': 'mercancia',
-      'Transporte': 'transporte',
-      'Publicidad': 'otros',
-      'Mantenimiento': 'otros',
-      'Suministros': 'otros',
-      'Otros Variables': 'otros'
+      Mercancia: 'mercancia',
+      Transporte: 'transporte',
+      Publicidad: 'otros',
+      Mantenimiento: 'otros',
+      Suministros: 'otros',
+      'Otros Variables': 'otros',
     };
     return mapping[category] || 'otros';
   };
@@ -340,11 +346,11 @@ export const CostsPage: React.FC = () => {
   // ─── Helper: map frequency to API values ───────────────────────────
   const mapFrequencyToAPI = (frequency: string): 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual' => {
     const mapping: Record<string, 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual'> = {
-      'diario': 'daily',
-      'semanal': 'weekly',
-      'mensual': 'monthly',
-      'trimestral': 'quarterly',
-      'anual': 'annual'
+      diario: 'daily',
+      semanal: 'weekly',
+      mensual: 'monthly',
+      trimestral: 'quarterly',
+      anual: 'annual',
     };
     return mapping[frequency] || 'monthly';
   };
@@ -385,7 +391,7 @@ export const CostsPage: React.FC = () => {
               value={costFilters.category}
               onChange={(e) => {
                 const category = e.target.value as typeof costFilters.category;
-                setCostFilters(prev => ({ ...prev, category }));
+                setCostFilters((prev) => ({ ...prev, category }));
               }}
               options={[
                 { value: '', label: 'Todas las categorias' },
@@ -401,14 +407,21 @@ export const CostsPage: React.FC = () => {
             <Select
               value={costFilters.location}
               onChange={(e) => {
-                setCostFilters(prev => ({ ...prev, location: e.target.value }));
+                setCostFilters((prev) => ({ ...prev, location: e.target.value }));
               }}
               options={[
                 { value: '', label: 'Todas las ubicaciones' },
-                ...locations.map(location => ({ value: location.id.toString(), label: location.name }))
+                ...locations.map((location) => ({ value: location.id.toString(), label: location.name })),
               ]}
             />
-            <Button onClick={() => { loadCosts(); loadCostConfigurations(); }} size="sm" variant="outline">
+            <Button
+              onClick={() => {
+                loadCosts();
+                loadCostConfigurations();
+              }}
+              size="sm"
+              variant="outline"
+            >
               <RefreshCw className="h-4 w-4 mr-2" />
               Actualizar
             </Button>
@@ -452,9 +465,7 @@ export const CostsPage: React.FC = () => {
                   <tbody className="divide-y divide-border">
                     {costConfigurations.map((cost) => (
                       <tr key={cost.id} className={!cost.is_active ? 'bg-muted/30 opacity-60' : ''}>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-mono">
-                          #{cost.id}
-                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-mono">#{cost.id}</td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className="font-medium">{cost.location_name || `Ubicacion ${cost.location_id}`}</span>
                         </td>
@@ -469,9 +480,7 @@ export const CostsPage: React.FC = () => {
                         <td className="px-4 py-3 whitespace-nowrap font-semibold text-primary">
                           {formatCurrency(parseFloat(cost.amount))}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm">
-                          {getFrequencyLabel(cost.frequency)}
-                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">{getFrequencyLabel(cost.frequency)}</td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <Badge variant={cost.is_active ? 'success' : 'secondary'}>
                             {cost.is_active ? 'Activo' : 'Inactivo'}
@@ -574,230 +583,268 @@ export const CostsPage: React.FC = () => {
       )}
 
       {/* ── Location status cards ───────────────────────────────────── */}
-      {operationalData && (() => {
-        let filteredLocations = operationalData.locations_status;
+      {operationalData &&
+        (() => {
+          let filteredLocations = operationalData.locations_status;
 
-        if (costFilters.location) {
-          const selectedLocation = locations.find(loc => loc.id.toString() === costFilters.location);
-          if (selectedLocation) {
-            filteredLocations = filteredLocations.filter(location => location.location_name === selectedLocation.name);
+          if (costFilters.location) {
+            const selectedLocation = locations.find((loc) => loc.id.toString() === costFilters.location);
+            if (selectedLocation) {
+              filteredLocations = filteredLocations.filter(
+                (location) => location.location_name === selectedLocation.name
+              );
+            }
           }
-        }
 
-        return filteredLocations.length > 0 ? (
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold text-foreground">
-                Estado de Costos por Ubicacion
-                {costFilters.location && (
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    (Filtrado: {filteredLocations.length} de {operationalData.locations_status.length})
-                  </span>
-                )}
-              </h3>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {filteredLocations.map((location) => (
-                  <div key={location.location_id} className={`p-4 rounded-lg border-l-4 bg-card text-foreground border-border ${location.status === 'ok' ? 'border-success' :
-                    location.status === 'attention' ? 'border-warning' :
-                      'border-error'
-                    }`}>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-lg text-foreground">{location.location_name}</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Costos Mensuales</p>
-                            <p className="font-semibold text-foreground">{formatCurrency(parseFloat(location.monthly_costs))}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Monto Vencido</p>
-                            <p className="font-semibold text-error">{formatCurrency(parseFloat(location.overdue_amount))}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Cuentas Vencidas</p>
-                            <p className="font-semibold text-foreground">{location.overdue_count}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Proximos Pagos</p>
-                            <p className="font-semibold text-foreground">{location.upcoming_count}</p>
+          return filteredLocations.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-semibold text-foreground">
+                  Estado de Costos por Ubicacion
+                  {costFilters.location && (
+                    <span className="ml-2 text-sm font-normal text-muted-foreground">
+                      (Filtrado: {filteredLocations.length} de {operationalData.locations_status.length})
+                    </span>
+                  )}
+                </h3>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {filteredLocations.map((location) => (
+                    <div
+                      key={location.location_id}
+                      className={`p-4 rounded-lg border-l-4 bg-card text-foreground border-border ${
+                        location.status === 'ok'
+                          ? 'border-success'
+                          : location.status === 'attention'
+                            ? 'border-warning'
+                            : 'border-error'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-lg text-foreground">{location.location_name}</h4>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Costos Mensuales</p>
+                              <p className="font-semibold text-foreground">
+                                {formatCurrency(parseFloat(location.monthly_costs))}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Monto Vencido</p>
+                              <p className="font-semibold text-error">
+                                {formatCurrency(parseFloat(location.overdue_amount))}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Cuentas Vencidas</p>
+                              <p className="font-semibold text-foreground">{location.overdue_count}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Proximos Pagos</p>
+                              <p className="font-semibold text-foreground">{location.upcoming_count}</p>
+                            </div>
                           </div>
                         </div>
+                        <Badge
+                          variant={
+                            location.status === 'ok' ? 'success' : location.status === 'attention' ? 'warning' : 'error'
+                          }
+                        >
+                          {location.status === 'ok' ? 'OK' : location.status === 'attention' ? 'Atencion' : 'Critico'}
+                        </Badge>
                       </div>
-                      <Badge variant={
-                        location.status === 'ok' ? 'success' :
-                          location.status === 'attention' ? 'warning' : 'error'
-                      }>
-                        {location.status === 'ok' ? 'OK' :
-                          location.status === 'attention' ? 'Atencion' : 'Critico'}
-                      </Badge>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardContent>
-              <EmptyState
-                title="No hay ubicaciones"
-                description="No se encontraron ubicaciones con los filtros aplicados"
-                icon={<Building className="h-12 w-12 text-gray-400" />}
-              />
-            </CardContent>
-          </Card>
-        );
-      })()}
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent>
+                <EmptyState
+                  title="No hay ubicaciones"
+                  description="No se encontraron ubicaciones con los filtros aplicados"
+                  icon={<Building className="h-12 w-12 text-gray-400" />}
+                />
+              </CardContent>
+            </Card>
+          );
+        })()}
 
       {/* ── Upcoming payments ───────────────────────────────────────── */}
-      {operationalData && (() => {
-        let filteredUpcoming = operationalData.upcoming_week;
+      {operationalData &&
+        (() => {
+          let filteredUpcoming = operationalData.upcoming_week;
 
-        if (costFilters.category) {
-          filteredUpcoming = filteredUpcoming.filter(payment => payment.cost_type === costFilters.category);
-        }
-
-        if (costFilters.location) {
-          const selectedLocation = locations.find(loc => loc.id.toString() === costFilters.location);
-          if (selectedLocation) {
-            filteredUpcoming = filteredUpcoming.filter(payment => payment.location_name === selectedLocation.name);
+          if (costFilters.category) {
+            filteredUpcoming = filteredUpcoming.filter((payment) => payment.cost_type === costFilters.category);
           }
-        }
 
-        return filteredUpcoming.length > 0 ? (
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold flex items-center text-foreground">
-                <Calendar className="h-5 w-5 mr-2 text-primary" />
-                Pagos Proximos (Esta Semana)
-                {(costFilters.category || costFilters.location) && (
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    (Filtrados: {filteredUpcoming.length} de {operationalData.upcoming_week.length})
-                  </span>
-                )}
-              </h3>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {filteredUpcoming.map((payment, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-card text-foreground border border-border rounded-lg">
-                    <div>
-                      <p className="font-medium text-foreground">{payment.location_name}</p>
-                      <p className="text-sm text-muted-foreground">{capitalize(payment.cost_type)}</p>
-                      <p className="text-xs text-muted-foreground">Vence: {formatDate(payment.due_date)}</p>
+          if (costFilters.location) {
+            const selectedLocation = locations.find((loc) => loc.id.toString() === costFilters.location);
+            if (selectedLocation) {
+              filteredUpcoming = filteredUpcoming.filter((payment) => payment.location_name === selectedLocation.name);
+            }
+          }
+
+          return filteredUpcoming.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-semibold flex items-center text-foreground">
+                  <Calendar className="h-5 w-5 mr-2 text-primary" />
+                  Pagos Proximos (Esta Semana)
+                  {(costFilters.category || costFilters.location) && (
+                    <span className="ml-2 text-sm font-normal text-muted-foreground">
+                      (Filtrados: {filteredUpcoming.length} de {operationalData.upcoming_week.length})
+                    </span>
+                  )}
+                </h3>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {filteredUpcoming.map((payment, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-card text-foreground border border-border rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium text-foreground">{payment.location_name}</p>
+                        <p className="text-sm text-muted-foreground">{capitalize(payment.cost_type)}</p>
+                        <p className="text-xs text-muted-foreground">Vence: {formatDate(payment.due_date)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-primary">{formatCurrency(parseFloat(payment.amount))}</p>
+                        <p className="text-sm text-primary">
+                          {payment.days_until_due === 0
+                            ? 'Hoy'
+                            : payment.days_until_due === 1
+                              ? 'Manana'
+                              : `En ${payment.days_until_due} dias`}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-primary">{formatCurrency(parseFloat(payment.amount))}</p>
-                      <p className="text-sm text-primary">
-                        {payment.days_until_due === 0 ? 'Hoy' :
-                          payment.days_until_due === 1 ? 'Manana' :
-                            `En ${payment.days_until_due} dias`}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ) : null;
-      })()}
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : null;
+        })()}
 
       {/* ── Critical alerts ─────────────────────────────────────────── */}
-      {operationalData && (() => {
-        let filteredAlerts = operationalData.critical_alerts;
+      {operationalData &&
+        (() => {
+          let filteredAlerts = operationalData.critical_alerts;
 
-        if (costFilters.category) {
-          filteredAlerts = filteredAlerts.filter(alert => alert.cost_type === costFilters.category);
-        }
-
-        if (costFilters.location) {
-          const selectedLocation = locations.find(loc => loc.id.toString() === costFilters.location);
-          if (selectedLocation) {
-            filteredAlerts = filteredAlerts.filter(alert => alert.location_name === selectedLocation.name);
+          if (costFilters.category) {
+            filteredAlerts = filteredAlerts.filter((alert) => alert.cost_type === costFilters.category);
           }
-        }
 
-        return filteredAlerts.length > 0 ? (
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold flex items-center text-foreground">
-                <AlertCircle className="h-5 w-5 mr-2 text-error" />
-                Alertas Criticas - Pagos Vencidos
-                {(costFilters.category || costFilters.location) && (
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    (Filtradas: {filteredAlerts.length} de {operationalData.critical_alerts.length})
-                  </span>
-                )}
-              </h3>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
-                  <thead className="bg-popover text-popover-foreground">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Ubicacion</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Tipo de Costo</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Monto</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Dias Vencido</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Fecha Vencimiento</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Prioridad</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredAlerts.map((alert, index) => (
-                      <tr key={index} className={
-                        alert.priority === 'high' ? 'bg-error/10' :
-                          alert.priority === 'medium' ? 'bg-warning/10' : 'bg-muted/10'
-                      }>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <p className="font-medium text-foreground">{alert.location_name}</p>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge className="bg-accent text-accent-foreground border border-border">{capitalize(alert.cost_type)}</Badge>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap font-semibold text-error">
-                          {formatCurrency(parseFloat(alert.amount))}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap font-bold text-error">
-                          {alert.days_overdue} dias
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                          {formatDate(alert.due_date)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge variant={
-                            alert.priority === 'high' ? 'error' :
-                              alert.priority === 'medium' ? 'warning' : 'secondary'
-                          }>
-                            {alert.priority === 'high' ? 'Alta' :
-                              alert.priority === 'medium' ? 'Media' : 'Baja'}
-                          </Badge>
-                        </td>
+          if (costFilters.location) {
+            const selectedLocation = locations.find((loc) => loc.id.toString() === costFilters.location);
+            if (selectedLocation) {
+              filteredAlerts = filteredAlerts.filter((alert) => alert.location_name === selectedLocation.name);
+            }
+          }
+
+          return filteredAlerts.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-semibold flex items-center text-foreground">
+                  <AlertCircle className="h-5 w-5 mr-2 text-error" />
+                  Alertas Criticas - Pagos Vencidos
+                  {(costFilters.category || costFilters.location) && (
+                    <span className="ml-2 text-sm font-normal text-muted-foreground">
+                      (Filtradas: {filteredAlerts.length} de {operationalData.critical_alerts.length})
+                    </span>
+                  )}
+                </h3>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
+                    <thead className="bg-popover text-popover-foreground">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Ubicacion</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                          Tipo de Costo
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Monto</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                          Dias Vencido
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                          Fecha Vencimiento
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Prioridad</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardContent>
-              <EmptyState
-                title="No hay alertas criticas"
-                description={
-                  (costFilters.category || costFilters.location)
-                    ? "No se encontraron alertas con los filtros aplicados"
-                    : "No hay alertas criticas en este momento"
-                }
-                icon={<AlertCircle className="h-12 w-12 text-gray-400" />}
-              />
-            </CardContent>
-          </Card>
-        );
-      })()}
+                    </thead>
+                    <tbody>
+                      {filteredAlerts.map((alert, index) => (
+                        <tr
+                          key={index}
+                          className={
+                            alert.priority === 'high'
+                              ? 'bg-error/10'
+                              : alert.priority === 'medium'
+                                ? 'bg-warning/10'
+                                : 'bg-muted/10'
+                          }
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <p className="font-medium text-foreground">{alert.location_name}</p>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge className="bg-accent text-accent-foreground border border-border">
+                              {capitalize(alert.cost_type)}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap font-semibold text-error">
+                            {formatCurrency(parseFloat(alert.amount))}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap font-bold text-error">
+                            {alert.days_overdue} dias
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                            {formatDate(alert.due_date)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge
+                              variant={
+                                alert.priority === 'high'
+                                  ? 'error'
+                                  : alert.priority === 'medium'
+                                    ? 'warning'
+                                    : 'secondary'
+                              }
+                            >
+                              {alert.priority === 'high' ? 'Alta' : alert.priority === 'medium' ? 'Media' : 'Baja'}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent>
+                <EmptyState
+                  title="No hay alertas criticas"
+                  description={
+                    costFilters.category || costFilters.location
+                      ? 'No se encontraron alertas con los filtros aplicados'
+                      : 'No hay alertas criticas en este momento'
+                  }
+                  icon={<AlertCircle className="h-12 w-12 text-gray-400" />}
+                />
+              </CardContent>
+            </Card>
+          );
+        })()}
 
       {/* ── No data state ───────────────────────────────────────────── */}
       {!operationalData && (
@@ -850,7 +897,7 @@ export const CostsPage: React.FC = () => {
                 <Input
                   type="number"
                   value={editCostFormData.amount}
-                  onChange={(e) => setEditCostFormData(prev => ({ ...prev, amount: e.target.value }))}
+                  onChange={(e) => setEditCostFormData((prev) => ({ ...prev, amount: e.target.value }))}
                   placeholder="0.00"
                   min="0"
                   step="0.01"
@@ -861,16 +908,18 @@ export const CostsPage: React.FC = () => {
                 <label className="text-sm font-medium text-foreground">Frecuencia</label>
                 <Select
                   value={editCostFormData.frequency}
-                  onChange={(e) => setEditCostFormData(prev => ({
-                    ...prev,
-                    frequency: e.target.value as typeof editCostFormData.frequency
-                  }))}
+                  onChange={(e) =>
+                    setEditCostFormData((prev) => ({
+                      ...prev,
+                      frequency: e.target.value as typeof editCostFormData.frequency,
+                    }))
+                  }
                   options={[
                     { value: 'daily', label: 'Diario' },
                     { value: 'weekly', label: 'Semanal' },
                     { value: 'monthly', label: 'Mensual' },
                     { value: 'quarterly', label: 'Trimestral' },
-                    { value: 'annual', label: 'Anual' }
+                    { value: 'annual', label: 'Anual' },
                   ]}
                 />
               </div>
@@ -880,7 +929,7 @@ export const CostsPage: React.FC = () => {
                 <Input
                   type="text"
                   value={editCostFormData.description}
-                  onChange={(e) => setEditCostFormData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) => setEditCostFormData((prev) => ({ ...prev, description: e.target.value }))}
                   placeholder="Descripcion del costo"
                 />
               </div>
@@ -890,10 +939,12 @@ export const CostsPage: React.FC = () => {
                   type="checkbox"
                   id="is_active"
                   checked={editCostFormData.is_active}
-                  onChange={(e) => setEditCostFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                  onChange={(e) => setEditCostFormData((prev) => ({ ...prev, is_active: e.target.checked }))}
                   className="rounded border-border"
                 />
-                <label htmlFor="is_active" className="text-sm text-foreground">Costo activo</label>
+                <label htmlFor="is_active" className="text-sm text-foreground">
+                  Costo activo
+                </label>
               </div>
             </div>
             <div className="flex justify-end space-x-2 p-4 border-t border-border">
@@ -906,10 +957,7 @@ export const CostsPage: React.FC = () => {
               >
                 Cancelar
               </Button>
-              <Button
-                onClick={handleUpdateCost}
-                disabled={editCostLoading}
-              >
+              <Button onClick={handleUpdateCost} disabled={editCostLoading}>
                 {editCostLoading ? 'Guardando...' : 'Guardar Cambios'}
               </Button>
             </div>
@@ -938,10 +986,10 @@ export const CostsPage: React.FC = () => {
               <div className="bg-primary/10 p-3 rounded-lg">
                 <p className="text-sm text-muted-foreground">Pago para:</p>
                 <p className="font-medium">{payingCost.location_name || `Ubicacion ${payingCost.location_id}`}</p>
-                <p className="text-sm">{capitalize(payingCost.cost_type)} - {payingCost.description}</p>
-                <p className="text-lg font-bold text-primary mt-1">
-                  {formatCurrency(parseFloat(payingCost.amount))}
+                <p className="text-sm">
+                  {capitalize(payingCost.cost_type)} - {payingCost.description}
                 </p>
+                <p className="text-lg font-bold text-primary mt-1">{formatCurrency(parseFloat(payingCost.amount))}</p>
               </div>
 
               <div className="space-y-2">
@@ -949,7 +997,7 @@ export const CostsPage: React.FC = () => {
                 <Input
                   type="date"
                   value={paymentFormData.due_date}
-                  onChange={(e) => setPaymentFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                  onChange={(e) => setPaymentFormData((prev) => ({ ...prev, due_date: e.target.value }))}
                 />
               </div>
 
@@ -958,7 +1006,7 @@ export const CostsPage: React.FC = () => {
                 <Input
                   type="number"
                   value={paymentFormData.payment_amount}
-                  onChange={(e) => setPaymentFormData(prev => ({ ...prev, payment_amount: e.target.value }))}
+                  onChange={(e) => setPaymentFormData((prev) => ({ ...prev, payment_amount: e.target.value }))}
                   placeholder="0.00"
                   min="0"
                   step="0.01"
@@ -970,7 +1018,7 @@ export const CostsPage: React.FC = () => {
                 <Input
                   type="date"
                   value={paymentFormData.payment_date}
-                  onChange={(e) => setPaymentFormData(prev => ({ ...prev, payment_date: e.target.value }))}
+                  onChange={(e) => setPaymentFormData((prev) => ({ ...prev, payment_date: e.target.value }))}
                 />
               </div>
 
@@ -978,15 +1026,17 @@ export const CostsPage: React.FC = () => {
                 <label className="text-sm font-medium text-foreground">Metodo de Pago</label>
                 <Select
                   value={paymentFormData.payment_method}
-                  onChange={(e) => setPaymentFormData(prev => ({
-                    ...prev,
-                    payment_method: e.target.value as typeof paymentFormData.payment_method
-                  }))}
+                  onChange={(e) =>
+                    setPaymentFormData((prev) => ({
+                      ...prev,
+                      payment_method: e.target.value as typeof paymentFormData.payment_method,
+                    }))
+                  }
                   options={[
                     { value: 'efectivo', label: 'Efectivo' },
                     { value: 'transferencia', label: 'Transferencia' },
                     { value: 'tarjeta', label: 'Tarjeta' },
-                    { value: 'cheque', label: 'Cheque' }
+                    { value: 'cheque', label: 'Cheque' },
                   ]}
                 />
               </div>
@@ -996,7 +1046,7 @@ export const CostsPage: React.FC = () => {
                 <Input
                   type="text"
                   value={paymentFormData.payment_reference}
-                  onChange={(e) => setPaymentFormData(prev => ({ ...prev, payment_reference: e.target.value }))}
+                  onChange={(e) => setPaymentFormData((prev) => ({ ...prev, payment_reference: e.target.value }))}
                   placeholder="Ej: Numero de transferencia, recibo, etc."
                 />
               </div>
@@ -1006,7 +1056,7 @@ export const CostsPage: React.FC = () => {
                 <Input
                   type="text"
                   value={paymentFormData.notes}
-                  onChange={(e) => setPaymentFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  onChange={(e) => setPaymentFormData((prev) => ({ ...prev, notes: e.target.value }))}
                   placeholder="Notas adicionales del pago"
                 />
               </div>

@@ -1,18 +1,6 @@
 import React, { useRef, useState, useCallback } from 'react';
-import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
-import {
-  Camera,
-  X,
-  RotateCcw,
-  CheckCircle,
-  Loader2,
-  ScanLine,
-  Zap,
-  Focus,
-  ImageUp,
-  Search
-} from 'lucide-react';
+import { Camera, X, RotateCcw, CheckCircle, Loader2, ScanLine, Zap, Focus, ImageUp, Search } from 'lucide-react';
 
 interface CameraCaptureProps {
   onCapture: (imageFile: File) => void;
@@ -25,7 +13,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
   onCapture,
   onClose,
   onSearchMode,
-  isProcessing = false
+  isProcessing = false,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -40,7 +28,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
   const startCamera = useCallback(async () => {
     try {
       setError(null);
-      
+
       // Verificar si el navegador soporta getUserMedia
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Tu navegador no soporta acceso a la cámara');
@@ -49,8 +37,8 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
       // Primero intentar con configuración básica
       let constraints: MediaStreamConstraints = {
         video: {
-          facingMode: 'environment'
-        }
+          facingMode: 'environment',
+        },
       };
 
       try {
@@ -59,12 +47,12 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
           video: {
             facingMode: 'environment',
             width: { ideal: 1280, max: 1920 },
-            height: { ideal: 720, max: 1080 }
-          }
+            height: { ideal: 720, max: 1080 },
+          },
         };
-        
+
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        
+
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           streamRef.current = stream;
@@ -72,14 +60,14 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
         }
       } catch (advancedError) {
         console.log('Configuración avanzada falló, intentando básica:', advancedError);
-        
+
         // Si falla, intentar con configuración básica
         const basicConstraints = {
-          video: true
+          video: true,
         };
-        
+
         const stream = await navigator.mediaDevices.getUserMedia(basicConstraints);
-        
+
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           streamRef.current = stream;
@@ -88,9 +76,9 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
       }
     } catch (err: any) {
       console.error('Error accessing camera:', err);
-      
+
       let errorMessage = 'No se pudo acceder a la cámara.';
-      
+
       if (err.name === 'NotAllowedError') {
         errorMessage = 'Acceso a la cámara denegado. Por favor, permite el acceso y reintenta.';
       } else if (err.name === 'NotFoundError') {
@@ -100,14 +88,14 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
       } else if (err.name === 'NotReadableError') {
         errorMessage = 'La cámara está siendo usada por otra aplicación.';
       }
-      
+
       setError(errorMessage);
     }
   }, []);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
     setIsStreaming(false);
@@ -117,7 +105,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
     if (!videoRef.current || !canvasRef.current) return;
 
     setIsScanning(true);
-    
+
     // Simular efecto de escaneado
     setTimeout(() => {
       const video = videoRef.current!;
@@ -134,21 +122,25 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       // Convertir a blob y crear archivo
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const imageUrl = canvas.toDataURL('image/jpeg', 0.8);
-          setCapturedImage(imageUrl);
-          
-          // Crear archivo para enviar
-          const file = new File([blob], `scan-${Date.now()}.jpg`, {
-            type: 'image/jpeg'
-          });
-          
-          stopCamera();
-          setIsScanning(false);
-          onCapture(file);
-        }
-      }, 'image/jpeg', 0.8);
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            const imageUrl = canvas.toDataURL('image/jpeg', 0.8);
+            setCapturedImage(imageUrl);
+
+            // Crear archivo para enviar
+            const file = new File([blob], `scan-${Date.now()}.jpg`, {
+              type: 'image/jpeg',
+            });
+
+            stopCamera();
+            setIsScanning(false);
+            onCapture(file);
+          }
+        },
+        'image/jpeg',
+        0.8
+      );
     }, 1000); // Efecto de 1 segundo
   }, [onCapture, stopCamera]);
 
@@ -173,21 +165,24 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
     fileInputRef.current?.click();
   }, []);
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) return;
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setCapturedImage(reader.result as string);
-      stopCamera();
-      onCapture(file);
-    };
-    reader.readAsDataURL(file);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCapturedImage(reader.result as string);
+        stopCamera();
+        onCapture(file);
+      };
+      reader.readAsDataURL(file);
 
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [onCapture, stopCamera]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    },
+    [onCapture, stopCamera]
+  );
 
   // Ctrl+V — pegar imagen desde portapapeles
   React.useEffect(() => {
@@ -228,12 +223,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
       {/* Header - Fixed height */}
       <div className="flex-shrink-0 flex items-center justify-between p-4 safe-area-top">
         <div className="flex items-center space-x-3"></div>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={handleClose}
-          className="text-white hover:bg-white/10"
-        >
+        <Button variant="ghost" size="sm" onClick={handleClose} className="text-white hover:bg-white/10">
           <X className="h-6 w-6" />
         </Button>
       </div>
@@ -250,22 +240,19 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                 <h4 className="text-foreground font-semibold mb-2">Error de Cámara</h4>
                 <p className="text-muted-foreground text-sm mb-6 leading-relaxed">{error}</p>
                 <div className="space-y-3">
-                  <Button 
-                    onClick={startCamera} 
-                    className="w-full bg-primary hover:bg-primary/90"
-                  >
+                  <Button onClick={startCamera} className="w-full bg-primary hover:bg-primary/90">
                     <Camera className="h-4 w-4 mr-2" />
                     Intentar de Nuevo
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={handleClose} 
+                  <Button
+                    variant="outline"
+                    onClick={handleClose}
                     className="w-full border-border text-muted-foreground hover:bg-muted/10"
                   >
                     Cancelar
                   </Button>
                 </div>
-                
+
                 {/* Instrucciones adicionales */}
                 <div className="mt-6 p-4 bg-primary/10 border border-primary/20 rounded-lg">
                   <h5 className="text-primary font-medium text-sm mb-2">💡 Consejos:</h5>
@@ -279,11 +266,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
             </div>
           ) : capturedImage ? (
             <div className="relative w-full h-full">
-              <img 
-                src={capturedImage} 
-                alt="Captured" 
-                className="w-full h-full object-cover"
-              />
+              <img src={capturedImage} alt="Captured" className="w-full h-full object-cover" />
               {isProcessing && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
                   <div className="text-white text-center">
@@ -293,21 +276,21 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                   </div>
                 </div>
               )}
-              
+
               {/* Controls para imagen capturada - dentro de la imagen */}
               <div className="absolute bottom-4 left-4 right-4 z-20">
                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
-                  <Button 
-                    onClick={retakePhoto} 
-                    variant="outline" 
+                  <Button
+                    onClick={retakePhoto}
+                    variant="outline"
                     className="flex-1 border-border text-foreground hover:bg-muted/10 bg-black/50 backdrop-blur-sm"
                     disabled={isProcessing}
                   >
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Tomar Otra
                   </Button>
-                  <Button 
-                    onClick={handleClose} 
+                  <Button
+                    onClick={handleClose}
                     className="flex-1 bg-primary hover:bg-primary/90"
                     disabled={isProcessing}
                   >
@@ -319,14 +302,8 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
             </div>
           ) : (
             <div className="relative w-full h-full">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
-              
+              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+
               {/* Scanning Animation Overlay */}
               {isScanning && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-30">
@@ -342,12 +319,12 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                   </div>
                 </div>
               )}
-              
+
               {/* Scanner Frame Overlay - Responsive */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-4 py-4">
                 {/* Dark overlay with cut-out */}
                 <div className="absolute inset-0 bg-black/40"></div>
-                
+
                 {/* Scanner frame - Responsive size */}
                 <div className="relative z-10">
                   {/* Main scanning area - Se adapta al contenedor */}
@@ -357,14 +334,14 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                     <div className="absolute -top-1 -right-1 w-6 h-6 sm:w-8 sm:h-8 border-r-4 border-t-4 border-primary rounded-tr-lg"></div>
                     <div className="absolute -bottom-1 -left-1 w-6 h-6 sm:w-8 sm:h-8 border-l-4 border-b-4 border-primary rounded-bl-lg"></div>
                     <div className="absolute -bottom-1 -right-1 w-6 h-6 sm:w-8 sm:h-8 border-r-4 border-b-4 border-primary rounded-br-lg"></div>
-                    
+
                     {/* Scanning line animation */}
                     <div className="absolute inset-0 overflow-hidden rounded-2xl">
                       <div className="absolute w-full h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-pulse">
                         <div className="absolute inset-0 bg-primary/50 animate-ping"></div>
                       </div>
                     </div>
-                    
+
                     {/* Center content - Responsive text */}
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="text-center text-white bg-black/50 px-3 sm:px-6 py-2 sm:py-3 rounded-lg backdrop-blur-sm">
@@ -375,7 +352,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                   </div>
                 </div>
               </div>
-              
+
               {/* Instructional text - Responsive positioning */}
               <div className="absolute top-2 sm:top-4 left-2 sm:left-4 right-2 sm:right-4 z-20">
                 <div className="bg-card/60 backdrop-blur-sm rounded-lg p-2 sm:p-3 border border-border/30">
@@ -389,13 +366,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
               </div>
 
               {/* Input oculto para subir archivo */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*"
-                className="hidden"
-              />
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
 
               {/* Barra de acciones - 3 botones */}
               <div className="absolute bottom-4 sm:bottom-6 left-0 right-0 z-20 flex items-center justify-center gap-6 sm:gap-8">
@@ -410,21 +381,23 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
 
                 {/* Botón Cámara (principal) */}
                 <div className="relative">
-                  <div className={`absolute inset-0 rounded-full border-2 sm:border-4 ${
-                    isScanning
-                      ? 'border-primary animate-pulse'
-                      : isStreaming
-                        ? 'border-primary/50 animate-pulse'
-                        : 'border-gray-500'
-                  } transition-all duration-300 w-16 h-16 sm:w-20 sm:h-20`}
+                  <div
+                    className={`absolute inset-0 rounded-full border-2 sm:border-4 ${
+                      isScanning
+                        ? 'border-primary animate-pulse'
+                        : isStreaming
+                          ? 'border-primary/50 animate-pulse'
+                          : 'border-gray-500'
+                    } transition-all duration-300 w-16 h-16 sm:w-20 sm:h-20`}
                   ></div>
-                  <div className={`absolute inset-1 sm:inset-2 rounded-full ${
-                    isScanning
-                      ? 'bg-primary/20 ring-2 sm:ring-4 ring-primary/30'
-                      : isStreaming
-                        ? 'bg-primary/10 ring-1 sm:ring-2 ring-primary/20'
-                        : 'bg-gray-600/20'
-                  } transition-all duration-300`}
+                  <div
+                    className={`absolute inset-1 sm:inset-2 rounded-full ${
+                      isScanning
+                        ? 'bg-primary/20 ring-2 sm:ring-4 ring-primary/30'
+                        : isStreaming
+                          ? 'bg-primary/10 ring-1 sm:ring-2 ring-primary/20'
+                          : 'bg-gray-600/20'
+                    } transition-all duration-300`}
                   ></div>
                   <button
                     onClick={capturePhoto}
@@ -467,7 +440,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
               </div>
             </div>
           )}
-          
+
           {/* Canvas oculto para captura */}
           <canvas ref={canvasRef} className="hidden" />
         </div>
@@ -477,7 +450,8 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
       <div className="flex-shrink-0 px-4 pb-4 pt-2 safe-area-bottom">
         <div className="text-center space-y-1">
           <p className="text-muted-foreground text-xs sm:text-sm">
-            Centra el producto en el recuadro, sube una foto o pega con <kbd className="px-1 py-0.5 rounded bg-white/10 border border-white/20 text-[10px] font-mono">Ctrl+V</kbd>
+            Centra el producto en el recuadro, sube una foto o pega con{' '}
+            <kbd className="px-1 py-0.5 rounded bg-white/10 border border-white/20 text-[10px] font-mono">Ctrl+V</kbd>
           </p>
         </div>
       </div>

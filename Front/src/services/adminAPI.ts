@@ -3,15 +3,15 @@ import { BACKEND_URL } from '../config/env';
 const getHeaders = () => {
   const token = localStorage.getItem('token');
   return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
   };
 };
 
 const getFormDataHeaders = () => {
   const token = localStorage.getItem('token');
   return {
-    'Authorization': `Bearer ${token}`
+    Authorization: `Bearer ${token}`,
     // CRÍTICO: NO incluir Content-Type para FormData
     // El navegador debe configurar automáticamente:
     // Content-Type: multipart/form-data; boundary=----WebKitFormBoundary...
@@ -227,7 +227,7 @@ export const createUser = async (userData: UserCreate) => {
     first_name: userData.first_name,
     last_name: userData.last_name,
     role: userData.role,
-    location_ids: userData.location_ids || []
+    location_ids: userData.location_ids || [],
   };
   const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/users`, {
     method: 'POST',
@@ -260,10 +260,13 @@ export const fetchAvailableLocationsForUsers = async (role?: 'vendedor' | 'bodeg
   const searchParams = new URLSearchParams();
   if (role) searchParams.append('role', role);
 
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/available-locations-for-users?${searchParams.toString()}`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
+  const response = await fetch(
+    `${BACKEND_URL}/api/v1/admin/admin/available-locations-for-users?${searchParams.toString()}`,
+    {
+      method: 'GET',
+      headers: getHeaders(),
+    }
+  );
   return handleResponse(response);
 };
 
@@ -308,10 +311,13 @@ export const fetchLocationStatistics = async (locationId: number, startDate: str
     end_date: endDate,
   });
 
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/locations/${locationId}/stats?${searchParams.toString()}`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
+  const response = await fetch(
+    `${BACKEND_URL}/api/v1/admin/admin/locations/${locationId}/stats?${searchParams.toString()}`,
+    {
+      method: 'GET',
+      headers: getHeaders(),
+    }
+  );
   return handleResponse(response);
 };
 
@@ -398,10 +404,13 @@ export const deactivateCostConfiguration = async (costId: number, endDate?: stri
   const searchParams = new URLSearchParams();
   if (endDate) searchParams.append('end_date', endDate);
 
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/costs/${costId}/deactivate?${searchParams.toString()}`, {
-    method: 'PATCH',
-    headers: getHeaders(),
-  });
+  const response = await fetch(
+    `${BACKEND_URL}/api/v1/admin/admin/costs/${costId}/deactivate?${searchParams.toString()}`,
+    {
+      method: 'PATCH',
+      headers: getHeaders(),
+    }
+  );
   return handleResponse(response);
 };
 
@@ -495,13 +504,16 @@ export const generateSalesReports = async (reportFilter: ReportFilter) => {
 export const fetchDailySalesTraceability = async (params: { target_date: string; location_id: number }) => {
   const searchParams = new URLSearchParams({
     target_date: params.target_date,
-    location_id: params.location_id.toString()
+    location_id: params.location_id.toString(),
   });
 
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/sales/daily-traceability?${searchParams.toString()}`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
+  const response = await fetch(
+    `${BACKEND_URL}/api/v1/admin/admin/sales/daily-traceability?${searchParams.toString()}`,
+    {
+      method: 'GET',
+      headers: getHeaders(),
+    }
+  );
   return handleResponse(response);
 };
 
@@ -562,13 +574,16 @@ export const fetchTransfersOverview = async () => {
 // GET /api/v1/admin/admin/transfers/daily-traceability
 export const fetchDailyTransfersTraceability = async (params: { target_date: string }) => {
   const searchParams = new URLSearchParams({
-    target_date: params.target_date
+    target_date: params.target_date,
   });
 
-  const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/transfers/daily-traceability?${searchParams.toString()}`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
+  const response = await fetch(
+    `${BACKEND_URL}/api/v1/admin/admin/transfers/daily-traceability?${searchParams.toString()}`,
+    {
+      method: 'GET',
+      headers: getHeaders(),
+    }
+  );
   return handleResponse(response);
 };
 
@@ -587,7 +602,7 @@ export const fetchUsersPerformance = async (params: {
   });
 
   if (params.user_ids?.length) {
-    params.user_ids.forEach(id => searchParams.append('user_ids', id.toString()));
+    params.user_ids.forEach((id) => searchParams.append('user_ids', id.toString()));
   }
   if (params.role) searchParams.append('role', params.role);
 
@@ -611,10 +626,7 @@ export const assignProductModelToWarehouses = async (assignmentData: ProductMode
 };
 
 // GET /api/v1/admin/admin/product-assignments
-export const fetchProductAssignments = async (params?: {
-  product_reference?: string;
-  warehouse_id?: number;
-}) => {
+export const fetchProductAssignments = async (params?: { product_reference?: string; warehouse_id?: number }) => {
   const searchParams = new URLSearchParams();
   if (params?.product_reference) searchParams.append('product_reference', params.product_reference);
   if (params?.warehouse_id) searchParams.append('warehouse_id', params.warehouse_id.toString());
@@ -746,7 +758,12 @@ export const processVideoInventoryEntry = async (inventoryData: {
   console.log('6. box_price:', boxPrice);
   console.log('7. notes:', notes || '(vacío)');
   if (inventoryData.reference_image && inventoryData.reference_image instanceof File) {
-    console.log('8. reference_image: File presente -', inventoryData.reference_image.name, inventoryData.reference_image.size, 'bytes');
+    console.log(
+      '8. reference_image: File presente -',
+      inventoryData.reference_image.name,
+      inventoryData.reference_image.size,
+      'bytes'
+    );
   } else {
     console.log('8. reference_image: Archivo vacío (no se tomó foto)');
   }
@@ -754,12 +771,18 @@ export const processVideoInventoryEntry = async (inventoryData: {
   // Log de FormData contents
   console.log('=== FORMDATA CONTENTS ===');
   const expectedFields = [
-    'product_brand', 'product_model', 'unit_price', 'sizes_distribution_json',
-    'video_file', 'box_price', 'notes', 'reference_image'
+    'product_brand',
+    'product_model',
+    'unit_price',
+    'sizes_distribution_json',
+    'video_file',
+    'box_price',
+    'notes',
+    'reference_image',
   ];
 
   const actualFields: string[] = [];
-  for (let [key, value] of formData.entries()) {
+  for (const [key, value] of formData.entries()) {
     actualFields.push(key);
     if (value instanceof File) {
       console.log(`${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
@@ -769,8 +792,8 @@ export const processVideoInventoryEntry = async (inventoryData: {
   }
 
   // Verificar que todos los campos esperados estén presentes
-  const missingFields = expectedFields.filter(field => !actualFields.includes(field));
-  const extraFields = actualFields.filter(field => !expectedFields.includes(field));
+  const missingFields = expectedFields.filter((field) => !actualFields.includes(field));
+  const extraFields = actualFields.filter((field) => !expectedFields.includes(field));
 
   console.log('Campos esperados:', expectedFields.length);
   console.log('Campos actuales:', actualFields.length);
@@ -881,8 +904,8 @@ export const videoProcessingCompleteWebhook = async (webhookData: {
   const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/video-processing-complete`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`,
-      'Content-Type': 'application/x-www-form-urlencoded'
+      Authorization: `Bearer ${localStorage.getItem('token')}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: formData,
   });
@@ -890,11 +913,7 @@ export const videoProcessingCompleteWebhook = async (webhookData: {
 };
 
 // POST /api/v1/admin/admin/video-callback
-export const videoProcessingCallback = async (callbackData: {
-  job_id: number;
-  status: string;
-  results: string;
-}) => {
+export const videoProcessingCallback = async (callbackData: { job_id: number; status: string; results: string }) => {
   const formData = new URLSearchParams();
   formData.append('job_id', callbackData.job_id.toString());
   formData.append('status', callbackData.status);
@@ -903,8 +922,8 @@ export const videoProcessingCallback = async (callbackData: {
   const response = await fetch(`${BACKEND_URL}/api/v1/admin/admin/video-callback`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`,
-      'Content-Type': 'application/x-www-form-urlencoded'
+      Authorization: `Bearer ${localStorage.getItem('token')}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: formData,
   });
@@ -1090,11 +1109,14 @@ export const fetchAdminInventory = async () => {
 };
 
 // POST /api/v1/video-processing/retrain/{product_id} - Re-entrenar IA de producto
-export const retrainProductVideo = async (productId: number, data: {
-  video_file: File;
-  warehouse_location_id: number;
-  notes?: string;
-}) => {
+export const retrainProductVideo = async (
+  productId: number,
+  data: {
+    video_file: File;
+    warehouse_location_id: number;
+    notes?: string;
+  }
+) => {
   const formData = new FormData();
   formData.append('video_file', data.video_file);
   formData.append('warehouse_location_id', data.warehouse_location_id.toString());
@@ -1116,7 +1138,7 @@ export const deleteProductReference = async (productId: number) => {
   const response = await fetch(`${BACKEND_URL}/api/v1/video-processing/reference/${productId}`, {
     method: 'DELETE',
     headers: {
-      'Authorization': `Bearer ${token}`
+      Authorization: `Bearer ${token}`,
     },
   });
 

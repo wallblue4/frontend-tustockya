@@ -8,11 +8,7 @@ interface ErrorStateProps {
   showRetry?: boolean;
 }
 
-export const ErrorState: React.FC<ErrorStateProps> = ({ 
-  message, 
-  onRetry, 
-  showRetry = true 
-}) => (
+export const ErrorState: React.FC<ErrorStateProps> = ({ message, onRetry, showRetry = true }) => (
   <div className="text-center py-12 bg-background">
     <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
     <h3 className="text-lg font-semibold text-foreground mb-2">Error al cargar datos</h3>
@@ -26,9 +22,9 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
   </div>
 );
 
-export const EmptyState: React.FC<{ 
-  title: string; 
-  description: string; 
+export const EmptyState: React.FC<{
+  title: string;
+  description: string;
   icon?: React.ReactNode;
   action?: React.ReactNode;
 }> = ({ title, description, icon, action }) => (

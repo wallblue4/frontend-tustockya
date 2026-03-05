@@ -9,15 +9,11 @@ interface PollingOptions {
   onError?: (error: Error) => void;
 }
 
-export const useTransferPolling = (
-  userRole: 'seller' | 'bodeguero' | 'corredor',
-  options: PollingOptions
-) => {
+export const useTransferPolling = (userRole: 'seller' | 'bodeguero' | 'corredor', options: PollingOptions) => {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
 
   const fetchData = async () => {
     try {
@@ -25,29 +21,32 @@ export const useTransferPolling = (
       let response;
 
       switch (userRole) {
-        case 'seller':
+        case 'seller': {
           const [pending, receptions] = await Promise.all([
             vendorAPI.getPendingTransfers(),
-            vendorAPI.getPendingReceptions()
+            vendorAPI.getPendingReceptions(),
           ]);
           response = { pending: pending.pending_transfers, receptions: receptions.pending_receptions };
           break;
+        }
 
-        case 'bodeguero':
+        case 'bodeguero': {
           const [pendingReq, accepted] = await Promise.all([
             warehouseAPI.getPendingRequests(),
-            warehouseAPI.getAcceptedRequests()
+            warehouseAPI.getAcceptedRequests(),
           ]);
           response = { pending: pendingReq.pending_requests, accepted: accepted.accepted_requests };
           break;
+        }
 
-        case 'corredor':
+        case 'corredor': {
           const [available, assigned] = await Promise.all([
             courierAPI.getAvailableRequests(),
-            courierAPI.getMyAssignedTransports() // my-transports - entregas asignadas/pendientes
+            courierAPI.getMyAssignedTransports(), // my-transports - entregas asignadas/pendientes
           ]);
           response = { available: available.available_requests, assigned: assigned.my_transports || [] };
           break;
+        }
 
         default:
           throw new Error('Rol de usuario no válido');
@@ -55,7 +54,6 @@ export const useTransferPolling = (
 
       setData(response);
       options.onUpdate?.(response);
-
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Error desconocido');
       setError(error);
@@ -91,6 +89,7 @@ export const useTransferPolling = (
     }
 
     return stopPolling;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options.enabled, options.interval, userRole]);
 
   // Visibility API: Forzar actualización cuando el usuario vuelve a la app
@@ -104,6 +103,7 @@ export const useTransferPolling = (
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options.enabled, userRole]);
 
   return {
@@ -112,6 +112,6 @@ export const useTransferPolling = (
     isPolling,
     refetch: fetchData,
     startPolling,
-    stopPolling
+    stopPolling,
   };
 };

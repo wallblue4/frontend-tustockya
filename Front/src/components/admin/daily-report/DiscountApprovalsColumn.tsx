@@ -38,9 +38,7 @@ const DiscountApprovalsColumn: React.FC<DiscountApprovalsColumnProps> = ({
   formatCurrency,
   formatDate,
 }) => {
-  const pendingCount = discounts.filter(
-    (d) => !d.status || d.status === 'pending' || d.status === 'pendiente'
-  ).length;
+  const pendingCount = discounts.filter((d) => !d.status || d.status === 'pending' || d.status === 'pendiente').length;
   const fromSaleCount = discounts.filter((d) => d.status === 'from_sale').length;
 
   return (
@@ -49,27 +47,16 @@ const DiscountApprovalsColumn: React.FC<DiscountApprovalsColumnProps> = ({
         <div className="flex items-center gap-2">
           <AlertCircle className="h-5 w-5 text-warning" />
           <h3 className="text-base font-semibold text-foreground">Descuentos</h3>
-          {pendingCount > 0 && (
-            <Badge variant="warning">{pendingCount}</Badge>
-          )}
-          {fromSaleCount > 0 && (
-            <Badge variant="secondary">{fromSaleCount}</Badge>
-          )}
+          {pendingCount > 0 && <Badge variant="warning">{pendingCount}</Badge>}
+          {fromSaleCount > 0 && <Badge variant="secondary">{fromSaleCount}</Badge>}
         </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={loadNotifications}
-          className="text-xs"
-        >
+        <Button size="sm" variant="ghost" onClick={loadNotifications} className="text-xs">
           <RefreshCw className="h-3.5 w-3.5" />
         </Button>
       </div>
 
       {discounts.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground text-sm">
-          No hay solicitudes de descuento pendientes
-        </div>
+        <div className="text-center py-8 text-muted-foreground text-sm">No hay solicitudes de descuento pendientes</div>
       ) : (
         <div className="space-y-3 overflow-y-auto flex-1 pr-1">
           {discounts.map((discount) => (

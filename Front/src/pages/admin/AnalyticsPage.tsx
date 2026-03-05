@@ -1,13 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import {
-  Users,
-  BarChart3,
-  Package,
-  PieChart,
-  Download,
-} from 'lucide-react';
+import { Users, BarChart3, Package, PieChart, Download } from 'lucide-react';
 import { EmptyState } from '../../components/admin/ErrorState';
 import { generateSalesReports, fetchUsersPerformance, fetchTransfersOverview } from '../../services/adminAPI';
 
@@ -24,7 +18,7 @@ export const AnalyticsPage: React.FC = () => {
               try {
                 const report = await generateSalesReports({
                   start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                  end_date: new Date().toISOString().split('T')[0]
+                  end_date: new Date().toISOString().split('T')[0],
                 });
                 console.log('Sales report:', report);
                 alert('Reporte generado - Ver consola');
@@ -44,7 +38,7 @@ export const AnalyticsPage: React.FC = () => {
               try {
                 const performance = await fetchUsersPerformance({
                   start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                  end_date: new Date().toISOString().split('T')[0]
+                  end_date: new Date().toISOString().split('T')[0],
                 });
                 console.log('User performance:', performance);
                 alert('Performance data - Ver consola');
@@ -79,7 +73,9 @@ export const AnalyticsPage: React.FC = () => {
             <BarChart3 className="h-12 w-12 text-primary mx-auto mb-3" />
             <h3 className="font-semibold mb-2">Análisis de Ventas</h3>
             <p className="text-sm text-gray-600 mb-4">Tendencias y patrones de venta</p>
-            <Button size="sm" className="w-full">Analizar</Button>
+            <Button size="sm" className="w-full">
+              Analizar
+            </Button>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:shadow-lg transition-shadow">
@@ -87,7 +83,9 @@ export const AnalyticsPage: React.FC = () => {
             <Users className="h-12 w-12 text-secondary mx-auto mb-3" />
             <h3 className="font-semibold mb-2">Performance de Usuarios</h3>
             <p className="text-sm text-gray-600 mb-4">Rendimiento por usuario y rol</p>
-            <Button size="sm" className="w-full">Ver Métricas</Button>
+            <Button size="sm" className="w-full">
+              Ver Métricas
+            </Button>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:shadow-lg transition-shadow">
@@ -95,7 +93,9 @@ export const AnalyticsPage: React.FC = () => {
             <Package className="h-12 w-12 text-success mx-auto mb-3" />
             <h3 className="font-semibold mb-2">Análisis de Inventario</h3>
             <p className="text-sm text-gray-600 mb-4">Rotación y optimización de stock</p>
-            <Button size="sm" className="w-full">Optimizar</Button>
+            <Button size="sm" className="w-full">
+              Optimizar
+            </Button>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:shadow-lg transition-shadow">
@@ -103,7 +103,9 @@ export const AnalyticsPage: React.FC = () => {
             <PieChart className="h-12 w-12 text-warning mx-auto mb-3" />
             <h3 className="font-semibold mb-2">Análisis Financiero</h3>
             <p className="text-sm text-gray-600 mb-4">Costos, márgenes y rentabilidad</p>
-            <Button size="sm" className="w-full">Analizar</Button>
+            <Button size="sm" className="w-full">
+              Analizar
+            </Button>
           </CardContent>
         </Card>
       </div>

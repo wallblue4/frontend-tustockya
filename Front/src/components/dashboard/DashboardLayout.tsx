@@ -39,9 +39,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
         </div>
       </header>
       <main className="flex-1 overflow-y-auto min-h-0">
-        <div className="h-full bg-background">
-          {children}
-        </div>
+        <div className="h-full bg-background">{children}</div>
       </main>
     </div>
   );

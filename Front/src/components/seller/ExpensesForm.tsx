@@ -3,12 +3,7 @@ import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { vendorAPI, formatCurrency } from '../../services/api';
-import { 
-  Receipt, 
-  CheckCircle,
-  Plus,
-  DollarSign
-} from 'lucide-react';
+import { Receipt, CheckCircle, Plus, DollarSign } from 'lucide-react';
 
 export const ExpensesForm: React.FC = () => {
   const [concept, setConcept] = useState('');
@@ -36,11 +31,11 @@ export const ExpensesForm: React.FC = () => {
       const formData = new FormData();
       formData.append('concept', concept);
       formData.append('amount', amount.toString());
-      
+
       if (receiptFile) {
         formData.append('receipt_image', receiptFile);
       }
-      
+
       if (notes) {
         formData.append('notes', notes);
       }
@@ -52,17 +47,18 @@ export const ExpensesForm: React.FC = () => {
       console.log('- notes:', notes || 'No notes');
 
       const response = await vendorAPI.createExpense(formData);
-      
+
       console.log('Respuesta de la API:', response);
-      
+
       // Reset form
       setConcept('');
       setAmount(0);
       setReceiptFile(null);
       setNotes('');
-      
-      alert(`Gasto registrado exitosamente!\nID: ${response.expense_id || 'N/A'}\nConcepto: ${concept}\nMonto: ${formatCurrency(amount)}`);
-      
+
+      alert(
+        `Gasto registrado exitosamente!\nID: ${response.expense_id || 'N/A'}\nConcepto: ${concept}\nMonto: ${formatCurrency(amount)}`
+      );
     } catch (error) {
       console.error('Error al registrar el gasto:', error);
       alert('Error al registrar el gasto: ' + (error instanceof Error ? error.message : 'Error desconocido'));
@@ -102,16 +98,9 @@ export const ExpensesForm: React.FC = () => {
           />
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Comprobante (Opcional)
-            </label>
+            <label className="block text-sm font-medium text-foreground mb-2">Comprobante (Opcional)</label>
             <div className="flex items-center space-x-4">
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={handleReceiptUpload}
-                className="flex-1"
-              />
+              <Input type="file" accept="image/*" onChange={handleReceiptUpload} className="flex-1" />
               {receiptFile && (
                 <div className="flex items-center text-success">
                   <CheckCircle className="h-4 w-4 mr-1" />
@@ -129,9 +118,7 @@ export const ExpensesForm: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Notas Adicionales (Opcional)
-            </label>
+            <label className="block text-sm font-medium text-foreground mb-2">Notas Adicionales (Opcional)</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -170,12 +157,7 @@ export const ExpensesForm: React.FC = () => {
             </div>
           )}
 
-          <Button
-            type="submit"
-            disabled={!concept || amount <= 0 || isSubmitting}
-            className="w-full"
-            size="lg"
-          >
+          <Button type="submit" disabled={!concept || amount <= 0 || isSubmitting} className="w-full" size="lg">
             {isSubmitting ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>

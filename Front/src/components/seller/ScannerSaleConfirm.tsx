@@ -3,7 +3,17 @@ import { vendorAPI } from '../../services/api';
 import { vendorAPI as transferVendorAPI } from '../../services/transfersAPI';
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Tag, Loader2, CheckCircle, AlertCircle, DollarSign, ChevronDown, ChevronUp, Percent, Upload } from 'lucide-react';
+import {
+  Tag,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  DollarSign,
+  ChevronDown,
+  ChevronUp,
+  Percent,
+  Upload,
+} from 'lucide-react';
 
 interface ScannerSaleConfirmProps {
   productData: {
@@ -25,17 +35,13 @@ interface ScannerSaleConfirmProps {
 type SinglePaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia';
 type PaymentMethodType = SinglePaymentMethod | 'mixto';
 
-export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
-  productData,
-  onSaleCompleted,
-  onBack
-}) => {
+export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({ productData, onSaleCompleted, onBack }) => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [showErrorView, setShowErrorView] = useState(false);
-  const [editedPrice, setEditedPrice] = useState<number>(productData.price);
+  const [editedPrice, _setEditedPrice] = useState<number>(productData.price);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodType>('efectivo');
 
   // Opciones avanzadas
@@ -48,7 +54,9 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [notes, setNotes] = useState('');
   const [requiresConfirmation, setRequiresConfirmation] = useState(false);
-  const [mixedPayments, setMixedPayments] = useState<{ type: SinglePaymentMethod; amount: string; reference: string }[]>([
+  const [mixedPayments, setMixedPayments] = useState<
+    { type: SinglePaymentMethod; amount: string; reference: string }[]
+  >([
     { type: 'efectivo', amount: '', reference: '' },
     { type: 'transferencia', amount: '', reference: '' },
   ]);
@@ -66,9 +74,12 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
 
   const getStorageLabel = (storageType?: string) => {
     switch (storageType) {
-      case 'exhibition': return 'Exhibicion';
-      case 'warehouse': return 'Bodega';
-      default: return storageType || '';
+      case 'exhibition':
+        return 'Exhibicion';
+      case 'warehouse':
+        return 'Bodega';
+      default:
+        return storageType || '';
     }
   };
 
@@ -78,8 +89,8 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
   const mixedRemaining = totalAmount - mixedTotal;
 
   const updateMixedPayment = (index: number, field: 'type' | 'amount' | 'reference', value: string) => {
-    setMixedPayments(prev => {
-      const updated = prev.map((mp, i) => i === index ? { ...mp, [field]: value } : mp);
+    setMixedPayments((prev) => {
+      const updated = prev.map((mp, i) => (i === index ? { ...mp, [field]: value } : mp));
       if (field === 'amount') {
         const lastIndex = updated.length - 1;
         if (updated.length === 2) {
@@ -88,7 +99,10 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
           const remaining = totalAmount - typed;
           updated[otherIndex] = { ...updated[otherIndex], amount: remaining >= 0 ? String(remaining) : '' };
         } else if (updated.length >= 3 && index !== lastIndex) {
-          const othersTotal = updated.reduce((sum, mp, i) => i === lastIndex ? sum : sum + (parseFloat(mp.amount) || 0), 0);
+          const othersTotal = updated.reduce(
+            (sum, mp, i) => (i === lastIndex ? sum : sum + (parseFloat(mp.amount) || 0)),
+            0
+          );
           const remaining = totalAmount - othersTotal;
           updated[lastIndex] = { ...updated[lastIndex], amount: remaining >= 0 ? String(remaining) : '' };
         }
@@ -99,18 +113,21 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
 
   const addMixedPayment = () => {
     if (mixedPayments.length < 4) {
-      setMixedPayments(prev => [...prev, { type: 'efectivo', amount: '', reference: '' }]);
+      setMixedPayments((prev) => [...prev, { type: 'efectivo', amount: '', reference: '' }]);
     }
   };
 
   const removeMixedPayment = (index: number) => {
     if (mixedPayments.length > 2) {
-      setMixedPayments(prev => prev.filter((_, i) => i !== index));
+      setMixedPayments((prev) => prev.filter((_, i) => i !== index));
     }
   };
 
   const fillRemaining = (index: number) => {
-    const othersTotal = mixedPayments.reduce((sum, mp, i) => i === index ? sum : sum + (parseFloat(mp.amount) || 0), 0);
+    const othersTotal = mixedPayments.reduce(
+      (sum, mp, i) => (i === index ? sum : sum + (parseFloat(mp.amount) || 0)),
+      0
+    );
     const remaining = totalAmount - othersTotal;
     if (remaining > 0) {
       updateMixedPayment(index, 'amount', String(remaining));
@@ -173,17 +190,23 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
         : `Venta directa desde escaner — ${productData.location || 'N/A'} (${getStorageLabel(productData.storage_type)})`;
       const fullNotes = notes ? `${autoNotes} | ${notes}` : autoNotes;
 
-      let paymentMethodsArr: { type: 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto'; amount: number; reference?: string | null }[];
+      let paymentMethodsArr: {
+        type: 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto';
+        amount: number;
+        reference?: string | null;
+      }[];
 
       if (selectedPaymentMethod === 'mixto') {
         if (Math.abs(mixedRemaining) > 0.01) {
-          setError(`La suma de los pagos debe ser igual al total ($${totalAmount.toLocaleString('es-CO')}). Diferencia: $${Math.abs(mixedRemaining).toLocaleString('es-CO')}`);
+          setError(
+            `La suma de los pagos debe ser igual al total ($${totalAmount.toLocaleString('es-CO')}). Diferencia: $${Math.abs(mixedRemaining).toLocaleString('es-CO')}`
+          );
           setLoading(false);
           return;
         }
         paymentMethodsArr = mixedPayments
-          .filter(mp => (parseFloat(mp.amount) || 0) > 0)
-          .map(mp => ({
+          .filter((mp) => (parseFloat(mp.amount) || 0) > 0)
+          .map((mp) => ({
             type: mp.type as 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto',
             amount: parseFloat(mp.amount) || 0,
             reference: mp.reference || null,
@@ -194,7 +217,11 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
           return;
         }
       } else {
-        const pm: { type: 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto'; amount: number; reference?: string | null } = {
+        const pm: {
+          type: 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto';
+          amount: number;
+          reference?: string | null;
+        } = {
           type: selectedPaymentMethod,
           amount: totalAmount,
         };
@@ -218,15 +245,17 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
       } else {
         // Venta directa desde escáner — usar endpoint createSale
         const saleData = {
-          items: [{
-            sneaker_reference_code: productData.code,
-            brand: productData.brand,
-            model: productData.model,
-            color: productData.color,
-            size: productData.size,
-            quantity: 1,
-            unit_price: editedPrice
-          }],
+          items: [
+            {
+              sneaker_reference_code: productData.code,
+              brand: productData.brand,
+              model: productData.model,
+              color: productData.color,
+              size: productData.size,
+              quantity: 1,
+              unit_price: editedPrice,
+            },
+          ],
           total_amount: totalAmount,
           payment_methods: paymentMethodsArr,
           notes: fullNotes,
@@ -249,7 +278,9 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
         try {
           const body = await err.response.json();
           detail = body?.detail ? (typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail)) : null;
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
       setError(msg);
       setErrorDetail(detail);
@@ -265,9 +296,7 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
         <CardContent className="p-6 text-center space-y-3">
           <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
           <h3 className="text-lg font-semibold text-green-800">Venta Registrada</h3>
-          <p className="text-sm text-green-600">
-            La venta se ha registrado correctamente.
-          </p>
+          <p className="text-sm text-green-600">La venta se ha registrado correctamente.</p>
           {onSaleCompleted && (
             <Button variant="ghost" onClick={onSaleCompleted} className="mt-2">
               Volver al Dashboard
@@ -294,7 +323,11 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
           <div className="flex flex-col items-center gap-2 pt-2">
             <Button
               variant="outline"
-              onClick={() => { setShowErrorView(false); setError(null); setErrorDetail(null); }}
+              onClick={() => {
+                setShowErrorView(false);
+                setError(null);
+                setErrorDetail(null);
+              }}
               className="border-red-300 text-red-700 hover:bg-red-100"
             >
               Intentar de nuevo
@@ -359,7 +392,9 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
             className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {paymentMethods.map((method) => (
-              <option key={method.value} value={method.value}>{method.label}</option>
+              <option key={method.value} value={method.value}>
+                {method.label}
+              </option>
             ))}
           </select>
         </div>
@@ -388,7 +423,9 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
                     className="rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {singlePaymentMethods.map((sm) => (
-                      <option key={sm.value} value={sm.value}>{sm.label}</option>
+                      <option key={sm.value} value={sm.value}>
+                        {sm.label}
+                      </option>
                     ))}
                   </select>
                   <div className="relative">
@@ -431,32 +468,34 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
                 + Agregar metodo de pago
               </button>
             )}
-            <div className={`text-xs font-medium text-right ${Math.abs(mixedRemaining) < 0.01 ? 'text-green-600' : 'text-amber-600'}`}>
+            <div
+              className={`text-xs font-medium text-right ${Math.abs(mixedRemaining) < 0.01 ? 'text-green-600' : 'text-amber-600'}`}
+            >
               {Math.abs(mixedRemaining) < 0.01
                 ? 'Total cubierto correctamente'
                 : mixedRemaining > 0
                   ? `Falta: $${mixedRemaining.toLocaleString('es-CO')}`
-                  : `Excede: $${Math.abs(mixedRemaining).toLocaleString('es-CO')}`
-              }
+                  : `Excede: $${Math.abs(mixedRemaining).toLocaleString('es-CO')}`}
             </div>
           </div>
         )}
 
         {/* Referencia de pago (visible si tarjeta o transferencia en modo simple) */}
-        {selectedPaymentMethod !== 'mixto' && (selectedPaymentMethod === 'tarjeta' || selectedPaymentMethod === 'transferencia') && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              Referencia {selectedPaymentMethod === 'tarjeta' ? '(****1234)' : ''}
-            </label>
-            <input
-              type="text"
-              value={paymentReference}
-              onChange={(e) => setPaymentReference(e.target.value)}
-              placeholder={selectedPaymentMethod === 'tarjeta' ? '****1234' : 'REF123456'}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
-        )}
+        {selectedPaymentMethod !== 'mixto' &&
+          (selectedPaymentMethod === 'tarjeta' || selectedPaymentMethod === 'transferencia') && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Referencia {selectedPaymentMethod === 'tarjeta' ? '(****1234)' : ''}
+              </label>
+              <input
+                type="text"
+                value={paymentReference}
+                onChange={(e) => setPaymentReference(e.target.value)}
+                placeholder={selectedPaymentMethod === 'tarjeta' ? '****1234' : 'REF123456'}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+          )}
 
         {/* Toggle Opciones Avanzadas */}
         <button
@@ -534,12 +573,7 @@ export const ScannerSaleConfirm: React.FC<ScannerSaleConfirmProps> = ({
               <label className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-muted cursor-pointer transition-colors">
                 <Upload className="h-4 w-4" />
                 {receiptFile ? 'Cambiar archivo' : 'Seleccionar archivo'}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleReceiptUpload}
-                  className="hidden"
-                />
+                <input type="file" accept="image/*" onChange={handleReceiptUpload} className="hidden" />
               </label>
               {receiptFile && (
                 <p className="text-xs text-green-600 flex items-center gap-1">

@@ -4,8 +4,8 @@ import { BACKEND_URL } from '../config/env';
 const getHeaders = () => {
   const token = localStorage.getItem('token');
   return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
   };
 };
 
@@ -30,9 +30,9 @@ export const superadminAPI = {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/setup/first-superadmin`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
     return handleResponse(response);
   },
@@ -54,7 +54,7 @@ export const superadminAPI = {
 
     const url = `${BACKEND_URL}/api/v1/superadmin/companies${params.toString() ? '?' + params.toString() : ''}`;
     const response = await fetch(url, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -78,7 +78,7 @@ export const superadminAPI = {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/companies`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify(companyData)
+      body: JSON.stringify(companyData),
     });
     return handleResponse(response);
   },
@@ -86,32 +86,35 @@ export const superadminAPI = {
   // 4. SU001: Obtener detalles de una empresa
   async getCompany(companyId: number) {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/companies/${companyId}`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
 
   // 5. SU001: Actualizar configuración de empresa
-  async updateCompany(companyId: number, updateData: {
-    name?: string;
-    legal_name?: string;
-    tax_id?: string;
-    email?: string;
-    phone?: string;
-    subscription_plan?: 'basic' | 'professional' | 'enterprise' | 'custom';
-    subscription_status?: 'active' | 'suspended' | 'cancelled' | 'trial' | 'overdue';
-    max_locations?: number;
-    max_employees?: number;
-    price_per_location?: number | string;
-    billing_day?: number;
-    subscription_ends_at?: string;
-    settings?: object;
-    is_active?: boolean;
-  }) {
+  async updateCompany(
+    companyId: number,
+    updateData: {
+      name?: string;
+      legal_name?: string;
+      tax_id?: string;
+      email?: string;
+      phone?: string;
+      subscription_plan?: 'basic' | 'professional' | 'enterprise' | 'custom';
+      subscription_status?: 'active' | 'suspended' | 'cancelled' | 'trial' | 'overdue';
+      max_locations?: number;
+      max_employees?: number;
+      price_per_location?: number | string;
+      billing_day?: number;
+      subscription_ends_at?: string;
+      settings?: object;
+      is_active?: boolean;
+    }
+  ) {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/companies/${companyId}`, {
       method: 'PUT',
       headers: getHeaders(),
-      body: JSON.stringify(updateData)
+      body: JSON.stringify(updateData),
     });
     return handleResponse(response);
   },
@@ -120,7 +123,7 @@ export const superadminAPI = {
   async deleteCompany(companyId: number) {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/companies/${companyId}`, {
       method: 'DELETE',
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -130,7 +133,7 @@ export const superadminAPI = {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/companies/${companyId}/suspend`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ reason })
+      body: JSON.stringify({ reason }),
     });
     return handleResponse(response);
   },
@@ -139,7 +142,7 @@ export const superadminAPI = {
   async activateCompany(companyId: number) {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/companies/${companyId}/activate`, {
       method: 'POST',
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -157,7 +160,7 @@ export const superadminAPI = {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/subscriptions/change`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
     return handleResponse(response);
   },
@@ -165,17 +168,13 @@ export const superadminAPI = {
   // 10. SU002: Historial de cambios de suscripción
   async getSubscriptionHistory(companyId: number) {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/subscriptions/${companyId}/history`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
 
   // 11. SU002: Listar todas las facturas
-  async getInvoices(filters?: {
-    status?: 'pending' | 'paid' | 'overdue';
-    skip?: number;
-    limit?: number;
-  }) {
+  async getInvoices(filters?: { status?: 'pending' | 'paid' | 'overdue'; skip?: number; limit?: number }) {
     const params = new URLSearchParams();
     if (filters?.status) params.append('status', filters.status);
     if (filters?.skip !== undefined) params.append('skip', filters.skip.toString());
@@ -183,7 +182,7 @@ export const superadminAPI = {
 
     const url = `${BACKEND_URL}/api/v1/superadmin/invoices${params.toString() ? '?' + params.toString() : ''}`;
     const response = await fetch(url, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -192,9 +191,9 @@ export const superadminAPI = {
   async getCompanyInvoices(companyId: number, status?: 'pending' | 'paid' | 'overdue') {
     const params = status ? new URLSearchParams({ status }) : '';
     const url = `${BACKEND_URL}/api/v1/superadmin/invoices/company/${companyId}${params ? '?' + params : ''}`;
-    
+
     const response = await fetch(url, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -203,21 +202,24 @@ export const superadminAPI = {
   async generateInvoice(companyId: number) {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/invoices/generate/${companyId}`, {
       method: 'POST',
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
 
   // 14. SU002: Marcar factura como pagada
-  async markInvoiceAsPaid(invoiceId: number, data: {
-    payment_method: string;
-    payment_reference?: string;
-    paid_at?: string;
-  }) {
+  async markInvoiceAsPaid(
+    invoiceId: number,
+    data: {
+      payment_method: string;
+      payment_reference?: string;
+      paid_at?: string;
+    }
+  ) {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/invoices/${invoiceId}/mark-paid`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
     return handleResponse(response);
   },
@@ -225,7 +227,7 @@ export const superadminAPI = {
   // 15. SU003: Métricas globales del sistema
   async getGlobalMetrics() {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/metrics/global`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -233,7 +235,7 @@ export const superadminAPI = {
   // 16. SU003: Métricas detalladas de una empresa
   async getCompanyMetrics(companyId: number) {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/metrics/company/${companyId}`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -242,11 +244,11 @@ export const superadminAPI = {
   async getFinancialReport(startDate: string, endDate: string) {
     const params = new URLSearchParams({
       start_date: startDate,
-      end_date: endDate
+      end_date: endDate,
     });
-    
+
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/reports/financial?${params}`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -254,11 +256,11 @@ export const superadminAPI = {
   // 18. Listar plantillas de planes disponibles
   async getPlans(activeOnly: boolean = true) {
     const params = new URLSearchParams({
-      active_only: activeOnly.toString()
+      active_only: activeOnly.toString(),
     });
-    
+
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/plans?${params}`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -277,7 +279,7 @@ export const superadminAPI = {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/plans`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify(planData)
+      body: JSON.stringify(planData),
     });
     return handleResponse(response);
   },
@@ -285,22 +287,25 @@ export const superadminAPI = {
   // 20. Health check del módulo de superadmin
   async getHealth() {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/health`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
 
   // 21. SU001: Crear usuario Boss para una empresa
-  async createBoss(companyId: number, bossData: {
-    email: string;
-    password: string;
-    first_name: string;
-    last_name: string;
-  }) {
+  async createBoss(
+    companyId: number,
+    bossData: {
+      email: string;
+      password: string;
+      first_name: string;
+      last_name: string;
+    }
+  ) {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/companies/${companyId}/boss`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify(bossData)
+      body: JSON.stringify(bossData),
     });
     return handleResponse(response);
   },
@@ -308,7 +313,7 @@ export const superadminAPI = {
   // 22. SU001: Obtener solo el usuario Boss de una empresa
   async getBoss(companyId: number) {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/companies/${companyId}/boss`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -316,10 +321,10 @@ export const superadminAPI = {
   // 23. SU001: Obtener empresa con su usuario Boss
   async getCompanyWithBoss(companyId: number) {
     const response = await fetch(`${BACKEND_URL}/api/v1/superadmin/companies/${companyId}/with-boss`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
-  }
+  },
 };
 
 // Exportar como default para facilitar el import

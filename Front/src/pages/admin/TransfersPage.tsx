@@ -3,14 +3,7 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
-import {
-  Truck,
-  Calendar,
-  ChevronDown,
-  ChevronUp,
-  Warehouse,
-  Store,
-} from 'lucide-react';
+import { Truck, Calendar, ChevronDown, ChevronUp, Warehouse, Store } from 'lucide-react';
 import { EmptyState } from '../../components/admin/ErrorState';
 import { fetchDailyTransfersTraceability } from '../../services/adminAPI';
 import type { DailyTransferTraceability } from '../../services/adminAPI';
@@ -127,10 +120,7 @@ export const TransfersPage: React.FC = () => {
                 icon={<Calendar className="h-4 w-4" />}
               />
             </div>
-            <Button
-              onClick={handleFetchTransfersTraceability}
-              isLoading={transfersTraceabilityLoading}
-            >
+            <Button onClick={handleFetchTransfersTraceability} isLoading={transfersTraceabilityLoading}>
               Consultar
             </Button>
           </div>
@@ -149,10 +139,7 @@ export const TransfersPage: React.FC = () => {
                 const isExpanded = expandedTransfers.has(transfer.transfer_id);
 
                 return (
-                  <div
-                    key={transfer.transfer_id}
-                    className="border border-border rounded-lg overflow-hidden"
-                  >
+                  <div key={transfer.transfer_id} className="border border-border rounded-lg overflow-hidden">
                     {/* Collapsed row */}
                     <button
                       type="button"
@@ -168,15 +155,9 @@ export const TransfersPage: React.FC = () => {
                             {transfer.product.brand} {transfer.product.model}
                           </p>
                           <div className="flex flex-wrap items-center gap-2 mt-1">
-                            <Badge variant={getStatusBadgeVariant(transfer.status)}>
-                              {transfer.status}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              Talla: {transfer.product.size}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              Cant: {transfer.product.quantity}
-                            </span>
+                            <Badge variant={getStatusBadgeVariant(transfer.status)}>{transfer.status}</Badge>
+                            <span className="text-xs text-muted-foreground">Talla: {transfer.product.size}</span>
+                            <span className="text-xs text-muted-foreground">Cant: {transfer.product.quantity}</span>
                             <span className="text-xs text-muted-foreground">
                               Recogida: {getPickupTypeLabel(transfer.pickup_type)}
                             </span>
@@ -239,7 +220,9 @@ export const TransfersPage: React.FC = () => {
                           <h4 className="text-sm font-semibold text-foreground mb-2">Ubicaciones</h4>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="flex items-center space-x-3 p-3 border border-border rounded-lg">
-                              <div className={`p-2 rounded-lg ${transfer.source_location.type === 'bodega' ? 'bg-secondary/10' : 'bg-primary/10'}`}>
+                              <div
+                                className={`p-2 rounded-lg ${transfer.source_location.type === 'bodega' ? 'bg-secondary/10' : 'bg-primary/10'}`}
+                              >
                                 {transfer.source_location.type === 'bodega' ? (
                                   <Warehouse className="h-5 w-5 text-secondary" />
                                 ) : (
@@ -249,13 +232,18 @@ export const TransfersPage: React.FC = () => {
                               <div>
                                 <p className="text-xs text-muted-foreground">Origen</p>
                                 <p className="font-medium text-sm">{transfer.source_location.name}</p>
-                                <Badge variant={transfer.source_location.type === 'bodega' ? 'secondary' : 'primary'} className="mt-1">
+                                <Badge
+                                  variant={transfer.source_location.type === 'bodega' ? 'secondary' : 'primary'}
+                                  className="mt-1"
+                                >
                                   {transfer.source_location.type === 'bodega' ? 'Bodega' : 'Local'}
                                 </Badge>
                               </div>
                             </div>
                             <div className="flex items-center space-x-3 p-3 border border-border rounded-lg">
-                              <div className={`p-2 rounded-lg ${transfer.destination_location.type === 'bodega' ? 'bg-secondary/10' : 'bg-primary/10'}`}>
+                              <div
+                                className={`p-2 rounded-lg ${transfer.destination_location.type === 'bodega' ? 'bg-secondary/10' : 'bg-primary/10'}`}
+                              >
                                 {transfer.destination_location.type === 'bodega' ? (
                                   <Warehouse className="h-5 w-5 text-secondary" />
                                 ) : (
@@ -265,7 +253,10 @@ export const TransfersPage: React.FC = () => {
                               <div>
                                 <p className="text-xs text-muted-foreground">Destino</p>
                                 <p className="font-medium text-sm">{transfer.destination_location.name}</p>
-                                <Badge variant={transfer.destination_location.type === 'bodega' ? 'secondary' : 'primary'} className="mt-1">
+                                <Badge
+                                  variant={transfer.destination_location.type === 'bodega' ? 'secondary' : 'primary'}
+                                  className="mt-1"
+                                >
                                   {transfer.destination_location.type === 'bodega' ? 'Bodega' : 'Local'}
                                 </Badge>
                               </div>
@@ -281,7 +272,9 @@ export const TransfersPage: React.FC = () => {
                               <p className="text-xs text-muted-foreground">Solicitante</p>
                               <p className="font-medium">{transfer.participants.requester.name || 'N/A'}</p>
                               {transfer.participants.requester.id && (
-                                <p className="text-xs text-muted-foreground">ID: {transfer.participants.requester.id}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  ID: {transfer.participants.requester.id}
+                                </p>
                               )}
                             </div>
                             <div className="p-3 border border-border rounded-lg">
@@ -295,7 +288,9 @@ export const TransfersPage: React.FC = () => {
                               <p className="text-xs text-muted-foreground">Bodeguero</p>
                               <p className="font-medium">{transfer.participants.warehouse_keeper.name || 'N/A'}</p>
                               {transfer.participants.warehouse_keeper.id && (
-                                <p className="text-xs text-muted-foreground">ID: {transfer.participants.warehouse_keeper.id}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  ID: {transfer.participants.warehouse_keeper.id}
+                                </p>
                               )}
                             </div>
                           </div>
@@ -332,7 +327,9 @@ export const TransfersPage: React.FC = () => {
                             <div>
                               <span className="text-muted-foreground">Recepcion confirmada:</span>{' '}
                               <span className="font-medium">
-                                {transfer.dates.confirmed_reception_at ? formatDate(transfer.dates.confirmed_reception_at) : 'N/A'}
+                                {transfer.dates.confirmed_reception_at
+                                  ? formatDate(transfer.dates.confirmed_reception_at)
+                                  : 'N/A'}
                               </span>
                             </div>
                           </div>
@@ -342,9 +339,7 @@ export const TransfersPage: React.FC = () => {
                         {transfer.notes && (
                           <div>
                             <h4 className="text-sm font-semibold text-foreground mb-2">Notas</h4>
-                            <p className="text-sm text-muted-foreground bg-muted/20 p-3 rounded-lg">
-                              {transfer.notes}
-                            </p>
+                            <p className="text-sm text-muted-foreground bg-muted/20 p-3 rounded-lg">{transfer.notes}</p>
                           </div>
                         )}
                       </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shovel as Shoe, Mail, Lock } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 import LogoImage from '../../Logo/Solo logo sin fondo.png';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -20,14 +20,14 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-    
+
     try {
       console.log('🚀 Iniciando login para:', email);
       const user = await login(email, password);
-      
+
       console.log('✅ Usuario logueado:', user);
       console.log('🎯 Rol del usuario:', user.role);
-      
+
       // Redirect based on user role
       switch (user.role) {
         case 'superuser':
@@ -60,7 +60,7 @@ export const LoginPage: React.FC = () => {
       }
     } catch (err: any) {
       console.error('❌ Error en login:', err);
-      
+
       // Manejo de errores más específico
       if (err.response && err.response.status === 401) {
         setError('Correo o contraseña incorrectos.');
@@ -82,20 +82,18 @@ export const LoginPage: React.FC = () => {
         <div className="max-w-md w-full space-y-8 bg-card p-8 rounded-xl shadow-2xl border border-border backdrop-blur-sm">
           <div className="text-center">
             <div className="flex justify-center">
-                <img src={LogoImage} alt="TuStockYa" className="h-20 w-45 " />
+              <img src={LogoImage} alt="TuStockYa" className="h-20 w-45 " />
             </div>
             <h2 className="mt-6 text-3xl font-extrabold text-foreground">Iniciar sesión</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Accede a tu panel de TuStockYa
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">Accede a tu panel de TuStockYa</p>
           </div>
-          
+
           {error && (
             <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm p-3 rounded-lg backdrop-blur-sm">
               {error}
             </div>
           )}
-          
+
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-4">
               <Input
@@ -110,13 +108,13 @@ export const LoginPage: React.FC = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 icon={<Mail className="h-5 w-5 text-gray-400" />}
               />
-              
+
               <div className="relative">
                 <Input
                   label="Contraseña"
                   id="password"
                   name="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   required
                   placeholder="Contraseña"
@@ -129,19 +127,46 @@ export const LoginPage: React.FC = () => {
                   onClick={() => setShowPassword((prev) => !prev)}
                   className={`absolute right-3 top-8 focus:outline-none ${showPassword ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
                   tabIndex={-1}
-                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 >
                   {showPassword ? (
                     // Ojo abierto, color azul
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"
+                      />
                       <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
                     </svg>
                   ) : (
                     // Ojo cerrado, color gris
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.94 17.94A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10a9.96 9.96 0 012.175-6.125M3 3l18 18" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.88 9.88A3 3 0 0012 15a3 3 0 002.12-5.12" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17.94 17.94A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10a9.96 9.96 0 012.175-6.125M3 3l18 18"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9.88 9.88A3 3 0 0012 15a3 3 0 002.12-5.12"
+                      />
                     </svg>
                   )}
                 </button>

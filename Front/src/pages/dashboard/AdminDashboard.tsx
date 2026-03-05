@@ -35,7 +35,7 @@ import {
   ChevronUp,
   Trash2,
   Camera,
-  ClipboardList
+  ClipboardList,
 } from 'lucide-react';
 
 import DailyReportView from '../../components/admin/daily-report/DailyReportView';
@@ -60,24 +60,16 @@ import {
   createCostConfiguration,
   fetchCostConfigurations,
   fetchOperationalDashboard,
-  fetchCostConfiguration,
   updateCostConfiguration,
   deleteCostConfiguration,
   deactivateCostConfiguration,
   createCostPayment,
-  fetchLocationCostDashboard,
-  fetchOverdueAlerts,
-  fetchUpcomingPayments,
-  fetchCostsModuleHealth,
 
   // Wholesale Sales (1 endpoint)
 
   // Reports (1 endpoint)
   generateSalesReports,
   fetchDailySalesTraceability,
-
-  // Inventory Alerts (1 endpoint)
-  configureInventoryAlert,
 
   // Discounts (2 endpoints)
   fetchPendingDiscountRequests,
@@ -90,19 +82,8 @@ import {
   // Performance (1 endpoint)
   fetchUsersPerformance,
 
-  // Product Assignments (2 endpoints)
-  fetchProductAssignments,
-
   // Video Inventory (4 endpoints)
   processVideoInventoryEntry,
-  fetchVideoProcessingHistory,
-
-  // System (4 endpoints)
-  fetchAdminModuleHealth,
-  fetchSystemOverview,
-
-  // Utilities (4 endpoints)
-  testMicroserviceConnection
 } from '../../services/adminAPI';
 import type { DailySaleTraceability, DailyTransferTraceability } from '../../services/adminAPI';
 
@@ -116,7 +97,6 @@ import {
   listarVentasMayoreo,
   obtenerVentasProductoMayoreo,
   obtenerEstadisticasMayoreo,
-  checkMayoreoHealth
 } from '../../services/adminMayoreoAPI';
 
 import { formatCurrency, formatDate, capitalize } from '../../utils/formatters';
@@ -136,9 +116,28 @@ import { EditProductInfoModal } from '../../components/admin/EditProductInfoModa
 
 // Import inventory types and API
 import type { AdminInventoryLocation, AdminInventoryProduct, AdminInventorySize } from '../../types';
-import { adjustInventory, adjustProductPrice, updateProductInfo, fetchAdminInventory, deleteProductReference, updateProductImage, retrainProductVideo } from '../../services/adminAPI';
+import {
+  adjustInventory,
+  adjustProductPrice,
+  updateProductInfo,
+  fetchAdminInventory,
+  deleteProductReference,
+  updateProductImage,
+  retrainProductVideo,
+} from '../../services/adminAPI';
 
-type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics' | 'transfers' | 'daily-report';
+type AdminView =
+  | 'dashboard'
+  | 'users'
+  | 'costs'
+  | 'locations'
+  | 'wholesale'
+  | 'notifications'
+  | 'reports'
+  | 'inventory'
+  | 'analytics'
+  | 'transfers'
+  | 'daily-report';
 
 interface DashboardData {
   admin_name: string;
@@ -186,23 +185,7 @@ interface Notifications {
   inventory: any[];
 }
 
-interface WholesaleOrder {
-  id: number;
-  customer_name: string;
-  customer_document: string;
-  customer_phone?: string;
-  location_id: number;
-  location_name: string;
-  total_amount: string;
-  discount_amount: string;
-  final_amount: string;
-  payment_method: string;
-  sale_date: string;
-  processed_by_user_id: number;
-  processed_by_name: string;
-  items_count: number;
-  notes: string | null;
-}
+// WholesaleOrder interface removed - not currently used
 
 interface ProductoMayoreo {
   id: number;
@@ -303,11 +286,11 @@ export const AdminDashboard: React.FC = () => {
         size: '',
         pairs: [{ location_id: 0, quantity: 0 }],
         left_feet: [] as Array<{ location_id: number; quantity: number }>,
-        right_feet: [] as Array<{ location_id: number; quantity: number }>
-      }
+        right_feet: [] as Array<{ location_id: number; quantity: number }>,
+      },
     ],
     reference_image: null as File | null,
-    video_file: null as File | null
+    video_file: null as File | null,
   });
 
   // Estados para preview de archivos capturados
@@ -339,11 +322,11 @@ export const AdminDashboard: React.FC = () => {
   const [operationalData, setOperationalData] = useState<OperationalDashboard | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [availableLocations, setAvailableLocations] = useState<Location[]>([]);
-  const [wholesaleOrders] = useState<WholesaleOrder[]>([]);
+  // wholesaleOrders state removed - not currently used
   const [notifications, setNotifications] = useState<Notifications>({
     discounts: [],
     returns: [],
-    inventory: []
+    inventory: [],
   });
 
   // Mayoreo states
@@ -416,7 +399,7 @@ export const AdminDashboard: React.FC = () => {
     search: '',
     role: '' as '' | 'vendedor' | 'bodeguero' | 'corredor',
     location: '',
-    status: ''
+    status: '',
   });
 
   const [costFilters, setCostFilters] = useState({
@@ -424,7 +407,7 @@ export const AdminDashboard: React.FC = () => {
     category: '' as '' | 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros',
     location: '',
     dateFrom: '',
-    dateTo: ''
+    dateTo: '',
   });
 
   // Estados para lista de configuraciones de costos
@@ -440,7 +423,7 @@ export const AdminDashboard: React.FC = () => {
     amount: '',
     frequency: '' as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual',
     description: '',
-    is_active: true
+    is_active: true,
   });
 
   // Estados para modal de registro de pago
@@ -453,13 +436,13 @@ export const AdminDashboard: React.FC = () => {
     payment_date: '',
     payment_method: 'efectivo' as 'efectivo' | 'transferencia' | 'tarjeta' | 'cheque',
     payment_reference: '',
-    notes: ''
+    notes: '',
   });
 
   const todayISO = new Date().toISOString().split('T')[0];
   const [dailyTraceabilityFilters, setDailyTraceabilityFilters] = useState({
     target_date: todayISO,
-    location_id: ''
+    location_id: '',
   });
   const [dailyTraceabilityData, setDailyTraceabilityData] = useState<DailySaleTraceability[]>([]);
   const [dailyTraceabilityLoading, setDailyTraceabilityLoading] = useState(false);
@@ -468,7 +451,7 @@ export const AdminDashboard: React.FC = () => {
 
   // Transfers traceability states
   const [transfersTraceabilityFilters, setTransfersTraceabilityFilters] = useState({
-    target_date: todayISO
+    target_date: todayISO,
   });
   const [transfersTraceabilityData, setTransfersTraceabilityData] = useState<DailyTransferTraceability[]>([]);
   const [transfersTraceabilityLoading, setTransfersTraceabilityLoading] = useState(false);
@@ -477,6 +460,7 @@ export const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     loadInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -492,6 +476,7 @@ export const AdminDashboard: React.FC = () => {
     } else if (currentView === 'inventory') {
       loadAdminInventory();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView]);
 
   // Actualiza usuarios cuando cambian los filtros
@@ -499,6 +484,7 @@ export const AdminDashboard: React.FC = () => {
     if (currentView === 'users') {
       loadUsers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userFilters, currentView]);
 
   // Actualiza costos cuando cambian los filtros
@@ -506,6 +492,7 @@ export const AdminDashboard: React.FC = () => {
     if (currentView === 'costs' && showCostsList) {
       loadCostConfigurations();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [costFilters.category, costFilters.location]);
 
   const loadInitialData = async () => {
@@ -513,11 +500,7 @@ export const AdminDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      await Promise.all([
-        loadDashboardData(),
-        loadLocations(),
-        loadAvailableLocations()
-      ]);
+      await Promise.all([loadDashboardData(), loadLocations(), loadAvailableLocations()]);
     } catch (error) {
       console.error('Error loading initial data:', error);
       setError('Error al cargar los datos iniciales');
@@ -529,14 +512,14 @@ export const AdminDashboard: React.FC = () => {
   const loadDashboardData = async () => {
     try {
       const [dashboardResponse, metricsResponse] = await Promise.all([
-        fetchAdminDashboard().catch(err => {
+        fetchAdminDashboard().catch((err) => {
           console.warn('Dashboard endpoint failed:', err);
           return null;
         }),
-        fetchDashboardMetrics().catch(err => {
+        fetchDashboardMetrics().catch((err) => {
           console.warn('Metrics endpoint failed:', err);
           return null;
-        })
+        }),
       ]);
 
       if (dashboardResponse) {
@@ -546,7 +529,6 @@ export const AdminDashboard: React.FC = () => {
       if (metricsResponse) {
         setMetricsData(metricsResponse);
       }
-
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       // Set empty data on error
@@ -617,16 +599,18 @@ export const AdminDashboard: React.FC = () => {
       const discountsResponse = await fetchPendingDiscountRequests();
 
       setNotifications({
-        discounts: Array.isArray(discountsResponse) ? discountsResponse : discountsResponse.requests || discountsResponse.data || [],
+        discounts: Array.isArray(discountsResponse)
+          ? discountsResponse
+          : discountsResponse.requests || discountsResponse.data || [],
         returns: [], // No endpoint available yet
-        inventory: []
+        inventory: [],
       });
     } catch (error) {
       console.error('Error loading notifications:', error);
       setNotifications({
         discounts: [],
         returns: [],
-        inventory: []
+        inventory: [],
       });
     }
   };
@@ -643,7 +627,7 @@ export const AdminDashboard: React.FC = () => {
     try {
       const response = await fetchDailySalesTraceability({
         target_date: dailyTraceabilityFilters.target_date,
-        location_id: parseInt(dailyTraceabilityFilters.location_id, 10)
+        location_id: parseInt(dailyTraceabilityFilters.location_id, 10),
       });
 
       const normalizedData: DailySaleTraceability[] = Array.isArray(response)
@@ -671,7 +655,7 @@ export const AdminDashboard: React.FC = () => {
 
     try {
       const response = await fetchDailyTransfersTraceability({
-        target_date: transfersTraceabilityFilters.target_date
+        target_date: transfersTraceabilityFilters.target_date,
       });
 
       const normalizedData: DailyTransferTraceability[] = Array.isArray(response)
@@ -689,7 +673,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const toggleTransferExpansion = (transferId: number) => {
-    setExpandedTransfers(prev => {
+    setExpandedTransfers((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(transferId)) {
         newSet.delete(transferId);
@@ -708,7 +692,7 @@ export const AdminDashboard: React.FC = () => {
         first_name: userData.first_name,
         last_name: userData.last_name,
         role: userData.role,
-        location_ids: userData.location_ids || []
+        location_ids: userData.location_ids || [],
       });
 
       await loadUsers();
@@ -726,7 +710,7 @@ export const AdminDashboard: React.FC = () => {
         first_name: userData.first_name,
         last_name: userData.last_name,
         is_active: userData.is_active,
-        location_ids: userData.location_ids || []
+        location_ids: userData.location_ids || [],
       });
       await loadUsers();
       setEditingUser(null);
@@ -738,13 +722,12 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-
   const handleApproveDiscount = async (discountId: number, approved: boolean, notes?: string) => {
     try {
       await approveDiscountRequest({
         discount_request_id: discountId,
         approved: approved,
-        admin_notes: notes
+        admin_notes: notes,
       });
 
       await loadNotifications();
@@ -752,24 +735,6 @@ export const AdminDashboard: React.FC = () => {
     } catch (error: any) {
       console.error('Error processing discount:', error);
       alert('Error al procesar descuento: ' + (error.message || 'Error desconocido'));
-    }
-  };
-
-  const handleCreateInventoryAlert = async (alertData: any) => {
-    try {
-      await configureInventoryAlert({
-        location_id: alertData.locationId,
-        alert_type: alertData.alertType,
-        threshold_value: alertData.thresholdValue,
-        product_reference: alertData.productReference,
-        notification_emails: alertData.notificationEmails,
-        is_active: alertData.isActive ?? true
-      });
-
-      alert('Alerta de inventario configurada exitosamente');
-    } catch (error: any) {
-      console.error('Error creating inventory alert:', error);
-      alert('Error al configurar alerta: ' + (error.message || 'Error desconocido'));
     }
   };
 
@@ -789,7 +754,7 @@ export const AdminDashboard: React.FC = () => {
         frequency: mapFrequencyToAPI(costData.frequency),
         description: costData.description,
         start_date: new Date().toISOString().split('T')[0], // Default to today
-        end_date: costData.due_date || undefined
+        end_date: costData.due_date || undefined,
       };
 
       console.log('Enviando datos al API:', apiData);
@@ -802,7 +767,9 @@ export const AdminDashboard: React.FC = () => {
       if (response && (response.id || response.success !== false)) {
         await loadCosts();
         setShowCreateCostModal(false);
-        alert(`¡Costo registrado exitosamente!\n\nID: ${response.id}\nDescripción: ${response.description}\nMonto: ${formatCurrency(parseFloat(response.amount))}\nTipo: ${capitalize(response.cost_type)}`);
+        alert(
+          `¡Costo registrado exitosamente!\n\nID: ${response.id}\nDescripción: ${response.description}\nMonto: ${formatCurrency(parseFloat(response.amount))}\nTipo: ${capitalize(response.cost_type)}`
+        );
       } else {
         throw new Error('La respuesta del servidor no indica éxito');
       }
@@ -811,7 +778,6 @@ export const AdminDashboard: React.FC = () => {
       alert('Error al registrar costo: ' + (error.message || 'Error desconocido'));
     }
   };
-
 
   const handleDeleteCost = async (costId: number, forceDelete = false) => {
     try {
@@ -874,7 +840,7 @@ export const AdminDashboard: React.FC = () => {
       amount: cost.amount?.toString() || '',
       frequency: cost.frequency || 'monthly',
       description: cost.description || '',
-      is_active: cost.is_active !== false
+      is_active: cost.is_active !== false,
     });
     setShowEditCostModal(true);
   };
@@ -930,7 +896,7 @@ export const AdminDashboard: React.FC = () => {
       payment_date: todayISO,
       payment_method: 'efectivo',
       payment_reference: '',
-      notes: ''
+      notes: '',
     });
     setShowPaymentModal(true);
   };
@@ -953,7 +919,7 @@ export const AdminDashboard: React.FC = () => {
         payment_date: paymentFormData.payment_date || todayISO,
         payment_method: paymentFormData.payment_method,
         payment_reference: paymentFormData.payment_reference || undefined,
-        notes: paymentFormData.notes || undefined
+        notes: paymentFormData.notes || undefined,
       };
 
       await createCostPayment(paymentData);
@@ -962,7 +928,9 @@ export const AdminDashboard: React.FC = () => {
 
       setShowPaymentModal(false);
       setPayingCost(null);
-      alert(`Pago registrado exitosamente!\n\nMonto: ${formatCurrency(parseFloat(paymentFormData.payment_amount))}\nMétodo: ${paymentFormData.payment_method}`);
+      alert(
+        `Pago registrado exitosamente!\n\nMonto: ${formatCurrency(parseFloat(paymentFormData.payment_amount))}\nMétodo: ${paymentFormData.payment_method}`
+      );
     } catch (error: any) {
       console.error('Error registering payment:', error);
       alert('Error al registrar pago: ' + (error.message || 'Error desconocido'));
@@ -974,43 +942,45 @@ export const AdminDashboard: React.FC = () => {
   // Helper para mostrar frecuencia en español
   const getFrequencyLabel = (frequency: string) => {
     const labels: Record<string, string> = {
-      'daily': 'Diario',
-      'weekly': 'Semanal',
-      'monthly': 'Mensual',
-      'quarterly': 'Trimestral',
-      'annual': 'Anual'
+      daily: 'Diario',
+      weekly: 'Semanal',
+      monthly: 'Mensual',
+      quarterly: 'Trimestral',
+      annual: 'Anual',
     };
     return labels[frequency] || frequency;
   };
 
   // Helper functions para mapear datos del modal a la API
-  const mapCostTypeToAPI = (category: string): 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros' => {
+  const mapCostTypeToAPI = (
+    category: string
+  ): 'arriendo' | 'servicios' | 'nomina' | 'mercancia' | 'comisiones' | 'transporte' | 'otros' => {
     const mapping: Record<string, typeof mapCostTypeToAPI extends (x: any) => infer R ? R : never> = {
       // Costos Fijos
-      'Arriendo': 'arriendo',
+      Arriendo: 'arriendo',
       'Servicios Públicos': 'servicios',
-      'Internet': 'servicios',
-      'Seguros': 'otros',
-      'Nómina': 'nomina',
+      Internet: 'servicios',
+      Seguros: 'otros',
+      Nómina: 'nomina',
       'Otros Fijos': 'otros',
       // Costos Variables
-      'Mercancía': 'mercancia',
-      'Transporte': 'transporte',
-      'Publicidad': 'otros',
-      'Mantenimiento': 'otros',
-      'Suministros': 'otros',
-      'Otros Variables': 'otros'
+      Mercancía: 'mercancia',
+      Transporte: 'transporte',
+      Publicidad: 'otros',
+      Mantenimiento: 'otros',
+      Suministros: 'otros',
+      'Otros Variables': 'otros',
     };
     return mapping[category] || 'otros';
   };
 
   const mapFrequencyToAPI = (frequency: string): 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual' => {
     const mapping: Record<string, typeof mapFrequencyToAPI extends (x: any) => infer R ? R : never> = {
-      'diario': 'daily',
-      'semanal': 'weekly',
-      'mensual': 'monthly',
-      'trimestral': 'quarterly',
-      'anual': 'annual'
+      diario: 'daily',
+      semanal: 'weekly',
+      mensual: 'monthly',
+      trimestral: 'quarterly',
+      anual: 'annual',
     };
     return mapping[frequency] || 'monthly';
   };
@@ -1037,14 +1007,14 @@ export const AdminDashboard: React.FC = () => {
       }
 
       // Validar y preparar la distribución de tallas
-      const validSizesDistribution = videoData.sizes_distribution.filter(sd => {
+      const validSizesDistribution = videoData.sizes_distribution.filter((sd) => {
         // Verificar que la talla no esté vacía
         if (!sd.size.trim()) return false;
 
         // Verificar que haya al menos una distribución válida
-        const hasPairs = sd.pairs.some(p => p.location_id > 0 && p.quantity > 0);
-        const hasLeftFeet = sd.left_feet.some(lf => lf.location_id > 0 && lf.quantity > 0);
-        const hasRightFeet = sd.right_feet.some(rf => rf.location_id > 0 && rf.quantity > 0);
+        const hasPairs = sd.pairs.some((p) => p.location_id > 0 && p.quantity > 0);
+        const hasLeftFeet = sd.left_feet.some((lf) => lf.location_id > 0 && lf.quantity > 0);
+        const hasRightFeet = sd.right_feet.some((rf) => rf.location_id > 0 && rf.quantity > 0);
 
         return hasPairs || (hasLeftFeet && hasRightFeet);
       });
@@ -1060,27 +1030,35 @@ export const AdminDashboard: React.FC = () => {
         const totalRightFeet = sizeDistro.right_feet.reduce((sum, rf) => sum + rf.quantity, 0);
 
         if (totalLeftFeet !== totalRightFeet) {
-          alert(`❌ Error en talla ${sizeDistro.size}: El total de pies izquierdos (${totalLeftFeet}) debe ser igual al total de pies derechos (${totalRightFeet})`);
+          alert(
+            `❌ Error en talla ${sizeDistro.size}: El total de pies izquierdos (${totalLeftFeet}) debe ser igual al total de pies derechos (${totalRightFeet})`
+          );
           return;
         }
       }
 
       // Convertir a formato JSON requerido por el endpoint
       const sizesDistributionJson = JSON.stringify(
-        validSizesDistribution.map(sd => ({
+        validSizesDistribution.map((sd) => ({
           size: sd.size.trim(),
-          pairs: sd.pairs.filter(p => p.location_id > 0 && p.quantity > 0).map(p => ({
-            location_id: p.location_id,
-            quantity: p.quantity
-          })),
-          left_feet: sd.left_feet.filter(lf => lf.location_id > 0 && lf.quantity > 0).map(lf => ({
-            location_id: lf.location_id,
-            quantity: lf.quantity
-          })),
-          right_feet: sd.right_feet.filter(rf => rf.location_id > 0 && rf.quantity > 0).map(rf => ({
-            location_id: rf.location_id,
-            quantity: rf.quantity
-          }))
+          pairs: sd.pairs
+            .filter((p) => p.location_id > 0 && p.quantity > 0)
+            .map((p) => ({
+              location_id: p.location_id,
+              quantity: p.quantity,
+            })),
+          left_feet: sd.left_feet
+            .filter((lf) => lf.location_id > 0 && lf.quantity > 0)
+            .map((lf) => ({
+              location_id: lf.location_id,
+              quantity: lf.quantity,
+            })),
+          right_feet: sd.right_feet
+            .filter((rf) => rf.location_id > 0 && rf.quantity > 0)
+            .map((rf) => ({
+              location_id: rf.location_id,
+              quantity: rf.quantity,
+            })),
         }))
       );
 
@@ -1092,7 +1070,8 @@ export const AdminDashboard: React.FC = () => {
         product_model: videoData.product_model || '',
         box_price: videoData.box_price || 0,
         notes: '',
-        reference_image: videoData.reference_image && videoData.reference_image instanceof File ? videoData.reference_image : null
+        reference_image:
+          videoData.reference_image && videoData.reference_image instanceof File ? videoData.reference_image : null,
       };
 
       console.log('Enviando datos de inventario con distribución:', inventoryPayload);
@@ -1114,8 +1093,12 @@ export const AdminDashboard: React.FC = () => {
 💰 Precio Unitario: ${formatCurrency(response.unit_price || videoData.unit_price)}
 ${response.box_price ? `📦 Precio por Caja: ${formatCurrency(response.box_price)}` : ''}
 
-${distributionSummary.length > 0 ? `Distribución por ubicación:
-${distributionSummary.map((ds: any) => `• ${ds.location_name}: ${ds.total_pairs} pares${ds.total_left_feet ? ` + ${ds.total_left_feet} izq` : ''}${ds.total_right_feet ? ` + ${ds.total_right_feet} der` : ''}`).join('\n')}` : ''}
+${
+  distributionSummary.length > 0
+    ? `Distribución por ubicación:
+${distributionSummary.map((ds: any) => `• ${ds.location_name}: ${ds.total_pairs} pares${ds.total_left_feet ? ` + ${ds.total_left_feet} izq` : ''}${ds.total_right_feet ? ` + ${ds.total_right_feet} der` : ''}`).join('\n')}`
+    : ''
+}
 
 ${response.processing_time_seconds ? `Procesado en ${response.processing_time_seconds}s` : ''}`);
       } else {
@@ -1165,18 +1148,18 @@ Por favor verifica que:
     try {
       setLoading(true);
       const [productos, ventas, estadisticas] = await Promise.all([
-        listarProductosMayoreo().catch(err => {
+        listarProductosMayoreo().catch((err) => {
           console.warn('Error loading productos mayoreo:', err);
           return { data: [] };
         }),
-        listarVentasMayoreo().catch(err => {
+        listarVentasMayoreo().catch((err) => {
           console.warn('Error loading ventas mayoreo:', err);
           return { data: [] };
         }),
-        obtenerEstadisticasMayoreo().catch(err => {
+        obtenerEstadisticasMayoreo().catch((err) => {
           console.warn('Error loading estadisticas mayoreo:', err);
           return null;
-        })
+        }),
       ]);
 
       setProductosMayoreo(Array.isArray(productos) ? productos : productos.data || []);
@@ -1208,15 +1191,18 @@ Por favor verifica que:
     }
   };
 
-  const handleUpdateProductoMayoreo = async (mayoreoId: number, productoData: {
-    modelo?: string;
-    cantidad_cajas_disponibles?: number;
-    pares_por_caja?: number;
-    precio?: number;
-    foto?: File | null;
-    tallas?: string;
-    is_active?: boolean;
-  }) => {
+  const handleUpdateProductoMayoreo = async (
+    mayoreoId: number,
+    productoData: {
+      modelo?: string;
+      cantidad_cajas_disponibles?: number;
+      pares_por_caja?: number;
+      precio?: number;
+      foto?: File | null;
+      tallas?: string;
+      is_active?: boolean;
+    }
+  ) => {
     try {
       await actualizarProductoMayoreo(mayoreoId, productoData);
       await loadMayoreoData();
@@ -1316,30 +1302,31 @@ Por favor verifica que:
 
     // Filter by selected location
     if (selectedAdminLocation !== 'all') {
-      filteredLocations = adminInventory.filter(location => location.location_id === selectedAdminLocation);
+      filteredLocations = adminInventory.filter((location) => location.location_id === selectedAdminLocation);
     }
 
     // Filter products by search term
     if (adminInventorySearchTerm) {
       const searchTerm = adminInventorySearchTerm.toLowerCase();
-      filteredLocations = filteredLocations.map(location => ({
+      filteredLocations = filteredLocations.map((location) => ({
         ...location,
-        products: location.products.filter(product =>
-          product.brand.toLowerCase().includes(searchTerm) ||
-          product.model.toLowerCase().includes(searchTerm) ||
-          product.reference_code.toLowerCase().includes(searchTerm) ||
-          (product.description && product.description.toLowerCase().includes(searchTerm)) ||
-          (product.color_info && product.color_info.toLowerCase().includes(searchTerm))
-        )
+        products: location.products.filter(
+          (product) =>
+            product.brand.toLowerCase().includes(searchTerm) ||
+            product.model.toLowerCase().includes(searchTerm) ||
+            product.reference_code.toLowerCase().includes(searchTerm) ||
+            (product.description && product.description.toLowerCase().includes(searchTerm)) ||
+            (product.color_info && product.color_info.toLowerCase().includes(searchTerm))
+        ),
       }));
     }
 
     // Filter out empty locations
-    return filteredLocations.filter(location => location.products.length > 0);
+    return filteredLocations.filter((location) => location.products.length > 0);
   };
 
   const toggleProductExpansion = (productKey: string) => {
-    setExpandedProducts(prev => {
+    setExpandedProducts((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(productKey)) {
         newSet.delete(productKey);
@@ -1351,15 +1338,22 @@ Por favor verifica que:
   };
 
   // ========== SIBLING SYNC HELPERS ==========
-  const findSiblingLocation = (locationId: number, inventory: AdminInventoryLocation[]): AdminInventoryLocation | null => {
-    const currentLocation = inventory.find(loc => loc.location_id === locationId);
+  const findSiblingLocation = (
+    locationId: number,
+    inventory: AdminInventoryLocation[]
+  ): AdminInventoryLocation | null => {
+    const currentLocation = inventory.find((loc) => loc.location_id === locationId);
     if (!currentLocation?.sibling_pair_id) return null;
-    return inventory.find(
-      loc => loc.sibling_pair_id === currentLocation.sibling_pair_id && loc.location_id !== locationId
-    ) || null;
+    return (
+      inventory.find(
+        (loc) => loc.sibling_pair_id === currentLocation.sibling_pair_id && loc.location_id !== locationId
+      ) || null
+    );
   };
 
-  const getOppositeFootType = (inventoryType: 'pair' | 'left_only' | 'right_only'): 'left_only' | 'right_only' | null => {
+  const getOppositeFootType = (
+    inventoryType: 'pair' | 'left_only' | 'right_only'
+  ): 'left_only' | 'right_only' | null => {
     if (inventoryType === 'left_only') return 'right_only';
     if (inventoryType === 'right_only') return 'left_only';
     return null;
@@ -1367,10 +1361,14 @@ Por favor verifica que:
 
   const getInventoryTypeFullLabel = (type: string) => {
     switch (type) {
-      case 'pair': return 'Par completo';
-      case 'left_only': return 'Pie izquierdo';
-      case 'right_only': return 'Pie derecho';
-      default: return type;
+      case 'pair':
+        return 'Par completo';
+      case 'left_only':
+        return 'Pie izquierdo';
+      case 'right_only':
+        return 'Pie derecho';
+      default:
+        return type;
     }
   };
 
@@ -1393,10 +1391,13 @@ Por favor verifica que:
       size: size.size,
       inventory_type: invType,
       current_quantity: size.quantity,
-      siblingInfo: sibling && oppositeType ? {
-        sibling_location_name: sibling.location_name,
-        opposite_inventory_type_label: getInventoryTypeFullLabel(oppositeType)
-      } : null
+      siblingInfo:
+        sibling && oppositeType
+          ? {
+              sibling_location_name: sibling.location_name,
+              opposite_inventory_type_label: getInventoryTypeFullLabel(oppositeType),
+            }
+          : null,
     });
     setShowAdjustInventoryModal(true);
   };
@@ -1407,7 +1408,7 @@ Por favor verifica que:
       model: product.model,
       reference_code: product.reference_code,
       current_price: parseFloat(product.unit_price),
-      image_url: product.image_url
+      image_url: product.image_url,
     });
     setShowAdjustPriceModal(true);
   };
@@ -1417,7 +1418,7 @@ Por favor verifica que:
       brand: product.brand,
       model: product.model,
       reference_code: product.reference_code,
-      image_url: product.image_url
+      image_url: product.image_url,
     });
     setShowEditProductInfoModal(true);
   };
@@ -1430,8 +1431,11 @@ Por favor verifica que:
       reference_code: product.reference_code,
       location_id: locationId,
       location_name: locationName,
-      existing_sizes: product.sizes.map(s => ({ size: s.size, inventory_type: s.inventory_type || 'pair' as const })),
-      siblingLocationInfo: sibling ? { sibling_location_name: sibling.location_name } : null
+      existing_sizes: product.sizes.map((s) => ({
+        size: s.size,
+        inventory_type: s.inventory_type || ('pair' as const),
+      })),
+      siblingLocationInfo: sibling ? { sibling_location_name: sibling.location_name } : null,
     });
     setShowAddSizeModal(true);
   };
@@ -1460,7 +1464,7 @@ Por favor verifica que:
               ...data,
               location_id: sibling.location_id,
               inventory_type: oppositeType,
-              reason: `[SYNC] ${data.reason || 'Talla sincronizada desde local hermano'}`
+              reason: `[SYNC] ${data.reason || 'Talla sincronizada desde local hermano'}`,
             });
             siblingMessage = `\nTambien se agrego ${getInventoryTypeFullLabel(oppositeType)} en ${sibling.location_name}.`;
           } catch (syncError) {
@@ -1491,46 +1495,59 @@ Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type ==
   const handleAssignProductToLocation = async (data: {
     location_id: number;
     product_reference: string;
-    size: string;
+    sizes: string[];
     adjustment_type: 'set_quantity';
     quantity: number;
-    reason: string;
     inventory_type: 'pair' | 'left_only' | 'right_only';
   }) => {
     try {
-      const response = await adjustInventory(data);
-      console.log('Producto asignado a ubicacion:', response);
-
-      // Sibling sync logic
+      const defaultReason = 'Asignacion de producto a ubicacion';
       let siblingMessage = '';
-      const oppositeType = getOppositeFootType(data.inventory_type);
-      if (oppositeType) {
-        const sibling = findSiblingLocation(data.location_id, adminInventory);
-        if (sibling) {
-          try {
-            await adjustInventory({
-              ...data,
-              location_id: sibling.location_id,
-              inventory_type: oppositeType,
-              reason: `[SYNC] ${data.reason || 'Asignacion sincronizada desde local hermano'}`
-            });
-            siblingMessage = `\nTambien se asigno ${getInventoryTypeFullLabel(oppositeType)} en ${sibling.location_name}.`;
-          } catch (syncError) {
-            console.error('Error en sync con hermano:', syncError);
-            siblingMessage = `\n⚠️ Advertencia: la asignacion fue exitosa pero fallo el sync con ${sibling.location_name}.`;
+
+      for (const size of data.sizes) {
+        const payload = {
+          location_id: data.location_id,
+          product_reference: data.product_reference,
+          size,
+          adjustment_type: data.adjustment_type,
+          quantity: data.quantity,
+          reason: defaultReason,
+          inventory_type: data.inventory_type,
+        };
+        await adjustInventory(payload);
+
+        // Sibling sync logic
+        const oppositeType = getOppositeFootType(data.inventory_type);
+        if (oppositeType) {
+          const sibling = findSiblingLocation(data.location_id, adminInventory);
+          if (sibling) {
+            try {
+              await adjustInventory({
+                ...payload,
+                location_id: sibling.location_id,
+                inventory_type: oppositeType,
+                reason: `[SYNC] ${defaultReason}`,
+              });
+              if (!siblingMessage) {
+                siblingMessage = `\nTambien se asigno ${getInventoryTypeFullLabel(oppositeType)} en ${sibling.location_name}.`;
+              }
+            } catch (syncError) {
+              console.error('Error en sync con hermano:', syncError);
+              siblingMessage = `\n⚠️ Advertencia: fallo el sync con ${sibling.location_name}.`;
+            }
           }
         }
       }
 
       await loadAdminInventory();
 
-      const locationName = locations.find(l => l.id === data.location_id)?.name || `ID ${data.location_id}`;
+      const locationName = locations.find((l) => l.id === data.location_id)?.name || `ID ${data.location_id}`;
       alert(`Producto asignado exitosamente.
 
 Producto: ${data.product_reference}
 Ubicacion: ${locationName}
-Talla: ${data.size}
-Cantidad: ${data.quantity}
+Talla(s): ${data.sizes.join(', ')}
+Cantidad: ${data.quantity} c/u
 Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type === 'left_only' ? 'Pie izquierdo' : 'Pie derecho'}${siblingMessage}`);
 
       setShowAssignProductModal(false);
@@ -1565,7 +1582,7 @@ Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type ==
               ...data,
               location_id: sibling.location_id,
               inventory_type: oppositeType,
-              reason: `[SYNC] ${data.reason || 'Ajuste sincronizado desde local hermano'}`
+              reason: `[SYNC] ${data.reason || 'Ajuste sincronizado desde local hermano'}`,
             });
             siblingMessage = `\nTambien se ajusto ${getInventoryTypeFullLabel(oppositeType)} en ${sibling.location_name}.`;
           } catch (syncError) {
@@ -1621,11 +1638,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
     }
   };
 
-  const handleEditProductInfo = async (data: {
-    product_reference: string;
-    brand: string;
-    model: string;
-  }) => {
+  const handleEditProductInfo = async (data: { product_reference: string; brand: string; model: string }) => {
     try {
       const response = await updateProductInfo(data);
       console.log('Info actualizada:', response);
@@ -1655,7 +1668,8 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
     locationId: number,
     locationName: string
   ) => {
-    const typeLabel = size.inventory_type === 'pair' ? 'Par' : size.inventory_type === 'left_only' ? 'Pie izquierdo' : 'Pie derecho';
+    const typeLabel =
+      size.inventory_type === 'pair' ? 'Par' : size.inventory_type === 'left_only' ? 'Pie izquierdo' : 'Pie derecho';
     const confirmed = window.confirm(
       `¿Eliminar talla ${size.size} (${typeLabel}) del producto ${product.brand} ${product.model} en ${locationName}?\n\nEsta accion pondra la cantidad en 0.`
     );
@@ -1669,7 +1683,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
         adjustment_type: 'set_quantity',
         quantity: 0,
         reason: `Eliminacion de talla ${size.size} (${typeLabel}) - correccion de inventario`,
-        inventory_type: size.inventory_type || 'pair'
+        inventory_type: size.inventory_type || 'pair',
       });
       await loadAdminInventory();
       alert(`Talla ${size.size} (${typeLabel}) eliminada exitosamente.`);
@@ -1689,7 +1703,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
   const [retrainFormData, setRetrainFormData] = useState({
     video_file: null as File | null,
     warehouse_location_id: '',
-    notes: ''
+    notes: '',
   });
   const imageInputRef = React.useRef<HTMLInputElement>(null);
   const [editDropdownPos, setEditDropdownPos] = useState<{ top: number; left: number } | null>(null);
@@ -1723,18 +1737,18 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
       if (data.jobs_with_errors > 0) {
         alert(
           `Referencia ${data.reference_code} eliminada.\n\n` +
-          `Producto: ${data.brand} ${data.model}\n` +
-          `Vectores de IA eliminados: ${data.vectors_deleted}\n` +
-          `Jobs limpiados: ${data.jobs_cleaned}/${data.jobs_found}\n\n` +
-          `${data.jobs_with_errors} job(s) con error al limpiar vectores de IA.\n` +
-          `El producto fue desactivado correctamente.`
+            `Producto: ${data.brand} ${data.model}\n` +
+            `Vectores de IA eliminados: ${data.vectors_deleted}\n` +
+            `Jobs limpiados: ${data.jobs_cleaned}/${data.jobs_found}\n\n` +
+            `${data.jobs_with_errors} job(s) con error al limpiar vectores de IA.\n` +
+            `El producto fue desactivado correctamente.`
         );
       } else {
         alert(
           `Referencia ${data.reference_code} eliminada completamente.\n\n` +
-          `Producto: ${data.brand} ${data.model}\n` +
-          `Vectores de IA eliminados: ${data.vectors_deleted}\n` +
-          `Jobs limpiados: ${data.jobs_cleaned}/${data.jobs_found}`
+            `Producto: ${data.brand} ${data.model}\n` +
+            `Vectores de IA eliminados: ${data.vectors_deleted}\n` +
+            `Jobs limpiados: ${data.jobs_cleaned}/${data.jobs_found}`
         );
       }
 
@@ -1792,7 +1806,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
         notes: retrainFormData.notes || undefined,
       });
 
-      alert(`Re-entrenamiento iniciado exitosamente.\n\nProducto: ${response.brand} ${response.model}\nCodigo: ${response.reference_code}\nJob ID: ${response.new_job_id}\nEstado: ${response.new_job_status}\n\n${response.previous_vectors_will_be_replaced ? 'Los vectores anteriores se reemplazaran al completar.' : ''}`);
+      alert(
+        `Re-entrenamiento iniciado exitosamente.\n\nProducto: ${response.brand} ${response.model}\nCodigo: ${response.reference_code}\nJob ID: ${response.new_job_id}\nEstado: ${response.new_job_status}\n\n${response.previous_vectors_will_be_replaced ? 'Los vectores anteriores se reemplazaran al completar.' : ''}`
+      );
 
       setShowRetrainModal(false);
       setRetrainProduct(null);
@@ -1806,19 +1822,27 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
 
   const getInventoryTypeLabel = (type: string) => {
     switch (type) {
-      case 'pair': return 'Par';
-      case 'left_only': return 'Izq.';
-      case 'right_only': return 'Der.';
-      default: return type;
+      case 'pair':
+        return 'Par';
+      case 'left_only':
+        return 'Izq.';
+      case 'right_only':
+        return 'Der.';
+      default:
+        return type;
     }
   };
 
   const getInventoryTypeBadgeColor = (type: string) => {
     switch (type) {
-      case 'pair': return 'bg-success/10 text-success border-success/20';
-      case 'left_only': return 'bg-warning/10 text-warning border-warning/20';
-      case 'right_only': return 'bg-info/10 text-info border-info/20';
-      default: return 'bg-primary/10 text-primary border-primary/20';
+      case 'pair':
+        return 'bg-success/10 text-success border-success/20';
+      case 'left_only':
+        return 'bg-warning/10 text-warning border-warning/20';
+      case 'right_only':
+        return 'bg-info/10 text-info border-info/20';
+      default:
+        return 'bg-primary/10 text-primary border-primary/20';
     }
   };
 
@@ -1827,8 +1851,8 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
     let totalUnits = 0;
     let totalValue = 0;
 
-    locations.forEach(location => {
-      location.products.forEach(product => {
+    locations.forEach((location) => {
+      location.products.forEach((product) => {
         totalProducts++;
         totalUnits += product.total_quantity;
         totalValue += parseFloat(product.unit_price) * product.total_quantity;
@@ -1853,12 +1877,20 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard
             title="Ventas Hoy"
-            value={metricsData?.total_sales_today ? formatCurrency(parseFloat(metricsData.total_sales_today)) : formatCurrency(0)}
+            value={
+              metricsData?.total_sales_today
+                ? formatCurrency(parseFloat(metricsData.total_sales_today))
+                : formatCurrency(0)
+            }
             icon={<DollarSign className="h-6 w-6" />}
           />
           <StatsCard
             title="Ventas del Mes"
-            value={metricsData?.total_sales_month ? formatCurrency(parseFloat(metricsData.total_sales_month)) : formatCurrency(0)}
+            value={
+              metricsData?.total_sales_month
+                ? formatCurrency(parseFloat(metricsData.total_sales_month))
+                : formatCurrency(0)
+            }
             icon={<TrendingUp className="h-6 w-6" />}
           />
           <StatsCard
@@ -2000,7 +2032,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                 value={userFilters.role}
                 onChange={(e) => {
                   const role = e.target.value as '' | 'vendedor' | 'bodeguero' | 'corredor';
-                  setUserFilters(prev => ({ ...prev, role }));
+                  setUserFilters((prev) => ({ ...prev, role }));
                 }}
                 options={[
                   { value: '', label: 'Todos los roles' },
@@ -2013,18 +2045,18 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
               <Select
                 value={userFilters.location}
                 onChange={(e) => {
-                  setUserFilters(prev => ({ ...prev, location: e.target.value }));
+                  setUserFilters((prev) => ({ ...prev, location: e.target.value }));
                 }}
                 options={[
                   { value: '', label: 'Todas las ubicaciones' },
-                  ...locations.map(location => ({ value: location.id.toString(), label: location.name }))
+                  ...locations.map((location) => ({ value: location.id.toString(), label: location.name })),
                 ]}
               />
               <h4>Estado</h4>
               <Select
                 value={userFilters.status}
                 onChange={(e) => {
-                  setUserFilters(prev => ({ ...prev, status: e.target.value }));
+                  setUserFilters((prev) => ({ ...prev, status: e.target.value }));
                 }}
                 options={[
                   { value: '', label: 'Todos los estados' },
@@ -2044,39 +2076,49 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                 <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
                   <thead className="bg-popover text-popover-foreground">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Usuario</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Email</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Rol</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Ubicaciones</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Estado</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Acciones</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                        Usuario
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                        Email
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                        Rol
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                        Ubicaciones
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                        Estado
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                        Acciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.map((user) => (
-                      <tr key={user.id} className="border-b border-border last:border-b-0 bg-card hover:bg-muted/10 transition-colors">
+                      <tr
+                        key={user.id}
+                        className="border-b border-border last:border-b-0 bg-card hover:bg-muted/10 transition-colors"
+                      >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <p className="font-medium text-foreground">{user.full_name}</p>
                             <p className="text-sm text-muted-foreground">ID: {user.id}</p>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                          {user.email}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                          {user.role}
-                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">{user.email}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">{user.role}</td>
                         <td className="px-6 py-4">
                           {user.assigned_locations && user.assigned_locations.length > 0 ? (
                             <div className="flex flex-wrap gap-1 max-w-xs">
                               {user.assigned_locations.map((loc) => (
                                 <span
                                   key={loc.id}
-                                  className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${loc.type === 'bodega'
-                                    ? 'bg-warning/20 text-warning'
-                                    : 'bg-primary/20 text-primary'
-                                    }`}
+                                  className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                    loc.type === 'bodega' ? 'bg-warning/20 text-warning' : 'bg-primary/20 text-primary'
+                                  }`}
                                 >
                                   {loc.name}
                                 </span>
@@ -2154,7 +2196,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                 value={costFilters.category}
                 onChange={(e) => {
                   const category = e.target.value as typeof costFilters.category;
-                  setCostFilters(prev => ({ ...prev, category }));
+                  setCostFilters((prev) => ({ ...prev, category }));
                 }}
                 options={[
                   { value: '', label: 'Todas las categorías' },
@@ -2170,14 +2212,21 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
               <Select
                 value={costFilters.location}
                 onChange={(e) => {
-                  setCostFilters(prev => ({ ...prev, location: e.target.value }));
+                  setCostFilters((prev) => ({ ...prev, location: e.target.value }));
                 }}
                 options={[
                   { value: '', label: 'Todas las ubicaciones' },
-                  ...locations.map(location => ({ value: location.id.toString(), label: location.name }))
+                  ...locations.map((location) => ({ value: location.id.toString(), label: location.name })),
                 ]}
               />
-              <Button onClick={() => { loadCosts(); loadCostConfigurations(); }} size="sm" variant="outline">
+              <Button
+                onClick={() => {
+                  loadCosts();
+                  loadCostConfigurations();
+                }}
+                size="sm"
+                variant="outline"
+              >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualizar
               </Button>
@@ -2211,7 +2260,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">ID</th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Ubicación</th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Tipo</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Descripción</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                          Descripción
+                        </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Monto</th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Frecuencia</th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Estado</th>
@@ -2221,9 +2272,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                     <tbody className="divide-y divide-border">
                       {costConfigurations.map((cost) => (
                         <tr key={cost.id} className={!cost.is_active ? 'bg-muted/30 opacity-60' : ''}>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm font-mono">
-                            #{cost.id}
-                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm font-mono">#{cost.id}</td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <span className="font-medium">{cost.location_name || `Ubicación ${cost.location_id}`}</span>
                           </td>
@@ -2238,9 +2287,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                           <td className="px-4 py-3 whitespace-nowrap font-semibold text-primary">
                             {formatCurrency(parseFloat(cost.amount))}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm">
-                            {getFrequencyLabel(cost.frequency)}
-                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm">{getFrequencyLabel(cost.frequency)}</td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <Badge variant={cost.is_active ? 'success' : 'secondary'}>
                               {cost.is_active ? 'Activo' : 'Inactivo'}
@@ -2343,237 +2390,285 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
         )}
 
         {/* Estado por Ubicaciones */}
-        {operationalData && (() => {
-          // Aplicar filtro por ubicación si está seleccionado
-          let filteredLocations = operationalData.locations_status;
+        {operationalData &&
+          (() => {
+            // Aplicar filtro por ubicación si está seleccionado
+            let filteredLocations = operationalData.locations_status;
 
-          if (costFilters.location) {
-            const selectedLocation = locations.find(loc => loc.id.toString() === costFilters.location);
-            if (selectedLocation) {
-              filteredLocations = filteredLocations.filter(location => location.location_name === selectedLocation.name);
+            if (costFilters.location) {
+              const selectedLocation = locations.find((loc) => loc.id.toString() === costFilters.location);
+              if (selectedLocation) {
+                filteredLocations = filteredLocations.filter(
+                  (location) => location.location_name === selectedLocation.name
+                );
+              }
             }
-          }
 
-          return filteredLocations.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-semibold text-foreground">
-                  Estado de Costos por Ubicación
-                  {costFilters.location && (
-                    <span className="ml-2 text-sm font-normal text-muted-foreground">
-                      (Filtrado: {filteredLocations.length} de {operationalData.locations_status.length})
-                    </span>
-                  )}
-                </h3>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {filteredLocations.map((location) => (
-                    <div key={location.location_id} className={`p-4 rounded-lg border-l-4 bg-card text-foreground border-border ${location.status === 'ok' ? 'border-success' :
-                      location.status === 'attention' ? 'border-warning' :
-                        'border-error'
-                      }`}>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-lg text-foreground">{location.location_name}</h4>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                            <div>
-                              <p className="text-sm text-muted-foreground">Costos Mensuales</p>
-                              <p className="font-semibold text-foreground">{formatCurrency(parseFloat(location.monthly_costs))}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-muted-foreground">Monto Vencido</p>
-                              <p className="font-semibold text-error">{formatCurrency(parseFloat(location.overdue_amount))}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-muted-foreground">Cuentas Vencidas</p>
-                              <p className="font-semibold text-foreground">{location.overdue_count}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-muted-foreground">Próximos Pagos</p>
-                              <p className="font-semibold text-foreground">{location.upcoming_count}</p>
+            return filteredLocations.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <h3 className="text-lg font-semibold text-foreground">
+                    Estado de Costos por Ubicación
+                    {costFilters.location && (
+                      <span className="ml-2 text-sm font-normal text-muted-foreground">
+                        (Filtrado: {filteredLocations.length} de {operationalData.locations_status.length})
+                      </span>
+                    )}
+                  </h3>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {filteredLocations.map((location) => (
+                      <div
+                        key={location.location_id}
+                        className={`p-4 rounded-lg border-l-4 bg-card text-foreground border-border ${
+                          location.status === 'ok'
+                            ? 'border-success'
+                            : location.status === 'attention'
+                              ? 'border-warning'
+                              : 'border-error'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-lg text-foreground">{location.location_name}</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                              <div>
+                                <p className="text-sm text-muted-foreground">Costos Mensuales</p>
+                                <p className="font-semibold text-foreground">
+                                  {formatCurrency(parseFloat(location.monthly_costs))}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Monto Vencido</p>
+                                <p className="font-semibold text-error">
+                                  {formatCurrency(parseFloat(location.overdue_amount))}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Cuentas Vencidas</p>
+                                <p className="font-semibold text-foreground">{location.overdue_count}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Próximos Pagos</p>
+                                <p className="font-semibold text-foreground">{location.upcoming_count}</p>
+                              </div>
                             </div>
                           </div>
+                          <Badge
+                            variant={
+                              location.status === 'ok'
+                                ? 'success'
+                                : location.status === 'attention'
+                                  ? 'warning'
+                                  : 'error'
+                            }
+                          >
+                            {location.status === 'ok' ? 'OK' : location.status === 'attention' ? 'Atención' : 'Crítico'}
+                          </Badge>
                         </div>
-                        <Badge variant={
-                          location.status === 'ok' ? 'success' :
-                            location.status === 'attention' ? 'warning' : 'error'
-                        }>
-                          {location.status === 'ok' ? 'OK' :
-                            location.status === 'attention' ? 'Atención' : 'Crítico'}
-                        </Badge>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent>
-                <EmptyState
-                  title="No hay ubicaciones"
-                  description="No se encontraron ubicaciones con los filtros aplicados"
-                  icon={<Building className="h-12 w-12 text-gray-400" />}
-                />
-              </CardContent>
-            </Card>
-          );
-        })()}
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent>
+                  <EmptyState
+                    title="No hay ubicaciones"
+                    description="No se encontraron ubicaciones con los filtros aplicados"
+                    icon={<Building className="h-12 w-12 text-gray-400" />}
+                  />
+                </CardContent>
+              </Card>
+            );
+          })()}
 
         {/* Pagos Próximos */}
-        {operationalData && (() => {
-          // Aplicar filtros a los pagos próximos
-          let filteredUpcoming = operationalData.upcoming_week;
+        {operationalData &&
+          (() => {
+            // Aplicar filtros a los pagos próximos
+            let filteredUpcoming = operationalData.upcoming_week;
 
-          // Filtro por tipo de costo
-          if (costFilters.category) {
-            filteredUpcoming = filteredUpcoming.filter(payment => payment.cost_type === costFilters.category);
-          }
-
-          // Filtro por ubicación
-          if (costFilters.location) {
-            const selectedLocation = locations.find(loc => loc.id.toString() === costFilters.location);
-            if (selectedLocation) {
-              filteredUpcoming = filteredUpcoming.filter(payment => payment.location_name === selectedLocation.name);
+            // Filtro por tipo de costo
+            if (costFilters.category) {
+              filteredUpcoming = filteredUpcoming.filter((payment) => payment.cost_type === costFilters.category);
             }
-          }
 
-          return filteredUpcoming.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-semibold flex items-center text-foreground">
-                  <Calendar className="h-5 w-5 mr-2 text-primary" />
-                  Pagos Próximos (Esta Semana)
-                  {(costFilters.category || costFilters.location) && (
-                    <span className="ml-2 text-sm font-normal text-muted-foreground">
-                      (Filtrados: {filteredUpcoming.length} de {operationalData.upcoming_week.length})
-                    </span>
-                  )}
-                </h3>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {filteredUpcoming.map((payment, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-card text-foreground border border-border rounded-lg">
-                      <div>
-                        <p className="font-medium text-foreground">{payment.location_name}</p>
-                        <p className="text-sm text-muted-foreground">{capitalize(payment.cost_type)}</p>
-                        <p className="text-xs text-muted-foreground">Vence: {formatDate(payment.due_date)}</p>
+            // Filtro por ubicación
+            if (costFilters.location) {
+              const selectedLocation = locations.find((loc) => loc.id.toString() === costFilters.location);
+              if (selectedLocation) {
+                filteredUpcoming = filteredUpcoming.filter(
+                  (payment) => payment.location_name === selectedLocation.name
+                );
+              }
+            }
+
+            return filteredUpcoming.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <h3 className="text-lg font-semibold flex items-center text-foreground">
+                    <Calendar className="h-5 w-5 mr-2 text-primary" />
+                    Pagos Próximos (Esta Semana)
+                    {(costFilters.category || costFilters.location) && (
+                      <span className="ml-2 text-sm font-normal text-muted-foreground">
+                        (Filtrados: {filteredUpcoming.length} de {operationalData.upcoming_week.length})
+                      </span>
+                    )}
+                  </h3>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {filteredUpcoming.map((payment, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-card text-foreground border border-border rounded-lg"
+                      >
+                        <div>
+                          <p className="font-medium text-foreground">{payment.location_name}</p>
+                          <p className="text-sm text-muted-foreground">{capitalize(payment.cost_type)}</p>
+                          <p className="text-xs text-muted-foreground">Vence: {formatDate(payment.due_date)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-primary">{formatCurrency(parseFloat(payment.amount))}</p>
+                          <p className="text-sm text-primary">
+                            {payment.days_until_due === 0
+                              ? 'Hoy'
+                              : payment.days_until_due === 1
+                                ? 'Mañana'
+                                : `En ${payment.days_until_due} días`}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-primary">{formatCurrency(parseFloat(payment.amount))}</p>
-                        <p className="text-sm text-primary">
-                          {payment.days_until_due === 0 ? 'Hoy' :
-                            payment.days_until_due === 1 ? 'Mañana' :
-                              `En ${payment.days_until_due} días`}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ) : null;
-        })()}
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null;
+          })()}
 
         {/* Alertas Críticas */}
-        {operationalData && (() => {
-          // Aplicar filtros a las alertas críticas
-          let filteredAlerts = operationalData.critical_alerts;
+        {operationalData &&
+          (() => {
+            // Aplicar filtros a las alertas críticas
+            let filteredAlerts = operationalData.critical_alerts;
 
-          // Filtro por tipo de costo
-          if (costFilters.category) {
-            filteredAlerts = filteredAlerts.filter(alert => alert.cost_type === costFilters.category);
-          }
-
-          // Filtro por ubicación
-          if (costFilters.location) {
-            const selectedLocation = locations.find(loc => loc.id.toString() === costFilters.location);
-            if (selectedLocation) {
-              filteredAlerts = filteredAlerts.filter(alert => alert.location_name === selectedLocation.name);
+            // Filtro por tipo de costo
+            if (costFilters.category) {
+              filteredAlerts = filteredAlerts.filter((alert) => alert.cost_type === costFilters.category);
             }
-          }
 
-          return filteredAlerts.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-semibold flex items-center text-foreground">
-                  <AlertCircle className="h-5 w-5 mr-2 text-error" />
-                  Alertas Críticas - Pagos Vencidos
-                  {(costFilters.category || costFilters.location) && (
-                    <span className="ml-2 text-sm font-normal text-muted-foreground">
-                      (Filtradas: {filteredAlerts.length} de {operationalData.critical_alerts.length})
-                    </span>
-                  )}
-                </h3>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
-                    <thead className="bg-popover text-popover-foreground">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Ubicación</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Tipo de Costo</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Monto</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Días Vencido</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Fecha Vencimiento</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Prioridad</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredAlerts.map((alert, index) => (
-                        <tr key={index} className={
-                          alert.priority === 'high' ? 'bg-error/10' :
-                            alert.priority === 'medium' ? 'bg-warning/10' : 'bg-muted/10'
-                        }>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <p className="font-medium text-foreground">{alert.location_name}</p>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge className="bg-accent text-accent-foreground border border-border">{capitalize(alert.cost_type)}</Badge>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap font-semibold text-error">
-                            {formatCurrency(parseFloat(alert.amount))}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap font-bold text-error">
-                            {alert.days_overdue} días
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                            {formatDate(alert.due_date)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge variant={
-                              alert.priority === 'high' ? 'error' :
-                                alert.priority === 'medium' ? 'warning' : 'secondary'
-                            }>
-                              {alert.priority === 'high' ? 'Alta' :
-                                alert.priority === 'medium' ? 'Media' : 'Baja'}
-                            </Badge>
-                          </td>
+            // Filtro por ubicación
+            if (costFilters.location) {
+              const selectedLocation = locations.find((loc) => loc.id.toString() === costFilters.location);
+              if (selectedLocation) {
+                filteredAlerts = filteredAlerts.filter((alert) => alert.location_name === selectedLocation.name);
+              }
+            }
+
+            return filteredAlerts.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <h3 className="text-lg font-semibold flex items-center text-foreground">
+                    <AlertCircle className="h-5 w-5 mr-2 text-error" />
+                    Alertas Críticas - Pagos Vencidos
+                    {(costFilters.category || costFilters.location) && (
+                      <span className="ml-2 text-sm font-normal text-muted-foreground">
+                        (Filtradas: {filteredAlerts.length} de {operationalData.critical_alerts.length})
+                      </span>
+                    )}
+                  </h3>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
+                      <thead className="bg-popover text-popover-foreground">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                            Ubicación
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                            Tipo de Costo
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Monto</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                            Días Vencido
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                            Fecha Vencimiento
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                            Prioridad
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent>
-                <EmptyState
-                  title="No hay alertas críticas"
-                  description={
-                    (costFilters.category || costFilters.location)
-                      ? "No se encontraron alertas con los filtros aplicados"
-                      : "No hay alertas críticas en este momento"
-                  }
-                  icon={<AlertCircle className="h-12 w-12 text-gray-400" />}
-                />
-              </CardContent>
-            </Card>
-          );
-        })()}
+                      </thead>
+                      <tbody>
+                        {filteredAlerts.map((alert, index) => (
+                          <tr
+                            key={index}
+                            className={
+                              alert.priority === 'high'
+                                ? 'bg-error/10'
+                                : alert.priority === 'medium'
+                                  ? 'bg-warning/10'
+                                  : 'bg-muted/10'
+                            }
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <p className="font-medium text-foreground">{alert.location_name}</p>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <Badge className="bg-accent text-accent-foreground border border-border">
+                                {capitalize(alert.cost_type)}
+                              </Badge>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap font-semibold text-error">
+                              {formatCurrency(parseFloat(alert.amount))}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap font-bold text-error">
+                              {alert.days_overdue} días
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                              {formatDate(alert.due_date)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <Badge
+                                variant={
+                                  alert.priority === 'high'
+                                    ? 'error'
+                                    : alert.priority === 'medium'
+                                      ? 'warning'
+                                      : 'secondary'
+                                }
+                              >
+                                {alert.priority === 'high' ? 'Alta' : alert.priority === 'medium' ? 'Media' : 'Baja'}
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent>
+                  <EmptyState
+                    title="No hay alertas críticas"
+                    description={
+                      costFilters.category || costFilters.location
+                        ? 'No se encontraron alertas con los filtros aplicados'
+                        : 'No hay alertas críticas en este momento'
+                    }
+                    icon={<AlertCircle className="h-12 w-12 text-gray-400" />}
+                  />
+                </CardContent>
+              </Card>
+            );
+          })()}
 
         {/* Estado sin datos */}
         {!operationalData && (
@@ -2607,21 +2702,21 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
           <Card>
             <CardContent className="p-4 text-center">
               <Store className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold">{locations.filter(l => l.type === 'local').length}</p>
+              <p className="text-2xl font-bold">{locations.filter((l) => l.type === 'local').length}</p>
               <p className="text-sm text-gray-600">Locales de Venta</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <Warehouse className="h-8 w-8 text-secondary mx-auto mb-2" />
-              <p className="text-2xl font-bold">{locations.filter(l => l.type === 'bodega').length}</p>
+              <p className="text-2xl font-bold">{locations.filter((l) => l.type === 'bodega').length}</p>
               <p className="text-sm text-gray-600">Bodegas</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <Activity className="h-8 w-8 text-success mx-auto mb-2" />
-              <p className="text-2xl font-bold">{locations.filter(l => l.is_active).length}</p>
+              <p className="text-2xl font-bold">{locations.filter((l) => l.is_active).length}</p>
               <p className="text-sm text-gray-600">Activas</p>
             </CardContent>
           </Card>
@@ -2638,12 +2733,14 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                 {locations.map((location) => (
                   <div key={location.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center space-x-4">
-                      <div className={`p-3 rounded-lg ${location.type === 'local' ? 'bg-primary/10' : 'bg-secondary/10'
-                        }`}>
-                        {location.type === 'local' ?
-                          <Store className="h-6 w-6 text-primary" /> :
+                      <div
+                        className={`p-3 rounded-lg ${location.type === 'local' ? 'bg-primary/10' : 'bg-secondary/10'}`}
+                      >
+                        {location.type === 'local' ? (
+                          <Store className="h-6 w-6 text-primary" />
+                        ) : (
                           <Warehouse className="h-6 w-6 text-secondary" />
-                        }
+                        )}
                       </div>
                       <div>
                         <h4 className="font-semibold">{location.name}</h4>
@@ -2655,9 +2752,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                           <Badge variant={location.is_active ? 'success' : 'error'}>
                             {location.is_active ? 'Activo' : 'Inactivo'}
                           </Badge>
-                          <span className="text-xs text-gray-500">
-                            {location.assigned_users_count} usuarios
-                          </span>
+                          <span className="text-xs text-gray-500">{location.assigned_users_count} usuarios</span>
                         </div>
                       </div>
                     </div>
@@ -2706,9 +2801,11 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
 
   const renderNotificationsView = () => {
     const allNotifications = [
-      ...notifications.discounts.map(n => ({ ...n, type: 'discount' })),
-      ...notifications.returns.map(n => ({ ...n, type: 'return' }))
-    ].sort((a, b) => new Date(b.requested_at || b.created_at).getTime() - new Date(a.requested_at || a.created_at).getTime());
+      ...notifications.discounts.map((n) => ({ ...n, type: 'discount' })),
+      ...notifications.returns.map((n) => ({ ...n, type: 'return' })),
+    ].sort(
+      (a, b) => new Date(b.requested_at || b.created_at).getTime() - new Date(a.requested_at || a.created_at).getTime()
+    );
 
     return (
       <div className="space-y-6 p-4 md:p-6">
@@ -2760,10 +2857,12 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             ) : (
               <div className="space-y-4">
                 {allNotifications.map((notification: any) => (
-                  <div key={`${notification.type}-${notification.id}`} className={`p-4 rounded-lg border-l-4 ${notification.type === 'discount'
-                    ? 'bg-warning/10 border-warning'
-                    : 'bg-error/10 border-error'
-                    }`}>
+                  <div
+                    key={`${notification.type}-${notification.id}`}
+                    className={`p-4 rounded-lg border-l-4 ${
+                      notification.type === 'discount' ? 'bg-warning/10 border-warning' : 'bg-error/10 border-error'
+                    }`}
+                  >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
@@ -2775,12 +2874,20 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                           <span className="font-medium">
                             {notification.type === 'discount' ? 'Solicitud de Descuento' : 'Devolución'}
                           </span>
-                          <Badge variant={
-                            notification.status === 'pending' ? 'warning' :
-                              notification.status === 'approved' ? 'success' : 'error'
-                          }>
-                            {notification.status === 'pending' ? 'Pendiente' :
-                              notification.status === 'approved' ? 'Aprobado' : 'Rechazado'}
+                          <Badge
+                            variant={
+                              notification.status === 'pending'
+                                ? 'warning'
+                                : notification.status === 'approved'
+                                  ? 'success'
+                                  : 'error'
+                            }
+                          >
+                            {notification.status === 'pending'
+                              ? 'Pendiente'
+                              : notification.status === 'approved'
+                                ? 'Aprobado'
+                                : 'Rechazado'}
                           </Badge>
                         </div>
                         <p className="text-sm text-gray-700 mb-2">
@@ -2793,7 +2900,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                           <p className="text-sm text-gray-600">Ubicación: {notification.location_name}</p>
                         )}
                         {notification.discount_amount && (
-                          <p className="text-sm font-medium">Descuento: {formatCurrency(parseFloat(notification.discount_amount))}</p>
+                          <p className="text-sm font-medium">
+                            Descuento: {formatCurrency(parseFloat(notification.discount_amount))}
+                          </p>
                         )}
                         <p className="text-xs text-gray-500 mt-2">
                           {formatDate(notification.requested_at || notification.created_at)}
@@ -2876,20 +2985,22 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
         <div className="flex space-x-2 border-b border-border">
           <button
             onClick={() => setInventoryActiveTab('view')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${inventoryActiveTab === 'view'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              inventoryActiveTab === 'view'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
           >
             <Package className="h-4 w-4 inline mr-2" />
             Ver Inventario
           </button>
           <button
             onClick={() => setInventoryActiveTab('entry')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${inventoryActiveTab === 'entry'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              inventoryActiveTab === 'entry'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
           >
             <Video className="h-4 w-4 inline mr-2" />
             Registrar con Video
@@ -2931,27 +3042,30 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                     <label className="block text-sm font-medium text-foreground mb-1">Ubicacion</label>
                     <select
                       value={selectedAdminLocation === 'all' ? 'all' : selectedAdminLocation.toString()}
-                      onChange={(e) => setSelectedAdminLocation(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+                      onChange={(e) =>
+                        setSelectedAdminLocation(e.target.value === 'all' ? 'all' : parseInt(e.target.value))
+                      }
                       className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground"
                     >
                       <option value="all">Todas las ubicaciones</option>
                       {[...adminInventory]
                         .sort((a, b) => {
-                          const locA = locations.find(l => l.id === a.location_id);
-                          const locB = locations.find(l => l.id === b.location_id);
+                          const locA = locations.find((l) => l.id === a.location_id);
+                          const locB = locations.find((l) => l.id === b.location_id);
                           const typeA = locA?.type === 'bodega' ? 0 : 1;
                           const typeB = locB?.type === 'bodega' ? 0 : 1;
                           return typeA - typeB;
                         })
                         .map((location) => {
-                          const loc = locations.find(l => l.id === location.location_id);
+                          const loc = locations.find((l) => l.id === location.location_id);
                           const isBodega = loc?.type === 'bodega';
                           return (
-                        <option key={location.location_id} value={location.location_id}>
-                          {isBodega ? '🏭 ' : '🏪 '}{location.location_name}
-                        </option>
+                            <option key={location.location_id} value={location.location_id}>
+                              {isBodega ? '🏭 ' : '🏪 '}
+                              {location.location_name}
+                            </option>
                           );
-                      })}
+                        })}
                     </select>
                   </div>
                   <div>
@@ -2999,8 +3113,14 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <Card>
                     <CardContent className="p-6">
                       <EmptyState
-                        title={adminInventorySearchTerm ? 'No se encontraron productos' : 'No hay inventario disponible'}
-                        description={adminInventorySearchTerm ? 'Intenta con otros terminos de busqueda' : 'El inventario se cargara automaticamente'}
+                        title={
+                          adminInventorySearchTerm ? 'No se encontraron productos' : 'No hay inventario disponible'
+                        }
+                        description={
+                          adminInventorySearchTerm
+                            ? 'Intenta con otros terminos de busqueda'
+                            : 'El inventario se cargara automaticamente'
+                        }
                         icon={<Package className="h-12 w-12 text-muted-foreground" />}
                       />
                     </CardContent>
@@ -3032,7 +3152,10 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                     <div className="flex-shrink-0">
                                       <div className="w-16 h-22 sm:w-20 sm:h-28 rounded-lg overflow-hidden border border-border bg-muted">
                                         <img
-                                          src={product.image_url || `https://via.placeholder.com/80x112/e5e7eb/6b7280?text=${encodeURIComponent(product.brand)}`}
+                                          src={
+                                            product.image_url ||
+                                            `https://via.placeholder.com/80x112/e5e7eb/6b7280?text=${encodeURIComponent(product.brand)}`
+                                          }
                                           alt={`${product.brand} ${product.model}`}
                                           className="w-full h-full object-cover"
                                           onError={(e) => {
@@ -3066,10 +3189,14 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                           {product.sizes.length} tallas
                                         </span>
                                         {product.total_quantity === 0 && (
-                                          <Badge variant="error" className="text-xs">Sin stock</Badge>
+                                          <Badge variant="error" className="text-xs">
+                                            Sin stock
+                                          </Badge>
                                         )}
                                         {product.total_quantity > 0 && product.total_quantity <= 5 && (
-                                          <Badge variant="warning" className="text-xs">Stock bajo</Badge>
+                                          <Badge variant="warning" className="text-xs">
+                                            Stock bajo
+                                          </Badge>
                                         )}
                                       </div>
                                     </div>
@@ -3121,25 +3248,32 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                           >
                                             <div className="flex items-center justify-between">
                                               <div className="flex items-center space-x-2">
-                                                <span className="font-semibold text-foreground text-sm w-10">{size.size}</span>
-                                                <span className={`px-1.5 py-0.5 rounded text-xs border ${getInventoryTypeBadgeColor(size.inventory_type || 'pair')}`}>
+                                                <span className="font-semibold text-foreground text-sm w-10">
+                                                  {size.size}
+                                                </span>
+                                                <span
+                                                  className={`px-1.5 py-0.5 rounded text-xs border ${getInventoryTypeBadgeColor(size.inventory_type || 'pair')}`}
+                                                >
                                                   {getInventoryTypeLabel(size.inventory_type || 'pair')}
                                                 </span>
-                                                <span className={`text-sm font-medium ${size.quantity > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                <span
+                                                  className={`text-sm font-medium ${size.quantity > 0 ? 'text-foreground' : 'text-muted-foreground'}`}
+                                                >
                                                   {size.quantity} uds
                                                 </span>
-
                                               </div>
                                               <div className="flex items-center space-x-1">
                                                 <Button
                                                   size="sm"
                                                   variant="outline"
-                                                  onClick={() => handleOpenAdjustInventoryModal(
-                                                    product,
-                                                    size,
-                                                    location.location_id,
-                                                    location.location_name
-                                                  )}
+                                                  onClick={() =>
+                                                    handleOpenAdjustInventoryModal(
+                                                      product,
+                                                      size,
+                                                      location.location_id,
+                                                      location.location_name
+                                                    )
+                                                  }
                                                   className="text-xs h-7 px-2"
                                                 >
                                                   <Edit className="h-3 w-3" />
@@ -3147,12 +3281,14 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                                 <Button
                                                   size="sm"
                                                   variant="outline"
-                                                  onClick={() => handleDeleteSize(
-                                                    product,
-                                                    size,
-                                                    location.location_id,
-                                                    location.location_name
-                                                  )}
+                                                  onClick={() =>
+                                                    handleDeleteSize(
+                                                      product,
+                                                      size,
+                                                      location.location_id,
+                                                      location.location_name
+                                                    )
+                                                  }
                                                   className="text-xs h-7 px-2 border-destructive/30 text-destructive hover:bg-destructive/10"
                                                 >
                                                   <Trash2 className="h-3 w-3" />
@@ -3166,11 +3302,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => handleOpenAddSizeModal(
-                                          product,
-                                          location.location_id,
-                                          location.location_name
-                                        )}
+                                        onClick={() =>
+                                          handleOpenAddSizeModal(product, location.location_id, location.location_name)
+                                        }
                                         className="w-full mt-3 text-sm border-dashed"
                                       >
                                         <Plus className="h-4 w-4 mr-2" />
@@ -3204,27 +3338,22 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <div className="space-y-4">
                     <h4 className="font-semibold text-foreground mb-3">Datos del Producto</h4>
 
-
                     <div>
-                      <label className="block text-sm font-medium text-foreground mb-1">
-                        Marca
-                      </label>
+                      <label className="block text-sm font-medium text-foreground mb-1">Marca</label>
                       <Input
                         placeholder="Ej: Nike, Adidas"
                         value={videoInventoryForm.product_brand}
-                        onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_brand: e.target.value }))}
+                        onChange={(e) => setVideoInventoryForm((prev) => ({ ...prev, product_brand: e.target.value }))}
                       />
                       <p className="text-xs text-muted-foreground mt-1">Marca del producto</p>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-foreground mb-1">
-                        Modelo
-                      </label>
+                      <label className="block text-sm font-medium text-foreground mb-1">Modelo</label>
                       <Input
                         placeholder="Ej: Air Max 90"
                         value={videoInventoryForm.product_model}
-                        onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_model: e.target.value }))}
+                        onChange={(e) => setVideoInventoryForm((prev) => ({ ...prev, product_model: e.target.value }))}
                       />
                       <p className="text-xs text-muted-foreground mt-1">Modelo del producto</p>
                     </div>
@@ -3237,7 +3366,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                         placeholder="Ej: 45000"
                         type="number"
                         value={videoInventoryForm.unit_price}
-                        onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, unit_price: parseFloat(e.target.value) }))}
+                        onChange={(e) =>
+                          setVideoInventoryForm((prev) => ({ ...prev, unit_price: parseFloat(e.target.value) }))
+                        }
                         min="0"
                         step="1000"
                       />
@@ -3256,16 +3387,18 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                               <Input
                                 placeholder="Talla (ej: 42)"
                                 value={sizeDistro.size}
-                                onChange={e => {
+                                onChange={(e) => {
                                   const newDistro = [...videoInventoryForm.sizes_distribution];
                                   newDistro[sizeIdx].size = e.target.value;
-                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                  setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                 }}
                                 className="w-32"
                               />
                               <div className="flex-1 text-sm text-muted-foreground">
-                                Balance: {sizeDistro.left_feet.reduce((s, lf) => s + lf.quantity, 0)} izq / {sizeDistro.right_feet.reduce((s, rf) => s + rf.quantity, 0)} der
-                                {sizeDistro.left_feet.reduce((s, lf) => s + lf.quantity, 0) !== sizeDistro.right_feet.reduce((s, rf) => s + rf.quantity, 0) && (
+                                Balance: {sizeDistro.left_feet.reduce((s, lf) => s + lf.quantity, 0)} izq /{' '}
+                                {sizeDistro.right_feet.reduce((s, rf) => s + rf.quantity, 0)} der
+                                {sizeDistro.left_feet.reduce((s, lf) => s + lf.quantity, 0) !==
+                                  sizeDistro.right_feet.reduce((s, rf) => s + rf.quantity, 0) && (
                                   <span className="text-error ml-2">⚠️ Desbalanceado</span>
                                 )}
                               </div>
@@ -3274,9 +3407,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => {
-                                    setVideoInventoryForm(prev => ({
+                                    setVideoInventoryForm((prev) => ({
                                       ...prev,
-                                      sizes_distribution: prev.sizes_distribution.filter((_, i) => i !== sizeIdx)
+                                      sizes_distribution: prev.sizes_distribution.filter((_, i) => i !== sizeIdx),
                                     }));
                                   }}
                                   className="text-destructive"
@@ -3296,11 +3429,11 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                     onChange={(e) => {
                                       const newDistro = [...videoInventoryForm.sizes_distribution];
                                       newDistro[sizeIdx].pairs[pairIdx].location_id = parseInt(e.target.value);
-                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                      setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                     }}
                                     options={[
                                       { value: '0', label: 'Seleccionar ubicación' },
-                                      ...locations.map(loc => ({ value: loc.id.toString(), label: loc.name }))
+                                      ...locations.map((loc) => ({ value: loc.id.toString(), label: loc.name })),
                                     ]}
                                     className="flex-1"
                                   />
@@ -3308,10 +3441,10 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                     placeholder="Cant"
                                     type="number"
                                     value={pair.quantity || ''}
-                                    onChange={e => {
+                                    onChange={(e) => {
                                       const newDistro = [...videoInventoryForm.sizes_distribution];
                                       newDistro[sizeIdx].pairs[pairIdx].quantity = parseInt(e.target.value) || 0;
-                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                      setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                     }}
                                     className="w-20"
                                   />
@@ -3321,7 +3454,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                     onClick={() => {
                                       const newDistro = [...videoInventoryForm.sizes_distribution];
                                       newDistro[sizeIdx].pairs.push({ location_id: 0, quantity: 0 });
-                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                      setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                     }}
                                   >
                                     +
@@ -3332,8 +3465,10 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                       variant="ghost"
                                       onClick={() => {
                                         const newDistro = [...videoInventoryForm.sizes_distribution];
-                                        newDistro[sizeIdx].pairs = newDistro[sizeIdx].pairs.filter((_, i) => i !== pairIdx);
-                                        setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                        newDistro[sizeIdx].pairs = newDistro[sizeIdx].pairs.filter(
+                                          (_, i) => i !== pairIdx
+                                        );
+                                        setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                       }}
                                       className="text-destructive"
                                     >
@@ -3354,7 +3489,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                   onClick={() => {
                                     const newDistro = [...videoInventoryForm.sizes_distribution];
                                     newDistro[sizeIdx].left_feet.push({ location_id: 0, quantity: 0 });
-                                    setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                   }}
                                 >
                                   +
@@ -3367,11 +3502,11 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                     onChange={(e) => {
                                       const newDistro = [...videoInventoryForm.sizes_distribution];
                                       newDistro[sizeIdx].left_feet[lfIdx].location_id = parseInt(e.target.value);
-                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                      setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                     }}
                                     options={[
                                       { value: '0', label: 'Seleccionar ubicación' },
-                                      ...locations.map(loc => ({ value: loc.id.toString(), label: loc.name }))
+                                      ...locations.map((loc) => ({ value: loc.id.toString(), label: loc.name })),
                                     ]}
                                     className="flex-1"
                                   />
@@ -3379,10 +3514,10 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                     placeholder="Cant"
                                     type="number"
                                     value={leftFoot.quantity || ''}
-                                    onChange={e => {
+                                    onChange={(e) => {
                                       const newDistro = [...videoInventoryForm.sizes_distribution];
                                       newDistro[sizeIdx].left_feet[lfIdx].quantity = parseInt(e.target.value) || 0;
-                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                      setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                     }}
                                     className="w-20"
                                   />
@@ -3391,8 +3526,10 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                     variant="ghost"
                                     onClick={() => {
                                       const newDistro = [...videoInventoryForm.sizes_distribution];
-                                      newDistro[sizeIdx].left_feet = newDistro[sizeIdx].left_feet.filter((_, i) => i !== lfIdx);
-                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                      newDistro[sizeIdx].left_feet = newDistro[sizeIdx].left_feet.filter(
+                                        (_, i) => i !== lfIdx
+                                      );
+                                      setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                     }}
                                     className="text-destructive"
                                   >
@@ -3415,7 +3552,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                   onClick={() => {
                                     const newDistro = [...videoInventoryForm.sizes_distribution];
                                     newDistro[sizeIdx].right_feet.push({ location_id: 0, quantity: 0 });
-                                    setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                   }}
                                 >
                                   +
@@ -3428,11 +3565,11 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                     onChange={(e) => {
                                       const newDistro = [...videoInventoryForm.sizes_distribution];
                                       newDistro[sizeIdx].right_feet[rfIdx].location_id = parseInt(e.target.value);
-                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                      setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                     }}
                                     options={[
                                       { value: '0', label: 'Seleccionar ubicación' },
-                                      ...locations.map(loc => ({ value: loc.id.toString(), label: loc.name }))
+                                      ...locations.map((loc) => ({ value: loc.id.toString(), label: loc.name })),
                                     ]}
                                     className="flex-1"
                                   />
@@ -3440,10 +3577,10 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                     placeholder="Cant"
                                     type="number"
                                     value={rightFoot.quantity || ''}
-                                    onChange={e => {
+                                    onChange={(e) => {
                                       const newDistro = [...videoInventoryForm.sizes_distribution];
                                       newDistro[sizeIdx].right_feet[rfIdx].quantity = parseInt(e.target.value) || 0;
-                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                      setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                     }}
                                     className="w-20"
                                   />
@@ -3452,8 +3589,10 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                     variant="ghost"
                                     onClick={() => {
                                       const newDistro = [...videoInventoryForm.sizes_distribution];
-                                      newDistro[sizeIdx].right_feet = newDistro[sizeIdx].right_feet.filter((_, i) => i !== rfIdx);
-                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                      newDistro[sizeIdx].right_feet = newDistro[sizeIdx].right_feet.filter(
+                                        (_, i) => i !== rfIdx
+                                      );
+                                      setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                     }}
                                     className="text-destructive"
                                   >
@@ -3472,7 +3611,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                         <Button
                           variant="outline"
                           onClick={() => {
-                            setVideoInventoryForm(prev => ({
+                            setVideoInventoryForm((prev) => ({
                               ...prev,
                               sizes_distribution: [
                                 ...prev.sizes_distribution,
@@ -3480,9 +3619,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                   size: '',
                                   pairs: [{ location_id: 0, quantity: 0 }],
                                   left_feet: [],
-                                  right_feet: []
-                                }
-                              ]
+                                  right_feet: [],
+                                },
+                              ],
                             }));
                           }}
                           className="w-full"
@@ -3491,7 +3630,8 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">
-                        💡 Puedes distribuir el inventario entre múltiples ubicaciones. Los pies izquierdos y derechos deben estar balanceados.
+                        💡 Puedes distribuir el inventario entre múltiples ubicaciones. Los pies izquierdos y derechos
+                        deben estar balanceados.
                       </p>
                     </div>
                   </div>
@@ -3518,57 +3658,55 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                             const ext = fileType.split('/')[1] || 'jpg';
                             const imageFile = new File([blob], `reference-image.${ext}`, { type: fileType });
 
-                            setVideoInventoryForm(prev => ({
+                            setVideoInventoryForm((prev) => ({
                               ...prev,
-                              reference_image: imageFile
+                              reference_image: imageFile,
                             }));
                           }
                         }}
                       />
-                      < p className="text-xs text-muted-foreground mt-2" >
+                      <p className="text-xs text-muted-foreground mt-2">
                         Toca el botón para abrir la cámara en pantalla completa
-                      </p >
-                    </div >
+                      </p>
+                    </div>
 
                     {/* Preview de la foto capturada */}
-                    {
-                      capturedPhotoUrl && (
-                        <div className="border border-border rounded-lg p-4 bg-muted/10">
-                          <h4 className="text-sm font-medium text-foreground mb-2">📸 Foto Capturada</h4>
-                          <div className="space-y-3">
-                            <img
-                              src={capturedPhotoUrl}
-                              alt="Foto del inventario"
-                              className="w-full h-64 object-cover rounded-lg border shadow-sm"
-                            />
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm text-muted-foreground">
-                                Foto de referencia del producto
-                              </p>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  if (capturedPhotoUrl) {
-                                    URL.revokeObjectURL(capturedPhotoUrl);
-                                  }
-                                  setCapturedPhotoUrl(null);
-                                  setVideoInventoryForm(prev => ({ ...prev, reference_image: null }));
-                                }}
-                                className="text-destructive hover:text-destructive/80"
-                              >
-                                🗑️ Eliminar
-                              </Button>
-                            </div>
+                    {capturedPhotoUrl && (
+                      <div className="border border-border rounded-lg p-4 bg-muted/10">
+                        <h4 className="text-sm font-medium text-foreground mb-2">📸 Foto Capturada</h4>
+                        <div className="space-y-3">
+                          <img
+                            src={capturedPhotoUrl}
+                            alt="Foto del inventario"
+                            className="w-full h-64 object-cover rounded-lg border shadow-sm"
+                          />
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground">Foto de referencia del producto</p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (capturedPhotoUrl) {
+                                  URL.revokeObjectURL(capturedPhotoUrl);
+                                }
+                                setCapturedPhotoUrl(null);
+                                setVideoInventoryForm((prev) => ({ ...prev, reference_image: null }));
+                              }}
+                              className="text-destructive hover:text-destructive/80"
+                            >
+                              🗑️ Eliminar
+                            </Button>
                           </div>
                         </div>
-                      )
-                    }
-                  </div >
+                      </div>
+                    )}
+                  </div>
 
                   {/* Columna 3: Video del Producto */}
-                  < div className="space-y-4" >
-                    <h4 className="font-semibold text-foreground mb-3">Video del Producto <span className="text-error">*</span></h4>
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-foreground mb-3">
+                      Video del Producto <span className="text-error">*</span>
+                    </h4>
 
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">
@@ -3588,9 +3726,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                             const ext = fileType.split('/')[1] || 'webm';
                             const videoFile = new File([blob], `inventory-video.${ext}`, { type: fileType });
 
-                            setVideoInventoryForm(prev => ({
+                            setVideoInventoryForm((prev) => ({
                               ...prev,
-                              video_file: videoFile
+                              video_file: videoFile,
                             }));
                           }
                         }}
@@ -3601,40 +3739,36 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                     </div>
 
                     {/* Preview del video grabado */}
-                    {
-                      capturedVideoUrl && (
-                        <div className="border border-border rounded-lg p-4 bg-muted/10">
-                          <h4 className="text-sm font-medium text-foreground mb-2">📹 Video Grabado</h4>
-                          <div className="space-y-3">
-                            <video
-                              src={capturedVideoUrl}
-                              controls
-                              className="w-full rounded-lg border shadow-sm"
-                              preload="metadata"
-                            />
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm text-muted-foreground">
-                                Video del inventario del producto
-                              </p>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  if (capturedVideoUrl) {
-                                    URL.revokeObjectURL(capturedVideoUrl);
-                                  }
-                                  setCapturedVideoUrl(null);
-                                  setVideoInventoryForm(prev => ({ ...prev, video_file: null }));
-                                }}
-                                className="text-destructive hover:text-destructive/80"
-                              >
-                                🗑️ Eliminar
-                              </Button>
-                            </div>
+                    {capturedVideoUrl && (
+                      <div className="border border-border rounded-lg p-4 bg-muted/10">
+                        <h4 className="text-sm font-medium text-foreground mb-2">📹 Video Grabado</h4>
+                        <div className="space-y-3">
+                          <video
+                            src={capturedVideoUrl}
+                            controls
+                            className="w-full rounded-lg border shadow-sm"
+                            preload="metadata"
+                          />
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground">Video del inventario del producto</p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (capturedVideoUrl) {
+                                  URL.revokeObjectURL(capturedVideoUrl);
+                                }
+                                setCapturedVideoUrl(null);
+                                setVideoInventoryForm((prev) => ({ ...prev, video_file: null }));
+                              }}
+                              className="text-destructive hover:text-destructive/80"
+                            >
+                              🗑️ Eliminar
+                            </Button>
                           </div>
                         </div>
-                      )
-                    }
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -3645,9 +3779,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
               <CardContent className="p-6">
                 <div className="flex flex-col space-y-4">
                   <div className="text-center">
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Enviar Inventario
-                    </h3>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">Enviar Inventario</h3>
                     <p className="text-sm text-muted-foreground mb-4">
                       Asegúrate de haber completado todos los campos requeridos y grabado el video antes de enviar.
                     </p>
@@ -3665,11 +3797,11 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                       }
 
                       // Validar que haya al menos una distribución de tallas válida
-                      const hasValidDistribution = videoInventoryForm.sizes_distribution.some(sd => {
+                      const hasValidDistribution = videoInventoryForm.sizes_distribution.some((sd) => {
                         if (!sd.size.trim()) return false;
-                        const hasPairs = sd.pairs.some(p => p.location_id > 0 && p.quantity > 0);
-                        const hasLeftFeet = sd.left_feet.some(lf => lf.location_id > 0 && lf.quantity > 0);
-                        const hasRightFeet = sd.right_feet.some(rf => rf.location_id > 0 && rf.quantity > 0);
+                        const hasPairs = sd.pairs.some((p) => p.location_id > 0 && p.quantity > 0);
+                        const hasLeftFeet = sd.left_feet.some((lf) => lf.location_id > 0 && lf.quantity > 0);
+                        const hasRightFeet = sd.right_feet.some((rf) => rf.location_id > 0 && rf.quantity > 0);
                         return hasPairs || (hasLeftFeet && hasRightFeet);
                       });
 
@@ -3684,7 +3816,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                         const totalLeft = sd.left_feet.reduce((sum, lf) => sum + lf.quantity, 0);
                         const totalRight = sd.right_feet.reduce((sum, rf) => sum + rf.quantity, 0);
                         if (totalLeft !== totalRight) {
-                          alert(`❌ Error en talla ${sd.size}: Pies izquierdos (${totalLeft}) debe ser igual a pies derechos (${totalRight})`);
+                          alert(
+                            `❌ Error en talla ${sd.size}: Pies izquierdos (${totalLeft}) debe ser igual a pies derechos (${totalRight})`
+                          );
                           return;
                         }
                       }
@@ -3705,8 +3839,12 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                           product_model: videoInventoryForm.product_model,
                           box_price: videoInventoryForm.box_price,
                           sizes_distribution: videoInventoryForm.sizes_distribution,
-                          video_file: videoInventoryForm.video_file ? `File(${videoInventoryForm.video_file.size} bytes)` : 'null',
-                          reference_image: videoInventoryForm.reference_image ? `File(${videoInventoryForm.reference_image.size} bytes)` : 'null'
+                          video_file: videoInventoryForm.video_file
+                            ? `File(${videoInventoryForm.video_file.size} bytes)`
+                            : 'null',
+                          reference_image: videoInventoryForm.reference_image
+                            ? `File(${videoInventoryForm.reference_image.size} bytes)`
+                            : 'null',
                         });
                         console.log('=======================');
 
@@ -3723,11 +3861,11 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                               size: '',
                               pairs: [{ location_id: 0, quantity: 0 }],
                               left_feet: [],
-                              right_feet: []
-                            }
+                              right_feet: [],
+                            },
                           ],
                           reference_image: null,
-                          video_file: null
+                          video_file: null,
                         });
 
                         // Limpiar las URLs de preview y liberar memoria
@@ -3747,26 +3885,43 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                       }
                     }}
                     className="w-full bg-success hover:bg-success/90 text-white py-4 text-lg font-semibold"
-                    disabled={!videoInventoryForm.video_file || videoInventoryForm.unit_price <= 0 || isSubmittingVideoInventory}
+                    disabled={
+                      !videoInventoryForm.video_file || videoInventoryForm.unit_price <= 0 || isSubmittingVideoInventory
+                    }
                   >
-                    {isSubmittingVideoInventory ? '⏳ Enviando inventario...' :
-                      !videoInventoryForm.video_file ? '📹 Graba un video primero' :
-                        videoInventoryForm.unit_price <= 0 ? '💰 Ingresa el precio' :
-                          '🚀 Registrar Inventario con Distribución'}
+                    {isSubmittingVideoInventory
+                      ? '⏳ Enviando inventario...'
+                      : !videoInventoryForm.video_file
+                        ? '📹 Graba un video primero'
+                        : videoInventoryForm.unit_price <= 0
+                          ? '💰 Ingresa el precio'
+                          : '🚀 Registrar Inventario con Distribución'}
                   </Button>
 
                   {/* Indicadores de estado */}
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                    <div className={`flex items-center space-x-2 ${videoInventoryForm.unit_price > 0 ? 'text-success' : 'text-muted-foreground'}`}>
-                      <div className={`w-3 h-3 rounded-full ${videoInventoryForm.unit_price > 0 ? 'bg-success' : 'bg-muted'}`}></div>
+                    <div
+                      className={`flex items-center space-x-2 ${videoInventoryForm.unit_price > 0 ? 'text-success' : 'text-muted-foreground'}`}
+                    >
+                      <div
+                        className={`w-3 h-3 rounded-full ${videoInventoryForm.unit_price > 0 ? 'bg-success' : 'bg-muted'}`}
+                      ></div>
                       <span>Precio</span>
                     </div>
-                    <div className={`flex items-center space-x-2 ${videoInventoryForm.sizes_distribution.some(sd => sd.size.trim() && (sd.pairs.some(p => p.location_id > 0 && p.quantity > 0) || (sd.left_feet.length > 0 && sd.right_feet.length > 0))) ? 'text-success' : 'text-muted-foreground'}`}>
-                      <div className={`w-3 h-3 rounded-full ${videoInventoryForm.sizes_distribution.some(sd => sd.size.trim() && (sd.pairs.some(p => p.location_id > 0 && p.quantity > 0) || (sd.left_feet.length > 0 && sd.right_feet.length > 0))) ? 'bg-success' : 'bg-muted'}`}></div>
+                    <div
+                      className={`flex items-center space-x-2 ${videoInventoryForm.sizes_distribution.some((sd) => sd.size.trim() && (sd.pairs.some((p) => p.location_id > 0 && p.quantity > 0) || (sd.left_feet.length > 0 && sd.right_feet.length > 0))) ? 'text-success' : 'text-muted-foreground'}`}
+                    >
+                      <div
+                        className={`w-3 h-3 rounded-full ${videoInventoryForm.sizes_distribution.some((sd) => sd.size.trim() && (sd.pairs.some((p) => p.location_id > 0 && p.quantity > 0) || (sd.left_feet.length > 0 && sd.right_feet.length > 0))) ? 'bg-success' : 'bg-muted'}`}
+                      ></div>
                       <span>Distribución</span>
                     </div>
-                    <div className={`flex items-center space-x-2 ${videoInventoryForm.video_file ? 'text-success' : 'text-muted-foreground'}`}>
-                      <div className={`w-3 h-3 rounded-full ${videoInventoryForm.video_file ? 'bg-success' : 'bg-muted'}`}></div>
+                    <div
+                      className={`flex items-center space-x-2 ${videoInventoryForm.video_file ? 'text-success' : 'text-muted-foreground'}`}
+                    >
+                      <div
+                        className={`w-3 h-3 rounded-full ${videoInventoryForm.video_file ? 'bg-success' : 'bg-muted'}`}
+                      ></div>
                       <span>Video</span>
                     </div>
                   </div>
@@ -3848,22 +4003,43 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                 <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
                   <thead className="bg-popover text-popover-foreground">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Modelo</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Tallas</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Cajas Disp.</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Pares/Caja</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Precio</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Estado</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Acciones</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                        Modelo
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                        Tallas
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                        Cajas Disp.
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                        Pares/Caja
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                        Precio
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                        Estado
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                        Acciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {productosMayoreo.map((producto) => (
-                      <tr key={producto.id} className="border-b border-border last:border-b-0 bg-card hover:bg-muted/10 transition-colors">
+                      <tr
+                        key={producto.id}
+                        className="border-b border-border last:border-b-0 bg-card hover:bg-muted/10 transition-colors"
+                      >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             {producto.foto && (
-                              <img src={producto.foto} alt={producto.modelo} className="h-10 w-10 rounded-md mr-3 object-cover" />
+                              <img
+                                src={producto.foto}
+                                alt={producto.modelo}
+                                className="h-10 w-10 rounded-md mr-3 object-cover"
+                              />
                             )}
                             <div>
                               <p className="font-medium text-foreground">{producto.modelo}</p>
@@ -3875,7 +4051,15 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                           {producto.tallas || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge variant={producto.cantidad_cajas_disponibles > 10 ? 'success' : producto.cantidad_cajas_disponibles > 0 ? 'warning' : 'error'}>
+                          <Badge
+                            variant={
+                              producto.cantidad_cajas_disponibles > 10
+                                ? 'success'
+                                : producto.cantidad_cajas_disponibles > 0
+                                  ? 'warning'
+                                  : 'error'
+                            }
+                          >
                             {producto.cantidad_cajas_disponibles} cajas
                           </Badge>
                         </td>
@@ -3903,11 +4087,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                             <DollarSign className="h-4 w-4 mr-1" />
                             Vender
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleVerVentasProducto(producto.id)}
-                          >
+                          <Button size="sm" variant="outline" onClick={() => handleVerVentasProducto(producto.id)}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button
@@ -3945,7 +4125,10 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             {ventasMayoreo.length > 0 ? (
               <div className="space-y-3">
                 {ventasMayoreo.slice(0, 10).map((venta) => (
-                  <div key={venta.id} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card hover:bg-muted/10 transition-colors">
+                  <div
+                    key={venta.id}
+                    className="flex items-center justify-between p-4 border border-border rounded-lg bg-card hover:bg-muted/10 transition-colors"
+                  >
                     <div className="flex-1">
                       <p className="font-medium text-foreground">
                         {venta.mayoreo_producto?.modelo || `Producto ID: ${venta.mayoreo_id}`}
@@ -3953,16 +4136,14 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                       <p className="text-sm text-muted-foreground">
                         {venta.cantidad_cajas_vendidas} cajas × {formatCurrency(venta.precio_unitario_venta)}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatDate(venta.fecha_venta)}
-                      </p>
-                      {venta.notas && (
-                        <p className="text-xs text-muted-foreground italic mt-1">"{venta.notas}"</p>
-                      )}
+                      <p className="text-xs text-muted-foreground mt-1">{formatDate(venta.fecha_venta)}</p>
+                      {venta.notas && <p className="text-xs text-muted-foreground italic mt-1">"{venta.notas}"</p>}
                     </div>
                     <div className="text-right">
                       <p className="text-xl font-bold text-success">{formatCurrency(venta.total_venta)}</p>
-                      <Badge variant="success" className="mt-1">Completada</Badge>
+                      <Badge variant="success" className="mt-1">
+                        Completada
+                      </Badge>
                     </div>
                   </div>
                 ))}
@@ -4034,7 +4215,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                 try {
                   const report = await generateSalesReports({
                     start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                    end_date: new Date().toISOString().split('T')[0]
+                    end_date: new Date().toISOString().split('T')[0],
                   });
                   console.log('Sales report:', report);
                   alert('Reporte generado - Ver consola');
@@ -4054,7 +4235,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                 try {
                   const performance = await fetchUsersPerformance({
                     start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                    end_date: new Date().toISOString().split('T')[0]
+                    end_date: new Date().toISOString().split('T')[0],
                   });
                   console.log('User performance:', performance);
                   alert('Performance data - Ver consola');
@@ -4090,7 +4271,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
               <BarChart3 className="h-12 w-12 text-primary mx-auto mb-3" />
               <h3 className="font-semibold mb-2">Análisis de Ventas</h3>
               <p className="text-sm text-gray-600 mb-4">Tendencias y patrones de venta</p>
-              <Button size="sm" className="w-full">Analizar</Button>
+              <Button size="sm" className="w-full">
+                Analizar
+              </Button>
             </CardContent>
           </Card>
 
@@ -4099,7 +4282,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
               <Users className="h-12 w-12 text-secondary mx-auto mb-3" />
               <h3 className="font-semibold mb-2">Performance de Usuarios</h3>
               <p className="text-sm text-gray-600 mb-4">Rendimiento por usuario y rol</p>
-              <Button size="sm" className="w-full">Ver Métricas</Button>
+              <Button size="sm" className="w-full">
+                Ver Métricas
+              </Button>
             </CardContent>
           </Card>
 
@@ -4108,7 +4293,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
               <Package className="h-12 w-12 text-success mx-auto mb-3" />
               <h3 className="font-semibold mb-2">Análisis de Inventario</h3>
               <p className="text-sm text-gray-600 mb-4">Rotación y optimización de stock</p>
-              <Button size="sm" className="w-full">Optimizar</Button>
+              <Button size="sm" className="w-full">
+                Optimizar
+              </Button>
             </CardContent>
           </Card>
 
@@ -4117,7 +4304,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
               <PieChart className="h-12 w-12 text-warning mx-auto mb-3" />
               <h3 className="font-semibold mb-2">Análisis Financiero</h3>
               <p className="text-sm text-gray-600 mb-4">Costos, márgenes y rentabilidad</p>
-              <Button size="sm" className="w-full">Analizar</Button>
+              <Button size="sm" className="w-full">
+                Analizar
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -4140,7 +4329,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
   };
 
   const renderReportsView = () => {
-    const localLocations = locations.filter(location => location.type?.toLowerCase() === 'local');
+    const localLocations = locations.filter((location) => location.type?.toLowerCase() === 'local');
 
     return (
       <div className="space-y-6 p-4 md:p-6 bg-background min-h-screen">
@@ -4169,7 +4358,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                     try {
                       const report = await generateSalesReports({
                         start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                        end_date: new Date().toISOString().split('T')[0]
+                        end_date: new Date().toISOString().split('T')[0],
                       });
                       console.log('Sales report:', report);
                       alert('Reporte de ventas generado - revisar consola');
@@ -4193,9 +4382,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <Input
                     type="date"
                     value={dailyTraceabilityFilters.target_date}
-                    onChange={(e) =>
-                      setDailyTraceabilityFilters(prev => ({ ...prev, target_date: e.target.value }))
-                    }
+                    onChange={(e) => setDailyTraceabilityFilters((prev) => ({ ...prev, target_date: e.target.value }))}
                     max={todayISO}
                   />
                 </div>
@@ -4204,15 +4391,13 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <label className="text-sm font-medium text-foreground">Local</label>
                   <Select
                     value={dailyTraceabilityFilters.location_id}
-                    onChange={(e) =>
-                      setDailyTraceabilityFilters(prev => ({ ...prev, location_id: e.target.value }))
-                    }
+                    onChange={(e) => setDailyTraceabilityFilters((prev) => ({ ...prev, location_id: e.target.value }))}
                     options={[
                       { value: '', label: 'Selecciona un local' },
-                      ...localLocations.map(location => ({
+                      ...localLocations.map((location) => ({
                         value: location.id.toString(),
-                        label: `${location.name}`
-                      }))
+                        label: `${location.name}`,
+                      })),
                     ]}
                   />
                   <p className="text-xs text-muted-foreground">
@@ -4224,7 +4409,11 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <Button
                     className="w-full"
                     onClick={handleFetchDailyTraceability}
-                    disabled={dailyTraceabilityLoading || !dailyTraceabilityFilters.location_id || !dailyTraceabilityFilters.target_date}
+                    disabled={
+                      dailyTraceabilityLoading ||
+                      !dailyTraceabilityFilters.location_id ||
+                      !dailyTraceabilityFilters.target_date
+                    }
                   >
                     {dailyTraceabilityLoading ? 'Consultando...' : 'Consultar'}
                   </Button>
@@ -4257,12 +4446,19 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                       </div>
                       <div className="mt-3 border-t border-border pt-3 space-y-3">
                         {sale.items.map((item, index) => (
-                          <div key={`${sale.sale_id}-${index}`} className="flex flex-wrap justify-between text-sm gap-3">
+                          <div
+                            key={`${sale.sale_id}-${index}`}
+                            className="flex flex-wrap justify-between text-sm gap-3"
+                          >
                             <div>
-                              <p className="font-medium text-foreground">{item.brand} · {item.model}</p>
+                              <p className="font-medium text-foreground">
+                                {item.brand} · {item.model}
+                              </p>
                             </div>
                             <div className="text-right">
-                              <p className="text-foreground">Talla {item.size} · {item.quantity} uds   ·  C/U = {formatCurrency(item.unit_price)}</p>
+                              <p className="text-foreground">
+                                Talla {item.size} · {item.quantity} uds · C/U = {formatCurrency(item.unit_price)}
+                              </p>
                             </div>
                             {sale.receipt_image && (
                               <Button
@@ -4325,7 +4521,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   type="date"
                   value={transfersTraceabilityFilters.target_date}
                   onChange={(e) =>
-                    setTransfersTraceabilityFilters(prev => ({ ...prev, target_date: e.target.value }))
+                    setTransfersTraceabilityFilters((prev) => ({ ...prev, target_date: e.target.value }))
                   }
                   max={todayISO}
                 />
@@ -4357,7 +4553,10 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   const productName = `${transfer.product.brand} ${transfer.product.model}`;
 
                   return (
-                    <div key={transfer.transfer_id} className="border border-border rounded-lg bg-card/50 overflow-hidden">
+                    <div
+                      key={transfer.transfer_id}
+                      className="border border-border rounded-lg bg-card/50 overflow-hidden"
+                    >
                       {/* Collapsed View */}
                       <div
                         className="p-4 cursor-pointer hover:bg-card transition-colors"
@@ -4366,9 +4565,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <p className="text-base font-semibold text-foreground truncate">
-                                {productName}
-                              </p>
+                              <p className="text-base font-semibold text-foreground truncate">{productName}</p>
                               <Badge variant={transfer.status === 'completed' ? 'success' : 'secondary'}>
                                 {transfer.status}
                               </Badge>
@@ -4379,9 +4576,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                               </span>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                              <span>
-                                {transfer.pickup_type === 'corredor' ? 'Corredor' : 'Vendedor'}
-                              </span>
+                              <span>{transfer.pickup_type === 'corredor' ? 'Corredor' : 'Vendedor'}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -4455,7 +4650,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                   {transfer.participants.requester.name || 'N/A'}
                                 </p>
                                 {transfer.participants.requester.id && (
-                                  <p className="text-xs text-muted-foreground">ID: {transfer.participants.requester.id}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    ID: {transfer.participants.requester.id}
+                                  </p>
                                 )}
                               </div>
                               <div>
@@ -4464,7 +4661,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                   {transfer.participants.courier.name || 'N/A'}
                                 </p>
                                 {transfer.participants.courier.id && (
-                                  <p className="text-xs text-muted-foreground">ID: {transfer.participants.courier.id}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    ID: {transfer.participants.courier.id}
+                                  </p>
                                 )}
                               </div>
                               <div>
@@ -4473,14 +4672,16 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                   {transfer.participants.warehouse_keeper.name || 'N/A'}
                                 </p>
                                 {transfer.participants.warehouse_keeper.id && (
-                                  <p className="text-xs text-muted-foreground">ID: {transfer.participants.warehouse_keeper.id}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    ID: {transfer.participants.warehouse_keeper.id}
+                                  </p>
                                 )}
                               </div>
                             </div>
                           </div>
 
                           {/* Dates - Show all dates if pickup_type is "corredor" or "vendedor" */}
-                          {(transfer.pickup_type === 'corredor' || 'vendedor') && (
+                          {(transfer.pickup_type === 'corredor' || transfer.pickup_type === 'vendedor') && (
                             <div>
                               <p className="text-xs uppercase text-muted-foreground mb-2">Fechas del Proceso</p>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -4511,7 +4712,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                                 {transfer.dates.confirmed_reception_at && (
                                   <div>
                                     <p className="text-xs text-muted-foreground mb-1">Recepción Confirmada</p>
-                                    <p className="text-sm text-foreground">{formatDate(transfer.dates.confirmed_reception_at)}</p>
+                                    <p className="text-sm text-foreground">
+                                      {formatDate(transfer.dates.confirmed_reception_at)}
+                                    </p>
                                   </div>
                                 )}
                               </div>
@@ -4556,7 +4759,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
       pares_por_caja: 0,
       precio: 0,
       foto: null as File | null,
-      tallas: ''
+      tallas: '',
     });
     const [fotoPreviewUrl, setFotoPreviewUrl] = useState<string | null>(null);
 
@@ -4620,7 +4823,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   min="0"
                   placeholder="Ej: 50"
                   value={formData.cantidad_cajas_disponibles}
-                  onChange={(e) => setFormData({ ...formData, cantidad_cajas_disponibles: parseInt(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, cantidad_cajas_disponibles: parseInt(e.target.value) || 0 })
+                  }
                 />
                 <p className="text-xs text-muted-foreground mt-1">Stock inicial de cajas</p>
               </div>
@@ -4670,9 +4875,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             {/* Columna derecha - Foto del producto */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Foto del Producto (Opcional)
-                </label>
+                <label className="block text-sm font-medium text-foreground mb-2">Foto del Producto (Opcional)</label>
                 <FullScreenPhotoCapture
                   hideInternalPreview={true}
                   onPhotoTaken={async (url, blob) => {
@@ -4688,16 +4891,14 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                       const ext = fileType.split('/')[1] || 'jpg';
                       const fotoFile = new File([blob], `producto-mayoreo.${ext}`, { type: fileType });
 
-                      setFormData(prev => ({
+                      setFormData((prev) => ({
                         ...prev,
-                        foto: fotoFile
+                        foto: fotoFile,
                       }));
                     }
                   }}
                 />
-                <p className="text-xs text-muted-foreground mt-2">
-                  Toca el botón para capturar una foto del producto
-                </p>
+                <p className="text-xs text-muted-foreground mt-2">Toca el botón para capturar una foto del producto</p>
               </div>
 
               {/* Preview de la foto */}
@@ -4716,7 +4917,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                         URL.revokeObjectURL(fotoPreviewUrl);
                       }
                       setFotoPreviewUrl(null);
-                      setFormData(prev => ({ ...prev, foto: null }));
+                      setFormData((prev) => ({ ...prev, foto: null }));
                     }}
                     className="w-full text-destructive hover:text-destructive/80 hover:bg-destructive/10"
                   >
@@ -4728,7 +4929,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
           </div>
 
           <div className="flex justify-end space-x-2 mt-6 pt-4 border-t border-border">
-            <Button variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
             <Button onClick={handleSubmit}>Crear Producto</Button>
           </div>
         </div>
@@ -4749,7 +4952,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
       precio: producto.precio,
       foto: null as File | null,
       tallas: producto.tallas || '',
-      is_active: producto.is_active
+      is_active: producto.is_active,
     });
     const [fotoPreviewUrl, setFotoPreviewUrl] = useState<string | null>(producto.foto || null);
     const [fotoChanged, setFotoChanged] = useState(false);
@@ -4772,9 +4975,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             {/* Columna izquierda - Datos del producto */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Modelo del Producto
-                </label>
+                <label className="block text-sm font-medium text-foreground mb-1">Modelo del Producto</label>
                 <Input
                   placeholder="Modelo"
                   value={formData.modelo}
@@ -4783,9 +4984,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Cantidad de Cajas Disponibles
-                </label>
+                <label className="block text-sm font-medium text-foreground mb-1">Cantidad de Cajas Disponibles</label>
                 <Input
                   type="number"
                   min="0"
@@ -4794,16 +4993,15 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                     const value = e.target.value;
                     setFormData({
                       ...formData,
-                      cantidad_cajas_disponibles: value === '' ? producto.cantidad_cajas_disponibles : parseInt(value) || 0
+                      cantidad_cajas_disponibles:
+                        value === '' ? producto.cantidad_cajas_disponibles : parseInt(value) || 0,
                     });
                   }}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Pares por Caja
-                </label>
+                <label className="block text-sm font-medium text-foreground mb-1">Pares por Caja</label>
                 <Input
                   type="number"
                   min="1"
@@ -4812,16 +5010,14 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                     const value = e.target.value;
                     setFormData({
                       ...formData,
-                      pares_por_caja: value === '' ? producto.pares_por_caja : parseInt(value) || 0
+                      pares_por_caja: value === '' ? producto.pares_por_caja : parseInt(value) || 0,
                     });
                   }}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Precio por Caja
-                </label>
+                <label className="block text-sm font-medium text-foreground mb-1">Precio por Caja</label>
                 <Input
                   type="number"
                   min="0"
@@ -4831,16 +5027,14 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                     const value = e.target.value;
                     setFormData({
                       ...formData,
-                      precio: value === '' ? producto.precio : parseFloat(value) || 0
+                      precio: value === '' ? producto.precio : parseFloat(value) || 0,
                     });
                   }}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Distribución de Tallas
-                </label>
+                <label className="block text-sm font-medium text-foreground mb-1">Distribución de Tallas</label>
                 <Input
                   placeholder="Ej: 36-39/6666, 40-44/6662"
                   value={formData.tallas}
@@ -4862,9 +5056,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             {/* Columna derecha - Foto del producto */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Foto del Producto
-                </label>
+                <label className="block text-sm font-medium text-foreground mb-2">Foto del Producto</label>
                 <FullScreenPhotoCapture
                   hideInternalPreview={true}
                   onPhotoTaken={async (url, blob) => {
@@ -4881,9 +5073,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                       const ext = fileType.split('/')[1] || 'jpg';
                       const fotoFile = new File([blob], `producto-mayoreo-${producto.id}.${ext}`, { type: fileType });
 
-                      setFormData(prev => ({
+                      setFormData((prev) => ({
                         ...prev,
-                        foto: fotoFile
+                        foto: fotoFile,
                       }));
                     }
                   }}
@@ -4910,7 +5102,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                       }
                       setFotoPreviewUrl(null);
                       setFotoChanged(true);
-                      setFormData(prev => ({ ...prev, foto: null }));
+                      setFormData((prev) => ({ ...prev, foto: null }));
                     }}
                     className="w-full text-destructive hover:text-destructive/80 hover:bg-destructive/10"
                   >
@@ -4922,41 +5114,51 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
           </div>
 
           <div className="flex justify-between mt-6 pt-4 border-t border-border">
-            <Button variant="outline" className="text-error border-error hover:bg-error hover:text-white" onClick={onDelete}>
+            <Button
+              variant="outline"
+              className="text-error border-error hover:bg-error hover:text-white"
+              onClick={onDelete}
+            >
               Eliminar Producto
             </Button>
             <div className="flex space-x-2">
-              <Button variant="outline" onClick={onClose}>Cancelar</Button>
-              <Button onClick={() => {
-                // Solo enviar campos que han cambiado
-                const changedData: any = {};
+              <Button variant="outline" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  // Solo enviar campos que han cambiado
+                  const changedData: any = {};
 
-                if (formData.modelo !== producto.modelo) {
-                  changedData.modelo = formData.modelo;
-                }
-                if (formData.cantidad_cajas_disponibles !== producto.cantidad_cajas_disponibles) {
-                  changedData.cantidad_cajas_disponibles = formData.cantidad_cajas_disponibles;
-                }
-                if (formData.pares_por_caja !== producto.pares_por_caja) {
-                  changedData.pares_por_caja = formData.pares_por_caja;
-                }
-                if (formData.precio !== producto.precio) {
-                  changedData.precio = formData.precio;
-                }
-                if (formData.tallas !== (producto.tallas || '')) {
-                  changedData.tallas = formData.tallas;
-                }
-                if (formData.is_active !== producto.is_active) {
-                  changedData.is_active = formData.is_active;
-                }
-                if (formData.foto !== null) {
-                  changedData.foto = formData.foto;
-                }
+                  if (formData.modelo !== producto.modelo) {
+                    changedData.modelo = formData.modelo;
+                  }
+                  if (formData.cantidad_cajas_disponibles !== producto.cantidad_cajas_disponibles) {
+                    changedData.cantidad_cajas_disponibles = formData.cantidad_cajas_disponibles;
+                  }
+                  if (formData.pares_por_caja !== producto.pares_por_caja) {
+                    changedData.pares_por_caja = formData.pares_por_caja;
+                  }
+                  if (formData.precio !== producto.precio) {
+                    changedData.precio = formData.precio;
+                  }
+                  if (formData.tallas !== (producto.tallas || '')) {
+                    changedData.tallas = formData.tallas;
+                  }
+                  if (formData.is_active !== producto.is_active) {
+                    changedData.is_active = formData.is_active;
+                  }
+                  if (formData.foto !== null) {
+                    changedData.foto = formData.foto;
+                  }
 
-                console.log('Datos del formulario antes de enviar:', formData);
-                console.log('Solo campos cambiados:', changedData);
-                onSubmit(changedData);
-              }}>Actualizar</Button>
+                  console.log('Datos del formulario antes de enviar:', formData);
+                  console.log('Solo campos cambiados:', changedData);
+                  onSubmit(changedData);
+                }}
+              >
+                Actualizar
+              </Button>
             </div>
           </div>
         </div>
@@ -4973,7 +5175,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
       mayoreo_id: producto.id,
       cantidad_cajas_vendidas: 1,
       precio_unitario_venta: producto.precio,
-      notas: ''
+      notas: '',
     });
 
     const calcularTotal = () => {
@@ -5028,7 +5230,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
           </div>
 
           <div className="flex justify-end space-x-2 mt-6">
-            <Button variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
             <Button onClick={() => onSubmit(formData)}>Registrar Venta</Button>
           </div>
         </div>
@@ -5056,9 +5260,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                       <p className="text-sm text-foreground mt-2">
                         {venta.cantidad_cajas_vendidas} cajas × {formatCurrency(venta.precio_unitario_venta)}
                       </p>
-                      {venta.notas && (
-                        <p className="text-xs text-muted-foreground italic mt-1">"{venta.notas}"</p>
-                      )}
+                      {venta.notas && <p className="text-xs text-muted-foreground italic mt-1">"{venta.notas}"</p>}
                     </div>
                     <div className="text-right">
                       <p className="text-xl font-bold text-success">{formatCurrency(venta.total_venta)}</p>
@@ -5127,9 +5329,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
   if (error) {
     return (
       <DashboardLayout title="Panel de Administración">
-        <ErrorState
-          message={error}
-        />
+        <ErrorState message={error} />
       </DashboardLayout>
     );
   }
@@ -5155,10 +5355,11 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
               <button
                 key={tab.key}
                 onClick={() => setCurrentView(tab.key as AdminView)}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${currentView === tab.key
-                  ? 'bg-primary text-primary-foreground shadow-lg'
-                  : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground'
-                  }`}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${
+                  currentView === tab.key
+                    ? 'bg-primary text-primary-foreground shadow-lg'
+                    : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground'
+                }`}
               >
                 {tab.icon}
                 <span>{tab.label}</span>
@@ -5188,32 +5389,30 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <button
                     key={item.key}
                     onClick={() => setCurrentView(item.key as AdminView)}
-                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left ${currentView === item.key
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-foreground hover:bg-muted/20'
-                      }`}
+                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left ${
+                      currentView === item.key
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-foreground hover:bg-muted/20'
+                    }`}
                   >
                     {item.icon}
                     <span>{item.label}</span>
-                    {item.key === 'notifications' && (notifications.discounts.length + notifications.returns.length) > 0 && (
-                      <span className="ml-auto bg-error text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        {notifications.discounts.length + notifications.returns.length}
-                      </span>
-                    )}
+                    {item.key === 'notifications' &&
+                      notifications.discounts.length + notifications.returns.length > 0 && (
+                        <span className="ml-auto bg-error text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                          {notifications.discounts.length + notifications.returns.length}
+                        </span>
+                      )}
                   </button>
                 ))}
               </nav>
             </div>
           </div>
-          <div className="ml-64 flex-1 bg-background">
-            {renderCurrentView()}
-          </div>
+          <div className="ml-64 flex-1 bg-background">{renderCurrentView()}</div>
         </div>
 
         {/* Content for mobile */}
-        <div className="lg:hidden">
-          {renderCurrentView()}
-        </div>
+        <div className="lg:hidden">{renderCurrentView()}</div>
 
         {receiptPreviewUrl && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -5246,7 +5445,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             user={{
               ...editingUser,
               // Extract location_ids from assigned_locations array
-              location_ids: editingUser.assigned_locations?.map(loc => loc.id) || []
+              location_ids: editingUser.assigned_locations?.map((loc) => loc.id) || [],
             }}
             onClose={() => {
               setEditingUser(null);
@@ -5266,72 +5465,90 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
         )}
 
         {/* Edit Product Dropdown (fixed position) */}
-        {openEditDropdown && editDropdownPos && (() => {
-          const product = adminInventory
-            .flatMap(loc => loc.products)
-            .find(p => p.reference_code === openEditDropdown);
-          if (!product) return null;
+        {openEditDropdown &&
+          editDropdownPos &&
+          (() => {
+            const product = adminInventory
+              .flatMap((loc) => loc.products)
+              .find((p) => p.reference_code === openEditDropdown);
+            if (!product) return null;
 
-          // Clamp so menu doesn't overflow viewport
-          const menuW = 192; // w-48
-          const left = Math.min(editDropdownPos.left, window.innerWidth - menuW - 8);
-          const top = editDropdownPos.top;
+            // Clamp so menu doesn't overflow viewport
+            const menuW = 192; // w-48
+            const left = Math.min(editDropdownPos.left, window.innerWidth - menuW - 8);
+            const top = editDropdownPos.top;
 
-          return (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); closeEditDropdown(); }}
-              />
-              <div
-                className="fixed z-50 w-48 bg-card border border-border rounded-md shadow-lg py-1"
-                style={{ top, left: left }}
-              >
-                <button
-                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
-                  onClick={() => { closeEditDropdown(); handleOpenAdjustPriceModal(product); }}
-                >
-                  <DollarSign className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                  Precio
-                </button>
-                <button
-                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
-                  onClick={() => { closeEditDropdown(); handleOpenEditProductInfoModal(product); }}
-                >
-                  <Edit className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                  Marca / Modelo
-                </button>
-                <button
-                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
-                  onClick={() => {
+            return (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     closeEditDropdown();
-                    setUpdatingImageRef(product.reference_code);
-                    imageInputRef.current?.click();
                   }}
+                />
+                <div
+                  className="fixed z-50 w-48 bg-card border border-border rounded-md shadow-lg py-1"
+                  style={{ top, left: left }}
                 >
-                  <Camera className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                  Imagen
-                </button>
-                <button
-                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
-                  onClick={() => { closeEditDropdown(); handleOpenRetrainModal(product); }}
-                >
-                  <Video className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                  Re-entrenar IA
-                </button>
-                <div className="border-t border-border my-1" />
-                <button
-                  className="w-full text-left px-3 py-2 text-xs hover:bg-destructive/10 flex items-center text-destructive"
-                  onClick={() => { closeEditDropdown(); handleDeleteProductReference(product); }}
-                  disabled={deletingProductId === product.product_id}
-                >
-                  <Trash2 className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                  {deletingProductId === product.product_id ? 'Eliminando...' : 'Eliminar Referencia'}
-                </button>
-              </div>
-            </>
-          );
-        })()}
+                  <button
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                    onClick={() => {
+                      closeEditDropdown();
+                      handleOpenAdjustPriceModal(product);
+                    }}
+                  >
+                    <DollarSign className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                    Precio
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                    onClick={() => {
+                      closeEditDropdown();
+                      handleOpenEditProductInfoModal(product);
+                    }}
+                  >
+                    <Edit className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                    Marca / Modelo
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                    onClick={() => {
+                      closeEditDropdown();
+                      setUpdatingImageRef(product.reference_code);
+                      imageInputRef.current?.click();
+                    }}
+                  >
+                    <Camera className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                    Imagen
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                    onClick={() => {
+                      closeEditDropdown();
+                      handleOpenRetrainModal(product);
+                    }}
+                  >
+                    <Video className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                    Re-entrenar IA
+                  </button>
+                  <div className="border-t border-border my-1" />
+                  <button
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-destructive/10 flex items-center text-destructive"
+                    onClick={() => {
+                      closeEditDropdown();
+                      handleDeleteProductReference(product);
+                    }}
+                    disabled={deletingProductId === product.product_id}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                    {deletingProductId === product.product_id ? 'Eliminando...' : 'Eliminar Referencia'}
+                  </button>
+                </div>
+              </>
+            );
+          })()}
 
         {/* Inventory Adjustment Modal */}
         {showAdjustInventoryModal && selectedSizeForAdjustment && (
@@ -5388,7 +5605,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
             onClose={() => setShowAssignProductModal(false)}
             onSubmit={handleAssignProductToLocation}
             allInventory={adminInventory}
-            allLocations={locations.map(l => ({ id: l.id, name: l.name }))}
+            allLocations={locations.map((l) => ({ id: l.id, name: l.name }))}
           />
         )}
 
@@ -5424,7 +5641,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                       />
                     )}
                     <div>
-                      <p className="font-medium text-foreground">{retrainProduct.brand} {retrainProduct.model}</p>
+                      <p className="font-medium text-foreground">
+                        {retrainProduct.brand} {retrainProduct.model}
+                      </p>
                       <p className="text-sm text-muted-foreground font-mono">{retrainProduct.reference_code}</p>
                     </div>
                   </div>
@@ -5435,16 +5654,20 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <FullScreenCameraCapture
                     onVideoRecorded={(_url, blob) => {
                       if (blob) {
-                        const file = blob instanceof File
-                          ? blob
-                          : new File([blob], `retrain-${retrainProduct.reference_code}-${Date.now()}.webm`, { type: blob.type || 'video/webm' });
-                        setRetrainFormData(prev => ({ ...prev, video_file: file }));
+                        const file =
+                          blob instanceof File
+                            ? blob
+                            : new File([blob], `retrain-${retrainProduct.reference_code}-${Date.now()}.webm`, {
+                                type: blob.type || 'video/webm',
+                              });
+                        setRetrainFormData((prev) => ({ ...prev, video_file: file }));
                       }
                     }}
                   />
                   {retrainFormData.video_file && (
                     <p className="text-xs text-success">
-                      Video listo: {retrainFormData.video_file.name} ({(retrainFormData.video_file.size / 1024 / 1024).toFixed(1)} MB)
+                      Video listo: {retrainFormData.video_file.name} (
+                      {(retrainFormData.video_file.size / 1024 / 1024).toFixed(1)} MB)
                     </p>
                   )}
                 </div>
@@ -5453,12 +5676,12 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <label className="text-sm font-medium text-foreground">Bodega *</label>
                   <Select
                     value={retrainFormData.warehouse_location_id}
-                    onChange={(e) => setRetrainFormData(prev => ({ ...prev, warehouse_location_id: e.target.value }))}
+                    onChange={(e) => setRetrainFormData((prev) => ({ ...prev, warehouse_location_id: e.target.value }))}
                     options={[
                       { value: '', label: 'Seleccionar bodega...' },
                       ...locations
-                        .filter(l => l.type === 'bodega')
-                        .map(l => ({ value: l.id.toString(), label: l.name }))
+                        .filter((l) => l.type === 'bodega')
+                        .map((l) => ({ value: l.id.toString(), label: l.name })),
                     ]}
                   />
                 </div>
@@ -5468,14 +5691,15 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <Input
                     type="text"
                     value={retrainFormData.notes}
-                    onChange={(e) => setRetrainFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    onChange={(e) => setRetrainFormData((prev) => ({ ...prev, notes: e.target.value }))}
                     placeholder="Motivo del re-entrenamiento..."
                   />
                 </div>
 
                 <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
                   <p className="text-xs text-warning">
-                    Al re-entrenar, los vectores de IA anteriores se reemplazaran cuando el procesamiento complete. Este proceso puede tardar varios minutos.
+                    Al re-entrenar, los vectores de IA anteriores se reemplazaran cuando el procesamiento complete. Este
+                    proceso puede tardar varios minutos.
                   </p>
                 </div>
               </div>
@@ -5530,7 +5754,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <Input
                     type="number"
                     value={editCostFormData.amount}
-                    onChange={(e) => setEditCostFormData(prev => ({ ...prev, amount: e.target.value }))}
+                    onChange={(e) => setEditCostFormData((prev) => ({ ...prev, amount: e.target.value }))}
                     placeholder="0.00"
                     min="0"
                     step="0.01"
@@ -5541,16 +5765,18 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <label className="text-sm font-medium text-foreground">Frecuencia</label>
                   <Select
                     value={editCostFormData.frequency}
-                    onChange={(e) => setEditCostFormData(prev => ({
-                      ...prev,
-                      frequency: e.target.value as typeof editCostFormData.frequency
-                    }))}
+                    onChange={(e) =>
+                      setEditCostFormData((prev) => ({
+                        ...prev,
+                        frequency: e.target.value as typeof editCostFormData.frequency,
+                      }))
+                    }
                     options={[
                       { value: 'daily', label: 'Diario' },
                       { value: 'weekly', label: 'Semanal' },
                       { value: 'monthly', label: 'Mensual' },
                       { value: 'quarterly', label: 'Trimestral' },
-                      { value: 'annual', label: 'Anual' }
+                      { value: 'annual', label: 'Anual' },
                     ]}
                   />
                 </div>
@@ -5560,7 +5786,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <Input
                     type="text"
                     value={editCostFormData.description}
-                    onChange={(e) => setEditCostFormData(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) => setEditCostFormData((prev) => ({ ...prev, description: e.target.value }))}
                     placeholder="Descripción del costo"
                   />
                 </div>
@@ -5570,10 +5796,12 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                     type="checkbox"
                     id="is_active"
                     checked={editCostFormData.is_active}
-                    onChange={(e) => setEditCostFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                    onChange={(e) => setEditCostFormData((prev) => ({ ...prev, is_active: e.target.checked }))}
                     className="rounded border-border"
                   />
-                  <label htmlFor="is_active" className="text-sm text-foreground">Costo activo</label>
+                  <label htmlFor="is_active" className="text-sm text-foreground">
+                    Costo activo
+                  </label>
                 </div>
               </div>
               <div className="flex justify-end space-x-2 p-4 border-t border-border">
@@ -5586,10 +5814,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                 >
                   Cancelar
                 </Button>
-                <Button
-                  onClick={handleUpdateCost}
-                  disabled={editCostLoading}
-                >
+                <Button onClick={handleUpdateCost} disabled={editCostLoading}>
                   {editCostLoading ? 'Guardando...' : 'Guardar Cambios'}
                 </Button>
               </div>
@@ -5618,10 +5843,10 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                 <div className="bg-primary/10 p-3 rounded-lg">
                   <p className="text-sm text-muted-foreground">Pago para:</p>
                   <p className="font-medium">{payingCost.location_name || `Ubicación ${payingCost.location_id}`}</p>
-                  <p className="text-sm">{capitalize(payingCost.cost_type)} - {payingCost.description}</p>
-                  <p className="text-lg font-bold text-primary mt-1">
-                    {formatCurrency(parseFloat(payingCost.amount))}
+                  <p className="text-sm">
+                    {capitalize(payingCost.cost_type)} - {payingCost.description}
                   </p>
+                  <p className="text-lg font-bold text-primary mt-1">{formatCurrency(parseFloat(payingCost.amount))}</p>
                 </div>
 
                 <div className="space-y-2">
@@ -5629,7 +5854,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <Input
                     type="date"
                     value={paymentFormData.due_date}
-                    onChange={(e) => setPaymentFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                    onChange={(e) => setPaymentFormData((prev) => ({ ...prev, due_date: e.target.value }))}
                   />
                 </div>
 
@@ -5638,7 +5863,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <Input
                     type="number"
                     value={paymentFormData.payment_amount}
-                    onChange={(e) => setPaymentFormData(prev => ({ ...prev, payment_amount: e.target.value }))}
+                    onChange={(e) => setPaymentFormData((prev) => ({ ...prev, payment_amount: e.target.value }))}
                     placeholder="0.00"
                     min="0"
                     step="0.01"
@@ -5650,7 +5875,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <Input
                     type="date"
                     value={paymentFormData.payment_date}
-                    onChange={(e) => setPaymentFormData(prev => ({ ...prev, payment_date: e.target.value }))}
+                    onChange={(e) => setPaymentFormData((prev) => ({ ...prev, payment_date: e.target.value }))}
                   />
                 </div>
 
@@ -5658,15 +5883,17 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <label className="text-sm font-medium text-foreground">Método de Pago</label>
                   <Select
                     value={paymentFormData.payment_method}
-                    onChange={(e) => setPaymentFormData(prev => ({
-                      ...prev,
-                      payment_method: e.target.value as typeof paymentFormData.payment_method
-                    }))}
+                    onChange={(e) =>
+                      setPaymentFormData((prev) => ({
+                        ...prev,
+                        payment_method: e.target.value as typeof paymentFormData.payment_method,
+                      }))
+                    }
                     options={[
                       { value: 'efectivo', label: 'Efectivo' },
                       { value: 'transferencia', label: 'Transferencia' },
                       { value: 'tarjeta', label: 'Tarjeta' },
-                      { value: 'cheque', label: 'Cheque' }
+                      { value: 'cheque', label: 'Cheque' },
                     ]}
                   />
                 </div>
@@ -5676,7 +5903,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <Input
                     type="text"
                     value={paymentFormData.payment_reference}
-                    onChange={(e) => setPaymentFormData(prev => ({ ...prev, payment_reference: e.target.value }))}
+                    onChange={(e) => setPaymentFormData((prev) => ({ ...prev, payment_reference: e.target.value }))}
                     placeholder="Ej: Número de transferencia, recibo, etc."
                   />
                 </div>
@@ -5686,7 +5913,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                   <Input
                     type="text"
                     value={paymentFormData.notes}
-                    onChange={(e) => setPaymentFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    onChange={(e) => setPaymentFormData((prev) => ({ ...prev, notes: e.target.value }))}
                     placeholder="Notas adicionales del pago"
                   />
                 </div>

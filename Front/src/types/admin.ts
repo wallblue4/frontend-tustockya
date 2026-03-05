@@ -1,4 +1,15 @@
-export type AdminView = 'dashboard' | 'users' | 'costs' | 'locations' | 'wholesale' | 'notifications' | 'reports' | 'inventory' | 'analytics' | 'transfers' | 'daily-report';
+export type AdminView =
+  | 'dashboard'
+  | 'users'
+  | 'costs'
+  | 'locations'
+  | 'wholesale'
+  | 'notifications'
+  | 'reports'
+  | 'inventory'
+  | 'analytics'
+  | 'transfers'
+  | 'daily-report';
 
 export interface DashboardData {
   admin_name: string;

@@ -6,13 +6,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon?: React.ReactNode;
 }
 
-export const Input: React.FC<InputProps> = ({
-  label,
-  error,
-  icon,
-  className = '',
-  ...props
-}) => {
+export const Input: React.FC<InputProps> = ({ label, error, icon, className = '', ...props }) => {
   const id = props.id || `input-${Math.random().toString(36).substring(2, 9)}`;
 
   return (

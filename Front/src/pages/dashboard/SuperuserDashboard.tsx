@@ -17,7 +17,7 @@ import {
   Activity,
   CreditCard,
   BarChart3,
-  Shield
+  Shield,
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
@@ -137,7 +137,7 @@ export const SuperuserDashboard: React.FC = () => {
     subscription_plan: 'basic' as 'basic' | 'professional' | 'enterprise' | 'custom',
     max_locations: 3,
     max_employees: 10,
-    price_per_location: 50
+    price_per_location: 50,
   });
 
   // Estado para Boss (Endpoints 21, 22, 23)
@@ -145,7 +145,7 @@ export const SuperuserDashboard: React.FC = () => {
     email: '',
     password: '',
     first_name: '',
-    last_name: ''
+    last_name: '',
   });
   const [showCreateBoss, setShowCreateBoss] = useState(false);
   const [selectedCompanyForBoss, setSelectedCompanyForBoss] = useState<number | null>(null);
@@ -155,7 +155,7 @@ export const SuperuserDashboard: React.FC = () => {
     hasUpperCase: false,
     hasNumber: false,
     hasSpecialChar: false,
-    isValid: false
+    isValid: false,
   });
 
   // Estado para empresas con Boss
@@ -172,7 +172,7 @@ export const SuperuserDashboard: React.FC = () => {
     new_max_employees: 15,
     new_price_per_location: 75,
     effective_date: new Date().toISOString().split('T')[0],
-    reason: ''
+    reason: '',
   });
 
   // Estado para facturas (Endpoints 11, 12, 13, 14)
@@ -190,7 +190,7 @@ export const SuperuserDashboard: React.FC = () => {
     max_employees: 15,
     price_per_location: 60,
     features: {},
-    sort_order: 0
+    sort_order: 0,
   });
 
   // Estado para planes disponibles para empresas
@@ -200,7 +200,7 @@ export const SuperuserDashboard: React.FC = () => {
   const [financialReport, setFinancialReport] = useState<any>(null);
   const [reportDates, setReportDates] = useState({
     start_date: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    end_date: new Date().toISOString().split('T')[0]
+    end_date: new Date().toISOString().split('T')[0],
   });
 
   // Estado para setup primer superadmin (Endpoint 1)
@@ -209,7 +209,7 @@ export const SuperuserDashboard: React.FC = () => {
     password: '',
     first_name: '',
     last_name: '',
-    secret_key: ''
+    secret_key: '',
   });
 
   // Health check (Endpoint 20)
@@ -218,11 +218,11 @@ export const SuperuserDashboard: React.FC = () => {
   // Mapeo de códigos de plan del backend a enums esperados por la API
   const mapPlanCodeToEnum = (planCode: string): 'basic' | 'professional' | 'enterprise' | 'custom' => {
     const mapping: Record<string, 'basic' | 'professional' | 'enterprise' | 'custom'> = {
-      'basic': 'basic',
-      'pro': 'professional',
-      'professional': 'professional',
-      'enterprise': 'enterprise',
-      'custom': 'custom'
+      basic: 'basic',
+      pro: 'professional',
+      professional: 'professional',
+      enterprise: 'enterprise',
+      custom: 'custom',
     };
     return mapping[planCode] || 'basic';
   };
@@ -255,6 +255,7 @@ export const SuperuserDashboard: React.FC = () => {
       default:
         break;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, searchTerm, statusFilter, invoiceStatusFilter]);
 
   // ========== FUNCIONES PARA MÉTRICAS (Endpoint 15, 16) ==========
@@ -288,7 +289,7 @@ export const SuperuserDashboard: React.FC = () => {
       const data = await superadminAPI.getCompanies({
         search: searchTerm || undefined,
         status: (statusFilter as 'active' | 'suspended' | 'trial' | undefined) || undefined,
-        limit: 100
+        limit: 100,
       });
       console.log('🏢 Datos recibidos del endpoint de empresas:', data);
       // El endpoint retorna directamente un array de empresas
@@ -309,7 +310,7 @@ export const SuperuserDashboard: React.FC = () => {
       // Mapear el plan antes de enviar a la API
       const companyData = {
         ...newCompany,
-        subscription_plan: mapPlanCodeToEnum(newCompany.subscription_plan)
+        subscription_plan: mapPlanCodeToEnum(newCompany.subscription_plan),
       };
       await superadminAPI.createCompany(companyData);
       setShowCreateCompany(false);
@@ -323,7 +324,7 @@ export const SuperuserDashboard: React.FC = () => {
         subscription_plan: mapPlanCodeToEnum(newCompany.subscription_plan),
         max_locations: 3,
         max_employees: 10,
-        price_per_location: 50
+        price_per_location: 50,
       });
       loadCompanies();
       alert('Empresa creada exitosamente');
@@ -383,14 +384,14 @@ export const SuperuserDashboard: React.FC = () => {
   const validatePassword = (password: string) => {
     const hasUpperCase = /[A-Z]/.test(password);
     const hasNumber = /\d/.test(password);
-    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password);
     const isValid = hasUpperCase && hasNumber && hasSpecialChar && password.length >= 8;
 
     setPasswordValidation({
       hasUpperCase,
       hasNumber,
       hasSpecialChar,
-      isValid
+      isValid,
     });
   };
 
@@ -420,32 +421,6 @@ export const SuperuserDashboard: React.FC = () => {
     }
   };
 
-  const getBoss = async (companyId: number) => {
-    try {
-      setLoading(true);
-      const boss = await superadminAPI.getBoss(companyId);
-      setBossInfo(boss);
-      setSelectedCompanyForBoss(companyId);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getCompanyWithBoss = async (companyId: number) => {
-    try {
-      setLoading(true);
-      const data = await superadminAPI.getCompanyWithBoss(companyId);
-      setSelectedCompany(data.company);
-      setBossInfo(data.boss);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const loadCompaniesWithBoss = async () => {
     try {
       setLoadingBosses(true);
@@ -463,14 +438,14 @@ export const SuperuserDashboard: React.FC = () => {
             return {
               company: bossData.company || company,
               boss: bossData.boss,
-              hasBoss: !!bossData.boss
+              hasBoss: !!bossData.boss,
             };
-          } catch (err) {
+          } catch (_err) {
             // Si no tiene Boss, devolver solo la empresa
             return {
               company: company,
               boss: null,
-              hasBoss: false
+              hasBoss: false,
             };
           }
         })
@@ -479,7 +454,7 @@ export const SuperuserDashboard: React.FC = () => {
       // Procesar resultados exitosos
       const successfulResults = companiesWithBossData
         .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
-        .map(result => result.value);
+        .map((result) => result.value);
 
       setCompaniesWithBoss(successfulResults);
     } catch (err: any) {
@@ -506,7 +481,7 @@ export const SuperuserDashboard: React.FC = () => {
         subscription_plan: mapPlanCodeToEnum(editingCompany.subscription_plan),
         max_locations: editingCompany.max_locations || 3,
         max_employees: editingCompany.max_employees || 10,
-        price_per_location: editingCompany.monthly_cost || '50'
+        price_per_location: editingCompany.monthly_cost || '50',
       });
       setShowEditCompany(false);
       setEditingCompany(null);
@@ -525,7 +500,7 @@ export const SuperuserDashboard: React.FC = () => {
     try {
       await superadminAPI.changeSubscription({
         ...subscriptionChange,
-        new_plan: mapPlanCodeToEnum(subscriptionChange.new_plan)
+        new_plan: mapPlanCodeToEnum(subscriptionChange.new_plan),
       });
       setShowChangeSubscription(false);
       alert('Plan de suscripción cambiado exitosamente');
@@ -551,13 +526,13 @@ export const SuperuserDashboard: React.FC = () => {
       setError(null);
       const data = await superadminAPI.getInvoices({
         status: (invoiceStatusFilter as 'pending' | 'paid' | 'overdue' | undefined) || undefined,
-        limit: 100
+        limit: 100,
       });
       console.log('📄 Datos recibidos del endpoint de facturas:', data);
       console.log('📄 Es array?:', Array.isArray(data));
 
       // El endpoint retorna directamente un array de facturas
-      const invoicesData = Array.isArray(data) ? data : (data.invoices || []);
+      const invoicesData = Array.isArray(data) ? data : data.invoices || [];
       console.log('📄 Facturas procesadas:', invoicesData);
       setInvoices(invoicesData);
     } catch (err: any) {
@@ -575,7 +550,7 @@ export const SuperuserDashboard: React.FC = () => {
       setError(null);
       const data = await superadminAPI.getCompanyInvoices(companyId);
       // El endpoint retorna directamente un array de facturas o un objeto con invoices
-      setInvoices(Array.isArray(data) ? data : (data.invoices || []));
+      setInvoices(Array.isArray(data) ? data : data.invoices || []);
       setActiveTab('invoices');
     } catch (err: any) {
       setError(err.message);
@@ -600,7 +575,7 @@ export const SuperuserDashboard: React.FC = () => {
       await superadminAPI.markInvoiceAsPaid(invoiceId, {
         payment_method: paymentMethod,
         payment_reference: paymentReference,
-        paid_at: new Date().toISOString()
+        paid_at: new Date().toISOString(),
       });
       loadInvoices();
       alert('Factura marcada como pagada');
@@ -632,14 +607,14 @@ export const SuperuserDashboard: React.FC = () => {
   };
 
   const handlePlanChange = (planCode: string) => {
-    const selectedPlan = availablePlans.find(plan => plan.plan_code === planCode);
+    const selectedPlan = availablePlans.find((plan) => plan.plan_code === planCode);
     if (selectedPlan) {
       setNewCompany({
         ...newCompany,
         subscription_plan: planCode as any,
         max_locations: selectedPlan.max_locations,
         max_employees: selectedPlan.max_employees,
-        price_per_location: parseFloat(selectedPlan.price_per_location)
+        price_per_location: parseFloat(selectedPlan.price_per_location),
       });
     }
   };
@@ -657,7 +632,7 @@ export const SuperuserDashboard: React.FC = () => {
         max_employees: 15,
         price_per_location: 60,
         features: {},
-        sort_order: 0
+        sort_order: 0,
       });
       loadPlans();
       alert('Plan creado exitosamente');
@@ -670,10 +645,7 @@ export const SuperuserDashboard: React.FC = () => {
   const loadFinancialReport = async () => {
     try {
       setLoading(true);
-      const data = await superadminAPI.getFinancialReport(
-        reportDates.start_date,
-        reportDates.end_date
-      );
+      const data = await superadminAPI.getFinancialReport(reportDates.start_date, reportDates.end_date);
       setFinancialReport(data.report || data);
     } catch (err: any) {
       setError(err.message);
@@ -693,7 +665,7 @@ export const SuperuserDashboard: React.FC = () => {
         password: '',
         first_name: '',
         last_name: '',
-        secret_key: ''
+        secret_key: '',
       });
     } catch (err: any) {
       alert(`Error: ${err.message}`);
@@ -854,7 +826,7 @@ export const SuperuserDashboard: React.FC = () => {
                 { value: '', label: 'Todos los estados' },
                 { value: 'active', label: 'Activos' },
                 { value: 'suspended', label: 'Suspendidos' },
-                { value: 'trial', label: 'Trial' }
+                { value: 'trial', label: 'Trial' },
               ]}
             />
             <Button onClick={() => setShowCreateCompany(!showCreateCompany)}>
@@ -913,15 +885,16 @@ export const SuperuserDashboard: React.FC = () => {
                   onChange={(e) => handlePlanChange(e.target.value)}
                   options={[
                     { value: '', label: 'Selecciona un plan...' },
-                    ...availablePlans.map(plan => ({
+                    ...availablePlans.map((plan) => ({
                       value: plan.plan_code,
-                      label: `${plan.display_name} - ${plan.max_locations} ubicaciones, ${plan.max_employees} empleados`
-                    }))
+                      label: `${plan.display_name} - ${plan.max_locations} ubicaciones, ${plan.max_employees} empleados`,
+                    })),
                   ]}
                 />
                 {newCompany.subscription_plan && (
                   <p className="text-xs text-muted-foreground">
-                    ℹ️ Los campos de ubicaciones, empleados y precio se prellenan automáticamente según el plan seleccionado
+                    ℹ️ Los campos de ubicaciones, empleados y precio se prellenan automáticamente según el plan
+                    seleccionado
                   </p>
                 )}
               </div>
@@ -1009,14 +982,14 @@ export const SuperuserDashboard: React.FC = () => {
                 label="Plan"
                 value={editingCompany.subscription_plan}
                 onChange={(e) => {
-                  const selectedPlan = availablePlans.find(plan => plan.plan_code === e.target.value);
+                  const selectedPlan = availablePlans.find((plan) => plan.plan_code === e.target.value);
                   if (selectedPlan) {
                     setEditingCompany({
                       ...editingCompany,
                       subscription_plan: e.target.value as any,
                       max_locations: selectedPlan.max_locations,
                       max_employees: selectedPlan.max_employees,
-                      monthly_cost: selectedPlan.price_per_location
+                      monthly_cost: selectedPlan.price_per_location,
                     });
                   } else {
                     setEditingCompany({ ...editingCompany, subscription_plan: e.target.value as any });
@@ -1024,10 +997,10 @@ export const SuperuserDashboard: React.FC = () => {
                 }}
                 options={[
                   { value: '', label: 'Selecciona un plan...' },
-                  ...availablePlans.map(plan => ({
+                  ...availablePlans.map((plan) => ({
                     value: plan.plan_code,
-                    label: `${plan.display_name} - ${plan.max_locations} ubicaciones, ${plan.max_employees} empleados`
-                  }))
+                    label: `${plan.display_name} - ${plan.max_locations} ubicaciones, ${plan.max_employees} empleados`,
+                  })),
                 ]}
               />
               <Input
@@ -1052,10 +1025,14 @@ export const SuperuserDashboard: React.FC = () => {
                 <Button type="submit" disabled={loading}>
                   {loading ? 'Actualizando...' : 'Actualizar Empresa'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => {
-                  setShowEditCompany(false);
-                  setEditingCompany(null);
-                }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowEditCompany(false);
+                    setEditingCompany(null);
+                  }}
+                >
                   Cancelar
                 </Button>
               </div>
@@ -1063,7 +1040,6 @@ export const SuperuserDashboard: React.FC = () => {
           </CardContent>
         </Card>
       )}
-
 
       {/* Información del Boss */}
       {bossInfo && (
@@ -1093,11 +1069,7 @@ export const SuperuserDashboard: React.FC = () => {
               </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setBossInfo(null)}
-              >
+              <Button size="sm" variant="outline" onClick={() => setBossInfo(null)}>
                 Cerrar
               </Button>
             </div>
@@ -1128,20 +1100,23 @@ export const SuperuserDashboard: React.FC = () => {
                       <Building2 className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-lg truncate">{company.name}</h3>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {company.subdomain}
-                        </p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {company.email}
-                        </p>
+                        <p className="text-sm text-muted-foreground truncate">{company.subdomain}</p>
+                        <p className="text-sm text-muted-foreground truncate">{company.email}</p>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <span className={`text-xs px-2 py-1 rounded font-medium ${company.subscription_status === 'active' ? 'bg-success/20 text-success' :
-                            company.subscription_status === 'suspended' ? 'bg-error/20 text-error' :
-                              'bg-warning/20 text-warning'
-                            }`}>
-                            {company.subscription_status === 'active' ? 'Activo' :
-                              company.subscription_status === 'suspended' ? 'Suspendido' :
-                                company.subscription_status}
+                          <span
+                            className={`text-xs px-2 py-1 rounded font-medium ${
+                              company.subscription_status === 'active'
+                                ? 'bg-success/20 text-success'
+                                : company.subscription_status === 'suspended'
+                                  ? 'bg-error/20 text-error'
+                                  : 'bg-warning/20 text-warning'
+                            }`}
+                          >
+                            {company.subscription_status === 'active'
+                              ? 'Activo'
+                              : company.subscription_status === 'suspended'
+                                ? 'Suspendido'
+                                : company.subscription_status}
                           </span>
                           <span className="text-xs px-2 py-1 rounded bg-primary/20 text-primary font-medium">
                             {company.subscription_plan}
@@ -1312,7 +1287,6 @@ export const SuperuserDashboard: React.FC = () => {
                 <p className="text-2xl font-bold">${companyMetrics.monthly_cost}</p>
               </div>
             </div>
-
           </CardContent>
         </Card>
       )}
@@ -1348,26 +1322,32 @@ export const SuperuserDashboard: React.FC = () => {
                   { value: 'basic', label: 'Básico' },
                   { value: 'professional', label: 'Professional' },
                   { value: 'enterprise', label: 'Enterprise' },
-                  { value: 'custom', label: 'Personalizado' }
+                  { value: 'custom', label: 'Personalizado' },
                 ]}
               />
               <Input
                 label="Máximo Ubicaciones"
                 type="number"
                 value={subscriptionChange.new_max_locations}
-                onChange={(e) => setSubscriptionChange({ ...subscriptionChange, new_max_locations: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setSubscriptionChange({ ...subscriptionChange, new_max_locations: parseInt(e.target.value) })
+                }
               />
               <Input
                 label="Máximo Empleados"
                 type="number"
                 value={subscriptionChange.new_max_employees}
-                onChange={(e) => setSubscriptionChange({ ...subscriptionChange, new_max_employees: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setSubscriptionChange({ ...subscriptionChange, new_max_employees: parseInt(e.target.value) })
+                }
               />
               <Input
                 label="Precio por Ubicación"
                 type="number"
                 value={subscriptionChange.new_price_per_location}
-                onChange={(e) => setSubscriptionChange({ ...subscriptionChange, new_price_per_location: parseFloat(e.target.value) })}
+                onChange={(e) =>
+                  setSubscriptionChange({ ...subscriptionChange, new_price_per_location: parseFloat(e.target.value) })
+                }
               />
               <Input
                 label="Fecha Efectiva"
@@ -1429,7 +1409,7 @@ export const SuperuserDashboard: React.FC = () => {
     return date.toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
@@ -1437,14 +1417,17 @@ export const SuperuserDashboard: React.FC = () => {
     const badges = {
       pending: 'bg-warning/20 text-warning',
       paid: 'bg-success/20 text-success',
-      overdue: 'bg-error/20 text-error'
+      overdue: 'bg-error/20 text-error',
     };
     const labels = {
       pending: 'Pendiente',
       paid: 'Pagado',
-      overdue: 'Vencido'
+      overdue: 'Vencido',
     };
-    return { class: badges[status as keyof typeof badges] || badges.pending, label: labels[status as keyof typeof labels] || status };
+    return {
+      class: badges[status as keyof typeof badges] || badges.pending,
+      label: labels[status as keyof typeof labels] || status,
+    };
   };
 
   const renderInvoicesTab = () => (
@@ -1465,7 +1448,7 @@ export const SuperuserDashboard: React.FC = () => {
                 { value: '', label: 'Todos los estados' },
                 { value: 'pending', label: 'Pendientes' },
                 { value: 'paid', label: 'Pagadas' },
-                { value: 'overdue', label: 'Vencidas' }
+                { value: 'overdue', label: 'Vencidas' },
               ]}
             />
           </div>
@@ -1479,13 +1462,16 @@ export const SuperuserDashboard: React.FC = () => {
             <div className="space-y-4">
               {invoices.map((invoice) => {
                 const statusBadge = getStatusBadge(invoice.status);
-                const isOverdue = invoice.status === 'overdue' || (invoice.status === 'pending' && new Date(invoice.due_date) < new Date());
+                const isOverdue =
+                  invoice.status === 'overdue' ||
+                  (invoice.status === 'pending' && new Date(invoice.due_date) < new Date());
 
                 return (
                   <div
                     key={invoice.id}
-                    className={`p-4 border rounded-lg hover:shadow-md transition-shadow ${isOverdue ? 'border-error/50 bg-error/5' : ''
-                      }`}
+                    className={`p-4 border rounded-lg hover:shadow-md transition-shadow ${
+                      isOverdue ? 'border-error/50 bg-error/5' : ''
+                    }`}
                   >
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                       {/* Información principal */}
@@ -1503,14 +1489,15 @@ export const SuperuserDashboard: React.FC = () => {
                           <div>
                             <p className="text-muted-foreground">Período</p>
                             <p className="font-medium">
-                              {new Date(invoice.billing_period_start).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
+                              {new Date(invoice.billing_period_start).toLocaleDateString('es-ES', {
+                                month: 'short',
+                                year: 'numeric',
+                              })}
                             </p>
                           </div>
                           <div>
                             <p className="text-muted-foreground">Monto Total</p>
-                            <p className="font-semibold text-lg text-primary">
-                              ${invoice.total_amount.toFixed(2)}
-                            </p>
+                            <p className="font-semibold text-lg text-primary">${invoice.total_amount.toFixed(2)}</p>
                           </div>
                           <div>
                             <p className="text-muted-foreground">Vencimiento</p>
@@ -1540,9 +1527,7 @@ export const SuperuserDashboard: React.FC = () => {
                         {/* Advertencia si está vencida */}
                         {isOverdue && !invoice.paid_at && (
                           <div className="mt-3 p-2 bg-error/10 rounded text-sm">
-                            <p className="text-error">
-                              ⚠️ Factura vencida - Acción requerida
-                            </p>
+                            <p className="text-error">⚠️ Factura vencida - Acción requerida</p>
                           </div>
                         )}
                       </div>
@@ -1613,13 +1598,14 @@ export const SuperuserDashboard: React.FC = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Total Pendiente</p>
                   <p className="text-2xl font-bold text-warning">
-                    ${invoices
-                      .filter(inv => inv.status === 'pending')
+                    $
+                    {invoices
+                      .filter((inv) => inv.status === 'pending')
                       .reduce((sum, inv) => sum + inv.total_amount, 0)
                       .toFixed(2)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {invoices.filter(inv => inv.status === 'pending').length} facturas
+                    {invoices.filter((inv) => inv.status === 'pending').length} facturas
                   </p>
                 </div>
                 <AlertCircle className="h-8 w-8 text-warning" />
@@ -1633,13 +1619,14 @@ export const SuperuserDashboard: React.FC = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Total Cobrado</p>
                   <p className="text-2xl font-bold text-success">
-                    ${invoices
-                      .filter(inv => inv.status === 'paid')
+                    $
+                    {invoices
+                      .filter((inv) => inv.status === 'paid')
                       .reduce((sum, inv) => sum + inv.total_amount, 0)
                       .toFixed(2)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {invoices.filter(inv => inv.status === 'paid').length} facturas
+                    {invoices.filter((inv) => inv.status === 'paid').length} facturas
                   </p>
                 </div>
                 <CheckCircle className="h-8 w-8 text-success" />
@@ -1653,13 +1640,23 @@ export const SuperuserDashboard: React.FC = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Total Vencido</p>
                   <p className="text-2xl font-bold text-error">
-                    ${invoices
-                      .filter(inv => inv.status === 'overdue' || (inv.status === 'pending' && new Date(inv.due_date) < new Date()))
+                    $
+                    {invoices
+                      .filter(
+                        (inv) =>
+                          inv.status === 'overdue' || (inv.status === 'pending' && new Date(inv.due_date) < new Date())
+                      )
                       .reduce((sum, inv) => sum + inv.total_amount, 0)
                       .toFixed(2)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {invoices.filter(inv => inv.status === 'overdue' || (inv.status === 'pending' && new Date(inv.due_date) < new Date())).length} facturas
+                    {
+                      invoices.filter(
+                        (inv) =>
+                          inv.status === 'overdue' || (inv.status === 'pending' && new Date(inv.due_date) < new Date())
+                      ).length
+                    }{' '}
+                    facturas
                   </p>
                 </div>
                 <Ban className="h-8 w-8 text-error" />
@@ -1746,13 +1743,24 @@ export const SuperuserDashboard: React.FC = () => {
                 </div>
                 <p className="text-sm text-muted-foreground mb-3">{plan.description}</p>
                 <div className="space-y-1 text-sm">
-                  <p>Código: <span className="font-medium">{plan.plan_code}</span></p>
-                  <p>Ubicaciones: <span className="font-medium">{plan.max_locations}</span></p>
-                  <p>Empleados: <span className="font-medium">{plan.max_employees}</span></p>
-                  <p>Precio: <span className="font-medium">${plan.price_per_location}/ubicación</span></p>
-                  <p>Estado: <span className={plan.is_active ? 'text-success' : 'text-error'}>
-                    {plan.is_active ? 'Activo' : 'Inactivo'}
-                  </span></p>
+                  <p>
+                    Código: <span className="font-medium">{plan.plan_code}</span>
+                  </p>
+                  <p>
+                    Ubicaciones: <span className="font-medium">{plan.max_locations}</span>
+                  </p>
+                  <p>
+                    Empleados: <span className="font-medium">{plan.max_employees}</span>
+                  </p>
+                  <p>
+                    Precio: <span className="font-medium">${plan.price_per_location}/ubicación</span>
+                  </p>
+                  <p>
+                    Estado:{' '}
+                    <span className={plan.is_active ? 'text-success' : 'text-error'}>
+                      {plan.is_active ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </p>
                 </div>
               </div>
             ))}
@@ -1789,9 +1797,7 @@ export const SuperuserDashboard: React.FC = () => {
 
           {financialReport && (
             <div className="p-4 bg-muted/20 rounded-lg">
-              <pre className="text-sm overflow-auto">
-                {JSON.stringify(financialReport, null, 2)}
-              </pre>
+              <pre className="text-sm overflow-auto">{JSON.stringify(financialReport, null, 2)}</pre>
             </div>
           )}
         </CardContent>
@@ -1825,9 +1831,7 @@ export const SuperuserDashboard: React.FC = () => {
         <Card>
           <CardHeader>
             <h2 className="text-xl font-semibold">Crear Usuario Boss</h2>
-            <p className="text-sm text-muted-foreground">
-              Selecciona una empresa para crear el usuario Boss
-            </p>
+            <p className="text-sm text-muted-foreground">Selecciona una empresa para crear el usuario Boss</p>
           </CardHeader>
           <CardContent>
             <div className="mb-4">
@@ -1837,10 +1841,10 @@ export const SuperuserDashboard: React.FC = () => {
                 onChange={(e) => setSelectedCompanyForBoss(parseInt(e.target.value))}
                 options={[
                   { value: '', label: 'Selecciona una empresa...' },
-                  ...companies.map(company => ({
+                  ...companies.map((company) => ({
                     value: company.id.toString(),
-                    label: `${company.name} (${company.subdomain})`
-                  }))
+                    label: `${company.name} (${company.subdomain})`,
+                  })),
                 ]}
                 required
               />
@@ -1859,7 +1863,7 @@ export const SuperuserDashboard: React.FC = () => {
                   <label className="text-sm font-medium text-foreground">Password</label>
                   <div className="relative">
                     <Input
-                      type={showPassword ? "text" : "password"}
+                      type={showPassword ? 'text' : 'password'}
                       value={newBoss.password}
                       onChange={(e) => {
                         setNewBoss({ ...newBoss, password: e.target.value });
@@ -1875,12 +1879,27 @@ export const SuperuserDashboard: React.FC = () => {
                     >
                       {showPassword ? (
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"
+                          />
                         </svg>
                       ) : (
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                          />
                         </svg>
                       )}
                     </button>
@@ -1888,20 +1907,36 @@ export const SuperuserDashboard: React.FC = () => {
 
                   {/* Validaciones de contraseña */}
                   <div className="space-y-1 text-xs">
-                    <div className={`flex items-center gap-2 ${passwordValidation.hasUpperCase ? 'text-success' : 'text-muted-foreground'}`}>
-                      <div className={`w-2 h-2 rounded-full ${passwordValidation.hasUpperCase ? 'bg-success' : 'bg-muted'}`}></div>
+                    <div
+                      className={`flex items-center gap-2 ${passwordValidation.hasUpperCase ? 'text-success' : 'text-muted-foreground'}`}
+                    >
+                      <div
+                        className={`w-2 h-2 rounded-full ${passwordValidation.hasUpperCase ? 'bg-success' : 'bg-muted'}`}
+                      ></div>
                       Al menos una letra mayúscula
                     </div>
-                    <div className={`flex items-center gap-2 ${passwordValidation.hasNumber ? 'text-success' : 'text-muted-foreground'}`}>
-                      <div className={`w-2 h-2 rounded-full ${passwordValidation.hasNumber ? 'bg-success' : 'bg-muted'}`}></div>
+                    <div
+                      className={`flex items-center gap-2 ${passwordValidation.hasNumber ? 'text-success' : 'text-muted-foreground'}`}
+                    >
+                      <div
+                        className={`w-2 h-2 rounded-full ${passwordValidation.hasNumber ? 'bg-success' : 'bg-muted'}`}
+                      ></div>
                       Al menos un número
                     </div>
-                    <div className={`flex items-center gap-2 ${passwordValidation.hasSpecialChar ? 'text-success' : 'text-muted-foreground'}`}>
-                      <div className={`w-2 h-2 rounded-full ${passwordValidation.hasSpecialChar ? 'bg-success' : 'bg-muted'}`}></div>
+                    <div
+                      className={`flex items-center gap-2 ${passwordValidation.hasSpecialChar ? 'text-success' : 'text-muted-foreground'}`}
+                    >
+                      <div
+                        className={`w-2 h-2 rounded-full ${passwordValidation.hasSpecialChar ? 'bg-success' : 'bg-muted'}`}
+                      ></div>
                       Al menos un carácter especial
                     </div>
-                    <div className={`flex items-center gap-2 ${newBoss.password.length >= 8 ? 'text-success' : 'text-muted-foreground'}`}>
-                      <div className={`w-2 h-2 rounded-full ${newBoss.password.length >= 8 ? 'bg-success' : 'bg-muted'}`}></div>
+                    <div
+                      className={`flex items-center gap-2 ${newBoss.password.length >= 8 ? 'text-success' : 'text-muted-foreground'}`}
+                    >
+                      <div
+                        className={`w-2 h-2 rounded-full ${newBoss.password.length >= 8 ? 'bg-success' : 'bg-muted'}`}
+                      ></div>
                       Mínimo 8 caracteres
                     </div>
                   </div>
@@ -1922,13 +1957,22 @@ export const SuperuserDashboard: React.FC = () => {
                   <Button type="submit" disabled={loading || !passwordValidation.isValid}>
                     {loading ? 'Creando...' : 'Crear Boss'}
                   </Button>
-                  <Button type="button" variant="outline" onClick={() => {
-                    setShowCreateBoss(false);
-                    setSelectedCompanyForBoss(null);
-                    setNewBoss({ email: '', password: '', first_name: '', last_name: '' });
-                    setPasswordValidation({ hasUpperCase: false, hasNumber: false, hasSpecialChar: false, isValid: false });
-                    setShowPassword(false);
-                  }}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowCreateBoss(false);
+                      setSelectedCompanyForBoss(null);
+                      setNewBoss({ email: '', password: '', first_name: '', last_name: '' });
+                      setPasswordValidation({
+                        hasUpperCase: false,
+                        hasNumber: false,
+                        hasSpecialChar: false,
+                        isValid: false,
+                      });
+                      setShowPassword(false);
+                    }}
+                  >
                     Cancelar
                   </Button>
                 </div>
@@ -1962,13 +2006,20 @@ export const SuperuserDashboard: React.FC = () => {
                         <h3 className="font-semibold text-lg">{item.company.name}</h3>
                         <p className="text-sm text-muted-foreground">{item.company.subdomain}</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className={`text-xs px-2 py-1 rounded font-medium ${item.company.subscription_status === 'active' ? 'bg-success/20 text-success' :
-                            item.company.subscription_status === 'suspended' ? 'bg-error/20 text-error' :
-                              'bg-warning/20 text-warning'
-                            }`}>
-                            {item.company.subscription_status === 'active' ? 'Activo' :
-                              item.company.subscription_status === 'suspended' ? 'Suspendido' :
-                                item.company.subscription_status}
+                          <span
+                            className={`text-xs px-2 py-1 rounded font-medium ${
+                              item.company.subscription_status === 'active'
+                                ? 'bg-success/20 text-success'
+                                : item.company.subscription_status === 'suspended'
+                                  ? 'bg-error/20 text-error'
+                                  : 'bg-warning/20 text-warning'
+                            }`}
+                          >
+                            {item.company.subscription_status === 'active'
+                              ? 'Activo'
+                              : item.company.subscription_status === 'suspended'
+                                ? 'Suspendido'
+                                : item.company.subscription_status}
                           </span>
                           <span className="text-xs px-2 py-1 rounded bg-primary/20 text-primary font-medium">
                             {item.company.subscription_plan}
@@ -2082,11 +2133,7 @@ export const SuperuserDashboard: React.FC = () => {
                 <Shield className="h-6 w-6 text-primary" />
                 <h2 className="text-xl font-semibold">Información del Boss</h2>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setBossInfo(null)}
-              >
+              <Button size="sm" variant="outline" onClick={() => setBossInfo(null)}>
                 Cerrar
               </Button>
             </div>
@@ -2097,7 +2144,9 @@ export const SuperuserDashboard: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Nombre Completo</p>
-                  <p className="font-medium text-lg">{bossInfo.full_name || `${bossInfo.first_name} ${bossInfo.last_name}`}</p>
+                  <p className="font-medium text-lg">
+                    {bossInfo.full_name || `${bossInfo.first_name} ${bossInfo.last_name}`}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Email</p>
@@ -2129,7 +2178,7 @@ export const SuperuserDashboard: React.FC = () => {
                             month: 'long',
                             day: 'numeric',
                             hour: '2-digit',
-                            minute: '2-digit'
+                            minute: '2-digit',
                           })}
                         </p>
                       </div>
@@ -2143,7 +2192,7 @@ export const SuperuserDashboard: React.FC = () => {
                             month: 'long',
                             day: 'numeric',
                             hour: '2-digit',
-                            minute: '2-digit'
+                            minute: '2-digit',
                           })}
                         </p>
                       </div>
@@ -2166,11 +2215,7 @@ export const SuperuserDashboard: React.FC = () => {
                   <Plus className="h-4 w-4 mr-1" />
                   Cambiar Boss
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setBossInfo(null)}
-                >
+                <Button size="sm" variant="outline" onClick={() => setBossInfo(null)}>
                   Cerrar
                 </Button>
               </div>
@@ -2232,9 +2277,7 @@ export const SuperuserDashboard: React.FC = () => {
               placeholder="Clave secreta de instalación"
               required
             />
-            <Button type="submit">
-              Crear Primer Superadmin
-            </Button>
+            <Button type="submit">Crear Primer Superadmin</Button>
           </form>
         </CardContent>
       </Card>

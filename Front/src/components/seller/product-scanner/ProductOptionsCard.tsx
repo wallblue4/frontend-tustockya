@@ -71,11 +71,18 @@ const ProductOptionItem: React.FC<{
 
   // Obtener tallas únicas con su stock total y categorización por tipo de transferencia
   const uniqueSizes = React.useMemo(() => {
-    const sizeMap = new Map<string, {
-      size: string; totalStock: number; canSell: boolean;
-      hasLocalParts: boolean; hasRemoteCompletePair: boolean; remotePartsCount: number;
-      globalTotalPairs: number;
-    }>();
+    const sizeMap = new Map<
+      string,
+      {
+        size: string;
+        totalStock: number;
+        canSell: boolean;
+        hasLocalParts: boolean;
+        hasRemoteCompletePair: boolean;
+        remotePartsCount: number;
+        globalTotalPairs: number;
+      }
+    >();
     sizes.forEach((s) => {
       const effectiveStock = s.quantity + (s.left_feet || 0) + (s.right_feet || 0);
       const remoteHasPair = !s.is_local && ((s.pairs || 0) > 0 || ((s.left_feet || 0) > 0 && (s.right_feet || 0) > 0));
@@ -92,8 +99,11 @@ const ProductOptionItem: React.FC<{
         }
       } else {
         sizeMap.set(s.size, {
-          size: s.size, totalStock: effectiveStock, canSell: !!s.can_sell,
-          hasLocalParts: !!s.is_local, hasRemoteCompletePair: remoteHasPair,
+          size: s.size,
+          totalStock: effectiveStock,
+          canSell: !!s.can_sell,
+          hasLocalParts: !!s.is_local,
+          hasRemoteCompletePair: remoteHasPair,
           remotePartsCount: remoteHasParts ? 1 : 0,
           globalTotalPairs: s.global_total_potential_pairs || 0,
         });
@@ -108,7 +118,7 @@ const ProductOptionItem: React.FC<{
   };
 
   const hasSelection = selectedSize !== null;
-  const selectedSizeData = hasSelection ? uniqueSizes.find(s => s.size === selectedSize) : null;
+  const selectedSizeData = hasSelection ? uniqueSizes.find((s) => s.size === selectedSize) : null;
   const selectedCanSell = selectedSizeData?.canSell ?? false;
   const selectedCategory = selectedSizeData ? getSizeCategory(selectedSizeData) : null;
 
@@ -116,11 +126,16 @@ const ProductOptionItem: React.FC<{
     <div
       className={`relative border rounded-lg p-4 transition-all ${
         hasSelection
-          ? selectedCategory === 'direct_sale' ? 'border-success'
-            : selectedCategory === 'request_piece' ? 'border-warning'
-            : selectedCategory === 'request_multi' ? 'border-orange-400'
-            : 'border-primary'
-          : sizes.some((s) => s.can_sell) ? 'border-success/50' : 'border-border'
+          ? selectedCategory === 'direct_sale'
+            ? 'border-success'
+            : selectedCategory === 'request_piece'
+              ? 'border-warning'
+              : selectedCategory === 'request_multi'
+                ? 'border-orange-400'
+                : 'border-primary'
+          : sizes.some((s) => s.can_sell)
+            ? 'border-success/50'
+            : 'border-border'
       }`}
     >
       {/* Ranking badge absoluto */}
@@ -156,7 +171,9 @@ const ProductOptionItem: React.FC<{
                 </span>
               </div>
             )}
-            <span className="text-primary font-bold text-sm">{formatCurrency(option.inventory.pricing.unit_price)}</span>
+            <span className="text-primary font-bold text-sm">
+              {formatCurrency(option.inventory.pricing.unit_price)}
+            </span>
           </div>
 
           {/* Desktop layout */}
@@ -174,7 +191,9 @@ const ProductOptionItem: React.FC<{
               </div>
               {!hideConfidence && (
                 <div className="flex flex-col items-center shrink-0">
-                  <div className={`w-11 h-11 rounded-full border-[3px] flex items-center justify-center ${confidenceStyles}`}>
+                  <div
+                    className={`w-11 h-11 rounded-full border-[3px] flex items-center justify-center ${confidenceStyles}`}
+                  >
                     <span className="text-[11px] font-bold">{option.confidence?.toFixed(0)}%</span>
                   </div>
                   <span className={`text-[10px] font-semibold mt-0.5 ${confidenceTextColor}`}>
@@ -185,7 +204,9 @@ const ProductOptionItem: React.FC<{
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-primary font-bold text-base">{formatCurrency(option.inventory.pricing.unit_price)}</span>
+              <span className="text-primary font-bold text-base">
+                {formatCurrency(option.inventory.pricing.unit_price)}
+              </span>
             </div>
           </div>
         </div>
@@ -196,28 +217,44 @@ const ProductOptionItem: React.FC<{
         <div className="mt-3">
           <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground mb-1.5 block">Tallas:</span>
           <div className="grid grid-cols-4 gap-2 sm:flex sm:gap-1.5 sm:flex-wrap">
-            {uniqueSizes.map(({ size, totalStock, canSell, hasLocalParts, hasRemoteCompletePair, remotePartsCount, globalTotalPairs }) => {
-              const hasStock = totalStock > 0;
-              const isSelected = selectedSize === size;
-              const category = getSizeCategory({ totalStock, canSell, hasLocalParts, hasRemoteCompletePair, remotePartsCount });
-              return (
-                <button
-                  key={size}
-                  type="button"
-                  disabled={!hasStock}
-                  onClick={() => handleSizeToggle(size, hasStock)}
-                  className={`relative py-2.5 sm:py-1 sm:px-2.5 rounded-lg text-sm font-medium border transition-all
+            {uniqueSizes.map(
+              ({
+                size,
+                totalStock,
+                canSell,
+                hasLocalParts,
+                hasRemoteCompletePair,
+                remotePartsCount,
+                globalTotalPairs,
+              }) => {
+                const hasStock = totalStock > 0;
+                const isSelected = selectedSize === size;
+                const category = getSizeCategory({
+                  totalStock,
+                  canSell,
+                  hasLocalParts,
+                  hasRemoteCompletePair,
+                  remotePartsCount,
+                });
+                return (
+                  <button
+                    key={size}
+                    type="button"
+                    disabled={!hasStock}
+                    onClick={() => handleSizeToggle(size, hasStock)}
+                    className={`relative py-2.5 sm:py-1 sm:px-2.5 rounded-lg text-sm font-medium border transition-all
                     ${isSelected ? SIZE_STYLES[category].selected : SIZE_STYLES[category].unselected}`}
-                >
-                  {globalTotalPairs > 0 && (
-                    <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shadow-sm ring-1 ring-background">
-                      {globalTotalPairs}
-                    </span>
-                  )}
-                  {size}
-                </button>
-              );
-            })}
+                  >
+                    {globalTotalPairs > 0 && (
+                      <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shadow-sm ring-1 ring-background">
+                        {globalTotalPairs}
+                      </span>
+                    )}
+                    {size}
+                  </button>
+                );
+              }
+            )}
           </div>
         </div>
       ) : (
@@ -255,13 +292,14 @@ const ProductOptionItem: React.FC<{
               disabled={!hasSelection}
               onClick={() => hasSelection && onAction(option, selectedSize!, 'vendedor')}
               className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-sm font-semibold transition-all
-                ${hasSelection
-                  ? selectedCategory === 'request_piece'
-                    ? 'bg-warning text-warning-foreground hover:bg-warning/90 active:scale-[0.98]'
-                    : selectedCategory === 'request_multi'
-                      ? 'bg-orange-500 text-white hover:bg-orange-600 active:scale-[0.98]'
-                      : 'bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]'
-                  : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
+                ${
+                  hasSelection
+                    ? selectedCategory === 'request_piece'
+                      ? 'bg-warning text-warning-foreground hover:bg-warning/90 active:scale-[0.98]'
+                      : selectedCategory === 'request_multi'
+                        ? 'bg-orange-500 text-white hover:bg-orange-600 active:scale-[0.98]'
+                        : 'bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]'
+                    : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
                 }`}
             >
               <User className="h-4 w-4" />
@@ -274,7 +312,14 @@ const ProductOptionItem: React.FC<{
   );
 };
 
-export const ProductOptionsCard: React.FC<ProductOptionsCardProps> = ({ options, sizesMap, onAction, error, onClearError, hideConfidence }) => {
+export const ProductOptionsCard: React.FC<ProductOptionsCardProps> = ({
+  options,
+  sizesMap,
+  onAction,
+  error,
+  onClearError,
+  hideConfidence,
+}) => {
   const errorRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {

@@ -110,15 +110,11 @@ const LocationSearchSelect: React.FC<LocationSearchSelectProps> = ({
                   ${value === loc.id.toString() ? 'bg-primary/10 text-primary' : 'text-foreground'}`}
               >
                 <span className="truncate">{loc.name}</span>
-                <Badge variant={loc.type?.toLowerCase() === 'bodega' ? 'warning' : 'primary'}>
-                  {loc.type}
-                </Badge>
+                <Badge variant={loc.type?.toLowerCase() === 'bodega' ? 'warning' : 'primary'}>{loc.type}</Badge>
               </button>
             ))}
             {filteredLocations.length === 0 && (
-              <p className="px-3 py-4 text-sm text-muted-foreground text-center">
-                No se encontraron ubicaciones
-              </p>
+              <p className="px-3 py-4 text-sm text-muted-foreground text-center">No se encontraron ubicaciones</p>
             )}
           </div>
         </div>

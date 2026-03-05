@@ -46,12 +46,17 @@ import { formatCurrency } from '../../utils/formatters';
 
 // ========== HELPER FUNCTIONS ==========
 
-const findSiblingLocation = (locationId: number, inventory: AdminInventoryLocation[]): AdminInventoryLocation | null => {
-  const currentLocation = inventory.find(loc => loc.location_id === locationId);
+const findSiblingLocation = (
+  locationId: number,
+  inventory: AdminInventoryLocation[]
+): AdminInventoryLocation | null => {
+  const currentLocation = inventory.find((loc) => loc.location_id === locationId);
   if (!currentLocation?.sibling_pair_id) return null;
-  return inventory.find(
-    loc => loc.sibling_pair_id === currentLocation.sibling_pair_id && loc.location_id !== locationId
-  ) || null;
+  return (
+    inventory.find(
+      (loc) => loc.sibling_pair_id === currentLocation.sibling_pair_id && loc.location_id !== locationId
+    ) || null
+  );
 };
 
 const getOppositeFootType = (inventoryType: 'pair' | 'left_only' | 'right_only'): 'left_only' | 'right_only' | null => {
@@ -62,28 +67,40 @@ const getOppositeFootType = (inventoryType: 'pair' | 'left_only' | 'right_only')
 
 const getInventoryTypeLabel = (type: string) => {
   switch (type) {
-    case 'pair': return 'Par';
-    case 'left_only': return 'Izq.';
-    case 'right_only': return 'Der.';
-    default: return type;
+    case 'pair':
+      return 'Par';
+    case 'left_only':
+      return 'Izq.';
+    case 'right_only':
+      return 'Der.';
+    default:
+      return type;
   }
 };
 
 const getInventoryTypeFullLabel = (type: string) => {
   switch (type) {
-    case 'pair': return 'Par completo';
-    case 'left_only': return 'Pie izquierdo';
-    case 'right_only': return 'Pie derecho';
-    default: return type;
+    case 'pair':
+      return 'Par completo';
+    case 'left_only':
+      return 'Pie izquierdo';
+    case 'right_only':
+      return 'Pie derecho';
+    default:
+      return type;
   }
 };
 
 const getInventoryTypeBadgeColor = (type: string) => {
   switch (type) {
-    case 'pair': return 'bg-success/10 text-success border-success/20';
-    case 'left_only': return 'bg-warning/10 text-warning border-warning/20';
-    case 'right_only': return 'bg-info/10 text-info border-info/20';
-    default: return 'bg-primary/10 text-primary border-primary/20';
+    case 'pair':
+      return 'bg-success/10 text-success border-success/20';
+    case 'left_only':
+      return 'bg-warning/10 text-warning border-warning/20';
+    case 'right_only':
+      return 'bg-info/10 text-info border-info/20';
+    default:
+      return 'bg-primary/10 text-primary border-primary/20';
   }
 };
 
@@ -92,8 +109,8 @@ const getAdminInventoryStats = (locations: AdminInventoryLocation[]) => {
   let totalUnits = 0;
   let totalValue = 0;
 
-  locations.forEach(location => {
-    location.products.forEach(product => {
+  locations.forEach((location) => {
+    location.products.forEach((product) => {
       totalProducts++;
       totalUnits += product.total_quantity;
       totalValue += parseFloat(product.unit_price) * product.total_quantity;
@@ -178,7 +195,7 @@ export const InventoryPage: React.FC = () => {
   const [retrainFormData, setRetrainFormData] = useState({
     video_file: null as File | null,
     warehouse_location_id: '',
-    notes: ''
+    notes: '',
   });
 
   // Ref for hidden image input
@@ -195,11 +212,11 @@ export const InventoryPage: React.FC = () => {
         size: '',
         pairs: [{ location_id: 0, quantity: 0 }],
         left_feet: [] as Array<{ location_id: number; quantity: number }>,
-        right_feet: [] as Array<{ location_id: number; quantity: number }>
-      }
+        right_feet: [] as Array<{ location_id: number; quantity: number }>,
+      },
     ],
     reference_image: null as File | null,
-    video_file: null as File | null
+    video_file: null as File | null,
   });
 
   // Captured file previews
@@ -256,30 +273,31 @@ export const InventoryPage: React.FC = () => {
 
     // Filter by selected location
     if (selectedAdminLocation !== 'all') {
-      filteredLocations = adminInventory.filter(location => location.location_id === selectedAdminLocation);
+      filteredLocations = adminInventory.filter((location) => location.location_id === selectedAdminLocation);
     }
 
     // Filter products by search term
     if (adminInventorySearchTerm) {
       const searchTerm = adminInventorySearchTerm.toLowerCase();
-      filteredLocations = filteredLocations.map(location => ({
+      filteredLocations = filteredLocations.map((location) => ({
         ...location,
-        products: location.products.filter(product =>
-          product.brand.toLowerCase().includes(searchTerm) ||
-          product.model.toLowerCase().includes(searchTerm) ||
-          product.reference_code.toLowerCase().includes(searchTerm) ||
-          (product.description && product.description.toLowerCase().includes(searchTerm)) ||
-          (product.color_info && product.color_info.toLowerCase().includes(searchTerm))
-        )
+        products: location.products.filter(
+          (product) =>
+            product.brand.toLowerCase().includes(searchTerm) ||
+            product.model.toLowerCase().includes(searchTerm) ||
+            product.reference_code.toLowerCase().includes(searchTerm) ||
+            (product.description && product.description.toLowerCase().includes(searchTerm)) ||
+            (product.color_info && product.color_info.toLowerCase().includes(searchTerm))
+        ),
       }));
     }
 
     // Filter out empty locations
-    return filteredLocations.filter(location => location.products.length > 0);
+    return filteredLocations.filter((location) => location.products.length > 0);
   };
 
   const toggleProductExpansion = (productKey: string) => {
-    setExpandedProducts(prev => {
+    setExpandedProducts((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(productKey)) {
         newSet.delete(productKey);
@@ -311,10 +329,13 @@ export const InventoryPage: React.FC = () => {
       size: size.size,
       inventory_type: invType,
       current_quantity: size.quantity,
-      siblingInfo: sibling && oppositeType ? {
-        sibling_location_name: sibling.location_name,
-        opposite_inventory_type_label: getInventoryTypeFullLabel(oppositeType)
-      } : null
+      siblingInfo:
+        sibling && oppositeType
+          ? {
+              sibling_location_name: sibling.location_name,
+              opposite_inventory_type_label: getInventoryTypeFullLabel(oppositeType),
+            }
+          : null,
     });
     setShowAdjustInventoryModal(true);
   };
@@ -325,7 +346,7 @@ export const InventoryPage: React.FC = () => {
       model: product.model,
       reference_code: product.reference_code,
       current_price: parseFloat(product.unit_price),
-      image_url: product.image_url
+      image_url: product.image_url,
     });
     setShowAdjustPriceModal(true);
   };
@@ -335,7 +356,7 @@ export const InventoryPage: React.FC = () => {
       brand: product.brand,
       model: product.model,
       reference_code: product.reference_code,
-      image_url: product.image_url
+      image_url: product.image_url,
     });
     setShowEditProductInfoModal(true);
   };
@@ -348,8 +369,11 @@ export const InventoryPage: React.FC = () => {
       reference_code: product.reference_code,
       location_id: locationId,
       location_name: locationName,
-      existing_sizes: product.sizes.map(s => ({ size: s.size, inventory_type: s.inventory_type || 'pair' as const })),
-      siblingLocationInfo: sibling ? { sibling_location_name: sibling.location_name } : null
+      existing_sizes: product.sizes.map((s) => ({
+        size: s.size,
+        inventory_type: s.inventory_type || ('pair' as const),
+      })),
+      siblingLocationInfo: sibling ? { sibling_location_name: sibling.location_name } : null,
     });
     setShowAddSizeModal(true);
   };
@@ -402,7 +426,7 @@ export const InventoryPage: React.FC = () => {
               ...data,
               location_id: sibling.location_id,
               inventory_type: oppositeType,
-              reason: `[SYNC] ${data.reason || 'Talla sincronizada desde local hermano'}`
+              reason: `[SYNC] ${data.reason || 'Talla sincronizada desde local hermano'}`,
             });
             siblingMessage = `\nTambien se agrego ${getInventoryTypeFullLabel(oppositeType)} en ${sibling.location_name}.`;
           } catch (syncError) {
@@ -433,46 +457,59 @@ Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type ==
   const handleAssignProductToLocation = async (data: {
     location_id: number;
     product_reference: string;
-    size: string;
+    sizes: string[];
     adjustment_type: 'set_quantity';
     quantity: number;
-    reason: string;
     inventory_type: 'pair' | 'left_only' | 'right_only';
   }) => {
     try {
-      const response = await adjustInventory(data);
-      console.log('Producto asignado a ubicacion:', response);
-
-      // Sibling sync logic
+      const defaultReason = 'Asignacion de producto a ubicacion';
       let siblingMessage = '';
-      const oppositeType = getOppositeFootType(data.inventory_type);
-      if (oppositeType) {
-        const sibling = findSiblingLocation(data.location_id, adminInventory);
-        if (sibling) {
-          try {
-            await adjustInventory({
-              ...data,
-              location_id: sibling.location_id,
-              inventory_type: oppositeType,
-              reason: `[SYNC] ${data.reason || 'Asignacion sincronizada desde local hermano'}`
-            });
-            siblingMessage = `\nTambien se asigno ${getInventoryTypeFullLabel(oppositeType)} en ${sibling.location_name}.`;
-          } catch (syncError) {
-            console.error('Error en sync con hermano:', syncError);
-            siblingMessage = `\n⚠️ Advertencia: la asignacion fue exitosa pero fallo el sync con ${sibling.location_name}.`;
+
+      for (const size of data.sizes) {
+        const payload = {
+          location_id: data.location_id,
+          product_reference: data.product_reference,
+          size,
+          adjustment_type: data.adjustment_type,
+          quantity: data.quantity,
+          reason: defaultReason,
+          inventory_type: data.inventory_type,
+        };
+        await adjustInventory(payload);
+
+        // Sibling sync logic
+        const oppositeType = getOppositeFootType(data.inventory_type);
+        if (oppositeType) {
+          const sibling = findSiblingLocation(data.location_id, adminInventory);
+          if (sibling) {
+            try {
+              await adjustInventory({
+                ...payload,
+                location_id: sibling.location_id,
+                inventory_type: oppositeType,
+                reason: `[SYNC] ${defaultReason}`,
+              });
+              if (!siblingMessage) {
+                siblingMessage = `\nTambien se asigno ${getInventoryTypeFullLabel(oppositeType)} en ${sibling.location_name}.`;
+              }
+            } catch (syncError) {
+              console.error('Error en sync con hermano:', syncError);
+              siblingMessage = `\n⚠️ Advertencia: fallo el sync con ${sibling.location_name}.`;
+            }
           }
         }
       }
 
       await loadAdminInventory();
 
-      const locationName = locations.find(l => l.id === data.location_id)?.name || `ID ${data.location_id}`;
+      const locationName = locations.find((l) => l.id === data.location_id)?.name || `ID ${data.location_id}`;
       alert(`Producto asignado exitosamente.
 
 Producto: ${data.product_reference}
 Ubicacion: ${locationName}
-Talla: ${data.size}
-Cantidad: ${data.quantity}
+Talla(s): ${data.sizes.join(', ')}
+Cantidad: ${data.quantity} c/u
 Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type === 'left_only' ? 'Pie izquierdo' : 'Pie derecho'}${siblingMessage}`);
 
       setShowAssignProductModal(false);
@@ -507,7 +544,7 @@ Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type ==
               ...data,
               location_id: sibling.location_id,
               inventory_type: oppositeType,
-              reason: `[SYNC] ${data.reason || 'Ajuste sincronizado desde local hermano'}`
+              reason: `[SYNC] ${data.reason || 'Ajuste sincronizado desde local hermano'}`,
             });
             siblingMessage = `\nTambien se ajusto ${getInventoryTypeFullLabel(oppositeType)} en ${sibling.location_name}.`;
           } catch (syncError) {
@@ -562,11 +599,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
     }
   };
 
-  const handleEditProductInfo = async (data: {
-    product_reference: string;
-    brand: string;
-    model: string;
-  }) => {
+  const handleEditProductInfo = async (data: { product_reference: string; brand: string; model: string }) => {
     try {
       const response = await updateProductInfo(data);
       console.log('Info actualizada:', response);
@@ -596,7 +629,8 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
     locationId: number,
     locationName: string
   ) => {
-    const typeLabel = size.inventory_type === 'pair' ? 'Par' : size.inventory_type === 'left_only' ? 'Pie izquierdo' : 'Pie derecho';
+    const typeLabel =
+      size.inventory_type === 'pair' ? 'Par' : size.inventory_type === 'left_only' ? 'Pie izquierdo' : 'Pie derecho';
     const confirmed = window.confirm(
       `¿Eliminar talla ${size.size} (${typeLabel}) del producto ${product.brand} ${product.model} en ${locationName}?\n\nEsta accion pondra la cantidad en 0.`
     );
@@ -610,7 +644,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
         adjustment_type: 'set_quantity',
         quantity: 0,
         reason: `Eliminacion de talla ${size.size} (${typeLabel}) - correccion de inventario`,
-        inventory_type: size.inventory_type || 'pair'
+        inventory_type: size.inventory_type || 'pair',
       });
       await loadAdminInventory();
       alert(`Talla ${size.size} (${typeLabel}) eliminada exitosamente.`);
@@ -633,18 +667,18 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
       if (data.jobs_with_errors > 0) {
         alert(
           `Referencia ${data.reference_code} eliminada.\n\n` +
-          `Producto: ${data.brand} ${data.model}\n` +
-          `Vectores de IA eliminados: ${data.vectors_deleted}\n` +
-          `Jobs limpiados: ${data.jobs_cleaned}/${data.jobs_found}\n\n` +
-          `${data.jobs_with_errors} job(s) con error al limpiar vectores de IA.\n` +
-          `El producto fue desactivado correctamente.`
+            `Producto: ${data.brand} ${data.model}\n` +
+            `Vectores de IA eliminados: ${data.vectors_deleted}\n` +
+            `Jobs limpiados: ${data.jobs_cleaned}/${data.jobs_found}\n\n` +
+            `${data.jobs_with_errors} job(s) con error al limpiar vectores de IA.\n` +
+            `El producto fue desactivado correctamente.`
         );
       } else {
         alert(
           `Referencia ${data.reference_code} eliminada completamente.\n\n` +
-          `Producto: ${data.brand} ${data.model}\n` +
-          `Vectores de IA eliminados: ${data.vectors_deleted}\n` +
-          `Jobs limpiados: ${data.jobs_cleaned}/${data.jobs_found}`
+            `Producto: ${data.brand} ${data.model}\n` +
+            `Vectores de IA eliminados: ${data.vectors_deleted}\n` +
+            `Jobs limpiados: ${data.jobs_cleaned}/${data.jobs_found}`
         );
       }
 
@@ -696,7 +730,9 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
         notes: retrainFormData.notes || undefined,
       });
 
-      alert(`Re-entrenamiento iniciado exitosamente.\n\nProducto: ${response.brand} ${response.model}\nCodigo: ${response.reference_code}\nJob ID: ${response.new_job_id}\nEstado: ${response.new_job_status}\n\n${response.previous_vectors_will_be_replaced ? 'Los vectores anteriores se reemplazaran al completar.' : ''}`);
+      alert(
+        `Re-entrenamiento iniciado exitosamente.\n\nProducto: ${response.brand} ${response.model}\nCodigo: ${response.reference_code}\nJob ID: ${response.new_job_id}\nEstado: ${response.new_job_status}\n\n${response.previous_vectors_will_be_replaced ? 'Los vectores anteriores se reemplazaran al completar.' : ''}`
+      );
 
       setShowRetrainModal(false);
       setRetrainProduct(null);
@@ -732,11 +768,11 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
       }
 
       // Validate and prepare sizes distribution
-      const validSizesDistribution = videoData.sizes_distribution.filter(sd => {
+      const validSizesDistribution = videoData.sizes_distribution.filter((sd) => {
         if (!sd.size.trim()) return false;
-        const hasPairs = sd.pairs.some(p => p.location_id > 0 && p.quantity > 0);
-        const hasLeftFeet = sd.left_feet.some(lf => lf.location_id > 0 && lf.quantity > 0);
-        const hasRightFeet = sd.right_feet.some(rf => rf.location_id > 0 && rf.quantity > 0);
+        const hasPairs = sd.pairs.some((p) => p.location_id > 0 && p.quantity > 0);
+        const hasLeftFeet = sd.left_feet.some((lf) => lf.location_id > 0 && lf.quantity > 0);
+        const hasRightFeet = sd.right_feet.some((rf) => rf.location_id > 0 && rf.quantity > 0);
         return hasPairs || (hasLeftFeet && hasRightFeet);
       });
 
@@ -751,27 +787,35 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
         const totalRightFeet = sizeDistro.right_feet.reduce((sum, rf) => sum + rf.quantity, 0);
 
         if (totalLeftFeet !== totalRightFeet) {
-          alert(`Error en talla ${sizeDistro.size}: El total de pies izquierdos (${totalLeftFeet}) debe ser igual al total de pies derechos (${totalRightFeet})`);
+          alert(
+            `Error en talla ${sizeDistro.size}: El total de pies izquierdos (${totalLeftFeet}) debe ser igual al total de pies derechos (${totalRightFeet})`
+          );
           return;
         }
       }
 
       // Convert to JSON format required by endpoint
       const sizesDistributionJson = JSON.stringify(
-        validSizesDistribution.map(sd => ({
+        validSizesDistribution.map((sd) => ({
           size: sd.size.trim(),
-          pairs: sd.pairs.filter(p => p.location_id > 0 && p.quantity > 0).map(p => ({
-            location_id: p.location_id,
-            quantity: p.quantity
-          })),
-          left_feet: sd.left_feet.filter(lf => lf.location_id > 0 && lf.quantity > 0).map(lf => ({
-            location_id: lf.location_id,
-            quantity: lf.quantity
-          })),
-          right_feet: sd.right_feet.filter(rf => rf.location_id > 0 && rf.quantity > 0).map(rf => ({
-            location_id: rf.location_id,
-            quantity: rf.quantity
-          }))
+          pairs: sd.pairs
+            .filter((p) => p.location_id > 0 && p.quantity > 0)
+            .map((p) => ({
+              location_id: p.location_id,
+              quantity: p.quantity,
+            })),
+          left_feet: sd.left_feet
+            .filter((lf) => lf.location_id > 0 && lf.quantity > 0)
+            .map((lf) => ({
+              location_id: lf.location_id,
+              quantity: lf.quantity,
+            })),
+          right_feet: sd.right_feet
+            .filter((rf) => rf.location_id > 0 && rf.quantity > 0)
+            .map((rf) => ({
+              location_id: rf.location_id,
+              quantity: rf.quantity,
+            })),
         }))
       );
 
@@ -783,7 +827,8 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
         product_model: videoData.product_model || '',
         box_price: videoData.box_price || 0,
         notes: '',
-        reference_image: videoData.reference_image && videoData.reference_image instanceof File ? videoData.reference_image : null
+        reference_image:
+          videoData.reference_image && videoData.reference_image instanceof File ? videoData.reference_image : null,
       };
 
       console.log('Enviando datos de inventario con distribucion:', inventoryPayload);
@@ -805,8 +850,12 @@ Ubicaciones: ${response.locations_count || distributionSummary.length}
 Precio Unitario: ${formatCurrency(response.unit_price || videoData.unit_price)}
 ${response.box_price ? `Precio por Caja: ${formatCurrency(response.box_price)}` : ''}
 
-${distributionSummary.length > 0 ? `Distribucion por ubicacion:
-${distributionSummary.map((ds: any) => `- ${ds.location_name}: ${ds.total_pairs} pares${ds.total_left_feet ? ` + ${ds.total_left_feet} izq` : ''}${ds.total_right_feet ? ` + ${ds.total_right_feet} der` : ''}`).join('\n')}` : ''}
+${
+  distributionSummary.length > 0
+    ? `Distribucion por ubicacion:
+${distributionSummary.map((ds: any) => `- ${ds.location_name}: ${ds.total_pairs} pares${ds.total_left_feet ? ` + ${ds.total_left_feet} izq` : ''}${ds.total_right_feet ? ` + ${ds.total_right_feet} der` : ''}`).join('\n')}`
+    : ''
+}
 
 ${response.processing_time_seconds ? `Procesado en ${response.processing_time_seconds}s` : ''}`);
       } else {
@@ -892,20 +941,22 @@ Por favor verifica que:
       <div className="flex space-x-2 border-b border-border">
         <button
           onClick={() => setInventoryActiveTab('view')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${inventoryActiveTab === 'view'
-            ? 'border-primary text-primary'
-            : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            inventoryActiveTab === 'view'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
         >
           <Package className="h-4 w-4 inline mr-2" />
           Ver Inventario
         </button>
         <button
           onClick={() => setInventoryActiveTab('entry')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${inventoryActiveTab === 'entry'
-            ? 'border-primary text-primary'
-            : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            inventoryActiveTab === 'entry'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
         >
           <Video className="h-4 w-4 inline mr-2" />
           Registrar con Video
@@ -948,24 +999,27 @@ Por favor verifica que:
                   <label className="block text-sm font-medium text-foreground mb-1">Ubicacion</label>
                   <select
                     value={selectedAdminLocation === 'all' ? 'all' : selectedAdminLocation.toString()}
-                    onChange={(e) => setSelectedAdminLocation(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+                    onChange={(e) =>
+                      setSelectedAdminLocation(e.target.value === 'all' ? 'all' : parseInt(e.target.value))
+                    }
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground"
                   >
                     <option value="all">Todas las ubicaciones</option>
                     {[...adminInventory]
                       .sort((a, b) => {
-                        const locA = locations.find(l => l.id === a.location_id);
-                        const locB = locations.find(l => l.id === b.location_id);
+                        const locA = locations.find((l) => l.id === a.location_id);
+                        const locB = locations.find((l) => l.id === b.location_id);
                         const typeA = locA?.type === 'bodega' ? 0 : 1;
                         const typeB = locB?.type === 'bodega' ? 0 : 1;
                         return typeA - typeB;
                       })
                       .map((location) => {
-                        const loc = locations.find(l => l.id === location.location_id);
+                        const loc = locations.find((l) => l.id === location.location_id);
                         const isBodega = loc?.type === 'bodega';
                         return (
                           <option key={location.location_id} value={location.location_id}>
-                            {isBodega ? '🏭 ' : '🏪 '}{location.location_name}
+                            {isBodega ? '🏭 ' : '🏪 '}
+                            {location.location_name}
                           </option>
                         );
                       })}
@@ -1017,7 +1071,11 @@ Por favor verifica que:
                   <CardContent className="p-6">
                     <EmptyState
                       title={adminInventorySearchTerm ? 'No se encontraron productos' : 'No hay inventario disponible'}
-                      description={adminInventorySearchTerm ? 'Intenta con otros terminos de busqueda' : 'El inventario se cargara automaticamente'}
+                      description={
+                        adminInventorySearchTerm
+                          ? 'Intenta con otros terminos de busqueda'
+                          : 'El inventario se cargara automaticamente'
+                      }
                       icon={<Package className="h-12 w-12 text-muted-foreground" />}
                     />
                   </CardContent>
@@ -1049,7 +1107,10 @@ Por favor verifica que:
                                   <div className="flex-shrink-0">
                                     <div className="w-16 h-22 sm:w-20 sm:h-28 rounded-lg overflow-hidden border border-border bg-muted">
                                       <img
-                                        src={product.image_url || `https://via.placeholder.com/80x112/e5e7eb/6b7280?text=${encodeURIComponent(product.brand)}`}
+                                        src={
+                                          product.image_url ||
+                                          `https://via.placeholder.com/80x112/e5e7eb/6b7280?text=${encodeURIComponent(product.brand)}`
+                                        }
                                         alt={`${product.brand} ${product.model}`}
                                         className="w-full h-full object-cover"
                                         onError={(e) => {
@@ -1083,10 +1144,14 @@ Por favor verifica que:
                                         {product.sizes.length} tallas
                                       </span>
                                       {product.total_quantity === 0 && (
-                                        <Badge variant="error" className="text-xs">Sin stock</Badge>
+                                        <Badge variant="error" className="text-xs">
+                                          Sin stock
+                                        </Badge>
                                       )}
                                       {product.total_quantity > 0 && product.total_quantity <= 5 && (
-                                        <Badge variant="warning" className="text-xs">Stock bajo</Badge>
+                                        <Badge variant="warning" className="text-xs">
+                                          Stock bajo
+                                        </Badge>
                                       )}
                                     </div>
                                   </div>
@@ -1138,11 +1203,17 @@ Por favor verifica que:
                                         >
                                           <div className="flex items-center justify-between">
                                             <div className="flex items-center space-x-2">
-                                              <span className="font-semibold text-foreground text-sm w-10">{size.size}</span>
-                                              <span className={`px-1.5 py-0.5 rounded text-xs border ${getInventoryTypeBadgeColor(size.inventory_type || 'pair')}`}>
+                                              <span className="font-semibold text-foreground text-sm w-10">
+                                                {size.size}
+                                              </span>
+                                              <span
+                                                className={`px-1.5 py-0.5 rounded text-xs border ${getInventoryTypeBadgeColor(size.inventory_type || 'pair')}`}
+                                              >
                                                 {getInventoryTypeLabel(size.inventory_type || 'pair')}
                                               </span>
-                                              <span className={`text-sm font-medium ${size.quantity > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                              <span
+                                                className={`text-sm font-medium ${size.quantity > 0 ? 'text-foreground' : 'text-muted-foreground'}`}
+                                              >
                                                 {size.quantity} uds
                                               </span>
                                             </div>
@@ -1150,12 +1221,14 @@ Por favor verifica que:
                                               <Button
                                                 size="sm"
                                                 variant="outline"
-                                                onClick={() => handleOpenAdjustInventoryModal(
-                                                  product,
-                                                  size,
-                                                  location.location_id,
-                                                  location.location_name
-                                                )}
+                                                onClick={() =>
+                                                  handleOpenAdjustInventoryModal(
+                                                    product,
+                                                    size,
+                                                    location.location_id,
+                                                    location.location_name
+                                                  )
+                                                }
                                                 className="text-xs h-7 px-2"
                                               >
                                                 <Edit className="h-3 w-3" />
@@ -1163,12 +1236,14 @@ Por favor verifica que:
                                               <Button
                                                 size="sm"
                                                 variant="outline"
-                                                onClick={() => handleDeleteSize(
-                                                  product,
-                                                  size,
-                                                  location.location_id,
-                                                  location.location_name
-                                                )}
+                                                onClick={() =>
+                                                  handleDeleteSize(
+                                                    product,
+                                                    size,
+                                                    location.location_id,
+                                                    location.location_name
+                                                  )
+                                                }
                                                 className="text-xs h-7 px-2 border-destructive/30 text-destructive hover:bg-destructive/10"
                                               >
                                                 <Trash2 className="h-3 w-3" />
@@ -1182,11 +1257,9 @@ Por favor verifica que:
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() => handleOpenAddSizeModal(
-                                        product,
-                                        location.location_id,
-                                        location.location_name
-                                      )}
+                                      onClick={() =>
+                                        handleOpenAddSizeModal(product, location.location_id, location.location_name)
+                                      }
                                       className="w-full mt-3 text-sm border-dashed"
                                     >
                                       <Plus className="h-4 w-4 mr-2" />
@@ -1222,25 +1295,21 @@ Por favor verifica que:
                   <h4 className="font-semibold text-foreground mb-3">Datos del Producto</h4>
 
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">
-                      Marca
-                    </label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Marca</label>
                     <Input
                       placeholder="Ej: Nike, Adidas"
                       value={videoInventoryForm.product_brand}
-                      onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_brand: e.target.value }))}
+                      onChange={(e) => setVideoInventoryForm((prev) => ({ ...prev, product_brand: e.target.value }))}
                     />
                     <p className="text-xs text-muted-foreground mt-1">Marca del producto</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">
-                      Modelo
-                    </label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Modelo</label>
                     <Input
                       placeholder="Ej: Air Max 90"
                       value={videoInventoryForm.product_model}
-                      onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, product_model: e.target.value }))}
+                      onChange={(e) => setVideoInventoryForm((prev) => ({ ...prev, product_model: e.target.value }))}
                     />
                     <p className="text-xs text-muted-foreground mt-1">Modelo del producto</p>
                   </div>
@@ -1253,7 +1322,9 @@ Por favor verifica que:
                       placeholder="Ej: 45000"
                       type="number"
                       value={videoInventoryForm.unit_price}
-                      onChange={(e) => setVideoInventoryForm(prev => ({ ...prev, unit_price: parseFloat(e.target.value) }))}
+                      onChange={(e) =>
+                        setVideoInventoryForm((prev) => ({ ...prev, unit_price: parseFloat(e.target.value) }))
+                      }
                       min="0"
                       step="1000"
                     />
@@ -1272,16 +1343,18 @@ Por favor verifica que:
                             <Input
                               placeholder="Talla (ej: 42)"
                               value={sizeDistro.size}
-                              onChange={e => {
+                              onChange={(e) => {
                                 const newDistro = [...videoInventoryForm.sizes_distribution];
                                 newDistro[sizeIdx].size = e.target.value;
-                                setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                               }}
                               className="w-32"
                             />
                             <div className="flex-1 text-sm text-muted-foreground">
-                              Balance: {sizeDistro.left_feet.reduce((s, lf) => s + lf.quantity, 0)} izq / {sizeDistro.right_feet.reduce((s, rf) => s + rf.quantity, 0)} der
-                              {sizeDistro.left_feet.reduce((s, lf) => s + lf.quantity, 0) !== sizeDistro.right_feet.reduce((s, rf) => s + rf.quantity, 0) && (
+                              Balance: {sizeDistro.left_feet.reduce((s, lf) => s + lf.quantity, 0)} izq /{' '}
+                              {sizeDistro.right_feet.reduce((s, rf) => s + rf.quantity, 0)} der
+                              {sizeDistro.left_feet.reduce((s, lf) => s + lf.quantity, 0) !==
+                                sizeDistro.right_feet.reduce((s, rf) => s + rf.quantity, 0) && (
                                 <span className="text-error ml-2">Desbalanceado</span>
                               )}
                             </div>
@@ -1290,9 +1363,9 @@ Por favor verifica que:
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => {
-                                  setVideoInventoryForm(prev => ({
+                                  setVideoInventoryForm((prev) => ({
                                     ...prev,
-                                    sizes_distribution: prev.sizes_distribution.filter((_, i) => i !== sizeIdx)
+                                    sizes_distribution: prev.sizes_distribution.filter((_, i) => i !== sizeIdx),
                                   }));
                                 }}
                                 className="text-destructive"
@@ -1312,11 +1385,11 @@ Por favor verifica que:
                                   onChange={(e) => {
                                     const newDistro = [...videoInventoryForm.sizes_distribution];
                                     newDistro[sizeIdx].pairs[pairIdx].location_id = parseInt(e.target.value);
-                                    setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                   }}
                                   options={[
                                     { value: '0', label: 'Seleccionar ubicacion' },
-                                    ...locations.map(loc => ({ value: loc.id.toString(), label: loc.name }))
+                                    ...locations.map((loc) => ({ value: loc.id.toString(), label: loc.name })),
                                   ]}
                                   className="flex-1"
                                 />
@@ -1324,10 +1397,10 @@ Por favor verifica que:
                                   placeholder="Cant"
                                   type="number"
                                   value={pair.quantity || ''}
-                                  onChange={e => {
+                                  onChange={(e) => {
                                     const newDistro = [...videoInventoryForm.sizes_distribution];
                                     newDistro[sizeIdx].pairs[pairIdx].quantity = parseInt(e.target.value) || 0;
-                                    setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                   }}
                                   className="w-20"
                                 />
@@ -1337,7 +1410,7 @@ Por favor verifica que:
                                   onClick={() => {
                                     const newDistro = [...videoInventoryForm.sizes_distribution];
                                     newDistro[sizeIdx].pairs.push({ location_id: 0, quantity: 0 });
-                                    setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                   }}
                                 >
                                   +
@@ -1348,8 +1421,10 @@ Por favor verifica que:
                                     variant="ghost"
                                     onClick={() => {
                                       const newDistro = [...videoInventoryForm.sizes_distribution];
-                                      newDistro[sizeIdx].pairs = newDistro[sizeIdx].pairs.filter((_, i) => i !== pairIdx);
-                                      setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                      newDistro[sizeIdx].pairs = newDistro[sizeIdx].pairs.filter(
+                                        (_, i) => i !== pairIdx
+                                      );
+                                      setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                     }}
                                     className="text-destructive"
                                   >
@@ -1370,7 +1445,7 @@ Por favor verifica que:
                                 onClick={() => {
                                   const newDistro = [...videoInventoryForm.sizes_distribution];
                                   newDistro[sizeIdx].left_feet.push({ location_id: 0, quantity: 0 });
-                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                  setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                 }}
                               >
                                 +
@@ -1383,11 +1458,11 @@ Por favor verifica que:
                                   onChange={(e) => {
                                     const newDistro = [...videoInventoryForm.sizes_distribution];
                                     newDistro[sizeIdx].left_feet[lfIdx].location_id = parseInt(e.target.value);
-                                    setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                   }}
                                   options={[
                                     { value: '0', label: 'Seleccionar ubicacion' },
-                                    ...locations.map(loc => ({ value: loc.id.toString(), label: loc.name }))
+                                    ...locations.map((loc) => ({ value: loc.id.toString(), label: loc.name })),
                                   ]}
                                   className="flex-1"
                                 />
@@ -1395,10 +1470,10 @@ Por favor verifica que:
                                   placeholder="Cant"
                                   type="number"
                                   value={leftFoot.quantity || ''}
-                                  onChange={e => {
+                                  onChange={(e) => {
                                     const newDistro = [...videoInventoryForm.sizes_distribution];
                                     newDistro[sizeIdx].left_feet[lfIdx].quantity = parseInt(e.target.value) || 0;
-                                    setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                   }}
                                   className="w-20"
                                 />
@@ -1407,8 +1482,10 @@ Por favor verifica que:
                                   variant="ghost"
                                   onClick={() => {
                                     const newDistro = [...videoInventoryForm.sizes_distribution];
-                                    newDistro[sizeIdx].left_feet = newDistro[sizeIdx].left_feet.filter((_, i) => i !== lfIdx);
-                                    setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    newDistro[sizeIdx].left_feet = newDistro[sizeIdx].left_feet.filter(
+                                      (_, i) => i !== lfIdx
+                                    );
+                                    setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                   }}
                                   className="text-destructive"
                                 >
@@ -1431,7 +1508,7 @@ Por favor verifica que:
                                 onClick={() => {
                                   const newDistro = [...videoInventoryForm.sizes_distribution];
                                   newDistro[sizeIdx].right_feet.push({ location_id: 0, quantity: 0 });
-                                  setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                  setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                 }}
                               >
                                 +
@@ -1444,11 +1521,11 @@ Por favor verifica que:
                                   onChange={(e) => {
                                     const newDistro = [...videoInventoryForm.sizes_distribution];
                                     newDistro[sizeIdx].right_feet[rfIdx].location_id = parseInt(e.target.value);
-                                    setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                   }}
                                   options={[
                                     { value: '0', label: 'Seleccionar ubicacion' },
-                                    ...locations.map(loc => ({ value: loc.id.toString(), label: loc.name }))
+                                    ...locations.map((loc) => ({ value: loc.id.toString(), label: loc.name })),
                                   ]}
                                   className="flex-1"
                                 />
@@ -1456,10 +1533,10 @@ Por favor verifica que:
                                   placeholder="Cant"
                                   type="number"
                                   value={rightFoot.quantity || ''}
-                                  onChange={e => {
+                                  onChange={(e) => {
                                     const newDistro = [...videoInventoryForm.sizes_distribution];
                                     newDistro[sizeIdx].right_feet[rfIdx].quantity = parseInt(e.target.value) || 0;
-                                    setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                   }}
                                   className="w-20"
                                 />
@@ -1468,8 +1545,10 @@ Por favor verifica que:
                                   variant="ghost"
                                   onClick={() => {
                                     const newDistro = [...videoInventoryForm.sizes_distribution];
-                                    newDistro[sizeIdx].right_feet = newDistro[sizeIdx].right_feet.filter((_, i) => i !== rfIdx);
-                                    setVideoInventoryForm(prev => ({ ...prev, sizes_distribution: newDistro }));
+                                    newDistro[sizeIdx].right_feet = newDistro[sizeIdx].right_feet.filter(
+                                      (_, i) => i !== rfIdx
+                                    );
+                                    setVideoInventoryForm((prev) => ({ ...prev, sizes_distribution: newDistro }));
                                   }}
                                   className="text-destructive"
                                 >
@@ -1488,7 +1567,7 @@ Por favor verifica que:
                       <Button
                         variant="outline"
                         onClick={() => {
-                          setVideoInventoryForm(prev => ({
+                          setVideoInventoryForm((prev) => ({
                             ...prev,
                             sizes_distribution: [
                               ...prev.sizes_distribution,
@@ -1496,9 +1575,9 @@ Por favor verifica que:
                                 size: '',
                                 pairs: [{ location_id: 0, quantity: 0 }],
                                 left_feet: [],
-                                right_feet: []
-                              }
-                            ]
+                                right_feet: [],
+                              },
+                            ],
                           }));
                         }}
                         className="w-full"
@@ -1507,7 +1586,8 @@ Por favor verifica que:
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Puedes distribuir el inventario entre multiples ubicaciones. Los pies izquierdos y derechos deben estar balanceados.
+                      Puedes distribuir el inventario entre multiples ubicaciones. Los pies izquierdos y derechos deben
+                      estar balanceados.
                     </p>
                   </div>
                 </div>
@@ -1533,9 +1613,9 @@ Por favor verifica que:
                           const ext = fileType.split('/')[1] || 'jpg';
                           const imageFile = new File([blob], `reference-image.${ext}`, { type: fileType });
 
-                          setVideoInventoryForm(prev => ({
+                          setVideoInventoryForm((prev) => ({
                             ...prev,
-                            reference_image: imageFile
+                            reference_image: imageFile,
                           }));
                         }
                       }}
@@ -1556,9 +1636,7 @@ Por favor verifica que:
                           className="w-full h-64 object-cover rounded-lg border shadow-sm"
                         />
                         <div className="flex items-center justify-between">
-                          <p className="text-sm text-muted-foreground">
-                            Foto de referencia del producto
-                          </p>
+                          <p className="text-sm text-muted-foreground">Foto de referencia del producto</p>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -1567,7 +1645,7 @@ Por favor verifica que:
                                 URL.revokeObjectURL(capturedPhotoUrl);
                               }
                               setCapturedPhotoUrl(null);
-                              setVideoInventoryForm(prev => ({ ...prev, reference_image: null }));
+                              setVideoInventoryForm((prev) => ({ ...prev, reference_image: null }));
                             }}
                             className="text-destructive hover:text-destructive/80"
                           >
@@ -1582,7 +1660,9 @@ Por favor verifica que:
 
                 {/* Column 3: Product Video */}
                 <div className="space-y-4">
-                  <h4 className="font-semibold text-foreground mb-3">Video del Producto <span className="text-error">*</span></h4>
+                  <h4 className="font-semibold text-foreground mb-3">
+                    Video del Producto <span className="text-error">*</span>
+                  </h4>
 
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
@@ -1601,9 +1681,9 @@ Por favor verifica que:
                           const ext = fileType.split('/')[1] || 'webm';
                           const videoFile = new File([blob], `inventory-video.${ext}`, { type: fileType });
 
-                          setVideoInventoryForm(prev => ({
+                          setVideoInventoryForm((prev) => ({
                             ...prev,
-                            video_file: videoFile
+                            video_file: videoFile,
                           }));
                         }
                       }}
@@ -1625,9 +1705,7 @@ Por favor verifica que:
                           preload="metadata"
                         />
                         <div className="flex items-center justify-between">
-                          <p className="text-sm text-muted-foreground">
-                            Video del inventario del producto
-                          </p>
+                          <p className="text-sm text-muted-foreground">Video del inventario del producto</p>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -1636,7 +1714,7 @@ Por favor verifica que:
                                 URL.revokeObjectURL(capturedVideoUrl);
                               }
                               setCapturedVideoUrl(null);
-                              setVideoInventoryForm(prev => ({ ...prev, video_file: null }));
+                              setVideoInventoryForm((prev) => ({ ...prev, video_file: null }));
                             }}
                             className="text-destructive hover:text-destructive/80"
                           >
@@ -1657,9 +1735,7 @@ Por favor verifica que:
             <CardContent className="p-6">
               <div className="flex flex-col space-y-4">
                 <div className="text-center">
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    Enviar Inventario
-                  </h3>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Enviar Inventario</h3>
                   <p className="text-sm text-muted-foreground mb-4">
                     Asegurate de haber completado todos los campos requeridos y grabado el video antes de enviar.
                   </p>
@@ -1677,11 +1753,11 @@ Por favor verifica que:
                     }
 
                     // Validate at least one valid size distribution
-                    const hasValidDistribution = videoInventoryForm.sizes_distribution.some(sd => {
+                    const hasValidDistribution = videoInventoryForm.sizes_distribution.some((sd) => {
                       if (!sd.size.trim()) return false;
-                      const hasPairs = sd.pairs.some(p => p.location_id > 0 && p.quantity > 0);
-                      const hasLeftFeet = sd.left_feet.some(lf => lf.location_id > 0 && lf.quantity > 0);
-                      const hasRightFeet = sd.right_feet.some(rf => rf.location_id > 0 && rf.quantity > 0);
+                      const hasPairs = sd.pairs.some((p) => p.location_id > 0 && p.quantity > 0);
+                      const hasLeftFeet = sd.left_feet.some((lf) => lf.location_id > 0 && lf.quantity > 0);
+                      const hasRightFeet = sd.right_feet.some((rf) => rf.location_id > 0 && rf.quantity > 0);
                       return hasPairs || (hasLeftFeet && hasRightFeet);
                     });
 
@@ -1696,7 +1772,9 @@ Por favor verifica que:
                       const totalLeft = sd.left_feet.reduce((sum, lf) => sum + lf.quantity, 0);
                       const totalRight = sd.right_feet.reduce((sum, rf) => sum + rf.quantity, 0);
                       if (totalLeft !== totalRight) {
-                        alert(`Error en talla ${sd.size}: Pies izquierdos (${totalLeft}) debe ser igual a pies derechos (${totalRight})`);
+                        alert(
+                          `Error en talla ${sd.size}: Pies izquierdos (${totalLeft}) debe ser igual a pies derechos (${totalRight})`
+                        );
                         return;
                       }
                     }
@@ -1717,8 +1795,12 @@ Por favor verifica que:
                         product_model: videoInventoryForm.product_model,
                         box_price: videoInventoryForm.box_price,
                         sizes_distribution: videoInventoryForm.sizes_distribution,
-                        video_file: videoInventoryForm.video_file ? `File(${videoInventoryForm.video_file.size} bytes)` : 'null',
-                        reference_image: videoInventoryForm.reference_image ? `File(${videoInventoryForm.reference_image.size} bytes)` : 'null'
+                        video_file: videoInventoryForm.video_file
+                          ? `File(${videoInventoryForm.video_file.size} bytes)`
+                          : 'null',
+                        reference_image: videoInventoryForm.reference_image
+                          ? `File(${videoInventoryForm.reference_image.size} bytes)`
+                          : 'null',
                       });
                       console.log('=======================');
 
@@ -1735,11 +1817,11 @@ Por favor verifica que:
                             size: '',
                             pairs: [{ location_id: 0, quantity: 0 }],
                             left_feet: [],
-                            right_feet: []
-                          }
+                            right_feet: [],
+                          },
                         ],
                         reference_image: null,
-                        video_file: null
+                        video_file: null,
                       });
 
                       // Cleanup preview URLs
@@ -1758,26 +1840,43 @@ Por favor verifica que:
                     }
                   }}
                   className="w-full bg-success hover:bg-success/90 text-white py-4 text-lg font-semibold"
-                  disabled={!videoInventoryForm.video_file || videoInventoryForm.unit_price <= 0 || isSubmittingVideoInventory}
+                  disabled={
+                    !videoInventoryForm.video_file || videoInventoryForm.unit_price <= 0 || isSubmittingVideoInventory
+                  }
                 >
-                  {isSubmittingVideoInventory ? 'Enviando inventario...' :
-                    !videoInventoryForm.video_file ? 'Graba un video primero' :
-                      videoInventoryForm.unit_price <= 0 ? 'Ingresa el precio' :
-                        'Registrar Inventario con Distribucion'}
+                  {isSubmittingVideoInventory
+                    ? 'Enviando inventario...'
+                    : !videoInventoryForm.video_file
+                      ? 'Graba un video primero'
+                      : videoInventoryForm.unit_price <= 0
+                        ? 'Ingresa el precio'
+                        : 'Registrar Inventario con Distribucion'}
                 </Button>
 
                 {/* Status indicators */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                  <div className={`flex items-center space-x-2 ${videoInventoryForm.unit_price > 0 ? 'text-success' : 'text-muted-foreground'}`}>
-                    <div className={`w-3 h-3 rounded-full ${videoInventoryForm.unit_price > 0 ? 'bg-success' : 'bg-muted'}`}></div>
+                  <div
+                    className={`flex items-center space-x-2 ${videoInventoryForm.unit_price > 0 ? 'text-success' : 'text-muted-foreground'}`}
+                  >
+                    <div
+                      className={`w-3 h-3 rounded-full ${videoInventoryForm.unit_price > 0 ? 'bg-success' : 'bg-muted'}`}
+                    ></div>
                     <span>Precio</span>
                   </div>
-                  <div className={`flex items-center space-x-2 ${videoInventoryForm.sizes_distribution.some(sd => sd.size.trim() && (sd.pairs.some(p => p.location_id > 0 && p.quantity > 0) || (sd.left_feet.length > 0 && sd.right_feet.length > 0))) ? 'text-success' : 'text-muted-foreground'}`}>
-                    <div className={`w-3 h-3 rounded-full ${videoInventoryForm.sizes_distribution.some(sd => sd.size.trim() && (sd.pairs.some(p => p.location_id > 0 && p.quantity > 0) || (sd.left_feet.length > 0 && sd.right_feet.length > 0))) ? 'bg-success' : 'bg-muted'}`}></div>
+                  <div
+                    className={`flex items-center space-x-2 ${videoInventoryForm.sizes_distribution.some((sd) => sd.size.trim() && (sd.pairs.some((p) => p.location_id > 0 && p.quantity > 0) || (sd.left_feet.length > 0 && sd.right_feet.length > 0))) ? 'text-success' : 'text-muted-foreground'}`}
+                  >
+                    <div
+                      className={`w-3 h-3 rounded-full ${videoInventoryForm.sizes_distribution.some((sd) => sd.size.trim() && (sd.pairs.some((p) => p.location_id > 0 && p.quantity > 0) || (sd.left_feet.length > 0 && sd.right_feet.length > 0))) ? 'bg-success' : 'bg-muted'}`}
+                    ></div>
                     <span>Distribucion</span>
                   </div>
-                  <div className={`flex items-center space-x-2 ${videoInventoryForm.video_file ? 'text-success' : 'text-muted-foreground'}`}>
-                    <div className={`w-3 h-3 rounded-full ${videoInventoryForm.video_file ? 'bg-success' : 'bg-muted'}`}></div>
+                  <div
+                    className={`flex items-center space-x-2 ${videoInventoryForm.video_file ? 'text-success' : 'text-muted-foreground'}`}
+                  >
+                    <div
+                      className={`w-3 h-3 rounded-full ${videoInventoryForm.video_file ? 'bg-success' : 'bg-muted'}`}
+                    ></div>
                     <span>Video</span>
                   </div>
                 </div>
@@ -1790,72 +1889,90 @@ Por favor verifica que:
       {/* ========== MODALS & DROPDOWNS ========== */}
 
       {/* Edit Product Dropdown (fixed position) */}
-      {openEditDropdown && editDropdownPos && (() => {
-        const product = adminInventory
-          .flatMap(loc => loc.products)
-          .find(p => p.reference_code === openEditDropdown);
-        if (!product) return null;
+      {openEditDropdown &&
+        editDropdownPos &&
+        (() => {
+          const product = adminInventory
+            .flatMap((loc) => loc.products)
+            .find((p) => p.reference_code === openEditDropdown);
+          if (!product) return null;
 
-        // Clamp so menu doesn't overflow viewport
-        const menuW = 192; // w-48
-        const left = Math.min(editDropdownPos.left, window.innerWidth - menuW - 8);
-        const top = editDropdownPos.top;
+          // Clamp so menu doesn't overflow viewport
+          const menuW = 192; // w-48
+          const left = Math.min(editDropdownPos.left, window.innerWidth - menuW - 8);
+          const top = editDropdownPos.top;
 
-        return (
-          <>
-            <div
-              className="fixed inset-0 z-40"
-              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); closeEditDropdown(); }}
-            />
-            <div
-              className="fixed z-50 w-48 bg-card border border-border rounded-md shadow-lg py-1"
-              style={{ top, left: left }}
-            >
-              <button
-                className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
-                onClick={() => { closeEditDropdown(); handleOpenAdjustPriceModal(product); }}
-              >
-                <DollarSign className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                Precio
-              </button>
-              <button
-                className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
-                onClick={() => { closeEditDropdown(); handleOpenEditProductInfoModal(product); }}
-              >
-                <Edit className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                Marca / Modelo
-              </button>
-              <button
-                className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
-                onClick={() => {
+          return (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   closeEditDropdown();
-                  setUpdatingImageRef(product.reference_code);
-                  imageInputRef.current?.click();
                 }}
+              />
+              <div
+                className="fixed z-50 w-48 bg-card border border-border rounded-md shadow-lg py-1"
+                style={{ top, left: left }}
               >
-                <Camera className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                Imagen
-              </button>
-              <button
-                className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
-                onClick={() => { closeEditDropdown(); handleOpenRetrainModal(product); }}
-              >
-                <Video className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                Re-entrenar IA
-              </button>
-              <div className="border-t border-border my-1" />
-              <button
-                className="w-full text-left px-3 py-2 text-xs hover:bg-destructive/10 flex items-center text-destructive"
-                onClick={() => { closeEditDropdown(); handleDeleteProductReference(product); }}
-                disabled={deletingProductId === product.product_id}
-              >
-                <Trash2 className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                {deletingProductId === product.product_id ? 'Eliminando...' : 'Eliminar Referencia'}
-              </button>
-            </div>
-          </>
-        );
-      })()}
+                <button
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                  onClick={() => {
+                    closeEditDropdown();
+                    handleOpenAdjustPriceModal(product);
+                  }}
+                >
+                  <DollarSign className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                  Precio
+                </button>
+                <button
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                  onClick={() => {
+                    closeEditDropdown();
+                    handleOpenEditProductInfoModal(product);
+                  }}
+                >
+                  <Edit className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                  Marca / Modelo
+                </button>
+                <button
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                  onClick={() => {
+                    closeEditDropdown();
+                    setUpdatingImageRef(product.reference_code);
+                    imageInputRef.current?.click();
+                  }}
+                >
+                  <Camera className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                  Imagen
+                </button>
+                <button
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center text-foreground"
+                  onClick={() => {
+                    closeEditDropdown();
+                    handleOpenRetrainModal(product);
+                  }}
+                >
+                  <Video className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                  Re-entrenar IA
+                </button>
+                <div className="border-t border-border my-1" />
+                <button
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-destructive/10 flex items-center text-destructive"
+                  onClick={() => {
+                    closeEditDropdown();
+                    handleDeleteProductReference(product);
+                  }}
+                  disabled={deletingProductId === product.product_id}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
+                  {deletingProductId === product.product_id ? 'Eliminando...' : 'Eliminar Referencia'}
+                </button>
+              </div>
+            </>
+          );
+        })()}
 
       {/* Inventory Adjustment Modal */}
       {showAdjustInventoryModal && selectedSizeForAdjustment && (
@@ -1913,7 +2030,7 @@ Por favor verifica que:
           onClose={() => setShowAssignProductModal(false)}
           onSubmit={handleAssignProductToLocation}
           allInventory={adminInventory}
-          allLocations={locations.map(l => ({ id: l.id, name: l.name }))}
+          allLocations={locations.map((l) => ({ id: l.id, name: l.name }))}
         />
       )}
 
@@ -1949,7 +2066,9 @@ Por favor verifica que:
                     />
                   )}
                   <div>
-                    <p className="font-medium text-foreground">{retrainProduct.brand} {retrainProduct.model}</p>
+                    <p className="font-medium text-foreground">
+                      {retrainProduct.brand} {retrainProduct.model}
+                    </p>
                     <p className="text-sm text-muted-foreground font-mono">{retrainProduct.reference_code}</p>
                   </div>
                 </div>
@@ -1960,16 +2079,20 @@ Por favor verifica que:
                 <FullScreenCameraCapture
                   onVideoRecorded={(_url, blob) => {
                     if (blob) {
-                      const file = blob instanceof File
-                        ? blob
-                        : new File([blob], `retrain-${retrainProduct.reference_code}-${Date.now()}.webm`, { type: blob.type || 'video/webm' });
-                      setRetrainFormData(prev => ({ ...prev, video_file: file }));
+                      const file =
+                        blob instanceof File
+                          ? blob
+                          : new File([blob], `retrain-${retrainProduct.reference_code}-${Date.now()}.webm`, {
+                              type: blob.type || 'video/webm',
+                            });
+                      setRetrainFormData((prev) => ({ ...prev, video_file: file }));
                     }
                   }}
                 />
                 {retrainFormData.video_file && (
                   <p className="text-xs text-success">
-                    Video listo: {retrainFormData.video_file.name} ({(retrainFormData.video_file.size / 1024 / 1024).toFixed(1)} MB)
+                    Video listo: {retrainFormData.video_file.name} (
+                    {(retrainFormData.video_file.size / 1024 / 1024).toFixed(1)} MB)
                   </p>
                 )}
               </div>
@@ -1978,12 +2101,12 @@ Por favor verifica que:
                 <label className="text-sm font-medium text-foreground">Bodega *</label>
                 <Select
                   value={retrainFormData.warehouse_location_id}
-                  onChange={(e) => setRetrainFormData(prev => ({ ...prev, warehouse_location_id: e.target.value }))}
+                  onChange={(e) => setRetrainFormData((prev) => ({ ...prev, warehouse_location_id: e.target.value }))}
                   options={[
                     { value: '', label: 'Seleccionar bodega...' },
                     ...locations
-                      .filter(l => l.type === 'bodega')
-                      .map(l => ({ value: l.id.toString(), label: l.name }))
+                      .filter((l) => l.type === 'bodega')
+                      .map((l) => ({ value: l.id.toString(), label: l.name })),
                   ]}
                 />
               </div>
@@ -1993,14 +2116,15 @@ Por favor verifica que:
                 <Input
                   type="text"
                   value={retrainFormData.notes}
-                  onChange={(e) => setRetrainFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  onChange={(e) => setRetrainFormData((prev) => ({ ...prev, notes: e.target.value }))}
                   placeholder="Motivo del re-entrenamiento..."
                 />
               </div>
 
               <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
                 <p className="text-xs text-warning">
-                  Al re-entrenar, los vectores de IA anteriores se reemplazaran cuando el procesamiento complete. Este proceso puede tardar varios minutos.
+                  Al re-entrenar, los vectores de IA anteriores se reemplazaran cuando el procesamiento complete. Este
+                  proceso puede tardar varios minutos.
                 </p>
               </div>
             </div>

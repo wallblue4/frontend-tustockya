@@ -29,36 +29,37 @@ interface DiscountCardProps {
   handleApproveDiscount: (discountId: number, approved: boolean, notes?: string) => void;
 }
 
-const DiscountCard: React.FC<DiscountCardProps> = ({
-  discount,
-  formatCurrency,
-  formatDate,
-  handleApproveDiscount,
-}) => {
+const DiscountCard: React.FC<DiscountCardProps> = ({ discount, formatCurrency, formatDate, handleApproveDiscount }) => {
   const [notes, setNotes] = useState('');
   const [showNotes, setShowNotes] = useState(false);
 
   const isFromSale = discount.status === 'from_sale';
   const isPending = !discount.status || discount.status === 'pending' || discount.status === 'pendiente';
   const isApproved = discount.status === 'approved' || discount.status === 'aprobado';
-  const isRejected = discount.status === 'rejected' || discount.status === 'rechazado';
+  const _isRejected = discount.status === 'rejected' || discount.status === 'rechazado';
   const statusVariant = isFromSale ? 'secondary' : isPending ? 'warning' : isApproved ? 'success' : 'error';
-  const statusLabel = isFromSale ? 'Venta con descuento' : isPending ? 'Pendiente' : isApproved ? 'Aprobado' : 'Rechazado';
+  const statusLabel = isFromSale
+    ? 'Venta con descuento'
+    : isPending
+      ? 'Pendiente'
+      : isApproved
+        ? 'Aprobado'
+        : 'Rechazado';
 
   const sellerName = discount.requester_name || discount.seller_name || 'Desconocido';
   const dateStr = discount.requested_at || discount.created_at;
 
   return (
-    <div className={`border rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 bg-card ${isPending ? 'border-warning/40' : 'border-border'}`}>
+    <div
+      className={`border rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 bg-card ${isPending ? 'border-warning/40' : 'border-border'}`}
+    >
       <div className="p-3 space-y-2">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-semibold text-foreground truncate">{sellerName}</p>
           <Badge variant={statusVariant}>{statusLabel}</Badge>
         </div>
 
-        {discount.location_name && (
-          <p className="text-xs text-muted-foreground">{discount.location_name}</p>
-        )}
+        {discount.location_name && <p className="text-xs text-muted-foreground">{discount.location_name}</p>}
 
         {(discount.brand || discount.product_name) && (
           <p className="text-xs text-foreground">
@@ -70,36 +71,24 @@ const DiscountCard: React.FC<DiscountCardProps> = ({
 
         <div className="flex items-center gap-3 text-xs">
           {discount.original_price != null && (
-            <span className="text-muted-foreground line-through">
-              {formatCurrency(discount.original_price)}
-            </span>
+            <span className="text-muted-foreground line-through">{formatCurrency(discount.original_price)}</span>
           )}
           {discount.discount_amount != null && (
-            <span className="font-semibold text-warning">
-              -{formatCurrency(discount.discount_amount)}
-            </span>
+            <span className="font-semibold text-warning">-{formatCurrency(discount.discount_amount)}</span>
           )}
           {discount.discount_percentage != null && (
-            <span className="font-semibold text-warning">
-              -{discount.discount_percentage}%
-            </span>
+            <span className="font-semibold text-warning">-{discount.discount_percentage}%</span>
           )}
           {discount.final_price != null && (
-            <span className="font-bold text-foreground">
-              {formatCurrency(discount.final_price)}
-            </span>
+            <span className="font-bold text-foreground">{formatCurrency(discount.final_price)}</span>
           )}
         </div>
 
         {discount.reason && (
-          <p className="text-xs text-muted-foreground italic border-l-2 border-warning/30 pl-2">
-            {discount.reason}
-          </p>
+          <p className="text-xs text-muted-foreground italic border-l-2 border-warning/30 pl-2">{discount.reason}</p>
         )}
 
-        {dateStr && (
-          <p className="text-xs text-muted-foreground">{formatDate(dateStr)}</p>
-        )}
+        {dateStr && <p className="text-xs text-muted-foreground">{formatDate(dateStr)}</p>}
 
         {isPending && (
           <div className="pt-2 border-t border-border space-y-2">

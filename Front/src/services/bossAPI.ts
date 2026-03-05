@@ -4,8 +4,8 @@ import { BACKEND_URL } from '../config/env';
 const getHeaders = () => {
   const token = localStorage.getItem('token');
   return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
   };
 };
 
@@ -32,7 +32,7 @@ export const bossAPI = {
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/locations`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify(locationData)
+      body: JSON.stringify(locationData),
     });
     return handleResponse(response);
   },
@@ -40,11 +40,11 @@ export const bossAPI = {
   // 2. Listar todas las ubicaciones de la empresa
   async getLocations(includeInactive: boolean = false) {
     const params = new URLSearchParams({
-      include_inactive: includeInactive.toString()
+      include_inactive: includeInactive.toString(),
     });
-    
+
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/locations?${params}`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -53,9 +53,9 @@ export const bossAPI = {
   async getDashboard(targetDate?: string) {
     const params = targetDate ? new URLSearchParams({ target_date: targetDate }) : '';
     const url = `${BACKEND_URL}/api/v1/boss/boss/dashboard${params ? '?' + params : ''}`;
-    
+
     const response = await fetch(url, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -70,7 +70,7 @@ export const bossAPI = {
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/reports/sales/consolidated`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify(filters)
+      body: JSON.stringify(filters),
     });
     return handleResponse(response);
   },
@@ -79,9 +79,9 @@ export const bossAPI = {
   async getDailySalesReport(reportDate?: string) {
     const params = reportDate ? new URLSearchParams({ report_date: reportDate }) : '';
     const url = `${BACKEND_URL}/api/v1/boss/boss/reports/sales/daily${params ? '?' + params : ''}`;
-    
+
     const response = await fetch(url, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -90,11 +90,11 @@ export const bossAPI = {
   async getMonthlySalesReport(year: number, month: number) {
     const params = new URLSearchParams({
       year: year.toString(),
-      month: month.toString()
+      month: month.toString(),
     });
-    
+
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/reports/sales/monthly?${params}`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -102,7 +102,7 @@ export const bossAPI = {
   // 7. BS003: Consultar inventario total por categorías
   async getConsolidatedInventory() {
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/inventory/consolidated`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -111,11 +111,11 @@ export const bossAPI = {
   async getFinancialAnalysis(startDate: string, endDate: string) {
     const params = new URLSearchParams({
       start_date: startDate,
-      end_date: endDate
+      end_date: endDate,
     });
-    
+
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/financial/analysis?${params}`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -124,11 +124,11 @@ export const bossAPI = {
   async getMonthlyFinancialAnalysis(year: number, month: number) {
     const params = new URLSearchParams({
       year: year.toString(),
-      month: month.toString()
+      month: month.toString(),
     });
-    
+
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/financial/monthly?${params}`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -136,7 +136,7 @@ export const bossAPI = {
   // 10. Health check del módulo Boss
   async getHealth() {
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/health`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -144,7 +144,7 @@ export const bossAPI = {
   // 11. Resumen ejecutivo rápido del negocio
   async getSummary() {
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/summary`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -161,7 +161,7 @@ export const bossAPI = {
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/admin`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify(adminData)
+      body: JSON.stringify(adminData),
     });
     return handleResponse(response);
   },
@@ -169,43 +169,49 @@ export const bossAPI = {
   // 13. Listar administradores
   async getAdmins(includeInactive: boolean = false) {
     const params = new URLSearchParams({
-      include_inactive: includeInactive.toString()
+      include_inactive: includeInactive.toString(),
     });
 
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/admin?${params}`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
 
   // 14. Actualizar administrador
-  async updateAdmin(adminId: number, adminData: {
-    first_name?: string;
-    last_name?: string;
-    password?: string;
-    location_ids?: number[];
-    is_active?: boolean;
-  }) {
+  async updateAdmin(
+    adminId: number,
+    adminData: {
+      first_name?: string;
+      last_name?: string;
+      password?: string;
+      location_ids?: number[];
+      is_active?: boolean;
+    }
+  ) {
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/admin/${adminId}`, {
       method: 'PUT',
       headers: getHeaders(),
-      body: JSON.stringify(adminData)
+      body: JSON.stringify(adminData),
     });
     return handleResponse(response);
   },
 
   // 15. Actualizar ubicacion
-  async updateLocation(locationId: number, locationData: {
-    name?: string;
-    type?: 'local' | 'bodega';
-    address?: string;
-    phone?: string;
-    is_active?: boolean;
-  }) {
+  async updateLocation(
+    locationId: number,
+    locationData: {
+      name?: string;
+      type?: 'local' | 'bodega';
+      address?: string;
+      phone?: string;
+      is_active?: boolean;
+    }
+  ) {
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/locations/${locationId}`, {
       method: 'PUT',
       headers: getHeaders(),
-      body: JSON.stringify(locationData)
+      body: JSON.stringify(locationData),
     });
     return handleResponse(response);
   },
@@ -214,7 +220,7 @@ export const bossAPI = {
   async deactivateLocation(locationId: number) {
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/locations/${locationId}/deactivate`, {
       method: 'PATCH',
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -224,7 +230,7 @@ export const bossAPI = {
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/sibling-pairs`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
     return handleResponse(response);
   },
@@ -232,7 +238,7 @@ export const bossAPI = {
   // 18. Listar todos los duos activos de la empresa
   async getSiblingPairs() {
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/sibling-pairs`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -241,7 +247,7 @@ export const bossAPI = {
   async deleteSiblingPair(pairId: number) {
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/sibling-pairs/${pairId}`, {
       method: 'DELETE',
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
   },
@@ -249,10 +255,10 @@ export const bossAPI = {
   // 20. Consultar si un local tiene hermano
   async getLocationSibling(locationId: number) {
     const response = await fetch(`${BACKEND_URL}/api/v1/boss/boss/locations/${locationId}/sibling`, {
-      headers: getHeaders()
+      headers: getHeaders(),
     });
     return handleResponse(response);
-  }
+  },
 };
 
 // Exportar como default para facilitar el import

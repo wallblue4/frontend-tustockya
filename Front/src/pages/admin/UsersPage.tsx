@@ -3,11 +3,7 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import Select from '../../components/ui/Select';
-import {
-  Users,
-  Plus,
-  Edit,
-} from 'lucide-react';
+import { Users, Plus, Edit } from 'lucide-react';
 import { EmptyState } from '../../components/admin/ErrorState';
 import { CreateUserModal } from '../../components/admin/CreateUserModal';
 import { EditUserModal } from '../../components/admin/EditUserModal';
@@ -25,7 +21,7 @@ export const UsersPage: React.FC = () => {
     search: '',
     role: '' as '' | 'vendedor' | 'bodeguero' | 'corredor',
     location: '',
-    status: ''
+    status: '',
   });
 
   const loadUsers = async () => {
@@ -43,7 +39,10 @@ export const UsersPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { loadUsers(); }, [userFilters]);
+  useEffect(() => {
+    loadUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userFilters]);
 
   const handleCreateUser = async (userData: any) => {
     try {
@@ -53,7 +52,7 @@ export const UsersPage: React.FC = () => {
         first_name: userData.first_name,
         last_name: userData.last_name,
         role: userData.role,
-        location_ids: userData.location_ids || []
+        location_ids: userData.location_ids || [],
       });
       await loadUsers();
       setShowCreateUserModal(false);
@@ -70,7 +69,7 @@ export const UsersPage: React.FC = () => {
         first_name: userData.first_name,
         last_name: userData.last_name,
         is_active: userData.is_active,
-        location_ids: userData.location_ids || []
+        location_ids: userData.location_ids || [],
       });
       await loadUsers();
       setEditingUser(null);
@@ -99,7 +98,7 @@ export const UsersPage: React.FC = () => {
             <h4>Tipo de usuario</h4>
             <Select
               value={userFilters.role}
-              onChange={(e) => setUserFilters(prev => ({ ...prev, role: e.target.value as any }))}
+              onChange={(e) => setUserFilters((prev) => ({ ...prev, role: e.target.value as any }))}
               options={[
                 { value: '', label: 'Todos los roles' },
                 { value: 'seller', label: 'Vendedor' },
@@ -110,16 +109,16 @@ export const UsersPage: React.FC = () => {
             <h4>Ubicación</h4>
             <Select
               value={userFilters.location}
-              onChange={(e) => setUserFilters(prev => ({ ...prev, location: e.target.value }))}
+              onChange={(e) => setUserFilters((prev) => ({ ...prev, location: e.target.value }))}
               options={[
                 { value: '', label: 'Todas las ubicaciones' },
-                ...locations.map(location => ({ value: location.id.toString(), label: location.name }))
+                ...locations.map((location) => ({ value: location.id.toString(), label: location.name })),
               ]}
             />
             <h4>Estado</h4>
             <Select
               value={userFilters.status}
-              onChange={(e) => setUserFilters(prev => ({ ...prev, status: e.target.value }))}
+              onChange={(e) => setUserFilters((prev) => ({ ...prev, status: e.target.value }))}
               options={[
                 { value: '', label: 'Todos los estados' },
                 { value: 'active', label: 'Activo' },
@@ -137,17 +136,32 @@ export const UsersPage: React.FC = () => {
               <table className="w-full bg-card text-foreground border border-border rounded-lg overflow-hidden">
                 <thead className="bg-popover text-popover-foreground">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Usuario</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Rol</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Ubicaciones</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Estado</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">Acciones</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Usuario
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Email
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Rol
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Ubicaciones
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Estado
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-border">
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((user) => (
-                    <tr key={user.id} className="border-b border-border last:border-b-0 bg-card hover:bg-muted/10 transition-colors">
+                    <tr
+                      key={user.id}
+                      className="border-b border-border last:border-b-0 bg-card hover:bg-muted/10 transition-colors"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <p className="font-medium text-foreground">{user.full_name}</p>
@@ -160,7 +174,10 @@ export const UsersPage: React.FC = () => {
                         {user.assigned_locations && user.assigned_locations.length > 0 ? (
                           <div className="flex flex-wrap gap-1 max-w-xs">
                             {user.assigned_locations.map((loc) => (
-                              <span key={loc.id} className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${loc.type === 'bodega' ? 'bg-warning/20 text-warning' : 'bg-primary/20 text-primary'}`}>
+                              <span
+                                key={loc.id}
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${loc.type === 'bodega' ? 'bg-warning/20 text-warning' : 'bg-primary/20 text-primary'}`}
+                              >
                                 {loc.name}
                               </span>
                             ))}
@@ -213,9 +230,12 @@ export const UsersPage: React.FC = () => {
         <EditUserModal
           user={{
             ...editingUser,
-            location_ids: editingUser.assigned_locations?.map(loc => loc.id) || []
+            location_ids: editingUser.assigned_locations?.map((loc) => loc.id) || [],
           }}
-          onClose={() => { setEditingUser(null); setShowEditUserModal(false); }}
+          onClose={() => {
+            setEditingUser(null);
+            setShowEditUserModal(false);
+          }}
           onSubmit={(userData) => handleUpdateUser(editingUser.id, userData)}
           locations={availableLocations}
         />

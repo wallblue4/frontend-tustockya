@@ -26,7 +26,7 @@ import {
   EyeOff,
   Link,
   Unlink,
-  Trash2
+  Trash2,
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
 import { StatsCard } from '../../components/dashboard/StatsCard';
@@ -51,14 +51,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 
-type BossView =
-  | 'dashboard'
-  | 'locations'
-  | 'inventory'
-  | 'financial'
-  | 'sales'
-  | 'analytics'
-  | 'admins';
+type BossView = 'dashboard' | 'locations' | 'inventory' | 'financial' | 'sales' | 'analytics' | 'admins';
 
 export const BossDashboard: React.FC = () => {
   const [currentView, setCurrentView] = useState<BossView>('dashboard');
@@ -88,7 +81,7 @@ export const BossDashboard: React.FC = () => {
     phone: '',
     manager_name: '',
     capacity: '',
-    notes: ''
+    notes: '',
   });
 
   // Estados para crear admin
@@ -100,7 +93,7 @@ export const BossDashboard: React.FC = () => {
     password: '',
     first_name: '',
     last_name: '',
-    location_ids: [] as number[]
+    location_ids: [] as number[],
   });
 
   // Estados para lista y edicion de admins
@@ -117,7 +110,7 @@ export const BossDashboard: React.FC = () => {
     last_name: '',
     password: '',
     location_ids: [] as number[],
-    is_active: true
+    is_active: true,
   });
 
   // Estados para editar ubicaciones
@@ -129,7 +122,7 @@ export const BossDashboard: React.FC = () => {
     type: 'local' as 'local' | 'bodega',
     address: '',
     phone: '',
-    is_active: true
+    is_active: true,
   });
 
   // Estados para sibling pairs (duos de hermanos)
@@ -139,7 +132,7 @@ export const BossDashboard: React.FC = () => {
   const [createSiblingLoading, setCreateSiblingLoading] = useState(false);
   const [siblingFormData, setSiblingFormData] = useState({
     location_a_id: 0,
-    location_b_id: 0
+    location_b_id: 0,
   });
 
   // Estados para selectores de fecha
@@ -147,7 +140,7 @@ export const BossDashboard: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [dateRange, setDateRange] = useState({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0]
+    end: new Date().toISOString().split('T')[0],
   });
 
   // Cargar datos iniciales
@@ -158,6 +151,7 @@ export const BossDashboard: React.FC = () => {
   // Recargar datos cuando cambia la vista
   useEffect(() => {
     loadViewData(currentView);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView]);
 
   // Recargar admins cuando cambia el filtro de inactivos
@@ -165,6 +159,7 @@ export const BossDashboard: React.FC = () => {
     if (currentView === 'admins') {
       loadAdmins();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [includeInactiveAdmins]);
 
   // Cargar datos específicos para la vista de Analytics (gráficas)
@@ -209,16 +204,18 @@ export const BossDashboard: React.FC = () => {
   const loadViewData = async (view: BossView) => {
     try {
       switch (view) {
-        case 'locations':
+        case 'locations': {
           const locs = await bossAPI.getLocations(false);
           setLocations(locs);
           await loadSiblingPairs();
           break;
-        case 'inventory':
+        }
+        case 'inventory': {
           const inv = await bossAPI.getConsolidatedInventory();
           setInventoryData(inv);
           break;
-        case 'financial':
+        }
+        case 'financial': {
           const today = new Date();
           const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
           const fin = await bossAPI.getFinancialAnalysis(
@@ -227,10 +224,12 @@ export const BossDashboard: React.FC = () => {
           );
           setFinancialData(fin);
           break;
-        case 'sales':
+        }
+        case 'sales': {
           const sales = await bossAPI.getDailySalesReport();
           setSalesReport(sales);
           break;
+        }
         case 'admins':
           await loadAdmins();
           break;
@@ -281,7 +280,7 @@ export const BossDashboard: React.FC = () => {
     try {
       await bossAPI.createSiblingPair({
         location_a_id: siblingFormData.location_a_id,
-        location_b_id: siblingFormData.location_b_id
+        location_b_id: siblingFormData.location_b_id,
       });
 
       // Recargar datos
@@ -370,7 +369,7 @@ export const BossDashboard: React.FC = () => {
         phone: '',
         manager_name: '',
         capacity: '',
-        notes: ''
+        notes: '',
       });
 
       alert('Ubicación creada exitosamente');
@@ -390,7 +389,7 @@ export const BossDashboard: React.FC = () => {
       type: location.type || 'local',
       address: location.address || '',
       phone: location.phone || '',
-      is_active: location.is_active !== false
+      is_active: location.is_active !== false,
     });
     setShowEditLocationModal(true);
   };
@@ -447,7 +446,9 @@ export const BossDashboard: React.FC = () => {
 
   // Función para desactivar ubicación
   const handleDeactivateLocation = async (locationId: number) => {
-    if (!confirm('¿Estás seguro de que deseas desactivar esta ubicación? Esta acción no se puede deshacer fácilmente.')) {
+    if (
+      !confirm('¿Estás seguro de que deseas desactivar esta ubicación? Esta acción no se puede deshacer fácilmente.')
+    ) {
       return;
     }
 
@@ -479,7 +480,7 @@ export const BossDashboard: React.FC = () => {
     if (!/[0-9]/.test(password)) {
       return 'La contraseña debe contener al menos un número';
     }
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
       return 'La contraseña debe contener al menos un carácter especial';
     }
     return '';
@@ -491,7 +492,7 @@ export const BossDashboard: React.FC = () => {
       minLength: password.length >= 6,
       hasUpperCase: /[A-Z]/.test(password),
       hasNumber: /[0-9]/.test(password),
-      hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+      hasSpecialChar: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password),
     };
   };
 
@@ -521,7 +522,7 @@ export const BossDashboard: React.FC = () => {
         first_name: adminFormData.first_name,
         last_name: adminFormData.last_name,
         location_ids: adminFormData.location_ids,
-        role: 'administrador'
+        role: 'administrador',
       };
 
       await bossAPI.createAdmin(dataToSend);
@@ -535,7 +536,7 @@ export const BossDashboard: React.FC = () => {
         password: '',
         first_name: '',
         last_name: '',
-        location_ids: []
+        location_ids: [],
       });
       setPasswordError('');
       setShowPassword(false);
@@ -559,7 +560,7 @@ export const BossDashboard: React.FC = () => {
       last_name: admin.last_name,
       password: '',
       location_ids: admin.assigned_locations?.map((loc: any) => loc.id) || [],
-      is_active: admin.is_active
+      is_active: admin.is_active,
     });
     setEditPasswordError('');
     setShowEditPassword(false);
@@ -588,7 +589,7 @@ export const BossDashboard: React.FC = () => {
         first_name: editAdminFormData.first_name,
         last_name: editAdminFormData.last_name,
         location_ids: editAdminFormData.location_ids,
-        is_active: editAdminFormData.is_active
+        is_active: editAdminFormData.is_active,
       };
 
       // Solo incluir password si se proporciona
@@ -609,7 +610,7 @@ export const BossDashboard: React.FC = () => {
         last_name: '',
         password: '',
         location_ids: [],
-        is_active: true
+        is_active: true,
       });
 
       alert('Administrador actualizado exitosamente');
@@ -646,7 +647,7 @@ export const BossDashboard: React.FC = () => {
     try {
       const report = await bossAPI.getSalesConsolidatedReport({
         start_date: dateRange.start,
-        end_date: dateRange.end
+        end_date: dateRange.end,
       });
       setSalesReport(report);
     } catch (err: any) {
@@ -677,12 +678,7 @@ export const BossDashboard: React.FC = () => {
             <h2 className="text-2xl font-bold">Panel Ejecutivo - {dashboardData.company_name}</h2>
             <p className="text-muted-foreground">Bienvenido, {dashboardData.boss_name}</p>
           </div>
-          <Button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            size="sm"
-            variant="outline"
-          >
+          <Button onClick={handleRefresh} disabled={refreshing} size="sm" variant="outline">
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
@@ -698,11 +694,17 @@ export const BossDashboard: React.FC = () => {
               change={kpi.change_percentage}
               period={kpi.trend || ''}
               icon={
-                key.includes('sales') || key.includes('revenue') ? <DollarSign className="h-6 w-6" /> :
-                  key.includes('location') ? <Store className="h-6 w-6" /> :
-                    key.includes('inventory') ? <Package className="h-6 w-6" /> :
-                      key.includes('margin') || key.includes('profit') ? <TrendingUp className="h-6 w-6" /> :
-                        <BarChart2 className="h-6 w-6" />
+                key.includes('sales') || key.includes('revenue') ? (
+                  <DollarSign className="h-6 w-6" />
+                ) : key.includes('location') ? (
+                  <Store className="h-6 w-6" />
+                ) : key.includes('inventory') ? (
+                  <Package className="h-6 w-6" />
+                ) : key.includes('margin') || key.includes('profit') ? (
+                  <TrendingUp className="h-6 w-6" />
+                ) : (
+                  <BarChart2 className="h-6 w-6" />
+                )
               }
             />
           ))}
@@ -717,12 +719,16 @@ export const BossDashboard: React.FC = () => {
             <CardContent>
               <div className="space-y-4">
                 {locations.slice(0, 5).map((location: any) => (
-                  <div key={location.location_id} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                  <div
+                    key={location.location_id}
+                    className="flex items-center justify-between p-3 bg-muted/20 rounded-lg"
+                  >
                     <div className="flex items-center space-x-3">
-                      {location.location_type === 'bodega' ?
-                        <Warehouse className="h-6 w-6 text-primary" /> :
+                      {location.location_type === 'bodega' ? (
+                        <Warehouse className="h-6 w-6 text-primary" />
+                      ) : (
                         <Store className="h-6 w-6 text-primary" />
-                      }
+                      )}
                       <div>
                         <h4 className="font-medium">{location.location_name}</h4>
                         <p className="text-sm text-muted-foreground">
@@ -783,10 +789,15 @@ export const BossDashboard: React.FC = () => {
               <div className="space-y-3">
                 {alerts.slice(0, 5).map((alert: any, index: number) => (
                   <div key={index} className="flex items-start space-x-3 p-3 bg-card rounded-lg border border-border">
-                    <AlertCircle className={`h-5 w-5 mt-0.5 ${alert.severity === 'error' ? 'text-destructive' :
-                        alert.severity === 'warning' ? 'text-warning' :
-                          'text-primary'
-                      }`} />
+                    <AlertCircle
+                      className={`h-5 w-5 mt-0.5 ${
+                        alert.severity === 'error'
+                          ? 'text-destructive'
+                          : alert.severity === 'warning'
+                            ? 'text-warning'
+                            : 'text-primary'
+                      }`}
+                    />
                     <div className="flex-1">
                       <p className="font-medium text-foreground">{alert.message}</p>
                       <p className="text-sm text-muted-foreground">{alert.type}</p>
@@ -849,11 +860,6 @@ export const BossDashboard: React.FC = () => {
 
   // Vista de Locales
   const renderLocationsView = () => {
-    // Locales tipo "local" activos sin hermano (para el formulario de crear duo)
-    const availableLocalsForSibling = locations.filter(
-      (l: any) => l.type === 'local' && l.is_active !== false && !l.sibling_location
-    );
-
     return (
       <div className="space-y-6 p-4 md:p-6">
         <div className="flex justify-between items-center">
@@ -881,16 +887,15 @@ export const BossDashboard: React.FC = () => {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center space-x-3">
-                      {location.type === 'bodega' ?
-                        <Warehouse className="h-8 w-8 text-primary" /> :
+                      {location.type === 'bodega' ? (
+                        <Warehouse className="h-8 w-8 text-primary" />
+                      ) : (
                         <Store className="h-8 w-8 text-success" />
-                      }
+                      )}
                       <div>
                         <h3 className="font-semibold">{location.name}</h3>
                         <div className="flex items-center space-x-2 mt-1">
-                          <span className="text-xs px-2 py-1 bg-primary/10 rounded-full">
-                            {location.type}
-                          </span>
+                          <span className="text-xs px-2 py-1 bg-primary/10 rounded-full">{location.type}</span>
                           {location.is_active === false && (
                             <span className="text-xs px-2 py-1 bg-destructive/20 text-destructive rounded-full">
                               Inactivo
@@ -900,11 +905,7 @@ export const BossDashboard: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleOpenEditLocationModal(location)}
-                      >
+                      <Button size="sm" variant="outline" onClick={() => handleOpenEditLocationModal(location)}>
                         <Edit className="h-3 w-3" />
                       </Button>
                       {location.is_active !== false && (
@@ -942,12 +943,8 @@ export const BossDashboard: React.FC = () => {
                   )}
 
                   <div className="space-y-2 text-sm">
-                    {location.address && (
-                      <p className="text-muted-foreground">📍 {location.address}</p>
-                    )}
-                    {location.phone && (
-                      <p className="text-muted-foreground">📞 {location.phone}</p>
-                    )}
+                    {location.address && <p className="text-muted-foreground">📍 {location.address}</p>}
+                    {location.phone && <p className="text-muted-foreground">📞 {location.phone}</p>}
                     <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t">
                       <div className="text-center">
                         <p className="font-bold">{location.total_users}</p>
@@ -1049,9 +1046,7 @@ export const BossDashboard: React.FC = () => {
         <div className="flex flex-col items-center justify-center h-96 space-y-4 p-4">
           <Package className="h-16 w-16 text-muted-foreground" />
           <h3 className="text-lg font-semibold">No hay datos de inventario</h3>
-          <p className="text-muted-foreground text-center">
-            No se encontró inventario disponible en el sistema.
-          </p>
+          <p className="text-muted-foreground text-center">No se encontró inventario disponible en el sistema.</p>
           <Button onClick={handleRefresh} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             Actualizar Datos
@@ -1134,10 +1129,11 @@ export const BossDashboard: React.FC = () => {
                 <div key={location.location_id} className="p-4 border rounded-lg">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center space-x-3">
-                      {location.location_type === 'bodega' ?
-                        <Warehouse className="h-6 w-6 text-primary" /> :
+                      {location.location_type === 'bodega' ? (
+                        <Warehouse className="h-6 w-6 text-primary" />
+                      ) : (
                         <Store className="h-6 w-6 text-success" />
-                      }
+                      )}
                       <div>
                         <h4 className="font-semibold">{location.location_name}</h4>
                         <p className="text-sm text-muted-foreground">{location.location_type}</p>
@@ -1210,7 +1206,9 @@ export const BossDashboard: React.FC = () => {
       );
     }
 
-    const hasFinancialData = financialData.total_revenue || financialData.total_costs ||
+    const hasFinancialData =
+      financialData.total_revenue ||
+      financialData.total_costs ||
       (financialData.locations_financials && financialData.locations_financials.length > 0);
 
     if (!hasFinancialData) {
@@ -1445,7 +1443,9 @@ export const BossDashboard: React.FC = () => {
     }
 
     // Verificar si hay datos de ventas
-    const hasData = salesReport.total_sales || salesReport.total_transactions ||
+    const hasData =
+      salesReport.total_sales ||
+      salesReport.total_transactions ||
       (salesReport.sales_by_location && salesReport.sales_by_location.length > 0);
 
     if (!hasData) {
@@ -1570,7 +1570,8 @@ export const BossDashboard: React.FC = () => {
                     <div className="flex-1">
                       <h4 className="font-medium">{location.location_name || 'Sin nombre'}</h4>
                       <p className="text-sm text-muted-foreground">
-                        {location.transactions_count || 0} transacciones • Ticket: {formatCurrency(location.average_ticket || 0)}
+                        {location.transactions_count || 0} transacciones • Ticket:{' '}
+                        {formatCurrency(location.average_ticket || 0)}
                       </p>
                     </div>
                     <div className="text-right">
@@ -1627,14 +1628,18 @@ export const BossDashboard: React.FC = () => {
                 {salesReport.top_products.map((product: any, index: number) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
                     <div className="flex-1">
-                      <h4 className="font-medium">{product.brand || 'Sin marca'} {product.model || ''}</h4>
+                      <h4 className="font-medium">
+                        {product.brand || 'Sin marca'} {product.model || ''}
+                      </h4>
                       <p className="text-sm text-muted-foreground">
                         Ref: {product.reference_code || 'N/A'} • {product.units_sold || 0} unidades
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold">{formatCurrency(product.total_revenue || 0)}</p>
-                      <p className="text-sm text-muted-foreground">Precio prom: {formatCurrency(product.average_price || 0)}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Precio prom: {formatCurrency(product.average_price || 0)}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -1681,7 +1686,10 @@ export const BossDashboard: React.FC = () => {
     const netProfit = Number(source.net_profit) || 0;
     const overallMargin = Number(source.overall_margin_percentage) || 0;
 
-    const costsData = Object.entries(source.costs_by_type || {}).map(([name, val]) => ({ name, value: Number(val) || 0 }));
+    const costsData = Object.entries(source.costs_by_type || {}).map(([name, val]) => ({
+      name,
+      value: Number(val) || 0,
+    }));
 
     const locs = (source.locations_financials || []).map((l: any) => ({
       id: l.location_id,
@@ -1689,7 +1697,7 @@ export const BossDashboard: React.FC = () => {
       total_sales: Number(l.total_sales) || 0,
       operational_costs: Number(l.operational_costs) || 0,
       gross_profit: Number(l.gross_profit) || 0,
-      margin: Number(l.profit_margin_percentage) || 0
+      margin: Number(l.profit_margin_percentage) || 0,
     }));
 
     const sortedLocs = [...locs].sort((a, b) => b.total_sales - a.total_sales);
@@ -1725,13 +1733,17 @@ export const BossDashboard: React.FC = () => {
           <Card>
             <CardContent className="p-4 text-center">
               <p className="text-sm text-muted-foreground">Utilidad Neta</p>
-              <p className={`text-2xl font-bold ${netProfit < 0 ? 'text-destructive' : 'text-success'}`}>{formatCurrency(netProfit)}</p>
+              <p className={`text-2xl font-bold ${netProfit < 0 ? 'text-destructive' : 'text-success'}`}>
+                {formatCurrency(netProfit)}
+              </p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <p className="text-sm text-muted-foreground">Margen Global</p>
-              <p className={`text-2xl font-bold ${overallMargin < 0 ? 'text-destructive' : 'text-success'}`}>{Number(overallMargin).toFixed(2)}%</p>
+              <p className={`text-2xl font-bold ${overallMargin < 0 ? 'text-destructive' : 'text-success'}`}>
+                {Number(overallMargin).toFixed(2)}%
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -1748,7 +1760,10 @@ export const BossDashboard: React.FC = () => {
                 <div className="space-y-3">
                   <Select
                     label="Seleccionar Local"
-                    options={[{ value: 'all', label: 'Todos los locales' }, ...sortedLocs.map((l: any) => ({ value: String(l.id), label: l.name }))]}
+                    options={[
+                      { value: 'all', label: 'Todos los locales' },
+                      ...sortedLocs.map((l: any) => ({ value: String(l.id), label: l.name })),
+                    ]}
                     value={selectedLocationId}
                     onChange={(e) => setSelectedLocationId(e.target.value)}
                     placeholder="Selecciona un local"
@@ -1796,13 +1811,22 @@ export const BossDashboard: React.FC = () => {
                               </tr>
                               <tr className="border-b">
                                 <td className="py-2 font-medium">Margen</td>
-                                <td className={`py-2 text-right ${sel.margin < 0 ? 'text-destructive' : 'text-success'}`}>{Number(sel.margin).toFixed(2)}%</td>
+                                <td
+                                  className={`py-2 text-right ${sel.margin < 0 ? 'text-destructive' : 'text-success'}`}
+                                >
+                                  {Number(sel.margin).toFixed(2)}%
+                                </td>
                               </tr>
                               {/** Show cost breakdown if available from source.locations_financials */}
                               {(() => {
                                 const orig = (analyticsAnalysis || monthlyAnalysis || {}).locations_financials || [];
                                 const origSel = orig.find((o: any) => String(o.location_id) === selectedLocationId);
-                                if (!origSel || !origSel.cost_breakdown || Object.keys(origSel.cost_breakdown).length === 0) return null;
+                                if (
+                                  !origSel ||
+                                  !origSel.cost_breakdown ||
+                                  Object.keys(origSel.cost_breakdown).length === 0
+                                )
+                                  return null;
                                 return (
                                   <tr className="border-t">
                                     <td colSpan={2} className="pt-3">
@@ -1841,7 +1865,15 @@ export const BossDashboard: React.FC = () => {
                 <div style={{ width: '100%', height: 300 }}>
                   <ResponsiveContainer>
                     <RePieChart>
-                      <Pie data={costsData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={false}>
+                      <Pie
+                        data={costsData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        label={false}
+                      >
                         {costsData.map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
@@ -1854,7 +1886,14 @@ export const BossDashboard: React.FC = () => {
                     {costsData.map((c: any, i: number) => (
                       <div key={c.name} className="flex items-center justify-between text-sm">
                         <div className="flex items-center space-x-2">
-                          <span style={{ width: 12, height: 12, background: COLORS[i % COLORS.length], display: 'inline-block' }} />
+                          <span
+                            style={{
+                              width: 12,
+                              height: 12,
+                              background: COLORS[i % COLORS.length],
+                              display: 'inline-block',
+                            }}
+                          />
                           <span className="capitalize">{c.name}</span>
                         </div>
                         <div>{formatCurrency(c.value)}</div>
@@ -1877,7 +1916,9 @@ export const BossDashboard: React.FC = () => {
               <CardContent>
                 <p className="font-semibold">{best.location_name}</p>
                 <p className="text-sm text-muted-foreground">Ventas: {formatCurrency(Number(best.total_sales) || 0)}</p>
-                <p className="text-sm text-muted-foreground">Margen: {Number(best.profit_margin_percentage ?? 0).toFixed(2)}%</p>
+                <p className="text-sm text-muted-foreground">
+                  Margen: {Number(best.profit_margin_percentage ?? 0).toFixed(2)}%
+                </p>
               </CardContent>
             </Card>
           )}
@@ -1889,8 +1930,12 @@ export const BossDashboard: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <p className="font-semibold">{worst.location_name}</p>
-                <p className="text-sm text-muted-foreground">Ventas: {formatCurrency(Number(worst.total_sales) || 0)}</p>
-                <p className="text-sm text-muted-foreground">Margen: {Number(worst.profit_margin_percentage ?? 0).toFixed(2)}%</p>
+                <p className="text-sm text-muted-foreground">
+                  Ventas: {formatCurrency(Number(worst.total_sales) || 0)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Margen: {Number(worst.profit_margin_percentage ?? 0).toFixed(2)}%
+                </p>
               </CardContent>
             </Card>
           )}
@@ -1903,7 +1948,10 @@ export const BossDashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             {source.margin_trend == null || (Array.isArray(source.margin_trend) && source.margin_trend.length === 0) ? (
-              <p className="text-muted-foreground">No hay tendencia disponible para el periodo. Si quieres una tendencia, activa el muestreo por fechas o proporciona un rango mayor.</p>
+              <p className="text-muted-foreground">
+                No hay tendencia disponible para el periodo. Si quieres una tendencia, activa el muestreo por fechas o
+                proporciona un rango mayor.
+              </p>
             ) : (
               <div style={{ width: '100%', height: 260 }}>
                 <ResponsiveContainer>
@@ -1988,11 +2036,7 @@ export const BossDashboard: React.FC = () => {
                           Creado: {new Date(admin.created_at).toLocaleDateString('es-CO')}
                         </p>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleOpenEditAdminModal(admin)}
-                      >
+                      <Button size="sm" variant="outline" onClick={() => handleOpenEditAdminModal(admin)}>
                         <Edit className="h-4 w-4 mr-1" />
                         Editar
                       </Button>
@@ -2006,10 +2050,9 @@ export const BossDashboard: React.FC = () => {
                           {admin.assigned_locations.map((loc: any) => (
                             <span
                               key={loc.id}
-                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${loc.type === 'bodega'
-                                  ? 'bg-warning/20 text-warning'
-                                  : 'bg-primary/20 text-primary'
-                                }`}
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                loc.type === 'bodega' ? 'bg-warning/20 text-warning' : 'bg-primary/20 text-primary'
+                              }`}
                             >
                               {loc.type === 'bodega' ? (
                                 <Warehouse className="h-3 w-3 mr-1" />
@@ -2069,12 +2112,10 @@ export const BossDashboard: React.FC = () => {
 
               {/* Contrasena */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Contrasena *
-                </label>
+                <label className="block text-sm font-medium text-foreground mb-2">Contrasena *</label>
                 <div className="relative">
                   <Input
-                    type={showPassword ? "text" : "password"}
+                    type={showPassword ? 'text' : 'password'}
                     value={adminFormData.password}
                     onChange={(e) => {
                       setAdminFormData({ ...adminFormData, password: e.target.value });
@@ -2089,7 +2130,7 @@ export const BossDashboard: React.FC = () => {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
                     tabIndex={-1}
-                    aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}
+                    aria-label={showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -2097,23 +2138,51 @@ export const BossDashboard: React.FC = () => {
                 <div className="mt-2 space-y-1">
                   {(() => {
                     const requirements = getPasswordRequirements(adminFormData.password);
-                    const allMet = requirements.minLength && requirements.hasUpperCase && requirements.hasNumber && requirements.hasSpecialChar;
+                    const allMet =
+                      requirements.minLength &&
+                      requirements.hasUpperCase &&
+                      requirements.hasNumber &&
+                      requirements.hasSpecialChar;
                     return (
                       <>
-                        <div className={`flex items-center space-x-2 text-sm ${requirements.minLength ? 'text-success' : 'text-muted-foreground'}`}>
-                          {requirements.minLength ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
+                        <div
+                          className={`flex items-center space-x-2 text-sm ${requirements.minLength ? 'text-success' : 'text-muted-foreground'}`}
+                        >
+                          {requirements.minLength ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
+                          )}
                           <span>Al menos 6 caracteres</span>
                         </div>
-                        <div className={`flex items-center space-x-2 text-sm ${requirements.hasUpperCase ? 'text-success' : 'text-muted-foreground'}`}>
-                          {requirements.hasUpperCase ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
+                        <div
+                          className={`flex items-center space-x-2 text-sm ${requirements.hasUpperCase ? 'text-success' : 'text-muted-foreground'}`}
+                        >
+                          {requirements.hasUpperCase ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
+                          )}
                           <span>Al menos una mayuscula</span>
                         </div>
-                        <div className={`flex items-center space-x-2 text-sm ${requirements.hasNumber ? 'text-success' : 'text-muted-foreground'}`}>
-                          {requirements.hasNumber ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
+                        <div
+                          className={`flex items-center space-x-2 text-sm ${requirements.hasNumber ? 'text-success' : 'text-muted-foreground'}`}
+                        >
+                          {requirements.hasNumber ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
+                          )}
                           <span>Al menos un numero</span>
                         </div>
-                        <div className={`flex items-center space-x-2 text-sm ${requirements.hasSpecialChar ? 'text-success' : 'text-muted-foreground'}`}>
-                          {requirements.hasSpecialChar ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
+                        <div
+                          className={`flex items-center space-x-2 text-sm ${requirements.hasSpecialChar ? 'text-success' : 'text-muted-foreground'}`}
+                        >
+                          {requirements.hasSpecialChar ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
+                          )}
                           <span>Al menos un caracter especial</span>
                         </div>
                         {allMet && <p className="text-xs text-success mt-2 font-medium">Contrasena valida</p>}
@@ -2132,21 +2201,34 @@ export const BossDashboard: React.FC = () => {
                   {dashboardData?.locations_performance && dashboardData.locations_performance.length > 0 ? (
                     <div className="space-y-2">
                       {dashboardData.locations_performance.map((location: any) => (
-                        <label key={location.location_id} className="flex items-center space-x-3 p-2 hover:bg-muted/40 rounded cursor-pointer">
+                        <label
+                          key={location.location_id}
+                          className="flex items-center space-x-3 p-2 hover:bg-muted/40 rounded cursor-pointer"
+                        >
                           <input
                             type="checkbox"
                             checked={adminFormData.location_ids.includes(location.location_id)}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setAdminFormData({ ...adminFormData, location_ids: [...adminFormData.location_ids, location.location_id] });
+                                setAdminFormData({
+                                  ...adminFormData,
+                                  location_ids: [...adminFormData.location_ids, location.location_id],
+                                });
                               } else {
-                                setAdminFormData({ ...adminFormData, location_ids: adminFormData.location_ids.filter(id => id !== location.location_id) });
+                                setAdminFormData({
+                                  ...adminFormData,
+                                  location_ids: adminFormData.location_ids.filter((id) => id !== location.location_id),
+                                });
                               }
                             }}
                             className="w-4 h-4 text-primary border-border rounded focus:ring-primary"
                           />
                           <div className="flex items-center space-x-2 flex-1">
-                            {location.location_type === 'bodega' ? <Warehouse className="h-5 w-5 text-primary" /> : <Store className="h-5 w-5 text-success" />}
+                            {location.location_type === 'bodega' ? (
+                              <Warehouse className="h-5 w-5 text-primary" />
+                            ) : (
+                              <Store className="h-5 w-5 text-success" />
+                            )}
                             <span className="font-medium">{location.location_name}</span>
                             <span className="text-xs text-muted-foreground">({location.location_type})</span>
                           </div>
@@ -2158,7 +2240,9 @@ export const BossDashboard: React.FC = () => {
                   )}
                 </div>
                 {adminFormData.location_ids.length > 0 && (
-                  <p className="text-xs text-muted-foreground mt-2">{adminFormData.location_ids.length} ubicacion(es) seleccionada(s)</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {adminFormData.location_ids.length} ubicacion(es) seleccionada(s)
+                  </p>
                 )}
               </div>
 
@@ -2177,8 +2261,13 @@ export const BossDashboard: React.FC = () => {
                 <Button
                   onClick={handleCreateAdmin}
                   disabled={
-                    !adminFormData.email || !adminFormData.password || !adminFormData.first_name || !adminFormData.last_name ||
-                    adminFormData.location_ids.length === 0 || !!passwordError || createAdminLoading
+                    !adminFormData.email ||
+                    !adminFormData.password ||
+                    !adminFormData.first_name ||
+                    !adminFormData.last_name ||
+                    adminFormData.location_ids.length === 0 ||
+                    !!passwordError ||
+                    createAdminLoading
                   }
                 >
                   {createAdminLoading ? (
@@ -2225,26 +2314,41 @@ export const BossDashboard: React.FC = () => {
     }
 
     switch (currentView) {
-      case 'locations': return renderLocationsView();
-      case 'inventory': return renderInventoryView();
-      case 'financial': return renderFinancialView();
-      case 'sales': return renderSalesView();
-      case 'analytics': return renderAnalyticsView();
-      case 'admins': return renderAdminsView();
-      default: return renderDashboardView();
+      case 'locations':
+        return renderLocationsView();
+      case 'inventory':
+        return renderInventoryView();
+      case 'financial':
+        return renderFinancialView();
+      case 'sales':
+        return renderSalesView();
+      case 'analytics':
+        return renderAnalyticsView();
+      case 'admins':
+        return renderAdminsView();
+      default:
+        return renderDashboardView();
     }
   };
 
   return (
-    <DashboardLayout title={
-      currentView === 'dashboard' ? 'Panel Ejecutivo - BOSS' :
-        currentView === 'locations' ? 'Gestión de Locales' :
-          currentView === 'inventory' ? 'Inventario Consolidado' :
-            currentView === 'financial' ? 'Análisis Financiero' :
-              currentView === 'sales' ? 'Reporte de Ventas' :
-                currentView === 'admins' ? 'Gestión de Administradores' :
-                  'Análisis y Métricas'
-    }>
+    <DashboardLayout
+      title={
+        currentView === 'dashboard'
+          ? 'Panel Ejecutivo - BOSS'
+          : currentView === 'locations'
+            ? 'Gestión de Locales'
+            : currentView === 'inventory'
+              ? 'Inventario Consolidado'
+              : currentView === 'financial'
+                ? 'Análisis Financiero'
+                : currentView === 'sales'
+                  ? 'Reporte de Ventas'
+                  : currentView === 'admins'
+                    ? 'Gestión de Administradores'
+                    : 'Análisis y Métricas'
+      }
+    >
       <div className="min-h-screen bg-background">
         {/* Navigation tabs - Solo visible en móvil */}
         <div className="lg:hidden bg-card border-b border-border sticky top-0 z-10">
@@ -2261,10 +2365,11 @@ export const BossDashboard: React.FC = () => {
               <button
                 key={tab.key}
                 onClick={() => setCurrentView(tab.key as BossView)}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${currentView === tab.key
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${
+                  currentView === tab.key
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/20'
-                  }`}
+                }`}
               >
                 {tab.icon}
                 <span>{tab.label}</span>
@@ -2290,10 +2395,11 @@ export const BossDashboard: React.FC = () => {
                   <button
                     key={item.key}
                     onClick={() => setCurrentView(item.key as BossView)}
-                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left ${currentView === item.key
+                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left ${
+                      currentView === item.key
                         ? 'bg-primary text-primary-foreground'
                         : 'text-foreground hover:bg-muted/20'
-                      }`}
+                    }`}
                   >
                     {item.icon}
                     <span>{item.label}</span>
@@ -2302,15 +2408,11 @@ export const BossDashboard: React.FC = () => {
               </nav>
             </div>
           </div>
-          <div className="ml-64 flex-1">
-            {renderCurrentView()}
-          </div>
+          <div className="ml-64 flex-1">{renderCurrentView()}</div>
         </div>
 
         {/* Content for mobile */}
-        <div className="lg:hidden">
-          {renderCurrentView()}
-        </div>
+        <div className="lg:hidden">{renderCurrentView()}</div>
 
         {/* Modal para crear ubicación */}
         {showCreateLocationModal && (
@@ -2339,17 +2441,16 @@ export const BossDashboard: React.FC = () => {
 
                   {/* Tipo */}
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Tipo de Ubicación *
-                    </label>
+                    <label className="block text-sm font-medium text-foreground mb-2">Tipo de Ubicación *</label>
                     <div className="grid grid-cols-2 gap-4">
                       <button
                         type="button"
                         onClick={() => setLocationFormData({ ...locationFormData, type: 'local' })}
-                        className={`p-4 border-2 rounded-lg flex flex-col items-center space-y-2 ${locationFormData.type === 'local'
+                        className={`p-4 border-2 rounded-lg flex flex-col items-center space-y-2 ${
+                          locationFormData.type === 'local'
                             ? 'border-primary bg-primary/10'
                             : 'border-border hover:border-primary/50'
-                          }`}
+                        }`}
                       >
                         <Store className="h-8 w-8" />
                         <span className="font-medium">Local de Venta</span>
@@ -2357,10 +2458,11 @@ export const BossDashboard: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setLocationFormData({ ...locationFormData, type: 'bodega' })}
-                        className={`p-4 border-2 rounded-lg flex flex-col items-center space-y-2 ${locationFormData.type === 'bodega'
+                        className={`p-4 border-2 rounded-lg flex flex-col items-center space-y-2 ${
+                          locationFormData.type === 'bodega'
                             ? 'border-primary bg-primary/10'
                             : 'border-border hover:border-primary/50'
-                          }`}
+                        }`}
                       >
                         <Warehouse className="h-8 w-8" />
                         <span className="font-medium">Bodega</span>
@@ -2405,9 +2507,7 @@ export const BossDashboard: React.FC = () => {
 
                   {/* Notas */}
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Notas
-                    </label>
+                    <label className="block text-sm font-medium text-foreground mb-2">Notas</label>
                     <textarea
                       value={locationFormData.notes}
                       onChange={(e) => setLocationFormData({ ...locationFormData, notes: e.target.value })}
@@ -2426,10 +2526,7 @@ export const BossDashboard: React.FC = () => {
                   >
                     Cancelar
                   </Button>
-                  <Button
-                    onClick={handleCreateLocation}
-                    disabled={!locationFormData.name || createLocationLoading}
-                  >
+                  <Button onClick={handleCreateLocation} disabled={!locationFormData.name || createLocationLoading}>
                     {createLocationLoading ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -2478,17 +2575,16 @@ export const BossDashboard: React.FC = () => {
 
                   {/* Tipo */}
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Tipo de Ubicación *
-                    </label>
+                    <label className="block text-sm font-medium text-foreground mb-2">Tipo de Ubicación *</label>
                     <div className="grid grid-cols-2 gap-4">
                       <button
                         type="button"
                         onClick={() => setEditLocationFormData({ ...editLocationFormData, type: 'local' })}
-                        className={`p-4 border-2 rounded-lg flex flex-col items-center space-y-2 ${editLocationFormData.type === 'local'
+                        className={`p-4 border-2 rounded-lg flex flex-col items-center space-y-2 ${
+                          editLocationFormData.type === 'local'
                             ? 'border-primary bg-primary/10'
                             : 'border-border hover:border-primary/50'
-                          }`}
+                        }`}
                       >
                         <Store className="h-8 w-8" />
                         <span className="font-medium">Local de Venta</span>
@@ -2496,10 +2592,11 @@ export const BossDashboard: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setEditLocationFormData({ ...editLocationFormData, type: 'bodega' })}
-                        className={`p-4 border-2 rounded-lg flex flex-col items-center space-y-2 ${editLocationFormData.type === 'bodega'
+                        className={`p-4 border-2 rounded-lg flex flex-col items-center space-y-2 ${
+                          editLocationFormData.type === 'bodega'
                             ? 'border-primary bg-primary/10'
                             : 'border-border hover:border-primary/50'
-                          }`}
+                        }`}
                       >
                         <Warehouse className="h-8 w-8" />
                         <span className="font-medium">Bodega</span>
@@ -2525,22 +2622,25 @@ export const BossDashboard: React.FC = () => {
 
                   {/* Estado */}
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Estado de la Ubicación
-                    </label>
+                    <label className="block text-sm font-medium text-foreground mb-2">Estado de la Ubicación</label>
                     <div className="flex items-center space-x-3">
                       <input
                         type="checkbox"
                         id="location_is_active"
                         checked={editLocationFormData.is_active}
-                        onChange={(e) => setEditLocationFormData({ ...editLocationFormData, is_active: e.target.checked })}
+                        onChange={(e) =>
+                          setEditLocationFormData({ ...editLocationFormData, is_active: e.target.checked })
+                        }
                         className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
                       />
                       <label htmlFor="location_is_active" className="text-sm text-foreground">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${editLocationFormData.is_active
-                            ? 'bg-success/20 text-success'
-                            : 'bg-destructive/20 text-destructive'
-                          }`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            editLocationFormData.is_active
+                              ? 'bg-success/20 text-success'
+                              : 'bg-destructive/20 text-destructive'
+                          }`}
+                        >
                           {editLocationFormData.is_active ? 'Activa' : 'Inactiva'}
                         </span>
                       </label>
@@ -2548,8 +2648,7 @@ export const BossDashboard: React.FC = () => {
                     <p className="mt-1 text-xs text-muted-foreground">
                       {editLocationFormData.is_active
                         ? 'La ubicación está activa y disponible'
-                        : 'La ubicación está inactiva y no se mostrará en las listas'
-                      }
+                        : 'La ubicación está inactiva y no se mostrará en las listas'}
                     </p>
                   </div>
                 </div>
@@ -2565,10 +2664,7 @@ export const BossDashboard: React.FC = () => {
                   >
                     Cancelar
                   </Button>
-                  <Button
-                    onClick={handleUpdateLocation}
-                    disabled={!editLocationFormData.name || editLocationLoading}
-                  >
+                  <Button onClick={handleUpdateLocation} disabled={!editLocationFormData.name || editLocationLoading}>
                     {editLocationLoading ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -2609,7 +2705,8 @@ export const BossDashboard: React.FC = () => {
                 </div>
 
                 <p className="text-sm text-muted-foreground mb-4">
-                  Vincula dos locales de venta como hermanos. Solo locales activos sin un duo existente pueden ser seleccionados.
+                  Vincula dos locales de venta como hermanos. Solo locales activos sin un duo existente pueden ser
+                  seleccionados.
                 </p>
 
                 {(() => {
@@ -2634,14 +2731,18 @@ export const BossDashboard: React.FC = () => {
                         <label className="block text-sm font-medium text-foreground mb-2">Local A *</label>
                         <select
                           value={siblingFormData.location_a_id}
-                          onChange={(e) => setSiblingFormData({ ...siblingFormData, location_a_id: parseInt(e.target.value) })}
+                          onChange={(e) =>
+                            setSiblingFormData({ ...siblingFormData, location_a_id: parseInt(e.target.value) })
+                          }
                           className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground"
                         >
                           <option value={0}>Seleccionar local...</option>
                           {availableLocals
                             .filter((l: any) => l.id !== siblingFormData.location_b_id)
                             .map((l: any) => (
-                              <option key={l.id} value={l.id}>{l.name}</option>
+                              <option key={l.id} value={l.id}>
+                                {l.name}
+                              </option>
                             ))}
                         </select>
                       </div>
@@ -2654,14 +2755,18 @@ export const BossDashboard: React.FC = () => {
                         <label className="block text-sm font-medium text-foreground mb-2">Local B *</label>
                         <select
                           value={siblingFormData.location_b_id}
-                          onChange={(e) => setSiblingFormData({ ...siblingFormData, location_b_id: parseInt(e.target.value) })}
+                          onChange={(e) =>
+                            setSiblingFormData({ ...siblingFormData, location_b_id: parseInt(e.target.value) })
+                          }
                           className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground"
                         >
                           <option value={0}>Seleccionar local...</option>
                           {availableLocals
                             .filter((l: any) => l.id !== siblingFormData.location_a_id)
                             .map((l: any) => (
-                              <option key={l.id} value={l.id}>{l.name}</option>
+                              <option key={l.id} value={l.id}>
+                                {l.name}
+                              </option>
                             ))}
                         </select>
                       </div>
@@ -2755,7 +2860,7 @@ export const BossDashboard: React.FC = () => {
                     </label>
                     <div className="relative">
                       <Input
-                        type={showEditPassword ? "text" : "password"}
+                        type={showEditPassword ? 'text' : 'password'}
                         value={editAdminFormData.password}
                         onChange={(e) => {
                           setEditAdminFormData({ ...editAdminFormData, password: e.target.value });
@@ -2784,20 +2889,44 @@ export const BossDashboard: React.FC = () => {
                           const requirements = getPasswordRequirements(editAdminFormData.password);
                           return (
                             <>
-                              <div className={`flex items-center space-x-2 text-sm ${requirements.minLength ? 'text-success' : 'text-muted-foreground'}`}>
-                                {requirements.minLength ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
+                              <div
+                                className={`flex items-center space-x-2 text-sm ${requirements.minLength ? 'text-success' : 'text-muted-foreground'}`}
+                              >
+                                {requirements.minLength ? (
+                                  <Check className="h-4 w-4" />
+                                ) : (
+                                  <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
+                                )}
                                 <span>Al menos 6 caracteres</span>
                               </div>
-                              <div className={`flex items-center space-x-2 text-sm ${requirements.hasUpperCase ? 'text-success' : 'text-muted-foreground'}`}>
-                                {requirements.hasUpperCase ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
+                              <div
+                                className={`flex items-center space-x-2 text-sm ${requirements.hasUpperCase ? 'text-success' : 'text-muted-foreground'}`}
+                              >
+                                {requirements.hasUpperCase ? (
+                                  <Check className="h-4 w-4" />
+                                ) : (
+                                  <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
+                                )}
                                 <span>Al menos una mayuscula</span>
                               </div>
-                              <div className={`flex items-center space-x-2 text-sm ${requirements.hasNumber ? 'text-success' : 'text-muted-foreground'}`}>
-                                {requirements.hasNumber ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
+                              <div
+                                className={`flex items-center space-x-2 text-sm ${requirements.hasNumber ? 'text-success' : 'text-muted-foreground'}`}
+                              >
+                                {requirements.hasNumber ? (
+                                  <Check className="h-4 w-4" />
+                                ) : (
+                                  <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
+                                )}
                                 <span>Al menos un numero</span>
                               </div>
-                              <div className={`flex items-center space-x-2 text-sm ${requirements.hasSpecialChar ? 'text-success' : 'text-muted-foreground'}`}>
-                                {requirements.hasSpecialChar ? <Check className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />}
+                              <div
+                                className={`flex items-center space-x-2 text-sm ${requirements.hasSpecialChar ? 'text-success' : 'text-muted-foreground'}`}
+                              >
+                                {requirements.hasSpecialChar ? (
+                                  <Check className="h-4 w-4" />
+                                ) : (
+                                  <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
+                                )}
                                 <span>Al menos un caracter especial</span>
                               </div>
                             </>
@@ -2810,28 +2939,41 @@ export const BossDashboard: React.FC = () => {
 
                   {/* Ubicaciones */}
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Ubicaciones Asignadas
-                    </label>
+                    <label className="block text-sm font-medium text-foreground mb-2">Ubicaciones Asignadas</label>
                     <div className="border border-border rounded-md p-4 max-h-48 overflow-y-auto bg-muted/20">
                       {dashboardData?.locations_performance && dashboardData.locations_performance.length > 0 ? (
                         <div className="space-y-2">
                           {dashboardData.locations_performance.map((location: any) => (
-                            <label key={location.location_id} className="flex items-center space-x-3 p-2 hover:bg-muted/40 rounded cursor-pointer">
+                            <label
+                              key={location.location_id}
+                              className="flex items-center space-x-3 p-2 hover:bg-muted/40 rounded cursor-pointer"
+                            >
                               <input
                                 type="checkbox"
                                 checked={editAdminFormData.location_ids.includes(location.location_id)}
                                 onChange={(e) => {
                                   if (e.target.checked) {
-                                    setEditAdminFormData({ ...editAdminFormData, location_ids: [...editAdminFormData.location_ids, location.location_id] });
+                                    setEditAdminFormData({
+                                      ...editAdminFormData,
+                                      location_ids: [...editAdminFormData.location_ids, location.location_id],
+                                    });
                                   } else {
-                                    setEditAdminFormData({ ...editAdminFormData, location_ids: editAdminFormData.location_ids.filter(id => id !== location.location_id) });
+                                    setEditAdminFormData({
+                                      ...editAdminFormData,
+                                      location_ids: editAdminFormData.location_ids.filter(
+                                        (id) => id !== location.location_id
+                                      ),
+                                    });
                                   }
                                 }}
                                 className="w-4 h-4 text-primary border-border rounded focus:ring-primary"
                               />
                               <div className="flex items-center space-x-2 flex-1">
-                                {location.location_type === 'bodega' ? <Warehouse className="h-5 w-5 text-primary" /> : <Store className="h-5 w-5 text-success" />}
+                                {location.location_type === 'bodega' ? (
+                                  <Warehouse className="h-5 w-5 text-primary" />
+                                ) : (
+                                  <Store className="h-5 w-5 text-success" />
+                                )}
                                 <span className="font-medium">{location.location_name}</span>
                                 <span className="text-xs text-muted-foreground">({location.location_type})</span>
                               </div>
@@ -2843,15 +2985,15 @@ export const BossDashboard: React.FC = () => {
                       )}
                     </div>
                     {editAdminFormData.location_ids.length > 0 && (
-                      <p className="text-xs text-muted-foreground mt-2">{editAdminFormData.location_ids.length} ubicacion(es) seleccionada(s)</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {editAdminFormData.location_ids.length} ubicacion(es) seleccionada(s)
+                      </p>
                     )}
                   </div>
 
                   {/* Estado */}
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Estado del Administrador
-                    </label>
+                    <label className="block text-sm font-medium text-foreground mb-2">Estado del Administrador</label>
                     <div className="flex items-center space-x-3">
                       <input
                         type="checkbox"
@@ -2861,14 +3003,21 @@ export const BossDashboard: React.FC = () => {
                         className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
                       />
                       <label htmlFor="edit_is_active" className="text-sm text-foreground">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${editAdminFormData.is_active ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'
-                          }`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            editAdminFormData.is_active
+                              ? 'bg-success/20 text-success'
+                              : 'bg-destructive/20 text-destructive'
+                          }`}
+                        >
                           {editAdminFormData.is_active ? 'Activo' : 'Inactivo'}
                         </span>
                       </label>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {editAdminFormData.is_active ? 'El administrador puede acceder al sistema' : 'El administrador no puede acceder al sistema'}
+                      {editAdminFormData.is_active
+                        ? 'El administrador puede acceder al sistema'
+                        : 'El administrador no puede acceder al sistema'}
                     </p>
                   </div>
                 </div>
@@ -2910,7 +3059,6 @@ export const BossDashboard: React.FC = () => {
             </div>
           </div>
         )}
-
       </div>
     </DashboardLayout>
   );

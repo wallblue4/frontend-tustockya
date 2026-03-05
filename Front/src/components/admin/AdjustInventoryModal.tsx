@@ -31,12 +31,12 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
   onClose,
   onSubmit,
   productData,
-  siblingInfo
+  siblingInfo,
 }) => {
   const [formData, setFormData] = useState({
     adjustment_type: 'set_quantity' as 'set_quantity' | 'increment' | 'decrement',
     quantity: String(productData.current_quantity),
-    reason: ''
+    reason: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -44,10 +44,14 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
 
   const getInventoryTypeLabel = (type: string) => {
     switch (type) {
-      case 'pair': return 'Par completo';
-      case 'left_only': return 'Pie izquierdo';
-      case 'right_only': return 'Pie derecho';
-      default: return type;
+      case 'pair':
+        return 'Par completo';
+      case 'left_only':
+        return 'Pie izquierdo';
+      case 'right_only':
+        return 'Pie derecho';
+      default:
+        return type;
     }
   };
 
@@ -87,7 +91,7 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
         adjustment_type: formData.adjustment_type,
         quantity: parsedQuantity,
         reason: formData.reason.trim(),
-        inventory_type: productData.inventory_type
+        inventory_type: productData.inventory_type,
       });
       onClose();
     } catch (error) {
@@ -98,7 +102,7 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
   };
 
   const handleInputChange = (field: string, value: string | number) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const updated = { ...prev, [field]: value };
       if (field === 'adjustment_type') {
         updated.quantity = value === 'set_quantity' ? String(productData.current_quantity) : '';
@@ -106,7 +110,7 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
       return updated;
     });
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
@@ -125,10 +129,7 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div
-        className="absolute inset-0"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0" onClick={onClose} />
 
       <div className="bg-card rounded-lg shadow-xl w-full max-w-md relative z-10 max-h-[90vh] overflow-y-auto border border-border">
         <div className="flex justify-between items-center p-6 border-b border-border">
@@ -136,10 +137,7 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
             <Package className="h-5 w-5 mr-2" />
             Ajustar Inventario
           </h3>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
-          >
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -149,7 +147,9 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
           <div className="bg-muted/50 rounded-lg p-4 space-y-2">
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Producto:</span>
-              <span className="text-sm font-medium text-foreground">{productData.brand} {productData.model}</span>
+              <span className="text-sm font-medium text-foreground">
+                {productData.brand} {productData.model}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Referencia:</span>
@@ -218,9 +218,7 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
 
           {/* Motivo */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              Motivo del Ajuste
-            </label>
+            <label className="block text-sm font-medium text-foreground mb-1">Motivo del Ajuste</label>
             <textarea
               value={formData.reason}
               onChange={(e) => handleInputChange('reason', e.target.value)}
@@ -237,7 +235,8 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
           <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 flex items-start space-x-2">
             <AlertCircle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
             <p className="text-sm text-warning">
-              Este ajuste quedara registrado en el historial. Asegurate de que la informacion sea correcta antes de confirmar.
+              Este ajuste quedara registrado en el historial. Asegurate de que la informacion sea correcta antes de
+              confirmar.
             </p>
           </div>
 
@@ -246,24 +245,17 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex items-start space-x-2">
               <Link className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-blue-500">
-                Este ajuste tambien se aplicara como <strong>{siblingInfo.opposite_inventory_type_label}</strong> en <strong>{siblingInfo.sibling_location_name}</strong>.
+                Este ajuste tambien se aplicara como <strong>{siblingInfo.opposite_inventory_type_label}</strong> en{' '}
+                <strong>{siblingInfo.sibling_location_name}</strong>.
               </p>
             </div>
           )}
 
           <div className="flex justify-end space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-            >
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting || parsedQuantity <= 0}
-              isLoading={isSubmitting}
-            >
+            <Button type="submit" disabled={isSubmitting || parsedQuantity <= 0} isLoading={isSubmitting}>
               Confirmar Ajuste
             </Button>
           </div>

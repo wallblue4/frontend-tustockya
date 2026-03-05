@@ -22,18 +22,14 @@ interface CreateUserModalProps {
   locations: Location[];
 }
 
-export const CreateUserModal: React.FC<CreateUserModalProps> = ({
-  onClose,
-  onSubmit,
-  locations
-}) => {
+export const CreateUserModal: React.FC<CreateUserModalProps> = ({ onClose, onSubmit, locations }) => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     first_name: '',
     last_name: '',
     role: 'vendedor' as 'vendedor' | 'bodeguero' | 'corredor',
-    location_ids: [] as number[]
+    location_ids: [] as number[],
   });
   const [showPassword, setShowPassword] = useState(false);
 
@@ -80,9 +76,9 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
     try {
       // Mapear roles en español a los valores que espera el backend en ingles
       const roleMapping: Record<string, string> = {
-        'vendedor': 'seller',
-        'bodeguero': 'bodeguero',
-        'corredor': 'corredor'
+        vendedor: 'seller',
+        bodeguero: 'bodeguero',
+        corredor: 'corredor',
       };
 
       await onSubmit({
@@ -91,7 +87,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
         first_name: formData.first_name,
         last_name: formData.last_name,
         role: roleMapping[formData.role] || formData.role,
-        location_ids: formData.location_ids
+        location_ids: formData.location_ids,
       });
     } catch (error) {
       console.error('Error creating user:', error);
@@ -101,16 +97,16 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
   const toggleLocation = (locationId: number) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const newLocationIds = prev.location_ids.includes(locationId)
-        ? prev.location_ids.filter(id => id !== locationId)
+        ? prev.location_ids.filter((id) => id !== locationId)
         : [...prev.location_ids, locationId];
       return { ...prev, location_ids: newLocationIds };
     });
@@ -122,10 +118,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div
-        className="absolute inset-0"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0" onClick={onClose} />
 
       <div className="bg-card rounded-lg shadow-xl w-full max-w-md relative z-10 max-h-[90vh] overflow-y-auto border border-border">
         <div className="flex justify-between items-center p-6 border-b border-border">
@@ -133,10 +126,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
             <User className="h-5 w-5 mr-2" />
             Crear Nuevo Usuario
           </h3>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
-          >
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -173,7 +163,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
           <div className="relative">
             <Input
               label="Contrasena"
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? 'text' : 'password'}
               value={formData.password}
               onChange={(e) => handleInputChange('password', e.target.value)}
               error={errors.password}
@@ -185,26 +175,51 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
               onClick={() => setShowPassword((prev) => !prev)}
               className={`absolute right-3 top-8 focus:outline-none ${showPassword ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
               tabIndex={-1}
-              aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}
+              aria-label={showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
             >
               {showPassword ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"
+                  />
                   <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
                 </svg>
               ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.94 17.94A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10a9.96 9.96 0 012.175-6.125M3 3l18 18" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.88 9.88A3 3 0 0012 15a3 3 0 002.12-5.12" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17.94 17.94A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10a9.96 9.96 0 012.175-6.125M3 3l18 18"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9.88 9.88A3 3 0 0012 15a3 3 0 002.12-5.12"
+                  />
                 </svg>
               )}
             </button>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              Rol
-            </label>
+            <label className="block text-sm font-medium text-foreground mb-1">Rol</label>
             <select
               value={formData.role}
               onChange={(e) => handleInputChange('role', e.target.value)}
@@ -220,17 +235,11 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Ubicaciones Asignadas
-            </label>
-            <p className="text-xs text-muted-foreground mb-2">
-              Selecciona una o mas ubicaciones para este usuario
-            </p>
+            <label className="block text-sm font-medium text-foreground mb-2">Ubicaciones Asignadas</label>
+            <p className="text-xs text-muted-foreground mb-2">Selecciona una o mas ubicaciones para este usuario</p>
             <div className="border border-border rounded-md max-h-48 overflow-y-auto">
               {locations.length === 0 ? (
-                <div className="p-3 text-sm text-muted-foreground text-center">
-                  No hay ubicaciones disponibles
-                </div>
+                <div className="p-3 text-sm text-muted-foreground text-center">No hay ubicaciones disponibles</div>
               ) : (
                 locations.map((location) => (
                   <div
@@ -241,22 +250,20 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                     }`}
                   >
                     <div className="flex items-center space-x-3">
-                      <div className={`w-5 h-5 rounded border flex items-center justify-center ${
-                        isLocationSelected(location.id)
-                          ? 'bg-primary border-primary'
-                          : 'border-border'
-                      }`}>
-                        {isLocationSelected(location.id) && (
-                          <Check className="h-3 w-3 text-primary-foreground" />
-                        )}
+                      <div
+                        className={`w-5 h-5 rounded border flex items-center justify-center ${
+                          isLocationSelected(location.id) ? 'bg-primary border-primary' : 'border-border'
+                        }`}
+                      >
+                        {isLocationSelected(location.id) && <Check className="h-3 w-3 text-primary-foreground" />}
                       </div>
                       <span className="text-sm text-foreground">{location.name}</span>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded ${
-                      location.type === 'bodega'
-                        ? 'bg-warning/20 text-warning'
-                        : 'bg-primary/20 text-primary'
-                    }`}>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        location.type === 'bodega' ? 'bg-warning/20 text-warning' : 'bg-primary/20 text-primary'
+                      }`}
+                    >
                       {location.type}
                     </span>
                   </div>
@@ -271,18 +278,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-            >
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              isLoading={isSubmitting}
-            >
+            <Button type="submit" disabled={isSubmitting} isLoading={isSubmitting}>
               Crear Usuario
             </Button>
           </div>
