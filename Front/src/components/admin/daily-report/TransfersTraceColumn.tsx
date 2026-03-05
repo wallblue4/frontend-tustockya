@@ -15,6 +15,7 @@ interface TransferProduct {
   model: string;
   size: string;
   quantity: number;
+  image_url?: string | null;
 }
 
 interface TransferDates {

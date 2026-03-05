@@ -335,9 +335,17 @@ export const TransfersPage: React.FC = () => {
                       onClick={() => toggleTransferExpansion(transfer.transfer_id)}
                     >
                       <div className="flex items-center space-x-4 min-w-0 flex-1">
-                        <div className="p-2 rounded-lg bg-primary/10">
-                          <Truck className="h-5 w-5 text-primary" />
-                        </div>
+                        {transfer.product.image_url ? (
+                          <img
+                            src={transfer.product.image_url}
+                            alt={`${transfer.product.brand} ${transfer.product.model}`}
+                            className="h-12 w-12 rounded-lg object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                            <Truck className="h-5 w-5 text-primary" />
+                          </div>
+                        )}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <p className="font-semibold text-foreground truncate">

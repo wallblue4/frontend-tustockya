@@ -117,6 +117,7 @@ export interface TransferProduct {
   model: string;
   size: string;
   quantity: number;
+  image_url?: string | null;
 }
 
 export interface TransferDates {
@@ -150,6 +151,7 @@ export interface DailyTransferTraceability {
   pickup_type: 'seller' | 'corredor';
   request_type: string;
   inventory_type: string;
+  has_return_request?: boolean;
 }
 
 interface InventoryAlert {

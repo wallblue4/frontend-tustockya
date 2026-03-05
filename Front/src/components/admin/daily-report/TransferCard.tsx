@@ -14,6 +14,7 @@ interface TransferProduct {
   model: string;
   size: string;
   quantity: number;
+  image_url?: string | null;
 }
 
 interface TransferDates {
@@ -122,6 +123,13 @@ const TransferCard: React.FC<TransferCardProps> = ({ transfer, formatDate }) => 
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center justify-between gap-2">
+          {transfer.product.image_url && (
+            <img
+              src={transfer.product.image_url}
+              alt={`${transfer.product.brand} ${transfer.product.model}`}
+              className="h-12 w-12 rounded-lg object-cover flex-shrink-0"
+            />
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <p className="text-sm font-semibold text-foreground truncate">
