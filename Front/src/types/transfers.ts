@@ -240,6 +240,46 @@ export interface IncomingTransfersResponse {
   count: number;
 }
 
+export interface OutgoingCompletedTransfer {
+  id: number;
+  status: 'completed' | 'selled';
+  request_type: 'transfer' | 'return';
+  sneaker_reference_code: string;
+  brand: string;
+  model: string;
+  size: string;
+  quantity: number;
+  inventory_type: 'pair' | 'left_only' | 'right_only';
+  requester_name: string;
+  destination_location_name: string;
+  requested_at: string;
+  completed_at?: string;
+  time_elapsed: string;
+  product_image?: string;
+  purpose: string;
+  pickup_type: string;
+  notes?: string;
+  is_formed_pair: boolean;
+}
+
+export interface OutgoingCompletedTransfersResponse {
+  success: boolean;
+  message: string;
+  outgoing_transfers: OutgoingCompletedTransfer[];
+  count: number;
+  date: string;
+  stats: {
+    total: number;
+    completed: number;
+    selled: number;
+    by_inventory_type: {
+      pairs: number;
+      left_only: number;
+      right_only: number;
+    };
+  };
+}
+
 export interface DispatchTransferRequest {
   delivery_notes: string;
   evidence_url?: string;

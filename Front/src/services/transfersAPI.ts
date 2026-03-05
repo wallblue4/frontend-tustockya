@@ -338,6 +338,26 @@ export const vendorAPI = {
     }
   },
 
+  async getOutgoingCompletedTransfers() {
+    const backendCall = async () => {
+      const response = await fetch(`${BACKEND_URL}/api/v1/vendor/outgoing-completed-transfers`, {
+        headers: getHeaders(),
+      });
+      return handleResponse(response);
+    };
+
+    const result = await tryBackendFirst(backendCall, {
+      success: true,
+      outgoing_transfers: [],
+      count: 0,
+      date: new Date().toISOString().split('T')[0],
+      stats: { total: 0, completed: 0, selled: 0, by_inventory_type: { pairs: 0, left_only: 0, right_only: 0 } },
+    });
+
+    if (result.success) return result.data;
+    return result.data;
+  },
+
   async acceptIncomingTransfer(transferId: number) {
     try {
       const backendCall = async () => {

@@ -10,6 +10,8 @@ import {
   TransferHistoryResponse,
   IncomingTransfer,
   IncomingTransfersResponse,
+  OutgoingCompletedTransfer,
+  OutgoingCompletedTransfersResponse,
 } from '../../types';
 import { ReturnModal } from './ReturnModal';
 
@@ -27,6 +29,7 @@ import {
   DollarSign,
   MapPin,
   ArrowDownCircle,
+  ArrowUpCircle,
   Send,
   LayoutGrid,
   List,
@@ -112,13 +115,17 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   onSellProduct,
 }) => {
   // Usar onSellProduct como prop, igual que en ProductScanner
-  const [activeTab, setActiveTab] = useState<'pending' | 'completed' | 'history' | 'new' | 'incoming'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'completed' | 'history' | 'new' | 'incoming' | 'outgoing'>(
+    'pending'
+  );
 
   // *** ESTADOS ACTUALIZADOS PARA ENDPOINTS CORRECTOS ***
   const [pendingTransfers, setPendingTransfers] = useState<PendingTransferItem[]>([]);
   const [completedTransfers, setCompletedTransfers] = useState<CompletedTransfer[]>([]);
   const [transferHistory, setTransferHistory] = useState<TransferHistoryItem[]>([]);
   const [incomingTransfers, setIncomingTransfers] = useState<IncomingTransfer[]>([]);
+  const [outgoingTransfers, setOutgoingTransfers] = useState<OutgoingCompletedTransfer[]>([]);
+  const [_outgoingStats, setOutgoingStats] = useState<OutgoingCompletedTransfersResponse['stats'] | null>(null);
 
   // *** ESTADOS PARA DEVOLUCIONES ***
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -140,6 +147,7 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
   const [completedViewMode, setCompletedViewMode] = useState<'grid' | 'list'>('grid');
   const [completedGroupByRef, setCompletedGroupByRef] = useState(false);
   const [completedExpandedGroups, setCompletedExpandedGroups] = useState<Set<string>>(new Set());
+  const [outgoingViewMode, setOutgoingViewMode] = useState<'grid' | 'list'>('grid');
 
   const { user } = useAuth();
   // source_location_id SIEMPRE sale de user.location_id
@@ -258,6 +266,17 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
         setIncomingTransfers(response.incoming_transfers || []);
         console.log('✅ Solicitudes entrantes cargadas:', response.incoming_transfers?.length || 0);
       }
+
+      // *** CARGAR TRANSFERENCIAS SALIENTES COMPLETADAS ***
+      console.log('🔄 Cargando transferencias salientes completadas...');
+      const outgoingResponse = await vendorAPI.getOutgoingCompletedTransfers();
+
+      if (outgoingResponse.success) {
+        const response = outgoingResponse as OutgoingCompletedTransfersResponse;
+        setOutgoingTransfers(response.outgoing_transfers || []);
+        setOutgoingStats(response.stats || null);
+        console.log('✅ Salientes completadas cargadas:', response.outgoing_transfers?.length || 0);
+      }
     } catch (err: any) {
       console.error('Error loading transfers:', err);
       setError('Error conectando con el servidor');
@@ -265,6 +284,8 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
       setCompletedTransfers([]);
       setTransferHistory([]);
       setIncomingTransfers([]);
+      setOutgoingTransfers([]);
+      setOutgoingStats(null);
       setUrgentCount(0);
       setNormalCount(0);
       setTotalPending(0);
@@ -624,12 +645,14 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 {activeTab === 'pending' && <Package className="h-4 w-4 text-primary" />}
                 {activeTab === 'completed' && <CheckCircle className="h-4 w-4 text-primary" />}
                 {activeTab === 'incoming' && <ArrowDownCircle className="h-4 w-4 text-primary" />}
+                {activeTab === 'outgoing' && <ArrowUpCircle className="h-4 w-4 text-primary" />}
                 {activeTab === 'new' && <Plus className="h-4 w-4 text-primary" />}
                 <span className="font-medium">
                   {activeTab === 'pending' && `Recepciones por Confirmar (${totalPending})`}
                   {activeTab === 'completed' && 'Pedidos Completados'}
                   {activeTab === 'incoming' &&
                     `Solicitudes Entrantes (${incomingTransfers.filter((t) => t.status === 'pending').length})`}
+                  {activeTab === 'outgoing' && `Salientes del Día (${outgoingTransfers.length})`}
                   {activeTab === 'history' && 'Historial del Día'}
                   {activeTab === 'new' && 'Nueva Solicitud'}
                   {prefilledProductData && activeTab === 'new' && (
@@ -680,6 +703,18 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 </button>
                 <button
                   onClick={() => {
+                    setActiveTab('outgoing');
+                    setShowMobileMenu(false);
+                  }}
+                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/20 border-t ${
+                    activeTab === 'outgoing' ? 'bg-primary/10 text-primary' : ''
+                  }`}
+                >
+                  <ArrowUpCircle className="h-4 w-4" />
+                  <span>Salientes del Día ({outgoingTransfers.length})</span>
+                </button>
+                <button
+                  onClick={() => {
                     setActiveTab('history');
                     setShowMobileMenu(false);
                   }}
@@ -727,6 +762,10 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
             <Button variant={activeTab === 'incoming' ? 'primary' : 'outline'} onClick={() => setActiveTab('incoming')}>
               <ArrowDownCircle className="h-4 w-4 mr-2" />
               Solicitudes Entrantes ({incomingTransfers.filter((t) => t.status === 'pending').length})
+            </Button>
+            <Button variant={activeTab === 'outgoing' ? 'primary' : 'outline'} onClick={() => setActiveTab('outgoing')}>
+              <ArrowUpCircle className="h-4 w-4 mr-2" />
+              Salientes del Día ({outgoingTransfers.length})
             </Button>
             <Button variant={activeTab === 'history' ? 'primary' : 'outline'} onClick={() => setActiveTab('history')}>
               <History className="h-4 w-4 mr-2" />
@@ -2470,6 +2509,253 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                 {prefilledProductData && <span className="ml-2 text-xs opacity-80">(Desde Escáner)</span>}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'outgoing' && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base md:text-lg font-semibold">Salientes Completadas del Día</h3>
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center bg-muted/30 rounded-lg p-0.5">
+                  <button
+                    onClick={() => setOutgoingViewMode('grid')}
+                    className={`p-1.5 rounded-md transition-colors ${outgoingViewMode === 'grid' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    aria-label="Vista grid"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setOutgoingViewMode('list')}
+                    className={`p-1.5 rounded-md transition-colors ${outgoingViewMode === 'list' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    aria-label="Vista lista"
+                  >
+                    <List className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {outgoingTransfers.length === 0 ? (
+              <div className="text-center py-8 md:py-12">
+                <ArrowUpCircle className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm md:text-base">
+                  No hay transferencias salientes completadas hoy
+                </p>
+                <p className="text-muted-foreground text-xs mt-1">
+                  Aquí verás cuando otro vendedor tome productos de tu inventario
+                </p>
+              </div>
+            ) : (
+              (() => {
+                const renderOutgoingCard = (transfer: OutgoingCompletedTransfer) => {
+                  const isReturn = transfer.request_type === 'return';
+                  const isSelled = transfer.status === 'selled';
+                  const cardBorder = isReturn
+                    ? 'border-warning/40'
+                    : isSelled
+                      ? 'border-primary/40'
+                      : 'border-success/40';
+                  const cardBg = isReturn ? 'bg-warning/5' : isSelled ? 'bg-primary/5' : 'bg-success/5';
+                  const statusLabel = isReturn ? 'Devuelto' : isSelled ? 'Vendida' : 'Completada';
+                  const statusBadge = isReturn
+                    ? 'bg-warning/80 text-white'
+                    : isSelled
+                      ? 'bg-primary/80 text-white'
+                      : 'bg-success/80 text-white';
+                  const inventoryLabel =
+                    transfer.inventory_type === 'left_only'
+                      ? '🦶 Izquierdo'
+                      : transfer.inventory_type === 'right_only'
+                        ? '🦶 Derecho'
+                        : '👟 Par';
+                  const locationLabel = isReturn ? 'Devuelto desde' : 'Destino';
+                  const transferImage = transfer.product_image;
+
+                  if (outgoingViewMode === 'grid') {
+                    return (
+                      <div
+                        key={transfer.id}
+                        className={`border ${cardBorder} rounded-xl overflow-hidden ${cardBg} shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col`}
+                      >
+                        {transferImage && (
+                          <div className="aspect-square bg-muted/20 relative overflow-hidden">
+                            <img
+                              src={transferImage}
+                              className="absolute inset-0 w-full h-full object-cover"
+                              alt={`${transfer.brand} ${transfer.model}`}
+                            />
+                            <div className="absolute top-1.5 left-1.5 flex flex-wrap gap-1">
+                              <span
+                                className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm ${statusBadge}`}
+                              >
+                                {statusLabel}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm bg-black/50 text-white">
+                                {transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}
+                              </span>
+                            </div>
+                            <div className="absolute bottom-1.5 left-1.5 right-1.5 flex justify-between items-end">
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold backdrop-blur-sm bg-black/70 text-white">
+                                {transfer.size}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm bg-black/50 text-white">
+                                {inventoryLabel}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        <div className="p-2.5 flex flex-col flex-1 justify-between">
+                          {!transferImage && (
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${statusBadge}`}>
+                                {statusLabel}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-black/70 text-white">
+                                {transfer.size}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">
+                                {inventoryLabel}
+                              </span>
+                            </div>
+                          )}
+                          <div>
+                            <div className="flex items-baseline gap-1">
+                              <h4 className="font-bold text-xs leading-tight line-clamp-2">
+                                {transfer.brand} {transfer.model}
+                              </h4>
+                              <span className="text-xs font-semibold text-muted-foreground shrink-0">
+                                x{transfer.quantity}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-0.5">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              {locationLabel}: {transfer.destination_location_name}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                              {isReturn ? 'Devolvió' : 'Solicitó'}: {transfer.requester_name}
+                            </p>
+                            {transfer.is_formed_pair && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-info/10 text-info">
+                                  Par formado
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className={`bg-muted/10 border border-muted/20 rounded-lg text-center p-1.5 mt-2`}>
+                            <span className="text-[10px] font-medium text-muted-foreground">
+                              <Clock className="h-3 w-3 inline mr-0.5" />
+                              Hace {transfer.time_elapsed}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // MODO LISTA
+                  return (
+                    <div
+                      key={transfer.id}
+                      className={`border ${cardBorder} rounded-xl overflow-hidden ${cardBg} shadow-sm hover:shadow-lg transition-all duration-300`}
+                    >
+                      <div className="flex flex-row">
+                        {transferImage && (
+                          <div className="w-2/5 md:w-1/3 aspect-square bg-muted/20 flex-shrink-0 relative overflow-hidden">
+                            <img
+                              src={transferImage}
+                              className="absolute inset-0 w-full h-full object-cover"
+                              alt={`${transfer.brand} ${transfer.model}`}
+                            />
+                            <div className="absolute top-1.5 left-1.5 flex flex-wrap gap-1">
+                              <span
+                                className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm ${statusBadge}`}
+                              >
+                                {statusLabel}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm bg-black/50 text-white">
+                                {transfer.pickup_type === 'corredor' ? '🚚 Corredor' : '🏃‍♂️ Vendedor'}
+                              </span>
+                            </div>
+                            <div className="absolute bottom-1.5 left-1.5 right-1.5 flex justify-between items-end">
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold backdrop-blur-sm bg-black/70 text-white">
+                                {transfer.size}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm bg-black/50 text-white">
+                                {inventoryLabel}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        <div
+                          className={`${transferImage ? 'w-3/5 md:w-2/3' : 'w-full'} p-3 flex flex-col justify-between`}
+                        >
+                          <div>
+                            <div className="flex items-baseline gap-1.5">
+                              <h4 className="font-bold text-sm leading-tight">
+                                {transfer.brand} {transfer.model}
+                              </h4>
+                              <span className="text-sm font-semibold text-muted-foreground shrink-0">
+                                x{transfer.quantity}
+                              </span>
+                            </div>
+                            {!transferImage && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${statusBadge}`}>
+                                  {statusLabel}
+                                </span>
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-black/70 text-white">
+                                  {transfer.size}
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/50 text-white">
+                                  {inventoryLabel}
+                                </span>
+                              </div>
+                            )}
+                            <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-0.5">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              {locationLabel}: {transfer.destination_location_name}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                              {isReturn ? 'Devolvió' : 'Solicitó'}: {transfer.requester_name}
+                            </p>
+                            {transfer.is_formed_pair && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-info/10 text-info">
+                                  Par formado
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className={`bg-muted/10 border border-muted/20 rounded-lg text-center p-1.5 mt-2`}>
+                            <span className="text-[10px] font-medium text-muted-foreground">
+                              <Clock className="h-3 w-3 inline mr-0.5" />
+                              Hace {transfer.time_elapsed}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                };
+
+                return (
+                  <div
+                    className={
+                      outgoingViewMode === 'grid'
+                        ? 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3'
+                        : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2'
+                    }
+                  >
+                    {outgoingTransfers.map(renderOutgoingCard)}
+                  </div>
+                );
+              })()
+            )}
           </CardContent>
         </Card>
       )}
