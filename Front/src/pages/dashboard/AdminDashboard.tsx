@@ -1503,22 +1503,21 @@ Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type ==
   const handleAssignProductToLocation = async (data: {
     location_id: number;
     product_reference: string;
-    sizes: string[];
+    size_quantities: Record<string, number>;
     adjustment_type: 'set_quantity';
-    quantity: number;
     inventory_type: 'pair' | 'left_only' | 'right_only';
   }) => {
     try {
       const defaultReason = 'Asignacion de producto a ubicacion';
       let siblingMessage = '';
 
-      for (const size of data.sizes) {
+      for (const [size, quantity] of Object.entries(data.size_quantities)) {
         const payload = {
           location_id: data.location_id,
           product_reference: data.product_reference,
           size,
           adjustment_type: data.adjustment_type,
-          quantity: data.quantity,
+          quantity,
           reason: defaultReason,
           inventory_type: data.inventory_type,
         };
@@ -1550,12 +1549,14 @@ Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type ==
       await loadAdminInventory();
 
       const locationName = locations.find((l) => l.id === data.location_id)?.name || `ID ${data.location_id}`;
+      const sizeSummary = Object.entries(data.size_quantities)
+        .map(([size, qty]) => `${size} (${qty})`)
+        .join(', ');
       alert(`Producto asignado exitosamente.
 
 Producto: ${data.product_reference}
 Ubicacion: ${locationName}
-Talla(s): ${data.sizes.join(', ')}
-Cantidad: ${data.quantity} c/u
+Talla(s): ${sizeSummary}
 Tipo: ${data.inventory_type === 'pair' ? 'Par completo' : data.inventory_type === 'left_only' ? 'Pie izquierdo' : 'Pie derecho'}${siblingMessage}`);
 
       setShowAssignProductModal(false);
