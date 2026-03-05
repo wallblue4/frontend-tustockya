@@ -6,7 +6,7 @@ import { Input } from '../ui/Input';
 interface Location {
   id: number;
   name: string;
-  type: 'local' | 'bodega';
+  type: string;
 }
 
 interface UserData {
@@ -14,7 +14,7 @@ interface UserData {
   email: string;
   first_name: string;
   last_name: string;
-  role: 'vendedor' | 'bodeguero' | 'corredor' | 'seller';
+  role: string;
   location_ids?: number[];
   is_active: boolean;
 }

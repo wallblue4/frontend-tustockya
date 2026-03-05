@@ -1881,7 +1881,7 @@ export const BossDashboard: React.FC = () => {
                         outerRadius={80}
                         label={false}
                       >
-                        {costsData.map((entry: any, index: number) => (
+                        {costsData.map((_entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>

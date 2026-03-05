@@ -203,6 +203,23 @@ export interface TransferHistoryItem {
   pickup_type?: string; // 'corredor' | 'vendedor'
   courier_name?: string; // Nombre del corredor si aplica
   unit_price?: number; // Precio unitario para ventas
+  request_type?: string; // Tipo de solicitud (return, restock, etc.)
+  product_info?: {
+    image_url?: string;
+    brand?: string;
+    model?: string;
+  };
+  pickup_info?: {
+    type?: string;
+    name?: string;
+  };
+  source_location?: string;
+  destination_location?: string;
+  requester_name?: string;
+  requested_at?: string;
+  accepted_at?: string | null;
+  picked_up_at?: string | null;
+  delivered_at?: string | null;
 }
 
 export interface TransferHistoryResponse {

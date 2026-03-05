@@ -1,4 +1,14 @@
-export type UserRole = 'superuser' | 'administrador' | 'bodeguero' | 'seller' | 'corredor' | 'boss' | 'public';
+export type UserRole =
+  | 'superuser'
+  | 'administrador'
+  | 'bodeguero'
+  | 'seller'
+  | 'corredor'
+  | 'boss'
+  | 'public'
+  | 'admin'
+  | 'warehouse'
+  | 'runner';
 
 export interface User {
   id: string;
@@ -198,6 +208,7 @@ export interface PendingTransferItem {
   courier_name: string | null;
   warehouse_keeper_name: string | null;
   location_name?: string;
+  inventory_type?: 'pair' | 'left_only' | 'right_only';
 }
 
 export interface PendingTransfersSummary {

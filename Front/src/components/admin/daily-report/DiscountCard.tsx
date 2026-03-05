@@ -36,7 +36,7 @@ const DiscountCard: React.FC<DiscountCardProps> = ({ discount, formatCurrency, f
   const isFromSale = discount.status === 'from_sale';
   const isPending = !discount.status || discount.status === 'pending' || discount.status === 'pendiente';
   const isApproved = discount.status === 'approved' || discount.status === 'aprobado';
-  const _isRejected = discount.status === 'rejected' || discount.status === 'rechazado';
+
   const statusVariant = isFromSale ? 'secondary' : isPending ? 'warning' : isApproved ? 'success' : 'error';
   const statusLabel = isFromSale
     ? 'Venta con descuento'

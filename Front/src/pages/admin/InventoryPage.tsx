@@ -576,7 +576,7 @@ Motivo: ${data.reason}${siblingMessage}`);
     product_reference: string;
     new_unit_price: number;
     update_all_locations: boolean;
-    location_id: number | null;
+    location_id?: number | null;
   }) => {
     try {
       const response = await adjustProductPrice(data);

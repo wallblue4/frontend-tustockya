@@ -9,6 +9,7 @@ interface AdjustPriceModalProps {
     product_reference: string;
     new_unit_price: number;
     update_all_locations: boolean;
+    location_id?: number | null;
   }) => Promise<void>;
   productData: {
     brand: string;
@@ -168,7 +169,7 @@ export const AdjustPriceModal: React.FC<AdjustPriceModalProps> = ({ onClose, onS
               <div className="flex items-center justify-between mt-1">
                 <span className="text-xs text-muted-foreground">Variacion porcentual:</span>
                 <span className={`text-sm font-medium ${priceChange > 0 ? 'text-success' : 'text-error'}`}>
-                  {parseFloat(priceChangePercentage) > 0 ? '+' : ''}
+                  {parseFloat(String(priceChangePercentage)) > 0 ? '+' : ''}
                   {priceChangePercentage}%
                 </span>
               </div>

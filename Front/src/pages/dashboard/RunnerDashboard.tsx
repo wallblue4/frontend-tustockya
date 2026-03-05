@@ -21,7 +21,7 @@ import { Button } from '../../components/ui/Button';
 // IMPORTACIONES
 import { useTransferNotifications } from '../../hooks/useTransferNotifications';
 import { useTransferPolling } from '../../hooks/useTransferPolling';
-import { useAuth } from '../../context/AuthContext';
+
 import { courierAPI } from '../../services/transfersAPI';
 import { AssignedTransport, CourierStats, MyTransportsResponse } from '../../types';
 
@@ -101,7 +101,6 @@ export const RunnerDashboard: React.FC = () => {
   const [purposeFilter, setPurposeFilter] = useState<'all' | 'cliente' | 'restock'>('all');
 
   // HOOKS
-  const _auth = useAuth();
   const { notifyTransportAvailable, addNotification } = useTransferNotifications();
 
   // Callback para manejar actualizaciones de polling

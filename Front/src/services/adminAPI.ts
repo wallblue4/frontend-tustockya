@@ -85,6 +85,11 @@ interface DailySaleItem {
   unit_price: number;
 }
 
+export interface DailySalePayment {
+  payment_type: string;
+  amount: number;
+}
+
 export interface DailySaleTraceability {
   sale_id: number;
   location_id: number;
@@ -95,6 +100,7 @@ export interface DailySaleTraceability {
   sale_date: string;
   items: DailySaleItem[];
   receipt_image?: string | null;
+  payments?: DailySalePayment[];
 }
 
 export interface TransferLocation {

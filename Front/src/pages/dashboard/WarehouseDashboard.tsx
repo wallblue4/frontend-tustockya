@@ -1,5 +1,5 @@
 // src/pages/dashboard/WarehouseDashboard.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { type ReactNode, useState, useEffect, useCallback } from 'react';
 import {
   Package,
   Send,
@@ -218,6 +218,19 @@ export const WarehouseDashboard: React.FC = () => {
     source_location_name?: string;
     source_location_address?: string;
     product_image?: string;
+    request_type?: string;
+    product_info?: {
+      image_url?: string;
+      brand?: string;
+      model?: string;
+    };
+    pickup_info?: {
+      type?: string;
+      name?: string;
+    };
+    source_location?: string;
+    destination_location?: string;
+    requester_name?: string;
   }
 
   const [transferHistory, setTransferHistory] = useState<TransferHistoryItem[]>([]);

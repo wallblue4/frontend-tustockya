@@ -13,7 +13,7 @@ export const useTransferPolling = (userRole: 'seller' | 'bodeguero' | 'corredor'
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isPolling, setIsPolling] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchData = async () => {
     try {
@@ -22,11 +22,8 @@ export const useTransferPolling = (userRole: 'seller' | 'bodeguero' | 'corredor'
 
       switch (userRole) {
         case 'seller': {
-          const [pending, receptions] = await Promise.all([
-            vendorAPI.getPendingTransfers(),
-            vendorAPI.getPendingReceptions(),
-          ]);
-          response = { pending: pending.pending_transfers, receptions: receptions.pending_receptions };
+          const pending = await vendorAPI.getPendingTransfers();
+          response = { pending: pending.pending_transfers };
           break;
         }
 

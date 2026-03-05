@@ -389,7 +389,7 @@ export const SalesList: React.FC = () => {
                               key={index}
                               className="flex items-center space-x-1 text-xs bg-muted/30 px-2 py-1 rounded"
                             >
-                              <span className="text-foreground">{getPaymentMethodLabel(payment.type)}</span>
+                              <span className="text-foreground">{getPaymentMethodLabel(payment.payment_type)}</span>
                               {payment.reference && (
                                 <span className="text-muted-foreground">({payment.reference})</span>
                               )}

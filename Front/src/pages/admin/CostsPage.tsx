@@ -365,7 +365,7 @@ export const CostsPage: React.FC = () => {
         <h2 className="text-2xl font-bold text-foreground">Gestion de Costos</h2>
         <div className="flex space-x-2">
           <Button
-            variant={showCostsList ? 'default' : 'outline'}
+            variant={showCostsList ? 'primary' : 'outline'}
             onClick={() => {
               setShowCostsList(!showCostsList);
               if (!showCostsList) {

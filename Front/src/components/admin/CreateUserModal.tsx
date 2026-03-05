@@ -6,7 +6,7 @@ import { Input } from '../ui/Input';
 interface Location {
   id: number;
   name: string;
-  type: 'local' | 'bodega';
+  type: string;
 }
 
 interface CreateUserModalProps {

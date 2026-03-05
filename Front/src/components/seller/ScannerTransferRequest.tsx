@@ -325,7 +325,6 @@ export const ScannerTransferRequest: React.FC<ScannerTransferRequestProps> = ({
 
           // Caso dual: pies desde ubicaciones distintas
           if (isDualTransfer) {
-            const _dual = prefilledProductData.dual_transfer!;
             return (
               <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-3">
                 <div className="flex items-center gap-2">

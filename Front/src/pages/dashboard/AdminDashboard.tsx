@@ -2177,7 +2177,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
           <h2 className="text-2xl font-bold text-foreground">Gestión de Costos</h2>
           <div className="flex space-x-2">
             <Button
-              variant={showCostsList ? 'default' : 'outline'}
+              variant={showCostsList ? 'secondary' : 'outline'}
               onClick={() => {
                 setShowCostsList(!showCostsList);
                 if (!showCostsList) {
@@ -4699,8 +4699,8 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
                             </div>
                           </div>
 
-                          {/* Dates - Show all dates if pickup_type is "corredor" or "vendedor" */}
-                          {(transfer.pickup_type === 'corredor' || transfer.pickup_type === 'vendedor') && (
+                          {/* Dates - Show all dates if pickup_type is "corredor" or "seller" */}
+                          {(transfer.pickup_type === 'corredor' || transfer.pickup_type === 'seller') && (
                             <div>
                               <p className="text-xs uppercase text-muted-foreground mb-2">Fechas del Proceso</p>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -5455,7 +5455,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
           <CreateUserModal
             onClose={() => setShowCreateUserModal(false)}
             onSubmit={handleCreateUser}
-            locations={availableLocations}
+            locations={availableLocations as { id: number; name: string; type: 'local' | 'bodega' }[]}
           />
         )}
 
@@ -5463,6 +5463,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
           <EditUserModal
             user={{
               ...editingUser,
+              role: editingUser.role as 'vendedor' | 'bodeguero' | 'corredor' | 'seller',
               // Extract location_ids from assigned_locations array
               location_ids: editingUser.assigned_locations?.map((loc) => loc.id) || [],
             }}
@@ -5471,7 +5472,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
               setShowEditUserModal(false);
             }}
             onSubmit={(userData) => handleUpdateUser(editingUser.id, userData)}
-            locations={availableLocations}
+            locations={availableLocations as { id: number; name: string; type: 'local' | 'bodega' }[]}
           />
         )}
 
@@ -5479,7 +5480,7 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
           <CreateCostModal
             onClose={() => setShowCreateCostModal(false)}
             onSubmit={handleCreateCost}
-            locations={locations}
+            locations={locations as { id: number; name: string; type: 'local' | 'bodega' }[]}
           />
         )}
 
@@ -5591,7 +5592,13 @@ Alcance: ${data.update_all_locations ? 'Todas las ubicaciones' : 'Ubicacion espe
               setShowAdjustPriceModal(false);
               setSelectedProductForPriceAdjustment(null);
             }}
-            onSubmit={handleAdjustPrice}
+            onSubmit={
+              handleAdjustPrice as (data: {
+                product_reference: string;
+                new_unit_price: number;
+                update_all_locations: boolean;
+              }) => Promise<void>
+            }
             productData={selectedProductForPriceAdjustment}
           />
         )}

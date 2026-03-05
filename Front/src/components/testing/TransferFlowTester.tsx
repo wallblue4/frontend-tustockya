@@ -65,7 +65,7 @@ export const TransferFlowTester: React.FC = () => {
       description: 'Corredor ve la solicitud y acepta el transporte',
       action: async () => {
         if (!transferId) throw new Error('No hay transfer ID');
-        return await courierAPI.acceptRequest(transferId, 20, 'Voy en camino a la bodega.');
+        return await courierAPI.acceptRequest(transferId, '20', 'Voy en camino a la bodega.');
       },
       status: 'pending',
     },
