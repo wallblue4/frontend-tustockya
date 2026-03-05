@@ -603,17 +603,20 @@ export const vendorAPI = {
       return handleResponse(response);
     };
 
-    const result = await tryBackendFirst(backendCall);
-
-    if (result.success) {
-      return result.data;
-    } else {
+    try {
+      return await backendCall();
+    } catch (error) {
+      // If the error has a message from handleResponse, it's a backend error (e.g. 400) — re-throw
+      if (error instanceof Error && !error.message.includes('Failed to fetch')) {
+        throw error;
+      }
+      // Network error — use mock fallback
       console.log('📦 Usando respuesta mock para createReturn');
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       return {
         success: true,
-        message: 'Devolución creada',
+        message: 'Devolucion creada',
         return_id: Math.floor(Math.random() * 1000) + 135,
         original_transfer_id: returnData.original_transfer_id,
         status: 'pending',
