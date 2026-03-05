@@ -149,20 +149,6 @@ const TransferCard: React.FC<TransferCardProps> = ({ transfer, formatDate }) => 
                 </>
               )}
             </div>
-            <div className="flex flex-col gap-1 mt-1.5 text-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="text-muted-foreground w-7">De</span>
-                <Badge variant={transfer.source_location.type === 'bodega' ? 'primary' : 'warning'}>
-                  {transfer.source_location.name}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-muted-foreground w-7">Para</span>
-                <Badge variant={transfer.destination_location.type === 'bodega' ? 'primary' : 'warning'}>
-                  {transfer.destination_location.name}
-                </Badge>
-              </div>
-            </div>
           </div>
           <div className="flex-shrink-0">
             {isExpanded ? (
@@ -176,6 +162,21 @@ const TransferCard: React.FC<TransferCardProps> = ({ transfer, formatDate }) => 
 
       {isExpanded && (
         <div className="border-t border-border bg-muted/5 p-3 space-y-3">
+          <div className="flex flex-col gap-1 text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground w-7">De</span>
+              <Badge variant={transfer.source_location.type === 'bodega' ? 'primary' : 'warning'}>
+                {transfer.source_location.name}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground w-7">Para</span>
+              <Badge variant={transfer.destination_location.type === 'bodega' ? 'primary' : 'warning'}>
+                {transfer.destination_location.name}
+              </Badge>
+            </div>
+          </div>
+
           {dateEntries.length > 0 && (
             <div className="space-y-1.5">
               <p className="text-xs font-medium text-foreground flex items-center gap-1">

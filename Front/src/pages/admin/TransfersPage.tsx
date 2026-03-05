@@ -87,6 +87,12 @@ const lifecycleSteps = [
   { status: 'Completada', description: 'Vendedor confirma que la recibió' },
 ];
 
+const inventoryTypeLabelMap: Record<string, string> = {
+  pair: 'Par completo',
+  left_only: 'Pie izquierdo',
+  right_only: 'Pie derecho',
+};
+
 const getPickupTypeLabel = (type: string): string => {
   switch (type) {
     case 'seller':
@@ -351,7 +357,9 @@ export const TransfersPage: React.FC = () => {
                         <div className="flex flex-wrap gap-4 text-sm">
                           <div>
                             <span className="text-muted-foreground">Tipo inventario:</span>{' '}
-                            <span className="font-medium">{transfer.inventory_type}</span>
+                            <span className="font-medium">
+                              {inventoryTypeLabelMap[transfer.inventory_type] || transfer.inventory_type}
+                            </span>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Tipo solicitud:</span>{' '}
