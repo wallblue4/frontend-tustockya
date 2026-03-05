@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
@@ -23,6 +23,13 @@ export const SellerScanPage: React.FC = () => {
     setProductDataForTransfer,
     loadTransfersSummary,
   } = useSeller();
+
+  // Si llega con prefilledProduct (e.g. desde /seller/transfers), ir directo a la vista de venta
+  useEffect(() => {
+    if (prefilledProduct) {
+      setSubView('scanner-sale');
+    }
+  }, []); // Solo al montar
 
   const handleRequestTransfer = (productData: {
     sneaker_reference_code: string;
@@ -123,8 +130,22 @@ export const SellerScanPage: React.FC = () => {
             image: prefilledProduct.image?.[0],
             transfer_id: prefilledProduct.transfer_id,
           }}
-          onSaleCompleted={goBackToDashboard}
-          onBack={prefilledProduct.transfer_id ? goBackToDashboard : goBackToScanner}
+          onSaleCompleted={
+            prefilledProduct.transfer_id
+              ? () => {
+                  setPrefilledProduct(null);
+                  navigate('/seller/transfers');
+                }
+              : goBackToDashboard
+          }
+          onBack={
+            prefilledProduct.transfer_id
+              ? () => {
+                  setPrefilledProduct(null);
+                  navigate('/seller/transfers');
+                }
+              : goBackToScanner
+          }
         />
       )}
     </div>
