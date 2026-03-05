@@ -47,6 +47,7 @@ interface Transfer {
   pickup_type: 'seller' | 'corredor';
   request_type: string;
   inventory_type: string;
+  has_return_request?: boolean;
 }
 
 interface TransferCardProps {
@@ -59,21 +60,27 @@ const statusVariantMap: Record<string, 'success' | 'warning' | 'secondary' | 'pr
   selled: 'success',
   pending: 'warning',
   in_transit: 'primary',
-  accepted: 'primary',
+  accepted: 'warning',
   picked_up: 'primary',
   delivered: 'primary',
   cancelled: 'error',
 };
 
 const statusLabelMap: Record<string, string> = {
-  completed: 'Completada',
-  selled: 'Vendida',
-  pending: 'En curso',
+  completed: 'Completado',
+  selled: 'Vendido',
+  pending: 'Pendiente',
   in_transit: 'En tránsito',
-  accepted: 'Aceptada',
+  accepted: 'Pendiente',
   picked_up: 'Recogida',
   delivered: 'Entregada',
-  cancelled: 'Cancelada',
+  cancelled: 'Cancelado',
+};
+
+const inventoryTypeLabelMap: Record<string, string> = {
+  pair: 'Par completo',
+  left_only: 'Pie izquierdo',
+  right_only: 'Pie derecho',
 };
 
 const formatTime = (dateStr: string) => {
@@ -86,13 +93,13 @@ const TransferCard: React.FC<TransferCardProps> = ({ transfer, formatDate }) => 
 
   const statusVariant = statusVariantMap[transfer.status] || 'secondary';
   const borderColorMap: Record<string, string> = {
-    completed: 'border-primary/40',
+    completed: 'border-warning/40',
     selled: 'border-success/40',
     pending: 'border-warning/40',
     in_transit: 'border-warning/40',
     picked_up: 'border-warning/40',
     delivered: 'border-warning/40',
-    accepted: 'border-orange-500/40',
+    accepted: 'border-warning/40',
     cancelled: 'border-destructive/40',
   };
   const borderColor =
@@ -120,18 +127,27 @@ const TransferCard: React.FC<TransferCardProps> = ({ transfer, formatDate }) => 
               <p className="text-sm font-semibold text-foreground truncate">
                 {transfer.product.brand} {transfer.product.model}
               </p>
-              {transfer.request_type === 'return' && <Badge variant="error">Devolución</Badge>}
-              <Badge variant={statusVariant}>{statusLabelMap[transfer.status] || transfer.status}</Badge>
-              {transfer.dates.requested_at && (
-                <span className="text-xs text-muted-foreground ml-auto">{formatTime(transfer.dates.requested_at)}</span>
+              {transfer.request_type === 'return' ? (
+                <Badge variant="error">Devolución</Badge>
+              ) : transfer.status === 'completed' ? (
+                <Badge variant="warning">Pendiente</Badge>
+              ) : (
+                <Badge variant={statusVariant}>{statusLabelMap[transfer.status] || transfer.status}</Badge>
+              )}
+              {transfer.dates.confirmed_reception_at && (
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {formatTime(transfer.dates.confirmed_reception_at)}
+                </span>
               )}
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span>T{transfer.product.size}</span>
-              <span>·</span>
-              <span>{transfer.product.quantity} uds</span>
-              <span>·</span>
-              <span>{transfer.pickup_type === 'corredor' ? 'Corredor' : 'Vendedor'}</span>
+              <span>Talla: {transfer.product.size}</span>
+              {transfer.status !== 'selled' && transfer.inventory_type && (
+                <>
+                  <span>·</span>
+                  <span>{inventoryTypeLabelMap[transfer.inventory_type] || transfer.inventory_type}</span>
+                </>
+              )}
             </div>
             <div className="flex flex-col gap-1 mt-1.5 text-xs">
               <div className="flex items-center gap-1.5">
@@ -139,18 +155,12 @@ const TransferCard: React.FC<TransferCardProps> = ({ transfer, formatDate }) => 
                 <Badge variant={transfer.source_location.type === 'bodega' ? 'primary' : 'warning'}>
                   {transfer.source_location.name}
                 </Badge>
-                {transfer.dates.picked_up_at && (
-                  <span className="text-muted-foreground ml-auto">{formatTime(transfer.dates.picked_up_at)}</span>
-                )}
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-muted-foreground w-7">Para</span>
                 <Badge variant={transfer.destination_location.type === 'bodega' ? 'primary' : 'warning'}>
                   {transfer.destination_location.name}
                 </Badge>
-                {transfer.dates.delivered_at && (
-                  <span className="text-muted-foreground ml-auto">{formatTime(transfer.dates.delivered_at)}</span>
-                )}
               </div>
             </div>
           </div>
@@ -166,20 +176,6 @@ const TransferCard: React.FC<TransferCardProps> = ({ transfer, formatDate }) => 
 
       {isExpanded && (
         <div className="border-t border-border bg-muted/5 p-3 space-y-3">
-          {transfer.inventory_type && (
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground">Tipo inventario:</span>
-              <Badge variant="secondary">{transfer.inventory_type}</Badge>
-            </div>
-          )}
-
-          {transfer.request_type && (
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground">Tipo solicitud:</span>
-              <span className="text-foreground">{transfer.request_type}</span>
-            </div>
-          )}
-
           {dateEntries.length > 0 && (
             <div className="space-y-1.5">
               <p className="text-xs font-medium text-foreground flex items-center gap-1">

@@ -48,6 +48,7 @@ interface Transfer {
   pickup_type: 'seller' | 'corredor';
   request_type: string;
   inventory_type: string;
+  has_return_request?: boolean;
 }
 
 interface Location {
@@ -73,100 +74,100 @@ const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({ transfers, 
     return transfers.filter((t) => t.source_location.id === locId || t.destination_location.id === locId);
   }, [transfers, locationFilter]);
 
-  const transfersOnly = useMemo(
-    () => filteredTransfers.filter((t) => t.request_type !== 'return'),
+  // Pendientes: completed but not selled and not returns, excluding those with pending return request
+  const pendingTransfers = useMemo(
+    () =>
+      filteredTransfers.filter((t) => t.status === 'completed' && t.request_type !== 'return' && !t.has_return_request),
     [filteredTransfers]
   );
-  const returnsOnly = useMemo(() => filteredTransfers.filter((t) => t.request_type === 'return'), [filteredTransfers]);
+  // Vendidos: selled
+  const selledTransfers = useMemo(() => filteredTransfers.filter((t) => t.status === 'selled'), [filteredTransfers]);
+  // Devoluciones: returns with status completed
+  const completedReturns = useMemo(
+    () => filteredTransfers.filter((t) => t.request_type === 'return' && t.status === 'completed'),
+    [filteredTransfers]
+  );
 
-  const statusFilters: { key: string; label: string; activeClass: string; inactiveClass: string }[] = [
+  const statusFilters: {
+    key: string;
+    label: string;
+    activeClass: string;
+    inactiveClass: string;
+    disabledClass: string;
+  }[] = [
     {
       key: 'pending',
-      label: 'En curso',
+      label: 'Pendientes',
       activeClass: 'bg-warning text-white',
       inactiveClass: 'bg-warning/10 text-warning hover:bg-warning/20',
-    },
-    {
-      key: 'accepted',
-      label: 'Aceptadas',
-      activeClass: 'bg-orange-500 text-white',
-      inactiveClass: 'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20',
-    },
-    {
-      key: 'completed',
-      label: 'Completadas',
-      activeClass: 'bg-primary text-white',
-      inactiveClass: 'bg-primary/10 text-primary hover:bg-primary/20',
+      disabledClass: 'bg-muted/30 text-muted-foreground/50',
     },
     {
       key: 'selled',
-      label: 'Vendidas',
+      label: 'Vendidos',
       activeClass: 'bg-success text-white',
       inactiveClass: 'bg-success/10 text-success hover:bg-success/20',
-    },
-    {
-      key: 'cancelled',
-      label: 'Canceladas',
-      activeClass: 'bg-destructive text-white',
-      inactiveClass: 'bg-destructive/10 text-destructive hover:bg-destructive/20',
+      disabledClass: 'bg-muted/30 text-muted-foreground/50',
     },
     {
       key: 'returns',
       label: 'Devoluciones',
       activeClass: 'bg-destructive text-white',
       inactiveClass: 'bg-destructive/10 text-destructive hover:bg-destructive/20',
+      disabledClass: 'bg-muted/30 text-muted-foreground/50',
     },
   ];
 
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const t of transfersOnly) {
-      const key = ['in_transit', 'picked_up', 'delivered'].includes(t.status) ? 'pending' : t.status;
-      counts[key] = (counts[key] || 0) + 1;
-    }
-    counts['returns'] = returnsOnly.length;
-    return counts;
-  }, [transfersOnly, returnsOnly]);
+  const statusCounts: Record<string, number> = useMemo(
+    () => ({
+      pending: pendingTransfers.length,
+      selled: selledTransfers.length,
+      returns: completedReturns.length,
+    }),
+    [pendingTransfers, selledTransfers, completedReturns]
+  );
+
+  const totalCount = pendingTransfers.length + selledTransfers.length + completedReturns.length;
 
   const visibleTransfers = useMemo(() => {
     if (statusFilter === 'returns') return [];
-    if (statusFilter === 'all') return transfersOnly;
-    if (statusFilter === 'pending')
-      return transfersOnly.filter((t) => ['pending', 'in_transit', 'picked_up', 'delivered'].includes(t.status));
-    return transfersOnly.filter((t) => t.status === statusFilter);
-  }, [transfersOnly, statusFilter]);
+    if (statusFilter === 'all') return [...pendingTransfers, ...selledTransfers];
+    if (statusFilter === 'pending') return pendingTransfers;
+    if (statusFilter === 'selled') return selledTransfers;
+    return [];
+  }, [pendingTransfers, selledTransfers, statusFilter]);
 
   const visibleReturns = useMemo(() => {
     if (statusFilter !== 'all' && statusFilter !== 'returns') return [];
-    return returnsOnly;
-  }, [returnsOnly, statusFilter]);
+    return completedReturns;
+  }, [completedReturns, statusFilter]);
 
   return (
     <div className="flex flex-col h-full">
       <div className="mb-3 px-1">
         <div className="flex items-center gap-2">
           <Truck className="h-5 w-5 text-primary" />
-          <h3 className="text-base font-semibold text-foreground">Transferencias ({filteredTransfers.length})</h3>
+          <h3 className="text-base font-semibold text-foreground">Pedidos ({totalCount})</h3>
         </div>
-        {(transfersOnly.length > 0 || returnsOnly.length > 0) && (
-          <div className="flex flex-wrap items-center gap-1.5 mt-2 ml-7">
-            {statusFilters.map((f) => {
-              const count = statusCounts[f.key] || 0;
-              if (count === 0) return null;
-              return (
-                <button
-                  key={f.key}
-                  onClick={() => setStatusFilter(statusFilter === f.key ? 'all' : f.key)}
-                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                    statusFilter === f.key ? f.activeClass : f.inactiveClass
-                  }`}
-                >
-                  {count} {f.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-1.5 mt-2 ml-7">
+          {statusFilters.map((f) => {
+            const count = statusCounts[f.key] || 0;
+            const isDisabled = count === 0;
+            const isActive = statusFilter === f.key;
+            return (
+              <button
+                key={f.key}
+                disabled={isDisabled}
+                onClick={() => setStatusFilter(isActive ? 'all' : f.key)}
+                className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                  isDisabled ? f.disabledClass : isActive ? f.activeClass : f.inactiveClass
+                } ${isDisabled ? 'cursor-not-allowed' : ''}`}
+              >
+                {count} {f.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mb-3">
@@ -186,7 +187,7 @@ const TransfersTraceColumn: React.FC<TransfersTraceColumnProps> = ({ transfers, 
         </div>
       ) : filteredTransfers.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground text-sm">
-          No hay transferencias ni devoluciones para esta fecha
+          No hay pedidos ni devoluciones para esta fecha
         </div>
       ) : (
         <div className="space-y-3 overflow-y-auto flex-1 pr-1">

@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
-import { Truck, Calendar, ChevronDown, ChevronUp, Warehouse, Store } from 'lucide-react';
+import { Truck, Calendar, ChevronDown, ChevronUp, Warehouse, Store, Info } from 'lucide-react';
 import { EmptyState } from '../../components/admin/ErrorState';
 import { fetchDailyTransfersTraceability } from '../../services/adminAPI';
 import type { DailyTransferTraceability } from '../../services/adminAPI';
@@ -12,26 +12,80 @@ import { todayLocal } from '../../utils/date';
 
 const todayISO = todayLocal();
 
-const getStatusBadgeVariant = (status: string): 'primary' | 'secondary' | 'success' | 'warning' | 'error' => {
-  switch (status.toLowerCase()) {
-    case 'completada':
-    case 'entregada':
-    case 'confirmed':
-      return 'success';
-    case 'en_transito':
-    case 'en transito':
-    case 'in_transit':
-      return 'warning';
-    case 'pendiente':
-    case 'pending':
-      return 'secondary';
-    case 'cancelada':
-    case 'cancelled':
-      return 'error';
-    default:
-      return 'primary';
-  }
+const statusVariantMap: Record<string, 'primary' | 'secondary' | 'success' | 'warning' | 'error'> = {
+  pending: 'warning',
+  accepted: 'warning',
+  in_transit: 'primary',
+  picked_up: 'primary',
+  delivered: 'primary',
+  completed: 'success',
+  selled: 'success',
+  cancelled: 'error',
 };
+
+const statusLabelMap: Record<string, string> = {
+  pending: 'Pendiente',
+  accepted: 'Pendiente',
+  in_transit: 'En tránsito',
+  picked_up: 'Recogida',
+  delivered: 'Entregada',
+  completed: 'Completada',
+  selled: 'Vendido',
+  cancelled: 'Cancelado',
+};
+
+const statusFilters: { key: string; label: string; activeClass: string; inactiveClass: string }[] = [
+  {
+    key: 'pending',
+    label: 'Pendientes',
+    activeClass: 'bg-warning text-white',
+    inactiveClass: 'bg-warning/10 text-warning hover:bg-warning/20',
+  },
+  {
+    key: 'in_transit',
+    label: 'En tránsito',
+    activeClass: 'bg-primary text-white',
+    inactiveClass: 'bg-primary/10 text-primary hover:bg-primary/20',
+  },
+  {
+    key: 'delivered',
+    label: 'Entregadas',
+    activeClass: 'bg-primary text-white',
+    inactiveClass: 'bg-primary/10 text-primary hover:bg-primary/20',
+  },
+  {
+    key: 'completed',
+    label: 'Completadas',
+    activeClass: 'bg-success text-white',
+    inactiveClass: 'bg-success/10 text-success hover:bg-success/20',
+  },
+  {
+    key: 'selled',
+    label: 'Vendidos',
+    activeClass: 'bg-success text-white',
+    inactiveClass: 'bg-success/10 text-success hover:bg-success/20',
+  },
+  {
+    key: 'cancelled',
+    label: 'Cancelados',
+    activeClass: 'bg-destructive text-white',
+    inactiveClass: 'bg-destructive/10 text-destructive hover:bg-destructive/20',
+  },
+  {
+    key: 'returns',
+    label: 'Devoluciones',
+    activeClass: 'bg-destructive text-white',
+    inactiveClass: 'bg-destructive/10 text-destructive hover:bg-destructive/20',
+  },
+];
+
+const lifecycleSteps = [
+  { status: 'Pendiente', description: 'Bodeguero está pendiente de aceptar la transferencia' },
+  { status: 'Aceptada', description: 'Bodeguero aceptó la transferencia' },
+  { status: 'En tránsito', description: 'Bodeguero se la pasa al corredor' },
+  { status: 'Entregada', description: 'Bodeguero o corredor la entregan al vendedor' },
+  { status: 'Completada', description: 'Vendedor confirma que la recibió' },
+];
 
 const getPickupTypeLabel = (type: string): string => {
   switch (type) {
@@ -52,6 +106,39 @@ export const TransfersPage: React.FC = () => {
   const [transfersTraceabilityLoading, setTransfersTraceabilityLoading] = useState<boolean>(false);
   const [transfersTraceabilityError, setTransfersTraceabilityError] = useState<string | null>(null);
   const [expandedTransfers, setExpandedTransfers] = useState<Set<number>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  const transfersOnly = useMemo(
+    () => transfersTraceabilityData.filter((t) => t.request_type !== 'return'),
+    [transfersTraceabilityData]
+  );
+  const returnsOnly = useMemo(
+    () => transfersTraceabilityData.filter((t) => t.request_type === 'return'),
+    [transfersTraceabilityData]
+  );
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const t of transfersOnly) {
+      const key = ['accepted', 'picked_up'].includes(t.status) ? 'pending' : t.status;
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    counts['returns'] = returnsOnly.length;
+    return counts;
+  }, [transfersOnly, returnsOnly]);
+
+  const visibleTransfers = useMemo(() => {
+    if (statusFilter === 'returns') return [];
+    if (statusFilter === 'all') return transfersOnly;
+    if (statusFilter === 'pending')
+      return transfersOnly.filter((t) => ['pending', 'accepted', 'picked_up'].includes(t.status));
+    return transfersOnly.filter((t) => t.status === statusFilter);
+  }, [transfersOnly, statusFilter]);
+
+  const visibleReturns = useMemo(() => {
+    if (statusFilter !== 'all' && statusFilter !== 'returns') return [];
+    return returnsOnly;
+  }, [returnsOnly, statusFilter]);
 
   const toggleTransferExpansion = (transferId: number) => {
     setExpandedTransfers((prev) => {
@@ -102,9 +189,27 @@ export const TransfersPage: React.FC = () => {
       <Card>
         <div className="px-6 py-4 border-b border-border bg-muted/10 flex items-center space-x-3">
           <Truck className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-semibold">Transferencias del Dia</h3>
+          <h3 className="text-lg font-semibold">Transferencias del Dia ({transfersTraceabilityData.length})</h3>
         </div>
         <CardContent>
+          {/* Lifecycle explanation */}
+          <div className="mb-5 p-4 bg-muted/20 border border-border rounded-lg">
+            <div className="flex items-center gap-2 mb-3">
+              <Info className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">Ciclo de vida de una transferencia</span>
+            </div>
+            <ol className="space-y-1.5 text-xs text-muted-foreground">
+              {lifecycleSteps.map((step, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="font-semibold text-foreground min-w-[90px]">
+                    {i + 1}. {step.status}:
+                  </span>
+                  <span>{step.description}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
           {/* Date filter */}
           <div className="flex flex-col sm:flex-row items-end gap-4 mb-6">
             <div className="flex-1 w-full sm:w-auto">
@@ -126,6 +231,27 @@ export const TransfersPage: React.FC = () => {
             </Button>
           </div>
 
+          {/* Status filter buttons */}
+          {transfersTraceabilityData.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 mb-4">
+              {statusFilters.map((f) => {
+                const count = statusCounts[f.key] || 0;
+                if (count === 0) return null;
+                return (
+                  <button
+                    key={f.key}
+                    onClick={() => setStatusFilter(statusFilter === f.key ? 'all' : f.key)}
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                      statusFilter === f.key ? f.activeClass : f.inactiveClass
+                    }`}
+                  >
+                    {count} {f.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Error display */}
           {transfersTraceabilityError && (
             <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-sm">
@@ -134,13 +260,27 @@ export const TransfersPage: React.FC = () => {
           )}
 
           {/* Transfer cards */}
-          {transfersTraceabilityData.length > 0 ? (
+          {visibleTransfers.length > 0 || visibleReturns.length > 0 ? (
             <div className="space-y-4">
-              {transfersTraceabilityData.map((transfer) => {
+              {[...visibleTransfers, ...visibleReturns].map((transfer) => {
                 const isExpanded = expandedTransfers.has(transfer.transfer_id);
+                const borderColorMap: Record<string, string> = {
+                  completed: 'border-success/40',
+                  selled: 'border-success/40',
+                  pending: 'border-warning/40',
+                  accepted: 'border-warning/40',
+                  in_transit: 'border-primary/40',
+                  picked_up: 'border-primary/40',
+                  delivered: 'border-primary/40',
+                  cancelled: 'border-destructive/40',
+                };
+                const borderColor =
+                  transfer.request_type === 'return'
+                    ? 'border-destructive/40'
+                    : borderColorMap[transfer.status] || 'border-border';
 
                 return (
-                  <div key={transfer.transfer_id} className="border border-border rounded-lg overflow-hidden">
+                  <div key={transfer.transfer_id} className={`border ${borderColor} rounded-lg overflow-hidden`}>
                     {/* Collapsed row */}
                     <button
                       type="button"
@@ -156,11 +296,14 @@ export const TransfersPage: React.FC = () => {
                             {transfer.product.brand} {transfer.product.model}
                           </p>
                           <div className="flex flex-wrap items-center gap-2 mt-1">
-                            <Badge variant={getStatusBadgeVariant(transfer.status)}>{transfer.status}</Badge>
-                            <span className="text-xs text-muted-foreground">Talla: {transfer.product.size}</span>
-                            <span className="text-xs text-muted-foreground">Cant: {transfer.product.quantity}</span>
+                            {transfer.request_type === 'return' && <Badge variant="error">Devolución</Badge>}
+                            <Badge variant={statusVariantMap[transfer.status] || 'secondary'}>
+                              {statusLabelMap[transfer.status] || transfer.status}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">T{transfer.product.size}</span>
+                            <span className="text-xs text-muted-foreground">{transfer.product.quantity} uds</span>
                             <span className="text-xs text-muted-foreground">
-                              Recogida: {getPickupTypeLabel(transfer.pickup_type)}
+                              {getPickupTypeLabel(transfer.pickup_type)}
                             </span>
                           </div>
                         </div>
@@ -349,6 +492,8 @@ export const TransfersPage: React.FC = () => {
                 );
               })}
             </div>
+          ) : transfersTraceabilityData.length > 0 ? (
+            <div className="text-center py-6 text-muted-foreground text-sm">No hay resultados para este filtro</div>
           ) : (
             !transfersTraceabilityLoading && (
               <EmptyState
