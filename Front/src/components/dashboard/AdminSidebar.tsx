@@ -29,7 +29,7 @@ const navItems = [
   { to: '/administrador/analiticas', label: 'Análisis', icon: PieChart },
   { to: '/administrador/notificaciones', label: 'Notificaciones', icon: Bell, badge: true },
   { to: '/administrador/ventas', label: 'Ventas y Trazabilidad', icon: FileText },
-  { to: '/administrador/transferencias', label: 'Transferencias', icon: Truck },
+  { to: '/administrador/transferencias', label: 'Pedidos', icon: Truck },
   { to: '/administrador/reporte-dia', label: 'Reporte Día', icon: ClipboardList },
 ];
 

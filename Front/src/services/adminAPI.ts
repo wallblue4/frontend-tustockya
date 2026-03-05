@@ -23,7 +23,9 @@ const handleResponse = async (response: Response) => {
     const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
     throw new Error(error.detail || `Error ${response.status}`);
   }
-  return response.json();
+  const text = await response.text();
+  if (!text) return null;
+  return JSON.parse(text);
 };
 
 // ========== INTERFACES ==========

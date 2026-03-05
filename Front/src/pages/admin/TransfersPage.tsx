@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -27,9 +28,9 @@ const statusLabelMap: Record<string, string> = {
   pending: 'Pendiente',
   accepted: 'Pendiente',
   in_transit: 'En tránsito',
-  picked_up: 'Recogida',
-  delivered: 'Entregada',
-  completed: 'Completada',
+  picked_up: 'Recogido',
+  delivered: 'Entregado',
+  completed: 'Completado',
   selled: 'Vendido',
   cancelled: 'Cancelado',
 };
@@ -49,13 +50,13 @@ const statusFilters: { key: string; label: string; activeClass: string; inactive
   },
   {
     key: 'delivered',
-    label: 'Entregadas',
+    label: 'Entregados',
     activeClass: 'bg-primary text-white',
     inactiveClass: 'bg-primary/10 text-primary hover:bg-primary/20',
   },
   {
     key: 'completed',
-    label: 'Completadas',
+    label: 'Completados',
     activeClass: 'bg-success text-white',
     inactiveClass: 'bg-success/10 text-success hover:bg-success/20',
   },
@@ -80,11 +81,11 @@ const statusFilters: { key: string; label: string; activeClass: string; inactive
 ];
 
 const lifecycleSteps = [
-  { status: 'Pendiente', description: 'Bodeguero está pendiente de aceptar la transferencia' },
-  { status: 'Aceptada', description: 'Bodeguero aceptó la transferencia' },
+  { status: 'Pendiente', description: 'Bodeguero está pendiente de aceptar el pedido' },
+  { status: 'Aceptado', description: 'Bodeguero aceptó el pedido' },
   { status: 'En tránsito', description: 'Bodeguero se la pasa al corredor' },
-  { status: 'Entregada', description: 'Bodeguero o corredor la entregan al vendedor' },
-  { status: 'Completada', description: 'Vendedor confirma que la recibió' },
+  { status: 'Entregado', description: 'Bodeguero o corredor la entregan al vendedor' },
+  { status: 'Completado', description: 'Vendedor confirma que la recibió' },
 ];
 
 const inventoryTypeLabelMap: Record<string, string> = {
@@ -93,34 +94,63 @@ const inventoryTypeLabelMap: Record<string, string> = {
   right_only: 'Pie derecho',
 };
 
-const getPickupTypeLabel = (type: string): string => {
-  switch (type) {
-    case 'seller':
-      return 'Vendedor';
-    case 'corredor':
-      return 'Corredor';
-    default:
-      return type;
-  }
+const formatTime = (dateStr: string) => {
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
 };
 
 export const TransfersPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialDate = searchParams.get('fecha') || todayISO;
   const [transfersTraceabilityFilters, setTransfersTraceabilityFilters] = useState<{ target_date: string }>({
-    target_date: todayISO,
+    target_date: initialDate,
   });
+
+  const updateDate = useCallback(
+    (date: string) => {
+      setTransfersTraceabilityFilters((prev) => ({ ...prev, target_date: date }));
+      setSearchParams((prev) => {
+        if (date === todayISO) {
+          prev.delete('fecha');
+        } else {
+          prev.set('fecha', date);
+        }
+        return prev;
+      });
+    },
+    [setSearchParams]
+  );
   const [transfersTraceabilityData, setTransfersTraceabilityData] = useState<DailyTransferTraceability[]>([]);
   const [transfersTraceabilityLoading, setTransfersTraceabilityLoading] = useState<boolean>(false);
   const [transfersTraceabilityError, setTransfersTraceabilityError] = useState<string | null>(null);
   const [expandedTransfers, setExpandedTransfers] = useState<Set<number>>(new Set());
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [locationFilter, setLocationFilter] = useState<string>('');
+
+  const uniqueLocations = useMemo(() => {
+    const map = new Map<number, { id: number; name: string; type: string }>();
+    for (const t of transfersTraceabilityData) {
+      if (!map.has(t.source_location.id)) map.set(t.source_location.id, t.source_location);
+      if (!map.has(t.destination_location.id)) map.set(t.destination_location.id, t.destination_location);
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [transfersTraceabilityData]);
+
+  const locationFilteredData = useMemo(() => {
+    if (!locationFilter) return transfersTraceabilityData;
+    const locId = parseInt(locationFilter);
+    return transfersTraceabilityData.filter(
+      (t) => t.source_location.id === locId || t.destination_location.id === locId
+    );
+  }, [transfersTraceabilityData, locationFilter]);
 
   const transfersOnly = useMemo(
-    () => transfersTraceabilityData.filter((t) => t.request_type !== 'return'),
-    [transfersTraceabilityData]
+    () => locationFilteredData.filter((t) => t.request_type !== 'return'),
+    [locationFilteredData]
   );
   const returnsOnly = useMemo(
-    () => transfersTraceabilityData.filter((t) => t.request_type === 'return'),
-    [transfersTraceabilityData]
+    () => locationFilteredData.filter((t) => t.request_type === 'return'),
+    [locationFilteredData]
   );
 
   const statusCounts = useMemo(() => {
@@ -190,19 +220,19 @@ export const TransfersPage: React.FC = () => {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <h2 className="text-2xl font-bold">Trazabilidad de Transferencias</h2>
+      <h2 className="text-2xl font-bold">Trazabilidad de Pedidos</h2>
 
       <Card>
         <div className="px-6 py-4 border-b border-border bg-muted/10 flex items-center space-x-3">
           <Truck className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-semibold">Transferencias del Dia ({transfersTraceabilityData.length})</h3>
+          <h3 className="text-lg font-semibold">Pedidos del Dia ({transfersTraceabilityData.length})</h3>
         </div>
         <CardContent>
           {/* Lifecycle explanation */}
           <div className="mb-5 p-4 bg-muted/20 border border-border rounded-lg">
             <div className="flex items-center gap-2 mb-3">
               <Info className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">Ciclo de vida de una transferencia</span>
+              <span className="text-sm font-semibold text-foreground">Ciclo de vida de un pedido</span>
             </div>
             <ol className="space-y-1.5 text-xs text-muted-foreground">
               {lifecycleSteps.map((step, i) => (
@@ -223,18 +253,29 @@ export const TransfersPage: React.FC = () => {
                 label="Fecha"
                 type="date"
                 value={transfersTraceabilityFilters.target_date}
-                onChange={(e) =>
-                  setTransfersTraceabilityFilters((prev) => ({
-                    ...prev,
-                    target_date: e.target.value,
-                  }))
-                }
+                onChange={(e) => updateDate(e.target.value)}
                 icon={<Calendar className="h-4 w-4" />}
               />
             </div>
             <Button onClick={handleFetchTransfersTraceability} isLoading={transfersTraceabilityLoading}>
               Consultar
             </Button>
+          </div>
+
+          {/* Location filter */}
+          <div className="mb-4">
+            <select
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-border bg-card text-foreground rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">Todas las ubicaciones</option>
+              {uniqueLocations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name} ({loc.type === 'bodega' ? 'Bodega' : 'Local'})
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Status filter buttons */}
@@ -298,19 +339,45 @@ export const TransfersPage: React.FC = () => {
                           <Truck className="h-5 w-5 text-primary" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-foreground truncate">
-                            {transfer.product.brand} {transfer.product.model}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-2 mt-1">
-                            {transfer.request_type === 'return' && <Badge variant="error">Devolución</Badge>}
-                            <Badge variant={statusVariantMap[transfer.status] || 'secondary'}>
-                              {statusLabelMap[transfer.status] || transfer.status}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">T{transfer.product.size}</span>
-                            <span className="text-xs text-muted-foreground">{transfer.product.quantity} uds</span>
-                            <span className="text-xs text-muted-foreground">
-                              {getPickupTypeLabel(transfer.pickup_type)}
-                            </span>
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-semibold text-foreground truncate">
+                              {transfer.product.brand} {transfer.product.model}
+                            </p>
+                            {transfer.request_type === 'return' ? (
+                              <Badge variant="error">Devolución</Badge>
+                            ) : (
+                              <Badge variant={statusVariantMap[transfer.status] || 'secondary'}>
+                                {statusLabelMap[transfer.status] || transfer.status}
+                              </Badge>
+                            )}
+                            {transfer.dates.confirmed_reception_at && (
+                              <span className="text-xs text-muted-foreground ml-auto">
+                                {formatTime(transfer.dates.confirmed_reception_at)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <span>Talla: {transfer.product.size}</span>
+                            {transfer.inventory_type && (
+                              <>
+                                <span>·</span>
+                                <span>{inventoryTypeLabelMap[transfer.inventory_type] || transfer.inventory_type}</span>
+                              </>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-1 mt-1.5 text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-muted-foreground w-7">De</span>
+                              <Badge variant={transfer.source_location.type === 'bodega' ? 'primary' : 'warning'}>
+                                {transfer.source_location.name}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-muted-foreground w-7">Para</span>
+                              <Badge variant={transfer.destination_location.type === 'bodega' ? 'primary' : 'warning'}>
+                                {transfer.destination_location.name}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -505,8 +572,8 @@ export const TransfersPage: React.FC = () => {
           ) : (
             !transfersTraceabilityLoading && (
               <EmptyState
-                title="Sin transferencias"
-                description="No se encontraron transferencias para la fecha seleccionada. Seleccione una fecha y presione Consultar."
+                title="Sin pedidos"
+                description="No se encontraron pedidos para la fecha seleccionada. Seleccione una fecha y presione Consultar."
                 icon={<Truck className="h-12 w-12 text-muted-foreground mx-auto" />}
               />
             )
