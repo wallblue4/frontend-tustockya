@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { todayLocal, toLocalDateString } from '../../utils/date';
 import {
   DollarSign,
   TrendingUp,
@@ -141,8 +142,8 @@ export const BossDashboard: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [dateRange, setDateRange] = useState({
-    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0],
+    start: toLocalDateString(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
+    end: todayLocal(),
   });
 
   // Cargar datos iniciales
@@ -220,10 +221,7 @@ export const BossDashboard: React.FC = () => {
         case 'financial': {
           const today = new Date();
           const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-          const fin = await bossAPI.getFinancialAnalysis(
-            firstDay.toISOString().split('T')[0],
-            today.toISOString().split('T')[0]
-          );
+          const fin = await bossAPI.getFinancialAnalysis(toLocalDateString(firstDay), toLocalDateString(today));
           setFinancialData(fin);
           break;
         }

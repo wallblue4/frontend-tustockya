@@ -13,6 +13,7 @@ import {
   fetchAllDiscountRequests,
 } from '../../../services/adminAPI';
 import type { DailySaleTraceability, DailyTransferTraceability } from '../../../services/adminAPI';
+import { toLocalDateString } from '../../../utils/date';
 
 interface Location {
   id: number;
@@ -64,7 +65,7 @@ interface DailyReportViewProps {
 
 const getTodayISO = () => {
   const today = new Date();
-  return today.toISOString().split('T')[0];
+  return toLocalDateString(today);
 };
 
 const DailyReportView: React.FC<DailyReportViewProps> = ({

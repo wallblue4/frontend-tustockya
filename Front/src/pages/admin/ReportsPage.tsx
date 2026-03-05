@@ -9,10 +9,11 @@ import { useAdmin } from '../../context/AdminContext';
 import { generateSalesReports, fetchDailySalesTraceability } from '../../services/adminAPI';
 import type { DailySaleTraceability } from '../../services/adminAPI';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { todayLocal, daysAgoLocal } from '../../utils/date';
 
 export const ReportsPage: React.FC = () => {
   const { locations, setReceiptPreviewUrl } = useAdmin();
-  const todayISO = new Date().toISOString().split('T')[0];
+  const todayISO = todayLocal();
 
   const [dailyTraceabilityFilters, setDailyTraceabilityFilters] = useState({
     target_date: todayISO,
@@ -75,8 +76,8 @@ export const ReportsPage: React.FC = () => {
                 onClick={async () => {
                   try {
                     const report = await generateSalesReports({
-                      start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                      end_date: new Date().toISOString().split('T')[0],
+                      start_date: daysAgoLocal(30),
+                      end_date: todayLocal(),
                     });
                     console.log('Sales report:', report);
                     alert('Reporte de ventas generado - revisar consola');

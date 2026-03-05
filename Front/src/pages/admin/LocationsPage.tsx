@@ -6,6 +6,7 @@ import { Store, Warehouse, Activity, MapPin, Eye, RefreshCw } from 'lucide-react
 import { EmptyState } from '../../components/admin/ErrorState';
 import { fetchLocationStatistics } from '../../services/adminAPI';
 import { formatCurrency } from '../../utils/formatters';
+import { todayLocal, daysAgoLocal } from '../../utils/date';
 import { useAdmin } from '../../context/AdminContext';
 
 export const LocationsPage: React.FC = () => {
@@ -87,11 +88,7 @@ export const LocationsPage: React.FC = () => {
                         variant="outline"
                         onClick={async () => {
                           try {
-                            const stats = await fetchLocationStatistics(
-                              location.id,
-                              new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                              new Date().toISOString().split('T')[0]
-                            );
+                            const stats = await fetchLocationStatistics(location.id, daysAgoLocal(30), todayLocal());
                             console.log('Location stats:', stats);
                             alert('Ver estadísticas en consola por ahora');
                           } catch (error) {

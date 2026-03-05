@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { vendorAPI, formatCurrency } from '../../services/api';
+import { todayLocal } from '../../utils/date';
 import { ShoppingBag, Clock, CheckCircle, DollarSign, Filter, Receipt, AlertCircle } from 'lucide-react';
 
 interface Sale {
@@ -93,7 +94,7 @@ export const SalesList: React.FC = () => {
         success: true,
         message: 'Ventas de prueba',
         timestamp: new Date().toISOString(),
-        date: new Date().toISOString().split('T')[0],
+        date: todayLocal(),
         sales: [
           {
             id: 1,

@@ -8,8 +8,9 @@ import { EmptyState } from '../../components/admin/ErrorState';
 import { fetchDailyTransfersTraceability } from '../../services/adminAPI';
 import type { DailyTransferTraceability } from '../../services/adminAPI';
 import { formatDate } from '../../utils/formatters';
+import { todayLocal } from '../../utils/date';
 
-const todayISO = new Date().toISOString().split('T')[0];
+const todayISO = todayLocal();
 
 const getStatusBadgeVariant = (status: string): 'primary' | 'secondary' | 'success' | 'warning' | 'error' => {
   switch (status.toLowerCase()) {

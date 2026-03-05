@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { todayLocal, toLocalDateString } from '../../utils/date';
 import {
   Users,
   Building2,
@@ -171,7 +172,7 @@ export const SuperuserDashboard: React.FC = () => {
     new_max_locations: 5,
     new_max_employees: 15,
     new_price_per_location: 75,
-    effective_date: new Date().toISOString().split('T')[0],
+    effective_date: todayLocal(),
     reason: '',
   });
 
@@ -199,8 +200,8 @@ export const SuperuserDashboard: React.FC = () => {
   // Estado para reportes (Endpoint 17)
   const [financialReport, setFinancialReport] = useState<any>(null);
   const [reportDates, setReportDates] = useState({
-    start_date: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    end_date: new Date().toISOString().split('T')[0],
+    start_date: toLocalDateString(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
+    end_date: todayLocal(),
   });
 
   // Estado para setup primer superadmin (Endpoint 1)

@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import Select from '../../components/ui/Select';
+import { todayLocal } from '../../utils/date';
 import {
   DollarSign,
   FileText,
@@ -78,7 +79,7 @@ export const CostsPage: React.FC = () => {
     notes: '',
   });
 
-  const todayISO = new Date().toISOString().split('T')[0];
+  const todayISO = todayLocal();
 
   // ─── Load data on mount ────────────────────────────────────────────
   useEffect(() => {
@@ -143,7 +144,7 @@ export const CostsPage: React.FC = () => {
         amount: parseFloat(costData.amount.toString()),
         frequency: mapFrequencyToAPI(costData.frequency),
         description: costData.description,
-        start_date: new Date().toISOString().split('T')[0],
+        start_date: todayLocal(),
         end_date: costData.due_date || undefined,
       };
 

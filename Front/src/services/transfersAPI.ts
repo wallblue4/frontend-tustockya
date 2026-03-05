@@ -1,6 +1,7 @@
 // src/services/transfersAPI.ts
 import type { ReturnRequestCreate, ReturnResponse } from '../types/transfers';
 import { BACKEND_URL } from '../config/env';
+import { todayLocal } from '../utils/date';
 
 const getHeaders = () => {
   const token = localStorage.getItem('token');
@@ -224,7 +225,7 @@ export const vendorAPI = {
       return {
         success: true,
         completed_transfers: [],
-        date: new Date().toISOString().split('T')[0],
+        date: todayLocal(),
         today_stats: {
           total_transfers: 0,
           completed: 0,
@@ -257,7 +258,7 @@ export const vendorAPI = {
       await new Promise((resolve) => setTimeout(resolve, 500));
       return {
         success: true,
-        date: new Date().toISOString().split('T')[0],
+        date: todayLocal(),
         history: [],
         stats: {
           total_items: 0,
@@ -350,7 +351,7 @@ export const vendorAPI = {
       success: true,
       outgoing_transfers: [],
       count: 0,
-      date: new Date().toISOString().split('T')[0],
+      date: todayLocal(),
       stats: { total: 0, completed: 0, selled: 0, by_inventory_type: { pairs: 0, left_only: 0, right_only: 0 } },
     });
 
@@ -553,7 +554,7 @@ export const vendorAPI = {
           location_id: 1,
         },
         today_summary: {
-          date: new Date().toISOString().split('T')[0],
+          date: todayLocal(),
           sales: {
             total_count: 15,
             pending_confirmations: 3,

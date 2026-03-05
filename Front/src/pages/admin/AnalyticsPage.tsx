@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Users, BarChart3, Package, PieChart, Download } from 'lucide-react';
 import { EmptyState } from '../../components/admin/ErrorState';
+import { todayLocal, daysAgoLocal } from '../../utils/date';
 import { generateSalesReports, fetchUsersPerformance, fetchTransfersOverview } from '../../services/adminAPI';
 
 export const AnalyticsPage: React.FC = () => {
@@ -17,8 +18,8 @@ export const AnalyticsPage: React.FC = () => {
             onClick={async () => {
               try {
                 const report = await generateSalesReports({
-                  start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                  end_date: new Date().toISOString().split('T')[0],
+                  start_date: daysAgoLocal(30),
+                  end_date: todayLocal(),
                 });
                 console.log('Sales report:', report);
                 alert('Reporte generado - Ver consola');
@@ -37,8 +38,8 @@ export const AnalyticsPage: React.FC = () => {
             onClick={async () => {
               try {
                 const performance = await fetchUsersPerformance({
-                  start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                  end_date: new Date().toISOString().split('T')[0],
+                  start_date: daysAgoLocal(7),
+                  end_date: todayLocal(),
                 });
                 console.log('User performance:', performance);
                 alert('Performance data - Ver consola');
