@@ -180,7 +180,10 @@ export const WarehouseDashboard: React.FC = () => {
   // Estados de filtros
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'normal'>('all');
   const [purposeFilter, setPurposeFilter] = useState<'all' | 'cliente' | 'restock' | 'return'>('all');
-  const [pendingSearch, setPendingSearch] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  useEffect(() => {
+    setSearchTerm('');
+  }, [activeTab]);
 
   // Estados de estadísticas
   const [stats, setStats] = useState({
@@ -195,7 +198,6 @@ export const WarehouseDashboard: React.FC = () => {
   const [inventory, setInventory] = useState<InventoryLocation[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<number | 'all'>('all');
   const [inventoryLoading, setInventoryLoading] = useState(false);
-  const [inventorySearchTerm, setInventorySearchTerm] = useState('');
 
   // HOOKS
   const { notifyNewTransferAvailable, addNotification } = useTransferNotifications();
@@ -518,8 +520,8 @@ export const WarehouseDashboard: React.FC = () => {
 
     if (!matchesPriority || !matchesPurpose) return false;
 
-    if (pendingSearch.trim()) {
-      const q = pendingSearch.toLowerCase();
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
       const haystack = [
         request.brand,
         request.model,
@@ -660,23 +662,22 @@ export const WarehouseDashboard: React.FC = () => {
     }
 
     // Filtrar productos por término de búsqueda (incluye TODOS los campos disponibles)
-    if (inventorySearchTerm) {
-      const searchTerm = inventorySearchTerm.toLowerCase();
+    if (searchTerm) {
+      const searchQ = searchTerm.toLowerCase();
       filteredLocations = filteredLocations.map((location) => ({
         ...location,
         products: location.products.filter(
           (product) =>
-            product.description.toLowerCase().includes(searchTerm) ||
-            product.brand.toLowerCase().includes(searchTerm) ||
-            product.model.toLowerCase().includes(searchTerm) ||
-            product.reference_code.toLowerCase().includes(searchTerm) ||
-            (product.color_info && product.color_info.toLowerCase().includes(searchTerm)) ||
-            product.location_name.toLowerCase().includes(searchTerm) ||
-            product.product_id.toString().includes(searchTerm) ||
-            product.unit_price.includes(searchTerm) ||
-            product.box_price.includes(searchTerm) ||
-            // Buscar en las tallas también
-            product.sizes.some((size) => size.size.includes(searchTerm))
+            product.description.toLowerCase().includes(searchQ) ||
+            product.brand.toLowerCase().includes(searchQ) ||
+            product.model.toLowerCase().includes(searchQ) ||
+            product.reference_code.toLowerCase().includes(searchQ) ||
+            (product.color_info && product.color_info.toLowerCase().includes(searchQ)) ||
+            product.location_name.toLowerCase().includes(searchQ) ||
+            product.product_id.toString().includes(searchQ) ||
+            product.unit_price.includes(searchQ) ||
+            product.box_price.includes(searchQ) ||
+            product.sizes.some((size) => size.size.includes(searchQ))
         ),
       }));
     }
@@ -853,162 +854,196 @@ export const WarehouseDashboard: React.FC = () => {
               </h2>
             </CardHeader>
             <CardContent>
+              {/* Buscador */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar por marca, modelo, referencia, talla..."
+                  className="w-full pl-9 pr-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground placeholder:text-muted-foreground"
+                />
+              </div>
               {transferHistoryLoading ? (
                 <div className="flex items-center justify-center p-8">
                   <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mr-4"></div>
                   <span className="text-muted-foreground">Cargando historial...</span>
                 </div>
-              ) : transferHistory.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground">No se encontraron transferencias para hoy.</p>
-                </div>
               ) : (
-                <div className="space-y-3">
-                  {transferHistory.map((item) => (
-                    <article
-                      key={item.id}
-                      className={`border rounded-md p-3 bg-card shadow-sm ${
-                        item.request_type === 'return' || item.purpose === 'return'
-                          ? 'border-orange-300 border-l-4 border-l-orange-500'
-                          : item.purpose === 'restock'
-                            ? 'border-blue-300 border-l-4 border-l-blue-500'
-                            : item.purpose === 'cliente'
-                              ? 'border-emerald-300 border-l-4 border-l-emerald-500'
-                              : 'border-border'
-                      }`}
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4">
-                        <div className="flex-shrink-0 self-center sm:self-start">
-                          <img
-                            src={item.product_info?.image_url}
-                            alt={item.product_info?.model}
-                            className="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-md shadow-sm"
-                          />
-                        </div>
-
-                        <div className="mt-3 sm:mt-0 flex-1 min-w-0">
-                          <div className="flex items-start justify-between">
-                            <div className="truncate">
-                              {/* Título de tipo: Devolución / Reposición / Pedido */}
-                              <div
-                                className={`text-sm font-semibold mb-1 ${
-                                  item.request_type === 'return' || item.purpose === 'return'
-                                    ? 'text-orange-600'
-                                    : item.purpose === 'restock'
-                                      ? 'text-blue-600'
-                                      : item.purpose === 'cliente'
-                                        ? 'text-emerald-600'
-                                        : 'text-primary'
-                                }`}
-                              >
-                                {item.request_type === 'return' || item.purpose === 'return'
-                                  ? '↩️ Devolución'
-                                  : item.purpose === 'restock'
-                                    ? '📦 Reposición'
-                                    : item.purpose === 'cliente'
-                                      ? '🏃 Pedido'
-                                      : item.purpose === 'pair_formation'
-                                        ? '🔗 Formar Par'
-                                        : '📦 Transferencia'}
-                              </div>
-                              <div className="font-medium text-sm truncate">
-                                {item.product_info?.brand} {item.product_info?.model}
-                              </div>
-                              <div className="flex items-center flex-wrap gap-2 mt-1">
-                                <span className="inline-block text-xs px-2 py-0.5 rounded bg-card border border-border text-muted-foreground">
-                                  {item.pickup_info?.type || '—'}
-                                </span>
-                              </div>
+                (() => {
+                  const q = searchTerm.trim().toLowerCase();
+                  const filteredHistory = q
+                    ? transferHistory.filter((item) => {
+                        const haystack = [
+                          item.brand,
+                          item.model,
+                          item.sneaker_reference_code,
+                          item.size,
+                          item.product_info?.brand,
+                          item.product_info?.model,
+                          item.source_location_name,
+                          item.requester_name,
+                        ]
+                          .filter(Boolean)
+                          .join(' ')
+                          .toLowerCase();
+                        return haystack.includes(q);
+                      })
+                    : transferHistory;
+                  return filteredHistory.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-muted-foreground">No se encontraron transferencias para hoy.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredHistory.map((item) => (
+                        <article
+                          key={item.id}
+                          className={`border rounded-md p-3 bg-card shadow-sm ${
+                            item.request_type === 'return' || item.purpose === 'return'
+                              ? 'border-orange-300 border-l-4 border-l-orange-500'
+                              : item.purpose === 'restock'
+                                ? 'border-blue-300 border-l-4 border-l-blue-500'
+                                : item.purpose === 'cliente'
+                                  ? 'border-emerald-300 border-l-4 border-l-emerald-500'
+                                  : 'border-border'
+                          }`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4">
+                            <div className="flex-shrink-0 self-center sm:self-start">
+                              <img
+                                src={item.product_info?.image_url}
+                                alt={item.product_info?.model}
+                                className="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-md shadow-sm"
+                              />
                             </div>
 
-                            <div className="text-right ml-3 flex-shrink-0">
-                              <span
-                                className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${item.status === 'completed' ? 'bg-success/20 text-success' : 'bg-muted/20 text-muted-foreground'}`}
-                              >
-                                {item.status}
-                              </span>
-                              {typeof item.quantity !== 'undefined' && (
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  {item.inventory_type === 'pair'
-                                    ? 'Par'
-                                    : item.inventory_type === 'left_only'
-                                      ? 'Izquierdo'
-                                      : item.inventory_type === 'right_only'
-                                        ? 'Derecho'
-                                        : item.inventory_type}{' '}
-                                  {item.quantity} ud.
+                            <div className="mt-3 sm:mt-0 flex-1 min-w-0">
+                              <div className="flex items-start justify-between">
+                                <div className="truncate">
+                                  {/* Título de tipo: Devolución / Reposición / Pedido */}
+                                  <div
+                                    className={`text-sm font-semibold mb-1 ${
+                                      item.request_type === 'return' || item.purpose === 'return'
+                                        ? 'text-orange-600'
+                                        : item.purpose === 'restock'
+                                          ? 'text-blue-600'
+                                          : item.purpose === 'cliente'
+                                            ? 'text-emerald-600'
+                                            : 'text-primary'
+                                    }`}
+                                  >
+                                    {item.request_type === 'return' || item.purpose === 'return'
+                                      ? '↩️ Devolución'
+                                      : item.purpose === 'restock'
+                                        ? '📦 Reposición'
+                                        : item.purpose === 'cliente'
+                                          ? '🏃 Pedido'
+                                          : item.purpose === 'pair_formation'
+                                            ? '🔗 Formar Par'
+                                            : '📦 Transferencia'}
+                                  </div>
+                                  <div className="font-medium text-sm truncate">
+                                    {item.product_info?.brand} {item.product_info?.model}
+                                  </div>
+                                  <div className="flex items-center flex-wrap gap-2 mt-1">
+                                    <span className="inline-block text-xs px-2 py-0.5 rounded bg-card border border-border text-muted-foreground">
+                                      {item.pickup_info?.type || '—'}
+                                    </span>
+                                  </div>
                                 </div>
-                              )}
-                              <p className={`inline-block px-2 py-0.5 rounded text-xs font-medium `}>
-                                Talla: {item.size}
-                              </p>
+
+                                <div className="text-right ml-3 flex-shrink-0">
+                                  <span
+                                    className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${item.status === 'completed' ? 'bg-success/20 text-success' : 'bg-muted/20 text-muted-foreground'}`}
+                                  >
+                                    {item.status}
+                                  </span>
+                                  {typeof item.quantity !== 'undefined' && (
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                      {item.inventory_type === 'pair'
+                                        ? 'Par'
+                                        : item.inventory_type === 'left_only'
+                                          ? 'Izquierdo'
+                                          : item.inventory_type === 'right_only'
+                                            ? 'Derecho'
+                                            : item.inventory_type}{' '}
+                                      {item.quantity} ud.
+                                    </div>
+                                  )}
+                                  <p className={`inline-block px-2 py-0.5 rounded text-xs font-medium `}>
+                                    Talla: {item.size}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
+                                <div>
+                                  <div className="truncate">
+                                    <strong>Origen:</strong> {item.source_location || 'N/A'}
+                                  </div>
+                                  <div className="truncate">
+                                    <strong>Destino:</strong> {item.destination_location || 'N/A'}
+                                  </div>
+                                  <div className="truncate">
+                                    <strong>Solicitado:</strong>{' '}
+                                    {item.requested_at
+                                      ? new Date(item.requested_at).toLocaleString('es-CO', {
+                                          hour: 'numeric',
+                                          minute: '2-digit',
+                                        })
+                                      : 'N/A'}
+                                  </div>
+                                </div>
+                                <div>
+                                  {/* Si hay fechas adicionales, mostrarlas */}
+                                  {item.accepted_at && (
+                                    <div>
+                                      <strong>Aceptado:</strong>{' '}
+                                      {new Date(item.accepted_at).toLocaleString('es-CO', {
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                      })}
+                                    </div>
+                                  )}
+                                  {item.picked_up_at && (
+                                    <div>
+                                      <strong>Recolectado (picked_up_at):</strong>{' '}
+                                      {new Date(item.picked_up_at).toLocaleString('es-CO', {
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                      })}
+                                    </div>
+                                  )}
+                                  {item.delivered_at && (
+                                    <div>
+                                      <strong>Entregado (delivered_at):</strong>{' '}
+                                      {new Date(item.delivered_at).toLocaleString('es-CO', {
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                      })}
+                                    </div>
+                                  )}
+                                  {item.pickup_info?.type === 'corredor' && item.pickup_info?.name && (
+                                    <div className="truncate">
+                                      <strong>🚚 Corredor:</strong> {item.pickup_info.name}
+                                    </div>
+                                  )}
+                                  {item.requester_name && (
+                                    <div className="truncate">
+                                      <strong>👤 Receptor:</strong> {item.requester_name}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           </div>
-
-                          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
-                            <div>
-                              <div className="truncate">
-                                <strong>Origen:</strong> {item.source_location || 'N/A'}
-                              </div>
-                              <div className="truncate">
-                                <strong>Destino:</strong> {item.destination_location || 'N/A'}
-                              </div>
-                              <div className="truncate">
-                                <strong>Solicitado:</strong>{' '}
-                                {item.requested_at
-                                  ? new Date(item.requested_at).toLocaleString('es-CO', {
-                                      hour: 'numeric',
-                                      minute: '2-digit',
-                                    })
-                                  : 'N/A'}
-                              </div>
-                            </div>
-                            <div>
-                              {/* Si hay fechas adicionales, mostrarlas */}
-                              {item.accepted_at && (
-                                <div>
-                                  <strong>Aceptado:</strong>{' '}
-                                  {new Date(item.accepted_at).toLocaleString('es-CO', {
-                                    hour: 'numeric',
-                                    minute: '2-digit',
-                                  })}
-                                </div>
-                              )}
-                              {item.picked_up_at && (
-                                <div>
-                                  <strong>Recolectado (picked_up_at):</strong>{' '}
-                                  {new Date(item.picked_up_at).toLocaleString('es-CO', {
-                                    hour: 'numeric',
-                                    minute: '2-digit',
-                                  })}
-                                </div>
-                              )}
-                              {item.delivered_at && (
-                                <div>
-                                  <strong>Entregado (delivered_at):</strong>{' '}
-                                  {new Date(item.delivered_at).toLocaleString('es-CO', {
-                                    hour: 'numeric',
-                                    minute: '2-digit',
-                                  })}
-                                </div>
-                              )}
-                              {item.pickup_info?.type === 'corredor' && item.pickup_info?.name && (
-                                <div className="truncate">
-                                  <strong>🚚 Corredor:</strong> {item.pickup_info.name}
-                                </div>
-                              )}
-                              {item.requester_name && (
-                                <div className="truncate">
-                                  <strong>👤 Receptor:</strong> {item.requester_name}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
+                        </article>
+                      ))}
+                    </div>
+                  );
+                })()
               )}
             </CardContent>
           </Card>
@@ -1068,8 +1103,8 @@ export const WarehouseDashboard: React.FC = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
-                  value={pendingSearch}
-                  onChange={(e) => setPendingSearch(e.target.value)}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Buscar por marca, modelo, referencia, talla..."
                   className="w-full pl-9 pr-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground placeholder:text-muted-foreground"
                 />
@@ -1493,16 +1528,39 @@ export const WarehouseDashboard: React.FC = () => {
               </h2>
             </CardHeader>
             <CardContent>
+              {/* Buscador */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar por marca, modelo, referencia, talla..."
+                  className="w-full pl-9 pr-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground placeholder:text-muted-foreground"
+                />
+              </div>
               {(() => {
-                // Filtrar transferencias que están listas para entrega:
-                // 1. Status "courier_assigned" (para entregar a corredor)
-                // 2. Status "accepted" con pickup_type "vendedor" (para entregar a vendedor)
-                // Solo estos estados permiten realizar entregas (excluye "delivered", "in_transit", etc.)
-                const preparationRequests = acceptedRequests.filter(
-                  (request) =>
+                const q = searchTerm.trim().toLowerCase();
+                const preparationRequests = acceptedRequests.filter((request) => {
+                  const statusMatch =
                     request.status === 'courier_assigned' ||
-                    (request.status === 'accepted' && request.pickup_type === 'vendedor')
-                );
+                    (request.status === 'accepted' && request.pickup_type === 'vendedor');
+                  if (!statusMatch) return false;
+                  if (!q) return true;
+                  const haystack = [
+                    request.product.brand,
+                    request.product.model,
+                    request.product.reference_code,
+                    request.product.size,
+                    request.requester_info?.name,
+                    request.location?.source_name,
+                    request.location?.destination_name,
+                  ]
+                    .filter(Boolean)
+                    .join(' ')
+                    .toLowerCase();
+                  return haystack.includes(q);
+                });
 
                 return preparationRequests.length === 0 ? (
                   <div className="text-center py-8 md:py-12">
@@ -2097,8 +2155,8 @@ export const WarehouseDashboard: React.FC = () => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <input
                       type="text"
-                      value={inventorySearchTerm}
-                      onChange={(e) => setInventorySearchTerm(e.target.value)}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                       placeholder="Buscar marca, modelo, talla..."
                       className="pl-9 pr-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground w-full sm:w-64"
                     />
@@ -2195,10 +2253,10 @@ export const WarehouseDashboard: React.FC = () => {
                     <div className="text-center py-8">
                       <Warehouse className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                       <h3 className="text-lg font-medium">
-                        {inventorySearchTerm ? 'No se encontraron productos' : 'No hay inventario disponible'}
+                        {searchTerm ? 'No se encontraron productos' : 'No hay inventario disponible'}
                       </h3>
                       <p className="text-muted-foreground text-sm">
-                        {inventorySearchTerm
+                        {searchTerm
                           ? 'Prueba con otros términos de búsqueda'
                           : 'El inventario se cargará automáticamente'}
                       </p>
@@ -2462,137 +2520,167 @@ export const WarehouseDashboard: React.FC = () => {
               </h2>
             </CardHeader>
             <CardContent>
-              {pendingReturns.length === 0 ? (
-                <div className="text-center py-8 md:py-12">
-                  <Package className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
-                  <h3 className="text-base md:text-lg font-medium">No hay devoluciones pendientes</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Las devoluciones aparecerán aquí cuando sean solicitadas.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4 md:space-y-6">
-                  {pendingReturns.map((returnItem) => (
-                    <div
-                      key={returnItem.id}
-                      className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300"
-                    >
-                      <div className="p-4 md:p-6">
-                        {/* Header con estado */}
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center space-x-2">
-                            <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
-                              🔄 Devolución
-                            </span>
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                returnItem.pickup_type === 'corredor'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-green-100 text-green-800'
-                              }`}
-                            >
-                              {returnItem.pickup_type === 'corredor' ? '🚚 Con Corredor' : '👤 Con Vendedor'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Información del producto */}
-                        <div className="flex items-center space-x-4 mb-4">
-                          {returnItem.product?.image_url && (
-                            <img
-                              src={returnItem.product.image_url}
-                              alt={`${returnItem.product.brand} ${returnItem.product.model}`}
-                              className="w-16 h-16 object-cover rounded-lg border border-border"
-                            />
-                          )}
-                          <div>
-                            <h3 className="font-bold text-lg text-card-foreground">
-                              {returnItem.product?.brand || returnItem.brand}{' '}
-                              {returnItem.product?.model || returnItem.model}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              Talla {returnItem.product?.size || returnItem.size} • Cantidad:{' '}
-                              {returnItem.product?.quantity || returnItem.quantity}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              <strong>Tipo:</strong> {returnItem.request_type_display || 'Devolución'}
-                            </p>
-                            {returnItem.requester_info && (
-                              <p className="text-sm text-muted-foreground">
-                                <strong>Solicitado por:</strong> {returnItem.requester_info.name}
-                              </p>
-                            )}
-                            {returnItem.courier_info && (
-                              <p className="text-sm text-muted-foreground">
-                                <strong>Corredor:</strong> {returnItem.courier_info.name || 'No asignado'}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Información de ubicaciones */}
-                        {returnItem.location && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
-                              <div className="text-sm font-medium text-primary mb-1">📍 Desde</div>
-                              <div className="text-sm font-medium text-card-foreground">
-                                {returnItem.location.source_name}
-                              </div>
-                            </div>
-                            <div className="p-3 bg-success/10 rounded-lg border border-success/20">
-                              <div className="text-sm font-medium text-success mb-1">🏪 Hacia</div>
-                              <div className="text-sm font-medium text-card-foreground">
-                                {returnItem.location.destination_name}
-                              </div>
+              {/* Buscador */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar por marca, modelo, referencia, talla..."
+                  className="w-full pl-9 pr-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground placeholder:text-muted-foreground"
+                />
+              </div>
+              {(() => {
+                const q = searchTerm.trim().toLowerCase();
+                const filteredReturns = q
+                  ? pendingReturns.filter((item) => {
+                      const haystack = [
+                        item.product?.brand || item.brand,
+                        item.product?.model || item.model,
+                        item.product?.reference_code || item.sneaker_reference_code,
+                        item.product?.size || item.size,
+                        item.source_location_name,
+                        item.requester_name,
+                      ]
+                        .filter(Boolean)
+                        .join(' ')
+                        .toLowerCase();
+                      return haystack.includes(q);
+                    })
+                  : pendingReturns;
+                return filteredReturns.length === 0 ? (
+                  <div className="text-center py-8 md:py-12">
+                    <Package className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
+                    <h3 className="text-base md:text-lg font-medium">No hay devoluciones pendientes</h3>
+                    <p className="text-muted-foreground text-sm">
+                      Las devoluciones aparecerán aquí cuando sean solicitadas.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 md:space-y-6">
+                    {filteredReturns.map((returnItem) => (
+                      <div
+                        key={returnItem.id}
+                        className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300"
+                      >
+                        <div className="p-4 md:p-6">
+                          {/* Header con estado */}
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-2">
+                              <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
+                                🔄 Devolución
+                              </span>
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  returnItem.pickup_type === 'corredor'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-green-100 text-green-800'
+                                }`}
+                              >
+                                {returnItem.pickup_type === 'corredor' ? '🚚 Con Corredor' : '👤 Con Vendedor'}
+                              </span>
                             </div>
                           </div>
-                        )}
 
-                        {/* Timeline de la devolución */}
-                        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                          <h4 className="text-sm font-medium text-blue-800 mb-2">📋 Timeline</h4>
-                          <div className="space-y-1 text-xs text-blue-700">
-                            {returnItem.requested_at && (
-                              <div>✅ Solicitado: {new Date(returnItem.requested_at).toLocaleString()}</div>
+                          {/* Información del producto */}
+                          <div className="flex items-center space-x-4 mb-4">
+                            {returnItem.product?.image_url && (
+                              <img
+                                src={returnItem.product.image_url}
+                                alt={`${returnItem.product.brand} ${returnItem.product.model}`}
+                                className="w-16 h-16 object-cover rounded-lg border border-border"
+                              />
                             )}
-                            {returnItem.accepted_at && (
-                              <div>✅ Aceptado: {new Date(returnItem.accepted_at).toLocaleString()}</div>
-                            )}
-                            {returnItem.courier_accepted_at && (
-                              <div>
-                                🚚 Corredor asignado: {new Date(returnItem.courier_accepted_at).toLocaleString()}
-                              </div>
-                            )}
-                            {returnItem.picked_up_at && (
-                              <div>📦 Recogido: {new Date(returnItem.picked_up_at).toLocaleString()}</div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Botones de acción */}
-                        <div className="flex space-x-3">
-                          {/* Solo mostrar botón de confirmar recepción cuando está delivered */}
-                          {returnItem.status === 'delivered' && (
-                            <Button
-                              onClick={() => handleConfirmReturnReception(returnItem.id)}
-                              disabled={actionLoading === returnItem.id}
-                              className="w-full bg-success hover:bg-success/90 text-success-foreground text-sm"
-                              size="sm"
-                            >
-                              {actionLoading === returnItem.id ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              ) : (
-                                <CheckCircle className="h-4 w-4 mr-2" />
+                            <div>
+                              <h3 className="font-bold text-lg text-card-foreground">
+                                {returnItem.product?.brand || returnItem.brand}{' '}
+                                {returnItem.product?.model || returnItem.model}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                Talla {returnItem.product?.size || returnItem.size} • Cantidad:{' '}
+                                {returnItem.product?.quantity || returnItem.quantity}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                <strong>Tipo:</strong> {returnItem.request_type_display || 'Devolución'}
+                              </p>
+                              {returnItem.requester_info && (
+                                <p className="text-sm text-muted-foreground">
+                                  <strong>Solicitado por:</strong> {returnItem.requester_info.name}
+                                </p>
                               )}
-                              ✅ Confirmar Recepción
-                            </Button>
+                              {returnItem.courier_info && (
+                                <p className="text-sm text-muted-foreground">
+                                  <strong>Corredor:</strong> {returnItem.courier_info.name || 'No asignado'}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Información de ubicaciones */}
+                          {returnItem.location && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                              <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                                <div className="text-sm font-medium text-primary mb-1">📍 Desde</div>
+                                <div className="text-sm font-medium text-card-foreground">
+                                  {returnItem.location.source_name}
+                                </div>
+                              </div>
+                              <div className="p-3 bg-success/10 rounded-lg border border-success/20">
+                                <div className="text-sm font-medium text-success mb-1">🏪 Hacia</div>
+                                <div className="text-sm font-medium text-card-foreground">
+                                  {returnItem.location.destination_name}
+                                </div>
+                              </div>
+                            </div>
                           )}
+
+                          {/* Timeline de la devolución */}
+                          <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <h4 className="text-sm font-medium text-blue-800 mb-2">📋 Timeline</h4>
+                            <div className="space-y-1 text-xs text-blue-700">
+                              {returnItem.requested_at && (
+                                <div>✅ Solicitado: {new Date(returnItem.requested_at).toLocaleString()}</div>
+                              )}
+                              {returnItem.accepted_at && (
+                                <div>✅ Aceptado: {new Date(returnItem.accepted_at).toLocaleString()}</div>
+                              )}
+                              {returnItem.courier_accepted_at && (
+                                <div>
+                                  🚚 Corredor asignado: {new Date(returnItem.courier_accepted_at).toLocaleString()}
+                                </div>
+                              )}
+                              {returnItem.picked_up_at && (
+                                <div>📦 Recogido: {new Date(returnItem.picked_up_at).toLocaleString()}</div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Botones de acción */}
+                          <div className="flex space-x-3">
+                            {/* Solo mostrar botón de confirmar recepción cuando está delivered */}
+                            {returnItem.status === 'delivered' && (
+                              <Button
+                                onClick={() => handleConfirmReturnReception(returnItem.id)}
+                                disabled={actionLoading === returnItem.id}
+                                className="w-full bg-success hover:bg-success/90 text-success-foreground text-sm"
+                                size="sm"
+                              >
+                                {actionLoading === returnItem.id ? (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                ) : (
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                )}
+                                ✅ Confirmar Recepción
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         )}
