@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home } from 'lucide-react';
+import { Home, WifiOff } from 'lucide-react';
 import { useSeller } from '../context/SellerContext';
 import { CameraCapture } from '../components/seller/CameraCapture';
 
@@ -17,6 +17,19 @@ const VIEW_TITLES: Record<string, string> = {
 };
 
 export const SellerLayout: React.FC = () => {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
   const location = useLocation();
   const navigate = useNavigate();
   const {
@@ -46,27 +59,36 @@ export const SellerLayout: React.FC = () => {
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      <header className="bg-card shadow-xl border-b border-border z-10 flex-shrink-0 backdrop-blur-sm">
-        <div className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 flex items-center justify-between">
-          <div className="flex items-center min-w-0">
-            {!isHome && (
-              <button
-                onClick={() => navigate('/seller')}
-                className="mr-3 p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent transition-colors"
-                aria-label="Ir al inicio"
-              >
-                <Home className="h-5 w-5" />
-              </button>
-            )}
-            <h1 className="text-lg sm:text-xl font-semibold text-foreground truncate">{getTitle()}</h1>
+      <header
+        className={`${!isOnline ? 'bg-red-600' : 'bg-card'} shadow-xl border-b border-border z-10 flex-shrink-0 backdrop-blur-sm`}
+      >
+        {!isOnline ? (
+          <div className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 flex items-center justify-center gap-2 text-white">
+            <WifiOff className="h-5 w-5 shrink-0 animate-pulse" />
+            <span className="text-sm sm:text-base font-semibold">Sin conexión — Verifica tu internet</span>
           </div>
-          <button
-            onClick={handleLogout}
-            className="ml-4 px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors shadow-md flex-shrink-0"
-          >
-            Logout
-          </button>
-        </div>
+        ) : (
+          <div className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 flex items-center justify-between">
+            <div className="flex items-center min-w-0">
+              {!isHome && (
+                <button
+                  onClick={() => navigate('/seller')}
+                  className="mr-3 p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent transition-colors"
+                  aria-label="Ir al inicio"
+                >
+                  <Home className="h-5 w-5" />
+                </button>
+              )}
+              <h1 className="text-lg sm:text-xl font-semibold text-foreground truncate">{getTitle()}</h1>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="ml-4 px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors shadow-md flex-shrink-0"
+            >
+              Logout
+            </button>
+          </div>
+        )}
       </header>
 
       <main className="flex-1 overflow-y-auto min-h-0">

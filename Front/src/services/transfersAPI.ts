@@ -11,6 +11,16 @@ const getHeaders = () => {
   };
 };
 
+const isOfflineError = (error: unknown): boolean =>
+  error instanceof TypeError && (error.message === 'Failed to fetch' || error.message === 'Load failed');
+
+const OFFLINE_MESSAGE = 'Sin conexión a internet. Verifica tu red e intenta de nuevo.';
+
+const rethrow = (error: unknown): never => {
+  if (isOfflineError(error)) throw new Error(OFFLINE_MESSAGE);
+  throw error;
+};
+
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
@@ -28,8 +38,13 @@ const tryBackendFirst = async (apiCall: () => Promise<any>, mockFallback?: any) 
     return { success: true, data: result };
   } catch (error) {
     console.warn('⚠️ Backend no disponible', (error as Error).message);
+    if (isOfflineError(error)) {
+      if (!mockFallback) {
+        return { success: false, error: new Error(OFFLINE_MESSAGE) };
+      }
+    }
     if (mockFallback) {
-      return { success: false, data: mockFallback }; // Return mock data structure
+      return { success: false, data: mockFallback };
     }
     return { success: false, error };
   }
@@ -82,7 +97,7 @@ export const vendorAPI = {
       method: 'POST',
       headers,
       body: formData,
-    });
+    }).catch((error) => rethrow(error));
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
@@ -335,7 +350,7 @@ export const vendorAPI = {
       }
     } catch (error) {
       console.error('Error fetching incoming transfers:', error);
-      throw error;
+      rethrow(error);
     }
   },
 
@@ -373,7 +388,7 @@ export const vendorAPI = {
       return { success: true, status: 'accepted' };
     } catch (error) {
       console.error('Error accepting transfer:', error);
-      throw error;
+      rethrow(error);
     }
   },
 
@@ -392,7 +407,7 @@ export const vendorAPI = {
       return { success: true, new_status: 'in_transit', inventory_updated: true, remaining_stock: 4 };
     } catch (error) {
       console.error('Error dispatching transfer:', error);
-      throw error;
+      rethrow(error);
     }
   },
 
@@ -419,7 +434,7 @@ export const vendorAPI = {
       };
     } catch (error) {
       console.error('Error confirming return reception:', error);
-      throw error;
+      rethrow(error);
     }
   },
 
@@ -587,7 +602,7 @@ export const vendorAPI = {
       return result;
     } catch (error) {
       console.error('❌ Error al solicitar devolución:', error);
-      throw error;
+      return rethrow(error);
     }
   },
 

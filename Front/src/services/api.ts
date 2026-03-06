@@ -52,6 +52,9 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
     return data;
   } catch (error) {
     console.error('API Error:', error);
+    if (error instanceof TypeError && (error.message === 'Failed to fetch' || error.message === 'Load failed')) {
+      throw new Error('Sin conexión a internet. Verifica tu red e intenta de nuevo.');
+    }
     throw error;
   }
 };
@@ -78,6 +81,9 @@ const apiFormDataRequest = async (endpoint: string, formData: FormData) => {
     return data;
   } catch (error) {
     console.error('API Error:', error);
+    if (error instanceof TypeError && (error.message === 'Failed to fetch' || error.message === 'Load failed')) {
+      throw new Error('Sin conexión a internet. Verifica tu red e intenta de nuevo.');
+    }
     throw error;
   }
 };
