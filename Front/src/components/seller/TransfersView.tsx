@@ -470,29 +470,6 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
     }
   };
 
-  // *** NUEVA FUNCIÓN - Entregar devolución a bodeguero ***
-  const handleDeliverReturnToWarehouse = async (returnId: number) => {
-    if (!confirm('¿Confirmas que entregarás este producto en la bodega?')) {
-      return;
-    }
-
-    try {
-      console.log('🔄 Entregando devolución a bodega...', returnId);
-      const response = await vendorAPI.deliverReturnToWarehouse(
-        returnId,
-        'Producto entregado en perfecto estado para devolución'
-      );
-
-      console.log('✅ Devolución entregada:', response);
-      alert(`${response.message}\n\nEl bodeguero ahora debe confirmar la recepción y verificar el producto.`);
-
-      loadTransfersData();
-    } catch (err: any) {
-      console.error('❌ Error entregando devolución:', err);
-      alert('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));
-    }
-  };
-
   // *** NUEVAS FUNCIONES PARA SOLICITUDES ENTRANTES ***
   const handleAcceptIncomingTransfer = async (transferId: number) => {
     try {
@@ -922,17 +899,6 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                             <CheckCircle className="h-3 w-3 mr-1" /> Confirmar Devolución
                           </Button>
                         )}
-                      {transfer.is_return &&
-                        transfer.role_in_transfer === 'requester' &&
-                        transfer.status === 'accepted' && (
-                          <Button
-                            onClick={() => handleDeliverReturnToWarehouse(transfer.id)}
-                            className={`bg-muted text-muted-foreground hover:bg-muted/80 w-full ${compact ? 'text-[10px] h-7' : 'text-xs'}`}
-                            size="sm"
-                          >
-                            <Package className="h-3 w-3 mr-1" /> {compact ? 'A Bodega' : 'Entregar a Bodega'}
-                          </Button>
-                        )}
                       {!transfer.is_return && transfer.status === 'accepted' && (
                         <div
                           className={`bg-warning/10 border border-warning/20 rounded-lg text-center ${compact ? 'p-1.5' : 'p-2'}`}
@@ -1169,17 +1135,6 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                             <CheckCircle className="h-3 w-3 mr-1" /> Confirmar Devolución
                           </Button>
                         )}
-                      {transfer.is_return &&
-                        transfer.role_in_transfer === 'requester' &&
-                        transfer.status === 'accepted' && (
-                          <Button
-                            onClick={() => handleDeliverReturnToWarehouse(transfer.id)}
-                            className="bg-muted text-muted-foreground hover:bg-muted/80 text-[10px] h-7 px-2"
-                            size="sm"
-                          >
-                            <Package className="h-3 w-3 mr-1" /> A Bodega
-                          </Button>
-                        )}
                       {!transfer.is_return && transfer.status === 'accepted' && (
                         <span className="px-2 py-1 rounded-lg text-[10px] font-medium bg-warning/10 border border-warning/20 text-warning">
                           Ir a recoger
@@ -1356,15 +1311,6 @@ export const TransfersView: React.FC<TransfersViewProps> = ({
                                       size="sm"
                                     >
                                       <CheckCircle className="h-3 w-3 mr-1" /> Confirmar Devolución
-                                    </Button>
-                                  )}
-                                  {t.is_return && t.role_in_transfer === 'requester' && t.status === 'accepted' && (
-                                    <Button
-                                      onClick={() => handleDeliverReturnToWarehouse(t.id)}
-                                      className="bg-muted text-muted-foreground hover:bg-muted/80 text-[10px] h-7 px-2"
-                                      size="sm"
-                                    >
-                                      <Package className="h-3 w-3 mr-1" /> A Bodega
                                     </Button>
                                   )}
                                   {!t.is_return && t.status === 'accepted' && (
