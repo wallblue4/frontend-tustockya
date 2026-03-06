@@ -179,7 +179,7 @@ export const WarehouseDashboard: React.FC = () => {
 
   // Estados de filtros
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'normal'>('all');
-  const [purposeFilter, setPurposeFilter] = useState<'all' | 'cliente' | 'restock'>('all');
+  const [purposeFilter, setPurposeFilter] = useState<'all' | 'cliente' | 'restock' | 'return'>('all');
 
   // Estados de estadísticas
   const [stats, setStats] = useState({
@@ -511,7 +511,9 @@ export const WarehouseDashboard: React.FC = () => {
   // Funciones de filtrado
   const filteredPendingRequests = pendingRequests.filter((request) => {
     const matchesPriority = priorityFilter === 'all' || request.priority === priorityFilter;
-    const matchesPurpose = purposeFilter === 'all' || request.purpose === purposeFilter;
+    const isReturn = request.purpose === 'return' || request.request_type === 'return';
+    const matchesPurpose =
+      purposeFilter === 'all' || (purposeFilter === 'return' ? isReturn : request.purpose === purposeFilter);
 
     return matchesPriority && matchesPurpose;
   });
@@ -564,15 +566,15 @@ export const WarehouseDashboard: React.FC = () => {
   const getPurposeColor = (purpose: string) => {
     switch (purpose) {
       case 'cliente':
-        return 'bg-warning/10 text-warning';
+        return 'bg-red-100 text-red-700';
       case 'pair_formation':
         return 'bg-info/10 text-info';
       case 'restock':
-        return 'bg-success/10 text-success';
+        return 'bg-blue-100 text-blue-700';
       case 'return':
-        return 'bg-muted/10 text-muted-foreground';
+        return 'bg-orange-100 text-orange-700';
       default:
-        return 'bg-primary/10 text-primary';
+        return 'bg-red-100 text-red-700';
     }
   };
 
@@ -594,11 +596,11 @@ export const WarehouseDashboard: React.FC = () => {
   const getRequestTypeColor = (requestType?: string) => {
     switch (requestType) {
       case 'transfer':
-        return 'bg-primary/10 text-primary border-primary/20';
+        return 'bg-red-100 text-red-700 border-red-200';
       case 'return':
-        return 'bg-muted/10 text-muted-foreground border-muted/20';
+        return 'bg-orange-100 text-orange-700 border-orange-200';
       default:
-        return 'bg-primary/10 text-primary border-primary/20';
+        return 'bg-red-100 text-red-700 border-red-200';
     }
   };
 
@@ -1032,6 +1034,7 @@ export const WarehouseDashboard: React.FC = () => {
                       <option value="all">Todos los propósitos</option>
                       <option value="cliente">🏃‍♂️ Cliente presente</option>
                       <option value="restock">📦 Reposición</option>
+                      <option value="return">🔄 Devoluciones</option>
                     </select>
                   </div>
                 </div>
@@ -1057,7 +1060,13 @@ export const WarehouseDashboard: React.FC = () => {
                   {filteredPendingRequests.map((request) => (
                     <div
                       key={request.id}
-                      className="border border-border rounded-xl bg-card shadow-sm hover:shadow-lg transition-all duration-300"
+                      className={`border rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 ${
+                        request.purpose === 'return' || request.request_type === 'return'
+                          ? 'border-orange-300 bg-orange-50/30 dark:bg-orange-950/10'
+                          : request.purpose === 'restock'
+                            ? 'border-blue-300 bg-blue-50/30 dark:bg-blue-950/10'
+                            : 'border-red-300 bg-red-50/30 dark:bg-red-950/10'
+                      }`}
                     >
                       {/* MOBILE COMPACT VIEW */}
                       <div className="md:hidden">
