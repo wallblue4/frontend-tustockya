@@ -135,16 +135,12 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({ transfer, onClose, onS
                   </button>
                   <button
                     type="button"
-                    onClick={() => setPickupType('corredor')}
-                    className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-1.5 ${
-                      pickupType === 'corredor'
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border hover:border-primary/50'
-                    }`}
+                    disabled
+                    className="p-3 rounded-lg border-2 border-border opacity-50 cursor-not-allowed flex flex-col items-center gap-1.5"
                   >
                     <Truck className="h-5 w-5" />
                     <span className="text-sm font-semibold">Corredor</span>
-                    <span className="text-[10px] text-muted-foreground">Recoge en local</span>
+                    <span className="text-[10px] text-muted-foreground">No disponible</span>
                   </button>
                 </div>
               </div>
