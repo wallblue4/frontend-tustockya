@@ -180,6 +180,7 @@ export const WarehouseDashboard: React.FC = () => {
   // Estados de filtros
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'normal'>('all');
   const [purposeFilter, setPurposeFilter] = useState<'all' | 'cliente' | 'restock' | 'return'>('all');
+  const [pendingSearch, setPendingSearch] = useState('');
 
   // Estados de estadísticas
   const [stats, setStats] = useState({
@@ -515,7 +516,28 @@ export const WarehouseDashboard: React.FC = () => {
     const matchesPurpose =
       purposeFilter === 'all' || (purposeFilter === 'return' ? isReturn : request.purpose === purposeFilter);
 
-    return matchesPriority && matchesPurpose;
+    if (!matchesPriority || !matchesPurpose) return false;
+
+    if (pendingSearch.trim()) {
+      const q = pendingSearch.toLowerCase();
+      const haystack = [
+        request.brand,
+        request.model,
+        request.sneaker_reference_code,
+        request.size,
+        request.requester_name,
+        request.requester_first_name,
+        request.requester_last_name,
+        request.source_location_name,
+        request.notes,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+
+    return true;
   });
 
   // *** FUNCIÓN PARA REFRESCAR DATOS MANUALMENTE ***
@@ -1041,6 +1063,17 @@ export const WarehouseDashboard: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
+              {/* Buscador */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={pendingSearch}
+                  onChange={(e) => setPendingSearch(e.target.value)}
+                  placeholder="Buscar por marca, modelo, referencia, talla..."
+                  className="w-full pl-9 pr-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-card text-foreground placeholder:text-muted-foreground"
+                />
+              </div>
               {filteredPendingRequests.length === 0 ? (
                 <div className="text-center py-8 md:py-12">
                   <Package className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3" />
