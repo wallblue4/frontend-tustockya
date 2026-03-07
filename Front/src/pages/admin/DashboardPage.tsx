@@ -65,7 +65,7 @@ export const DashboardPage: React.FC = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatsCard
           title="Ventas Hoy"
           value={
@@ -96,64 +96,75 @@ export const DashboardPage: React.FC = () => {
           <h3 className="text-lg font-semibold">Acciones Rápidas</h3>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <Button
-              className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <button
+              className="flex flex-row items-center justify-between px-4 py-3 sm:h-20 sm:flex-col sm:justify-center sm:space-y-2 sm:px-2 sm:py-0 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary-dark shadow-lg transition-all"
               onClick={() => navigate('/administrador/usuarios')}
             >
-              <Users className="h-5 w-5" />
               <span>Gestionar Usuarios</span>
-            </Button>
-            <Button
-              className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
+              <Users className="h-5 w-5 sm:order-first" />
+            </button>
+            <button
+              className="flex flex-row items-center justify-between px-4 py-3 sm:h-20 sm:flex-col sm:justify-center sm:space-y-2 sm:px-2 sm:py-0 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary-dark shadow-lg transition-all"
               onClick={() => navigate('/administrador/inventario')}
             >
-              <Package className="h-5 w-5" />
               <span>Ver Inventario</span>
-            </Button>
-            <Button
-              className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
+              <Package className="h-5 w-5 sm:order-first" />
+            </button>
+            <button
+              className="flex flex-row items-center justify-between px-4 py-3 sm:h-20 sm:flex-col sm:justify-center sm:space-y-2 sm:px-2 sm:py-0 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary-dark shadow-lg transition-all"
               onClick={() => navigate('/administrador/mayoreo')}
             >
-              <ShoppingBag className="h-5 w-5" />
               <span>Ventas Mayoreo</span>
-            </Button>
-            <Button
-              className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
+              <ShoppingBag className="h-5 w-5 sm:order-first" />
+            </button>
+            <button
+              className="flex flex-row items-center justify-between px-4 py-3 sm:h-20 sm:flex-col sm:justify-center sm:space-y-2 sm:px-2 sm:py-0 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary-dark shadow-lg transition-all"
               onClick={() => navigate('/administrador/analiticas')}
             >
-              <BarChart3 className="h-5 w-5" />
               <span>Análisis</span>
-            </Button>
-            <Button
-              className="h-20 flex flex-col items-center justify-center space-y-2 text-xs"
+              <BarChart3 className="h-5 w-5 sm:order-first" />
+            </button>
+            <button
+              className="flex flex-row items-center justify-between px-4 py-3 sm:h-20 sm:flex-col sm:justify-center sm:space-y-2 sm:px-2 sm:py-0 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary-dark shadow-lg transition-all"
               onClick={() => navigate('/administrador/costos')}
             >
-              <DollarSign className="h-5 w-5" />
               <span>Ver Costos</span>
-            </Button>
+              <DollarSign className="h-5 w-5 sm:order-first" />
+            </button>
           </div>
         </CardContent>
       </Card>
 
       {dashboardData && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
           <Card>
             <CardHeader>
               <h3 className="text-lg font-semibold">Ubicaciones Gestionadas</h3>
             </CardHeader>
             <CardContent>
               {dashboardData.managed_locations?.length > 0 ? (
-                <div className="space-y-4">
+                <div className="divide-y divide-border sm:divide-y-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
                   {dashboardData.managed_locations.map((location: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-card rounded-lg">
-                      <div>
-                        <p className="font-medium">{location.location_name}</p>
-                        <p className="text-sm text-gray-600">{location.location_type}</p>
+                    <div
+                      key={index}
+                      className="flex items-center justify-between py-3 px-1 sm:p-4 sm:flex-col sm:items-start sm:gap-3 sm:rounded-lg sm:bg-muted/30 sm:border sm:border-border"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <p className="font-medium text-sm truncate">{location.location_name}</p>
+                        <span
+                          className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ${
+                            location.location_type === 'local'
+                              ? 'bg-amber-500 text-white'
+                              : 'bg-primary/10 text-primary'
+                          }`}
+                        >
+                          {location.location_type}
+                        </span>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold">{formatCurrency(parseFloat(location.daily_sales || 0))}</p>
-                        <p className="text-xs text-gray-500">Ventas diarias</p>
+                      <div className="flex items-center gap-2 shrink-0 sm:w-full sm:pt-2 sm:border-t sm:border-border">
+                        <p className="text-xs text-gray-500 hidden sm:block">Ventas diarias</p>
+                        <p className="font-semibold text-sm">{formatCurrency(parseFloat(location.daily_sales || 0))}</p>
                       </div>
                     </div>
                   ))}
