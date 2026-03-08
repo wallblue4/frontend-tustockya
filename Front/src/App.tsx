@@ -156,6 +156,14 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
+        path="/warehouse/:tab"
+        element={
+          <ProtectedRoute allowedRoles={['bodeguero', 'admin', 'superuser']}>
+            <WarehouseDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/seller"
         element={
           <ProtectedRoute allowedRoles={['seller', 'admin', 'superuser']}>
